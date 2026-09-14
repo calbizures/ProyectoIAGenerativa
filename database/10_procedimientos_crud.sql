@@ -9,6 +9,14 @@
 	- sp_<entidad>_consultar       -> listado con filtros opcionales y paginado
 	- sp_<entidad>_consultar_por_id -> detalle de un registro
 
+	Auditoría: todo procedimiento que inserta, actualiza o da de baja recibe
+	un parámetro @usu_id (el usuario que ejecuta la acción; NULL si no se
+	informa) y lo graba en [InsUsuario]/[UpdUsuario] de la fila afectada,
+	junto con [InsFechaHora]/[UpdFechaHora] = SYSDATETIME(). En los
+	procedimientos de [gen_usuario], donde @usu_id ya se usa para identificar
+	la fila objetivo, el usuario que ejecuta la acción se recibe como
+	@usu_id_accion para no chocar con ese parámetro.
+
 	Los procesos de negocio (crear factura/compra, pagos, cheques, login,
 	existencias, asientos contables automáticos) están en
 	11_procedimientos_procesos.sql.
@@ -26,6 +34,7 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_producto_insertar]
 	@pro_tipo_item			CHAR(1) = 'B',
 	@pro_maneja_existencia	BIT = 1,
 	@pro_id_padre			INT = NULL,
+	@usu_id					INT = NULL,
 	@pro_id					INT OUTPUT
 AS
 BEGIN
@@ -34,8 +43,10 @@ BEGIN
 	IF EXISTS (SELECT 1 FROM dbo.inv_producto WHERE pro_codigo = @pro_codigo)
 		THROW 51001, 'Ya existe un producto con ese código.', 1;
 
-	INSERT INTO dbo.inv_producto (pro_codigo, pro_descripcion, prt_id, pro_tipo_item, pro_maneja_existencia, pro_id_padre)
-	VALUES (@pro_codigo, @pro_descripcion, @prt_id, @pro_tipo_item, @pro_maneja_existencia, @pro_id_padre);
+	INSERT INTO dbo.inv_producto
+		(pro_codigo, pro_descripcion, prt_id, pro_tipo_item, pro_maneja_existencia, pro_id_padre, InsUsuario, InsFechaHora)
+	VALUES
+		(@pro_codigo, @pro_descripcion, @prt_id, @pro_tipo_item, @pro_maneja_existencia, @pro_id_padre, @usu_id, SYSDATETIME());
 
 	SET @pro_id = SCOPE_IDENTITY();
 END;
@@ -49,7 +60,8 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_producto_actualizar]
 	@pro_tipo_item			CHAR(1),
 	@pro_maneja_existencia	BIT,
 	@pro_id_padre			INT = NULL,
-	@pro_ptje_rentabilidad	NUMERIC(8, 2) = NULL
+	@pro_ptje_rentabilidad	NUMERIC(8, 2) = NULL,
+	@usu_id					INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -67,13 +79,16 @@ BEGIN
 		   pro_tipo_item = @pro_tipo_item,
 		   pro_maneja_existencia = @pro_maneja_existencia,
 		   pro_id_padre = @pro_id_padre,
-		   pro_ptje_rentabilidad = @pro_ptje_rentabilidad
+		   pro_ptje_rentabilidad = @pro_ptje_rentabilidad,
+		   UpdUsuario = @usu_id,
+		   UpdFechaHora = SYSDATETIME()
 	 WHERE pro_id = @pro_id;
 END;
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[sp_producto_eliminar]
-	@pro_id INT
+	@pro_id INT,
+	@usu_id	INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -81,7 +96,11 @@ BEGIN
 	IF NOT EXISTS (SELECT 1 FROM dbo.inv_producto WHERE pro_id = @pro_id)
 		THROW 51002, 'El producto indicado no existe.', 1;
 
-	UPDATE dbo.inv_producto SET pro_estado = 'I' WHERE pro_id = @pro_id;
+	UPDATE dbo.inv_producto
+	   SET pro_estado = 'I',
+		   UpdUsuario = @usu_id,
+		   UpdFechaHora = SYSDATETIME()
+	 WHERE pro_id = @pro_id;
 END;
 GO
 
@@ -147,6 +166,7 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_cliente_insertar]
 	@cli_direccion_pais		INT = NULL,
 	@cli_direccion_estado	INT = NULL,
 	@cli_direccion_provincia INT = NULL,
+	@usu_id					INT = NULL,
 	@cli_id					INT OUTPUT
 AS
 BEGIN
@@ -160,10 +180,12 @@ BEGIN
 
 	INSERT INTO dbo.pos_cliente
 		(cli_codigo, cli_nombres, cli_apellidos, cli_direccion, cli_telefono_celular,
-		 cli_nit, cli_email, cli_limite_credito, cli_direccion_pais, cli_direccion_estado, cli_direccion_provincia)
+		 cli_nit, cli_email, cli_limite_credito, cli_direccion_pais, cli_direccion_estado, cli_direccion_provincia,
+		 InsUsuario, InsFechaHora)
 	VALUES
 		(@cli_codigo, @cli_nombres, @cli_apellidos, @cli_direccion, @cli_telefono_celular,
-		 @cli_nit, @cli_email, @cli_limite_credito, @cli_direccion_pais, @cli_direccion_estado, @cli_direccion_provincia);
+		 @cli_nit, @cli_email, @cli_limite_credito, @cli_direccion_pais, @cli_direccion_estado, @cli_direccion_provincia,
+		 @usu_id, SYSDATETIME());
 
 	SET @cli_id = SCOPE_IDENTITY();
 END;
@@ -177,7 +199,8 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_cliente_actualizar]
 	@cli_telefono_celular	VARCHAR(16) = NULL,
 	@cli_nit				VARCHAR(16) = NULL,
 	@cli_email				VARCHAR(64) = NULL,
-	@cli_limite_credito		DECIMAL(14, 2) = 0
+	@cli_limite_credito		DECIMAL(14, 2) = 0,
+	@usu_id					INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -195,13 +218,16 @@ BEGIN
 		   cli_telefono_celular = @cli_telefono_celular,
 		   cli_nit = @cli_nit,
 		   cli_email = @cli_email,
-		   cli_limite_credito = @cli_limite_credito
+		   cli_limite_credito = @cli_limite_credito,
+		   UpdUsuario = @usu_id,
+		   UpdFechaHora = SYSDATETIME()
 	 WHERE cli_id = @cli_id;
 END;
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[sp_cliente_eliminar]
-	@cli_id INT
+	@cli_id INT,
+	@usu_id	INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -209,7 +235,11 @@ BEGIN
 	IF NOT EXISTS (SELECT 1 FROM dbo.pos_cliente WHERE cli_id = @cli_id)
 		THROW 51013, 'El cliente indicado no existe.', 1;
 
-	UPDATE dbo.pos_cliente SET cli_estado = 'I' WHERE cli_id = @cli_id;
+	UPDATE dbo.pos_cliente
+	   SET cli_estado = 'I',
+		   UpdUsuario = @usu_id,
+		   UpdFechaHora = SYSDATETIME()
+	 WHERE cli_id = @cli_id;
 END;
 GO
 
@@ -256,6 +286,7 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_proveedor_insertar]
 	@prv_direccion			VARCHAR(128) = NULL,
 	@prv_telefono_oficina	VARCHAR(16) = NULL,
 	@prv_email_empresa		VARCHAR(64) = NULL,
+	@usu_id					INT = NULL,
 	@prv_id					INT OUTPUT
 AS
 BEGIN
@@ -265,9 +296,11 @@ BEGIN
 		THROW 51021, 'Ya existe un proveedor con ese código.', 1;
 
 	INSERT INTO dbo.inv_proveedor
-		(prv_codigo, prv_nombre_comercial, prv_nit, prv_contacto, prv_direccion, prv_telefono_oficina, prv_email_empresa)
+		(prv_codigo, prv_nombre_comercial, prv_nit, prv_contacto, prv_direccion, prv_telefono_oficina, prv_email_empresa,
+		 InsUsuario, InsFechaHora)
 	VALUES
-		(@prv_codigo, @prv_nombre_comercial, @prv_nit, @prv_contacto, @prv_direccion, @prv_telefono_oficina, @prv_email_empresa);
+		(@prv_codigo, @prv_nombre_comercial, @prv_nit, @prv_contacto, @prv_direccion, @prv_telefono_oficina, @prv_email_empresa,
+		 @usu_id, SYSDATETIME());
 
 	SET @prv_id = SCOPE_IDENTITY();
 END;
@@ -280,7 +313,8 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_proveedor_actualizar]
 	@prv_contacto			VARCHAR(128) = NULL,
 	@prv_direccion			VARCHAR(128) = NULL,
 	@prv_telefono_oficina	VARCHAR(16) = NULL,
-	@prv_email_empresa		VARCHAR(64) = NULL
+	@prv_email_empresa		VARCHAR(64) = NULL,
+	@usu_id					INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -294,13 +328,16 @@ BEGIN
 		   prv_contacto = @prv_contacto,
 		   prv_direccion = @prv_direccion,
 		   prv_telefono_oficina = @prv_telefono_oficina,
-		   prv_email_empresa = @prv_email_empresa
+		   prv_email_empresa = @prv_email_empresa,
+		   UpdUsuario = @usu_id,
+		   UpdFechaHora = SYSDATETIME()
 	 WHERE prv_id = @prv_id;
 END;
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[sp_proveedor_eliminar]
-	@prv_id INT
+	@prv_id INT,
+	@usu_id	INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -308,7 +345,11 @@ BEGIN
 	IF NOT EXISTS (SELECT 1 FROM dbo.inv_proveedor WHERE prv_id = @prv_id)
 		THROW 51022, 'El proveedor indicado no existe.', 1;
 
-	UPDATE dbo.inv_proveedor SET prv_estado = 'I' WHERE prv_id = @prv_id;
+	UPDATE dbo.inv_proveedor
+	   SET prv_estado = 'I',
+		   UpdUsuario = @usu_id,
+		   UpdFechaHora = SYSDATETIME()
+	 WHERE prv_id = @prv_id;
 END;
 GO
 
@@ -346,12 +387,17 @@ GO
 ------------------------------------------------------------
 -- gen_usuario (contraseña con hash + sal; ver también sp_seguridad_login
 -- en 11_procedimientos_procesos.sql)
+--
+-- Aquí @usu_id siempre identifica la fila objetivo (el usuario sobre el que
+-- se actúa), así que el usuario que ejecuta la acción se recibe como
+-- @usu_id_accion para no chocar con ese nombre.
 ------------------------------------------------------------
 CREATE OR ALTER PROCEDURE [dbo].[sp_usuario_insertar]
 	@usu_codigo		VARCHAR(32),
 	@usu_usuario	VARCHAR(128),
 	@usu_password	VARCHAR(256),
 	@usu_email		VARCHAR(128) = NULL,
+	@usu_id_accion	INT = NULL,
 	@usu_id			INT OUTPUT
 AS
 BEGIN
@@ -362,10 +408,12 @@ BEGIN
 
 	DECLARE @salt UNIQUEIDENTIFIER = NEWID();
 
-	INSERT INTO dbo.gen_usuario (usu_codigo, usu_usuario, usu_password_hash, usu_password_salt, usu_email)
-	VALUES (@usu_codigo, @usu_usuario,
-			HASHBYTES('SHA2_256', CAST(@salt AS VARCHAR(36)) + @usu_password),
-			@salt, @usu_email);
+	INSERT INTO dbo.gen_usuario
+		(usu_codigo, usu_usuario, usu_password_hash, usu_password_salt, usu_email, InsUsuario, InsFechaHora)
+	VALUES
+		(@usu_codigo, @usu_usuario,
+		 HASHBYTES('SHA2_256', CAST(@salt AS VARCHAR(36)) + @usu_password),
+		 @salt, @usu_email, @usu_id_accion, SYSDATETIME());
 
 	SET @usu_id = SCOPE_IDENTITY();
 END;
@@ -374,7 +422,8 @@ GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_usuario_actualizar]
 	@usu_id			INT,
 	@usu_usuario	VARCHAR(128),
-	@usu_email		VARCHAR(128) = NULL
+	@usu_email		VARCHAR(128) = NULL,
+	@usu_id_accion	INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -387,7 +436,9 @@ BEGIN
 
 	UPDATE dbo.gen_usuario
 	   SET usu_usuario = @usu_usuario,
-		   usu_email = @usu_email
+		   usu_email = @usu_email,
+		   UpdUsuario = @usu_id_accion,
+		   UpdFechaHora = SYSDATETIME()
 	 WHERE usu_id = @usu_id;
 END;
 GO
@@ -413,15 +464,20 @@ BEGIN
 
 	DECLARE @salt_nuevo UNIQUEIDENTIFIER = NEWID();
 
+	-- Es un cambio hecho por el propio usuario: UpdUsuario queda como el
+	-- mismo @usu_id que se está actualizando.
 	UPDATE dbo.gen_usuario
 	   SET usu_password_hash = HASHBYTES('SHA2_256', CAST(@salt_nuevo AS VARCHAR(36)) + @password_nuevo),
-		   usu_password_salt = @salt_nuevo
+		   usu_password_salt = @salt_nuevo,
+		   UpdUsuario = @usu_id,
+		   UpdFechaHora = SYSDATETIME()
 	 WHERE usu_id = @usu_id;
 END;
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[sp_usuario_eliminar]
-	@usu_id INT
+	@usu_id			INT,
+	@usu_id_accion	INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -429,7 +485,11 @@ BEGIN
 	IF NOT EXISTS (SELECT 1 FROM dbo.gen_usuario WHERE usu_id = @usu_id)
 		THROW 51032, 'El usuario indicado no existe.', 1;
 
-	UPDATE dbo.gen_usuario SET usu_estado = 'I' WHERE usu_id = @usu_id;
+	UPDATE dbo.gen_usuario
+	   SET usu_estado = 'I',
+		   UpdUsuario = @usu_id_accion,
+		   UpdFechaHora = SYSDATETIME()
+	 WHERE usu_id = @usu_id;
 END;
 GO
 
@@ -477,6 +537,7 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_bodega_insertar]
 	@bod_codigo			VARCHAR(8),
 	@bod_descripcion	VARCHAR(128),
 	@suc_id				INT,
+	@usu_id				INT = NULL,
 	@bod_id				INT OUTPUT
 AS
 BEGIN
@@ -485,8 +546,8 @@ BEGIN
 	IF EXISTS (SELECT 1 FROM dbo.inv_bodega WHERE suc_id = @suc_id AND bod_codigo = @bod_codigo)
 		THROW 51041, 'Ya existe una bodega con ese código en la sucursal.', 1;
 
-	INSERT INTO dbo.inv_bodega (bod_codigo, bod_descripcion, suc_id)
-	VALUES (@bod_codigo, @bod_descripcion, @suc_id);
+	INSERT INTO dbo.inv_bodega (bod_codigo, bod_descripcion, suc_id, InsUsuario, InsFechaHora)
+	VALUES (@bod_codigo, @bod_descripcion, @suc_id, @usu_id, SYSDATETIME());
 
 	SET @bod_id = SCOPE_IDENTITY();
 END;
@@ -495,7 +556,8 @@ GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_bodega_actualizar]
 	@bod_id				INT,
 	@bod_descripcion	VARCHAR(128),
-	@suc_id				INT
+	@suc_id				INT,
+	@usu_id				INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -503,12 +565,18 @@ BEGIN
 	IF NOT EXISTS (SELECT 1 FROM dbo.inv_bodega WHERE bod_id = @bod_id)
 		THROW 51042, 'La bodega indicada no existe.', 1;
 
-	UPDATE dbo.inv_bodega SET bod_descripcion = @bod_descripcion, suc_id = @suc_id WHERE bod_id = @bod_id;
+	UPDATE dbo.inv_bodega
+	   SET bod_descripcion = @bod_descripcion,
+		   suc_id = @suc_id,
+		   UpdUsuario = @usu_id,
+		   UpdFechaHora = SYSDATETIME()
+	 WHERE bod_id = @bod_id;
 END;
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[sp_bodega_eliminar]
-	@bod_id INT
+	@bod_id	INT,
+	@usu_id	INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -516,7 +584,11 @@ BEGIN
 	IF NOT EXISTS (SELECT 1 FROM dbo.inv_bodega WHERE bod_id = @bod_id)
 		THROW 51042, 'La bodega indicada no existe.', 1;
 
-	UPDATE dbo.inv_bodega SET bod_estado = 'I' WHERE bod_id = @bod_id;
+	UPDATE dbo.inv_bodega
+	   SET bod_estado = 'I',
+		   UpdUsuario = @usu_id,
+		   UpdFechaHora = SYSDATETIME()
+	 WHERE bod_id = @bod_id;
 END;
 GO
 
@@ -552,6 +624,7 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_cuenta_bancaria_insertar]
 	@bcb_numero_cuenta	VARCHAR(16),
 	@bcb_descripcion	VARCHAR(64) = NULL,
 	@gef_id				INT,
+	@usu_id				INT = NULL,
 	@bcb_id				INT OUTPUT
 AS
 BEGIN
@@ -560,8 +633,8 @@ BEGIN
 	IF EXISTS (SELECT 1 FROM dbo.bco_cuenta_bancaria WHERE bcb_numero_cuenta = @bcb_numero_cuenta)
 		THROW 51051, 'Ya existe una cuenta bancaria con ese número.', 1;
 
-	INSERT INTO dbo.bco_cuenta_bancaria (bcb_numero_cuenta, bcb_descripcion, gef_id)
-	VALUES (@bcb_numero_cuenta, @bcb_descripcion, @gef_id);
+	INSERT INTO dbo.bco_cuenta_bancaria (bcb_numero_cuenta, bcb_descripcion, gef_id, InsUsuario, InsFechaHora)
+	VALUES (@bcb_numero_cuenta, @bcb_descripcion, @gef_id, @usu_id, SYSDATETIME());
 
 	SET @bcb_id = SCOPE_IDENTITY();
 END;
@@ -570,7 +643,8 @@ GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_cuenta_bancaria_actualizar]
 	@bcb_id				INT,
 	@bcb_descripcion	VARCHAR(64) = NULL,
-	@gef_id				INT
+	@gef_id				INT,
+	@usu_id				INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -578,12 +652,18 @@ BEGIN
 	IF NOT EXISTS (SELECT 1 FROM dbo.bco_cuenta_bancaria WHERE bcb_id = @bcb_id)
 		THROW 51052, 'La cuenta bancaria indicada no existe.', 1;
 
-	UPDATE dbo.bco_cuenta_bancaria SET bcb_descripcion = @bcb_descripcion, gef_id = @gef_id WHERE bcb_id = @bcb_id;
+	UPDATE dbo.bco_cuenta_bancaria
+	   SET bcb_descripcion = @bcb_descripcion,
+		   gef_id = @gef_id,
+		   UpdUsuario = @usu_id,
+		   UpdFechaHora = SYSDATETIME()
+	 WHERE bcb_id = @bcb_id;
 END;
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[sp_cuenta_bancaria_eliminar]
-	@bcb_id INT
+	@bcb_id	INT,
+	@usu_id	INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -591,7 +671,11 @@ BEGIN
 	IF NOT EXISTS (SELECT 1 FROM dbo.bco_cuenta_bancaria WHERE bcb_id = @bcb_id)
 		THROW 51052, 'La cuenta bancaria indicada no existe.', 1;
 
-	UPDATE dbo.bco_cuenta_bancaria SET bcb_estado = 'I' WHERE bcb_id = @bcb_id;
+	UPDATE dbo.bco_cuenta_bancaria
+	   SET bcb_estado = 'I',
+		   UpdUsuario = @usu_id,
+		   UpdFechaHora = SYSDATETIME()
+	 WHERE bcb_id = @bcb_id;
 END;
 GO
 
@@ -628,6 +712,7 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_cuenta_contable_insertar]
 	@cta_naturaleza			CHAR(1),
 	@cta_acepta_movimiento	BIT = 1,
 	@cta_id_padre			INT = NULL,
+	@usu_id					INT = NULL,
 	@cta_id					INT OUTPUT
 AS
 BEGIN
@@ -640,8 +725,10 @@ BEGIN
 	IF @cta_id_padre IS NOT NULL
 		SELECT @nivel = cta_nivel + 1 FROM dbo.cont_cuenta_contable WHERE cta_id = @cta_id_padre;
 
-	INSERT INTO dbo.cont_cuenta_contable (cta_codigo, cta_nombre, cta_tipo, cta_naturaleza, cta_acepta_movimiento, cta_id_padre, cta_nivel)
-	VALUES (@cta_codigo, @cta_nombre, @cta_tipo, @cta_naturaleza, @cta_acepta_movimiento, @cta_id_padre, @nivel);
+	INSERT INTO dbo.cont_cuenta_contable
+		(cta_codigo, cta_nombre, cta_tipo, cta_naturaleza, cta_acepta_movimiento, cta_id_padre, cta_nivel, InsUsuario, InsFechaHora)
+	VALUES
+		(@cta_codigo, @cta_nombre, @cta_tipo, @cta_naturaleza, @cta_acepta_movimiento, @cta_id_padre, @nivel, @usu_id, SYSDATETIME());
 
 	SET @cta_id = SCOPE_IDENTITY();
 END;
@@ -650,7 +737,8 @@ GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_cuenta_contable_actualizar]
 	@cta_id					INT,
 	@cta_nombre				VARCHAR(128),
-	@cta_acepta_movimiento	BIT
+	@cta_acepta_movimiento	BIT,
+	@usu_id					INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -660,13 +748,16 @@ BEGIN
 
 	UPDATE dbo.cont_cuenta_contable
 	   SET cta_nombre = @cta_nombre,
-		   cta_acepta_movimiento = @cta_acepta_movimiento
+		   cta_acepta_movimiento = @cta_acepta_movimiento,
+		   UpdUsuario = @usu_id,
+		   UpdFechaHora = SYSDATETIME()
 	 WHERE cta_id = @cta_id;
 END;
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[sp_cuenta_contable_eliminar]
-	@cta_id INT
+	@cta_id	INT,
+	@usu_id	INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -677,7 +768,11 @@ BEGIN
 	IF EXISTS (SELECT 1 FROM dbo.cont_asiento_det WHERE cta_id = @cta_id)
 		THROW 51063, 'No se puede inactivar: la cuenta ya tiene movimientos contables.', 1;
 
-	UPDATE dbo.cont_cuenta_contable SET cta_estado = 'I' WHERE cta_id = @cta_id;
+	UPDATE dbo.cont_cuenta_contable
+	   SET cta_estado = 'I',
+		   UpdUsuario = @usu_id,
+		   UpdFechaHora = SYSDATETIME()
+	 WHERE cta_id = @cta_id;
 END;
 GO
 
@@ -712,6 +807,7 @@ GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_rol_insertar]
 	@rol_codigo	VARCHAR(32),
 	@rol_nombre	VARCHAR(64),
+	@usu_id		INT = NULL,
 	@rol_id		INT OUTPUT
 AS
 BEGIN
@@ -720,14 +816,16 @@ BEGIN
 	IF EXISTS (SELECT 1 FROM dbo.sec_rol WHERE rol_codigo = @rol_codigo)
 		THROW 51071, 'Ya existe un rol con ese código.', 1;
 
-	INSERT INTO dbo.sec_rol (rol_codigo, rol_nombre) VALUES (@rol_codigo, @rol_nombre);
+	INSERT INTO dbo.sec_rol (rol_codigo, rol_nombre, InsUsuario, InsFechaHora)
+	VALUES (@rol_codigo, @rol_nombre, @usu_id, SYSDATETIME());
 	SET @rol_id = SCOPE_IDENTITY();
 END;
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[sp_rol_actualizar]
 	@rol_id		INT,
-	@rol_nombre	VARCHAR(64)
+	@rol_nombre	VARCHAR(64),
+	@usu_id		INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -735,12 +833,17 @@ BEGIN
 	IF NOT EXISTS (SELECT 1 FROM dbo.sec_rol WHERE rol_id = @rol_id)
 		THROW 51072, 'El rol indicado no existe.', 1;
 
-	UPDATE dbo.sec_rol SET rol_nombre = @rol_nombre WHERE rol_id = @rol_id;
+	UPDATE dbo.sec_rol
+	   SET rol_nombre = @rol_nombre,
+		   UpdUsuario = @usu_id,
+		   UpdFechaHora = SYSDATETIME()
+	 WHERE rol_id = @rol_id;
 END;
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[sp_rol_eliminar]
-	@rol_id INT
+	@rol_id	INT,
+	@usu_id	INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -748,7 +851,11 @@ BEGIN
 	IF NOT EXISTS (SELECT 1 FROM dbo.sec_rol WHERE rol_id = @rol_id)
 		THROW 51072, 'El rol indicado no existe.', 1;
 
-	UPDATE dbo.sec_rol SET rol_estado = 'I' WHERE rol_id = @rol_id;
+	UPDATE dbo.sec_rol
+	   SET rol_estado = 'I',
+		   UpdUsuario = @usu_id,
+		   UpdFechaHora = SYSDATETIME()
+	 WHERE rol_id = @rol_id;
 END;
 GO
 
@@ -765,10 +872,11 @@ END;
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[sp_permiso_insertar]
-	@per_modulo		VARCHAR(32),
-	@per_codigo		VARCHAR(64),
-	@per_descripcion VARCHAR(128) = NULL,
-	@per_id			INT OUTPUT
+	@per_modulo			VARCHAR(32),
+	@per_codigo			VARCHAR(64),
+	@per_descripcion	VARCHAR(128) = NULL,
+	@usu_id				INT = NULL,
+	@per_id				INT OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -776,8 +884,8 @@ BEGIN
 	IF EXISTS (SELECT 1 FROM dbo.sec_permiso WHERE per_codigo = @per_codigo)
 		THROW 51081, 'Ya existe un permiso con ese código.', 1;
 
-	INSERT INTO dbo.sec_permiso (per_modulo, per_codigo, per_descripcion)
-	VALUES (@per_modulo, @per_codigo, @per_descripcion);
+	INSERT INTO dbo.sec_permiso (per_modulo, per_codigo, per_descripcion, InsUsuario, InsFechaHora)
+	VALUES (@per_modulo, @per_codigo, @per_descripcion, @usu_id, SYSDATETIME());
 
 	SET @per_id = SCOPE_IDENTITY();
 END;
@@ -798,14 +906,16 @@ END;
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[sp_rol_asignar_permiso]
-	@rol_id INT,
-	@per_id INT
+	@rol_id	INT,
+	@per_id	INT,
+	@usu_id	INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
 
 	IF NOT EXISTS (SELECT 1 FROM dbo.sec_rol_permiso WHERE rol_id = @rol_id AND per_id = @per_id)
-		INSERT INTO dbo.sec_rol_permiso (rol_id, per_id) VALUES (@rol_id, @per_id);
+		INSERT INTO dbo.sec_rol_permiso (rol_id, per_id, InsUsuario, InsFechaHora)
+		VALUES (@rol_id, @per_id, @usu_id, SYSDATETIME());
 END;
 GO
 
@@ -820,14 +930,16 @@ END;
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[sp_usuario_asignar_rol]
-	@usu_id INT,
-	@rol_id INT
+	@usu_id			INT,
+	@rol_id			INT,
+	@usu_id_accion	INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
 
 	IF NOT EXISTS (SELECT 1 FROM dbo.sec_usuario_rol WHERE usu_id = @usu_id AND rol_id = @rol_id)
-		INSERT INTO dbo.sec_usuario_rol (usu_id, rol_id) VALUES (@usu_id, @rol_id);
+		INSERT INTO dbo.sec_usuario_rol (usu_id, rol_id, InsUsuario, InsFechaHora)
+		VALUES (@usu_id, @rol_id, @usu_id_accion, SYSDATETIME());
 END;
 GO
 

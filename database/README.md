@@ -96,11 +96,10 @@ Decisiones de diseño:
   vez de escribir a mano más de cien `ALTER TABLE`), así que ese script
   ahora también debe volver a correrse.
 - Se dejan nulas — a diferencia de `InsFechaHora`, que sí es obligatoria —
-  porque hoy los procedimientos de `10_procedimientos_crud.sql` y
-  `11_procedimientos_procesos.sql` **no** reciben todavía el usuario que
-  ejecuta cada operación. Con columnas nulas, ningún `INSERT`/`UPDATE`
-  existente (CRUD, procesos de negocio, `12_datos_sinteticos.sql`) se rompe;
-  simplemente esas columnas quedan en `NULL` hasta que se conecten.
+  para que quien llame a un procedimiento sin indicar `@usu_id` (por
+  ejemplo `12_datos_sinteticos.sql`, que hace `INSERT` directos sin pasar
+  por los procedimientos) no rompa nada; simplemente esas columnas quedan
+  en `NULL`.
 - Única excepción: `gen_auditoria` no las lleva, porque esa tabla **es** la
   bitácora de auditoría (ya tiene sus propias columnas `usu_id`/`aud_fecha`
   equivalentes) y sus filas nunca se actualizan, solo se insertan.
@@ -114,12 +113,27 @@ Decisiones de diseño:
   filtrar/unir en el uso normal del ERP, y sumar ~100 índices más solo por
   simetría habría sido puro costo de escritura sin beneficio real.
 
-**Pendiente si se quiere aprovechar esto de verdad:** hoy nada llena
-`InsUsuario`/`UpdUsuario` automáticamente. El siguiente paso natural es que
-los procedimientos `sp_<entidad>_insertar`/`sp_<entidad>_actualizar` reciban
-un `@usu_id` y lo graben ahí (y en `UpdFechaHora` en el caso de actualizar).
-No se hizo en esta pasada porque no fue lo que se pidió — se pidió
-regenerar los scripts que crean las tablas — pero es la continuación lógica.
+**Estado de la conexión con los procedimientos:**
+
+- `10_procedimientos_crud.sql` ya está conectado: cada
+  `sp_<entidad>_insertar`/`_actualizar`/`_eliminar` recibe un parámetro
+  `@usu_id` (opcional, `NULL` por defecto) y lo graba en
+  `InsUsuario`/`UpdUsuario`, junto con `InsFechaHora`/`UpdFechaHora` =
+  `SYSDATETIME()`. En los procedimientos de `gen_usuario`, donde `@usu_id`
+  ya identificaba la fila objetivo, el usuario que ejecuta la acción se
+  recibe como `@usu_id_accion` para no chocar con ese nombre.
+  `sp_usuario_cambiar_password` graba `UpdUsuario = @usu_id` (el mismo
+  usuario, porque es un cambio que uno hace sobre su propia cuenta).
+  `sp_rol_asignar_permiso`/`sp_usuario_asignar_rol` también graban
+  `InsUsuario`/`InsFechaHora` al insertar en las tablas de asignación;
+  los procedimientos `_revocar_*` (`DELETE`) no aplican, porque la fila
+  desaparece.
+- `11_procedimientos_procesos.sql` (crear factura/compra, pagos, cheques,
+  anular documento, asientos automáticos) **todavía no** está conectado:
+  esos procedimientos siguen sin recibir/grabar `InsUsuario`/`UpdUsuario`
+  en las tablas que tocan (`inv_documento_enc`, `inv_documento_det`,
+  `pos_pago_enc`, `bco_cheque_emitido_enc`, `cont_asiento_enc`, etc.). Es la
+  continuación lógica si se quiere trazabilidad completa también ahí.
 
 ## Errores corregidos (no eran solo de estilo)
 
