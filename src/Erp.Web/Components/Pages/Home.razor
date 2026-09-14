@@ -28,11 +28,22 @@
             </Authorized>
         </AuthorizeView>
 
-        <div class="modulo-card modulo-card-proximamente">
-            <span class="modulo-icono"><Icono Nombre="package" Tamano="26" /></span>
-            <span class="modulo-titulo">Inventario</span>
-            <span class="modulo-badge">Próximamente</span>
-        </div>
+        <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR">
+            <Authorized>
+                <a href="productos" class="modulo-card">
+                    <span class="modulo-icono"><Icono Nombre="package" Tamano="26" /></span>
+                    <span class="modulo-titulo">Inventario</span>
+                    <span class="modulo-desc">Productos y existencias</span>
+                </a>
+            </Authorized>
+            <NotAuthorized>
+                <div class="modulo-card modulo-card-proximamente">
+                    <span class="modulo-icono"><Icono Nombre="package" Tamano="26" /></span>
+                    <span class="modulo-titulo">Inventario</span>
+                    <span class="modulo-badge">Próximamente</span>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
 
         <div class="modulo-card modulo-card-proximamente">
             <span class="modulo-icono"><Icono Nombre="receipt" Tamano="26" /></span>

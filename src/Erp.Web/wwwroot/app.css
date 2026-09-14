@@ -440,6 +440,18 @@ h1:focus {
     max-width: 480px;
 }
 
+.panel-formulario .campo-checkbox, .panel-detalle .campo-checkbox {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 0.5rem !important;
+}
+
+.campo-checkbox label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
 .panel-formulario .campo, .panel-detalle .campo {
     margin-bottom: 0.75rem;
     display: flex;

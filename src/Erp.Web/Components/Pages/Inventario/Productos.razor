@@ -1,0 +1,299 @@
+@page "/productos"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR")]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.Inventario
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IProductoRepository ProductoRepository
+
+<PageTitle>Productos</PageTitle>
+
+<h1>Productos</h1>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+}
+
+<div class="barra-filtros">
+    <input placeholder="Buscar por código" @bind="filtroCodigo" />
+    <input placeholder="Buscar por descripción" @bind="filtroDescripcion" />
+    <select @bind="filtroEstado">
+        <option value="A">Activos</option>
+        <option value="I">Inactivos</option>
+        <option value="">Todos</option>
+    </select>
+    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+
+    <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR">
+        <Authorized>
+            <BotonIcono Icono="plus" Tooltip="Nuevo producto" Etiqueta="Nuevo producto" Variante="primario" OnClick="MostrarFormularioNuevo" />
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+@if (mostrarNuevo)
+{
+    <EditForm Model="nuevoProducto" OnValidSubmit="CrearProductoAsync" class="panel-formulario">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="campo"><label>Código</label><InputText @bind-Value="nuevoProducto.Codigo" /></div>
+        <div class="campo"><label>Descripción</label><InputText @bind-Value="nuevoProducto.Descripcion" /></div>
+        <div class="campo">
+            <label>Tipo de producto</label>
+            <select @bind="nuevoProducto.PrtId">
+                <option value="0">Seleccione...</option>
+                @foreach (var tipo in tiposProducto)
+                {
+                    <option value="@tipo.PrtId">@tipo.PrtDescripcion</option>
+                }
+            </select>
+        </div>
+        <div class="campo">
+            <label>Clasificación</label>
+            <select @bind="nuevoProducto.TipoItem">
+                <option value="B">Bien</option>
+                <option value="S">Servicio</option>
+            </select>
+        </div>
+        <div class="campo campo-checkbox">
+            <label><input type="checkbox" @bind="nuevoProducto.ManejaExistencia" /> Maneja existencia</label>
+        </div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+        </div>
+    </EditForm>
+}
+
+<table class="tabla-datos">
+    <thead>
+        <tr>
+            <th>Código</th>
+            <th>Descripción</th>
+            <th>Tipo</th>
+            <th>Existencia</th>
+            <th>Costo unitario</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var p in productos)
+        {
+            <tr class="@(seleccionado?.ProId == p.ProId ? "fila-seleccionada" : "")">
+                <td>@p.ProCodigo</td>
+                <td>@p.ProDescripcion</td>
+                <td>@p.PrtDescripcion</td>
+                <td>@(p.ProManejaExistencia ? p.ProTotalCantidad.ToString("N2") : "—")</td>
+                <td>@p.ProCostoUnitario.ToString("N5")</td>
+                <td>@(p.ProEstado == "A" ? "Activo" : "Inactivo")</td>
+                <td>
+                    <div class="acciones-fila">
+                        <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(p)" />
+                        <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_EDITAR">
+                            <Authorized>
+                                @if (p.ProEstado == "A")
+                                {
+                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar producto" Variante="peligro" OnClick="() => DesactivarAsync(p)" />
+                                }
+                            </Authorized>
+                        </AuthorizeView>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (seleccionado is not null)
+{
+    <div class="panel-detalle">
+        <h2>Detalle: @seleccionado.ProDescripcion</h2>
+
+        <EditForm Model="edicionProducto" OnValidSubmit="GuardarEdicionAsync">
+            <DataAnnotationsValidator />
+            <div class="campo"><label>Código</label><InputText @bind-Value="edicionProducto.Codigo" /></div>
+            <div class="campo"><label>Descripción</label><InputText @bind-Value="edicionProducto.Descripcion" /></div>
+            <div class="campo">
+                <label>Tipo de producto</label>
+                <select @bind="edicionProducto.PrtId">
+                    @foreach (var tipo in tiposProducto)
+                    {
+                        <option value="@tipo.PrtId">@tipo.PrtDescripcion</option>
+                    }
+                </select>
+            </div>
+            <div class="campo">
+                <label>Clasificación</label>
+                <select @bind="edicionProducto.TipoItem">
+                    <option value="B">Bien</option>
+                    <option value="S">Servicio</option>
+                </select>
+            </div>
+            <div class="campo campo-checkbox">
+                <label><input type="checkbox" @bind="edicionProducto.ManejaExistencia" /> Maneja existencia</label>
+            </div>
+            <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_EDITAR" Context="autorizacionEdicion">
+                <Authorized Context="autorizacionEdicion">
+                    <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+                </Authorized>
+            </AuthorizeView>
+        </EditForm>
+
+        <h3>Existencia por bodega</h3>
+        <table class="tabla-datos">
+            <thead><tr><th>Bodega</th><th>Existencia</th></tr></thead>
+            <tbody>
+                @if (existenciasPorBodega.Count == 0)
+                {
+                    <tr><td colspan="2">Sin movimientos registrados.</td></tr>
+                }
+                @foreach (var existencia in existenciasPorBodega)
+                {
+                    <tr>
+                        <td>@existencia.BodDescripcion</td>
+                        <td>@existencia.Existencia.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<Producto> productos = Array.Empty<Producto>();
+    private IReadOnlyList<ProductoTipo> tiposProducto = Array.Empty<ProductoTipo>();
+    private IReadOnlyList<ProductoExistenciaBodega> existenciasPorBodega = Array.Empty<ProductoExistenciaBodega>();
+    private Producto? seleccionado;
+
+    private string filtroCodigo = "";
+    private string filtroDescripcion = "";
+    private string filtroEstado = "A";
+    private bool mostrarNuevo;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private readonly ProductoModelo nuevoProducto = new();
+    private readonly ProductoModelo edicionProducto = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        tiposProducto = await ProductoRepository.ConsultarTiposAsync();
+        await BuscarAsync();
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        var estado = await AuthenticationStateTask;
+        return estado.User.ObtenerUsuId();
+    }
+
+    private async Task BuscarAsync()
+    {
+        productos = await ProductoRepository.ConsultarAsync(
+            string.IsNullOrWhiteSpace(filtroCodigo) ? null : filtroCodigo,
+            string.IsNullOrWhiteSpace(filtroDescripcion) ? null : filtroDescripcion,
+            prtId: null,
+            string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado,
+            pagina: 1,
+            tamanioPagina: 100);
+    }
+
+    private void MostrarFormularioNuevo()
+    {
+        mensaje = null;
+        nuevoProducto.Codigo = "";
+        nuevoProducto.Descripcion = "";
+        nuevoProducto.PrtId = 0;
+        nuevoProducto.TipoItem = "B";
+        nuevoProducto.ManejaExistencia = true;
+        mostrarNuevo = true;
+    }
+
+    private async Task CrearProductoAsync()
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ProductoRepository.InsertarAsync(
+                nuevoProducto.Codigo, nuevoProducto.Descripcion, nuevoProducto.PrtId,
+                nuevoProducto.TipoItem, nuevoProducto.ManejaExistencia, idPadre: null, usuId);
+            mostrarNuevo = false;
+            mensaje = "Producto creado correctamente.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task SeleccionarAsync(Producto producto)
+    {
+        seleccionado = producto;
+        edicionProducto.Codigo = producto.ProCodigo;
+        edicionProducto.Descripcion = producto.ProDescripcion;
+        edicionProducto.PrtId = producto.PrtId;
+        edicionProducto.TipoItem = producto.ProTipoItem;
+        edicionProducto.ManejaExistencia = producto.ProManejaExistencia;
+        mensaje = null;
+
+        var (_, existencias) = await ProductoRepository.ConsultarPorIdAsync(producto.ProId);
+        existenciasPorBodega = existencias;
+    }
+
+    private async Task GuardarEdicionAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ProductoRepository.ActualizarAsync(
+                seleccionado.ProId, edicionProducto.Codigo, edicionProducto.Descripcion, edicionProducto.PrtId,
+                edicionProducto.TipoItem, edicionProducto.ManejaExistencia, idPadre: null, porcentajeRentabilidad: null, usuId);
+            mensaje = "Cambios guardados.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task DesactivarAsync(Producto producto)
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ProductoRepository.EliminarAsync(producto.ProId, usuId);
+            mensaje = "Producto desactivado.";
+            esMensajeError = false;
+            if (seleccionado?.ProId == producto.ProId) seleccionado = null;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private sealed class ProductoModelo
+    {
+        [Required] public string Codigo { get; set; } = "";
+        [Required] public string Descripcion { get; set; } = "";
+        [Range(1, int.MaxValue, ErrorMessage = "Seleccione un tipo de producto")] public int PrtId { get; set; }
+        public string TipoItem { get; set; } = "B";
+        public bool ManejaExistencia { get; set; } = true;
+    }
+}

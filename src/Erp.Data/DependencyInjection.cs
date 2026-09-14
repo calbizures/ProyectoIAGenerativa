@@ -1,3 +1,4 @@
+using Erp.Data.Inventario;
 using Erp.Data.Security;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,6 +18,7 @@ public static class DependencyInjection
 		services.AddScoped<IRolRepository, RolRepository>();
 		services.AddScoped<IPermisoRepository, PermisoRepository>();
 		services.AddScoped<IAuthRepository, AuthRepository>();
+		services.AddScoped<IProductoRepository, ProductoRepository>();
 		return services;
 	}
 }

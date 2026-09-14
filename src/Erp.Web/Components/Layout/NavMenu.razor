@@ -20,7 +20,13 @@
             </Authorized>
         </AuthorizeView>
 
-        <SidebarNodo Titulo="Inventario" IconoNombre="package" Disponible="false" />
+        <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR">
+            <Authorized>
+                <SidebarNodo Titulo="Inventario" IconoNombre="package">
+                    <NavLink href="productos" class="sidebar-hijo-link">Productos</NavLink>
+                </SidebarNodo>
+            </Authorized>
+        </AuthorizeView>
         <SidebarNodo Titulo="Ventas / POS" IconoNombre="receipt" Disponible="false" />
         <SidebarNodo Titulo="Compras" IconoNombre="shopping-cart" Disponible="false" />
         <SidebarNodo Titulo="Bancos" IconoNombre="landmark" Disponible="false" />

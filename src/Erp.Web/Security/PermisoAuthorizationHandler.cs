@@ -6,7 +6,7 @@ public sealed class PermisoAuthorizationHandler : AuthorizationHandler<PermisoRe
 {
 	protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, PermisoRequirement requirement)
 	{
-		if (context.User.HasClaim(ClaimsPermiso.TipoClaim, requirement.CodigoPermiso))
+		if (requirement.Codigos.Any(codigo => context.User.HasClaim(ClaimsPermiso.TipoClaim, codigo)))
 		{
 			context.Succeed(requirement);
 		}
