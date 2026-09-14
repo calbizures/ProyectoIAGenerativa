@@ -12,14 +12,17 @@
 
 <PageTitle>Facturas</PageTitle>
 
-<h1>Facturas</h1>
+<div class="pagina-encabezado">
+    <h1>Facturas</h1>
+    <p>Ventas y facturación a clientes.</p>
+</div>
 
 @if (mensaje is not null)
 {
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
 }
 
-<div class="barra-filtros">
+<div class="barra-herramientas">
     <input type="date" @bind="filtroFechaDesde" title="Desde" />
     <input type="date" @bind="filtroFechaHasta" title="Hasta" />
     <select @bind="filtroEstado">
@@ -28,6 +31,8 @@
         <option value="A">Anuladas</option>
     </select>
     <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+
+    <span class="barra-herramientas-separador"></span>
 
     <AuthorizeView Policy="Permiso:VENTAS_FACTURA_CREAR">
         <Authorized>
@@ -38,201 +43,270 @@
 
 @if (mostrarNuevaFactura)
 {
-    <div class="panel-formulario panel-factura">
-        <h2>Nueva factura</h2>
-
-        <div class="fila-campos">
-            <div class="campo"><label>Fecha</label><input type="date" @bind="nuevaFactura.Fecha" /></div>
-            <div class="campo">
-                <label>Vendedor</label>
-                <select @bind="nuevaFactura.PveId">
-                    <option value="">(Sin asignar)</option>
-                    @foreach (var v in vendedores)
-                    {
-                        <option value="@v.PveId">@v.PveNombres @v.PveApellidos</option>
-                    }
-                </select>
+    <div class="doc-card">
+        <div class="doc-card-header">
+            <div>
+                <h2>Nueva factura</h2>
+                <p>Complete los datos generales, seleccione el cliente y agregue los productos.</p>
             </div>
-            <div class="campo">
-                <label>Bodega</label>
-                <select @bind="nuevaFactura.BodId">
-                    <option value="0">Seleccione...</option>
-                    @foreach (var b in bodegas)
-                    {
-                        <option value="@b.BodId">@b.BodDescripcion</option>
-                    }
-                </select>
-            </div>
-            <div class="campo">
-                <label>Moneda</label>
-                <select @bind="nuevaFactura.MonId">
-                    @foreach (var m in monedas)
-                    {
-                        <option value="@m.MonId">@m.MonCodigo</option>
-                    }
-                </select>
-            </div>
+            <Icono Nombre="receipt" Tamano="30" />
         </div>
 
-        <h3>Cliente</h3>
-        @if (nuevaFactura.CliId is null)
-        {
-            <div class="fila-campos">
-                <input placeholder="Buscar cliente por código, nombre o NIT" @bind="textoBusquedaCliente" />
-                <BotonIcono Icono="search" Tooltip="Buscar cliente" Etiqueta="Buscar cliente" OnClick="BuscarClientesAsync" />
+        <div class="doc-card-body">
+            <div class="doc-seccion">
+                <p class="doc-seccion-titulo"><Icono Nombre="file-text" Tamano="15" /> Datos generales</p>
+                <div class="doc-grid">
+                    <div class="campo"><label>Fecha</label><input type="date" @bind="nuevaFactura.Fecha" /></div>
+                    <div class="campo">
+                        <label>Vendedor</label>
+                        <select @bind="nuevaFactura.PveId">
+                            <option value="">(Sin asignar)</option>
+                            @foreach (var v in vendedores)
+                            {
+                                <option value="@v.PveId">@v.PveNombres @v.PveApellidos</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label>Bodega</label>
+                        <select @bind="nuevaFactura.BodId">
+                            <option value="0">Seleccione...</option>
+                            @foreach (var b in bodegas)
+                            {
+                                <option value="@b.BodId">@b.BodDescripcion</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label>Moneda</label>
+                        <select @bind="nuevaFactura.MonId">
+                            @foreach (var m in monedas)
+                            {
+                                <option value="@m.MonId">@m.MonCodigo</option>
+                            }
+                        </select>
+                    </div>
+                </div>
             </div>
-            @if (clientesEncontrados.Count > 0)
-            {
-                <table class="tabla-datos">
-                    <thead><tr><th>Código</th><th>Nombre</th><th>NIT</th><th></th></tr></thead>
+
+            <div class="doc-seccion">
+                <p class="doc-seccion-titulo"><Icono Nombre="user" Tamano="15" /> Cliente</p>
+
+                @if (nuevaFactura.CliId is null)
+                {
+                    <div class="doc-buscador">
+                        <div class="doc-buscador-fila">
+                            <input placeholder="Buscar cliente por código, nombre o NIT" @bind="textoBusquedaCliente" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarClientesAsync(); })" />
+                            <BotonIcono Icono="search" Tooltip="Buscar cliente" OnClick="BuscarClientesAsync" />
+                        </div>
+                        @if (clientesEncontrados.Count > 0)
+                        {
+                            <div class="doc-buscador-resultados">
+                                @foreach (var c in clientesEncontrados)
+                                {
+                                    <div class="doc-resultado-fila" @onclick="() => SeleccionarCliente(c)">
+                                        <span class="doc-avatar">@Iniciales(c.NombreCompleto)</span>
+                                        <span class="doc-resultado-texto">
+                                            <strong>@c.NombreCompleto</strong>
+                                            <span>@c.CliCodigo · NIT @(c.CliNit ?? "C/F")</span>
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="doc-chip">
+                        <span class="doc-avatar">@Iniciales($"{nuevaFactura.NombresCliente} {nuevaFactura.ApellidosCliente}")</span>
+                        <span class="doc-chip-texto">
+                            <strong>@nuevaFactura.NombresCliente @nuevaFactura.ApellidosCliente</strong>
+                            <span>NIT: @(nuevaFactura.Nit ?? "C/F")</span>
+                        </span>
+                        <BotonIcono Icono="x" Tooltip="Cambiar cliente" Variante="fantasma" OnClick="() => nuevaFactura.CliId = null" />
+                    </div>
+                }
+            </div>
+
+            <div class="doc-seccion">
+                <p class="doc-seccion-titulo"><Icono Nombre="package" Tamano="15" /> Detalle de productos</p>
+
+                <div class="doc-buscador">
+                    <div class="doc-buscador-fila">
+                        <input placeholder="Buscar producto por código o descripción" @bind="textoBusquedaProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
+                        <BotonIcono Icono="search" Tooltip="Buscar producto" OnClick="BuscarProductosAsync" />
+                    </div>
+                    @if (productosEncontrados.Count > 0)
+                    {
+                        <div class="doc-buscador-resultados">
+                            @foreach (var p in productosEncontrados)
+                            {
+                                <div class="doc-resultado-fila" @onclick="() => AgregarLinea(p)">
+                                    <span class="doc-avatar doc-avatar-icono"><Icono Nombre="package" Tamano="15" /></span>
+                                    <span class="doc-resultado-texto">
+                                        <strong>@p.ProDescripcion</strong>
+                                        <span>@p.ProCodigo</span>
+                                    </span>
+                                    <span class="doc-resultado-precio">@MonedaSimbolo @p.ProCostoUnitario.ToString("N2")</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="doc-nota">
+                    <Icono Nombre="check-circle" Tamano="15" />
+                    <span>El precio unitario ya incluye IVA (12%), como se factura en Guatemala — no se suma aparte.</span>
+                </div>
+
+                <table class="doc-tabla">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th class="num">Cantidad</th>
+                            <th class="num">Precio unit. (IVA incl.)</th>
+                            <th class="num">Descuento</th>
+                            <th class="num">Subtotal</th>
+                            <th></th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        @foreach (var c in clientesEncontrados)
+                        @if (lineas.Count == 0)
                         {
                             <tr>
-                                <td>@c.CliCodigo</td>
-                                <td>@c.NombreCompleto</td>
-                                <td>@c.CliNit</td>
-                                <td><BotonIcono Icono="plus" Tooltip="Seleccionar cliente" OnClick="() => SeleccionarCliente(c)" /></td>
+                                <td colspan="6">
+                                    <div class="doc-tabla-vacia">
+                                        <Icono Nombre="package" Tamano="26" />
+                                        Usa el buscador de arriba para agregar productos a la factura.
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var linea in lineas)
+                        {
+                            <tr>
+                                <td>@linea.Descripcion</td>
+                                <td class="num"><input type="number" min="1" @bind="linea.Cantidad" /></td>
+                                <td class="num"><input type="number" step="0.01" @bind="linea.PrecioUnitario" /></td>
+                                <td class="num"><input type="number" step="0.01" @bind="linea.ValorDescuento" /></td>
+                                <td class="num">@MonedaSimbolo @linea.SubTotal.ToString("N2")</td>
+                                <td><BotonIcono Icono="trash-2" Tooltip="Quitar línea" Variante="peligro" OnClick="() => lineas.Remove(linea)" /></td>
                             </tr>
                         }
                     </tbody>
                 </table>
-            }
-        }
-        else
-        {
-            <p><strong>@nuevaFactura.NombresCliente @nuevaFactura.ApellidosCliente</strong> — NIT: @(nuevaFactura.Nit ?? "C/F")
-                <BotonIcono Icono="x" Tooltip="Cambiar cliente" OnClick="() => nuevaFactura.CliId = null" />
-            </p>
-        }
+            </div>
 
-        <h3>Detalle</h3>
-        <div class="fila-campos">
-            <input placeholder="Buscar producto por código o descripción" @bind="textoBusquedaProducto" />
-            <BotonIcono Icono="search" Tooltip="Buscar producto" Etiqueta="Buscar producto" OnClick="BuscarProductosAsync" />
-        </div>
-        @if (productosEncontrados.Count > 0)
-        {
-            <table class="tabla-datos">
-                <thead><tr><th>Código</th><th>Descripción</th><th>Costo unitario</th><th></th></tr></thead>
-                <tbody>
-                    @foreach (var p in productosEncontrados)
-                    {
-                        <tr>
-                            <td>@p.ProCodigo</td>
-                            <td>@p.ProDescripcion</td>
-                            <td>@p.ProCostoUnitario.ToString("N2")</td>
-                            <td><BotonIcono Icono="plus" Tooltip="Agregar línea" OnClick="() => AgregarLinea(p)" /></td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        }
-
-        <p class="nota-iva">El precio unitario ya incluye IVA (12%), como se factura en Guatemala — no se suma aparte.</p>
-        <table class="tabla-datos">
-            <thead>
-                <tr>
-                    <th>Producto</th>
-                    <th>Cantidad</th>
-                    <th>Precio unitario (IVA incluido)</th>
-                    <th>Descuento</th>
-                    <th>Subtotal</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (lineas.Count == 0)
-                {
-                    <tr><td colspan="6">Agregue al menos un producto.</td></tr>
-                }
-                @foreach (var linea in lineas)
-                {
-                    <tr>
-                        <td>@linea.Descripcion</td>
-                        <td><input type="number" min="1" @bind="linea.Cantidad" class="celda-numero" /></td>
-                        <td><input type="number" step="0.01" @bind="linea.PrecioUnitario" class="celda-numero" /></td>
-                        <td><input type="number" step="0.01" @bind="linea.ValorDescuento" class="celda-numero" /></td>
-                        <td>@linea.SubTotal.ToString("N2")</td>
-                        <td><BotonIcono Icono="trash-2" Tooltip="Quitar línea" Variante="peligro" OnClick="() => lineas.Remove(linea)" /></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-
-        <div class="totales-factura">
-            <div><span>Subtotal</span><span>@Subtotal.ToString("N2")</span></div>
-            <div><span>Descuento</span><span>@TotalDescuento.ToString("N2")</span></div>
-            <div class="totales-factura-total"><span>Total</span><span>@Total.ToString("N2")</span></div>
-            <div class="totales-factura-nota"><span>IVA incluido (12%)</span><span>@IvaIncluido.ToString("N2")</span></div>
+            <div class="doc-seccion doc-totales-envoltorio">
+                <div class="doc-totales">
+                    <div class="doc-totales-fila"><span>Subtotal</span><span>@MonedaSimbolo @Subtotal.ToString("N2")</span></div>
+                    <div class="doc-totales-fila"><span>Descuento</span><span>@MonedaSimbolo @TotalDescuento.ToString("N2")</span></div>
+                    <div class="doc-totales-total"><span>Total</span><span>@MonedaSimbolo @Total.ToString("N2")</span></div>
+                    <div class="doc-totales-nota">IVA incluido (12%): @MonedaSimbolo @IvaIncluido.ToString("N2")</div>
+                </div>
+            </div>
         </div>
 
-        <div class="acciones-fila">
-            <BotonIcono Icono="save" Tooltip="Grabar factura" Etiqueta="Grabar factura" Variante="primario" OnClick="GrabarFacturaAsync" />
+        <div class="doc-card-footer">
             <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevaFactura = false" />
+            <BotonIcono Icono="save" Tooltip="Grabar factura" Etiqueta="Grabar factura" Variante="primario" OnClick="GrabarFacturaAsync" />
         </div>
     </div>
 }
 
-<table class="tabla-datos">
-    <thead>
-        <tr><th>Fecha</th><th>Serie/Número</th><th>Tipo</th><th>Total</th><th>Estado</th><th>Acciones</th></tr>
-    </thead>
-    <tbody>
-        @foreach (var f in facturas)
-        {
-            <tr class="@(encabezadoSeleccionado?.EncId == f.EncId ? "fila-seleccionada" : "")">
-                <td>@f.EncFechaDocto.ToString("dd/MM/yyyy")</td>
-                <td>@f.EncSerieDocto-@f.EncNumeroDocto</td>
-                <td>@f.TdoDescripcion</td>
-                <td>@f.EncMontoTotal.ToString("N2")</td>
-                <td>@(f.EncEstado == "G" ? "Grabada" : "Anulada")</td>
-                <td>
-                    <div class="acciones-fila">
-                        <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarFacturaAsync(f)" />
-                        <AuthorizeView Policy="Permiso:VENTAS_FACTURA_ANULAR">
-                            <Authorized>
-                                @if (f.EncEstado == "G")
-                                {
-                                    <BotonIcono Icono="ban" Tooltip="Anular factura" Variante="peligro" OnClick="() => AnularAsync(f)" />
-                                }
-                            </Authorized>
-                        </AuthorizeView>
-                    </div>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+<div class="tarjeta">
+    <h2>Historial</h2>
+    <table class="tabla-datos">
+        <thead>
+            <tr><th>Fecha</th><th>Serie/Número</th><th>Tipo</th><th>Total</th><th>Estado</th><th>Acciones</th></tr>
+        </thead>
+        <tbody>
+            @if (facturas.Count == 0)
+            {
+                <tr><td colspan="6" class="doc-tabla-vacia">No hay facturas para los filtros seleccionados.</td></tr>
+            }
+            @foreach (var f in facturas)
+            {
+                <tr class="@(encabezadoSeleccionado?.EncId == f.EncId ? "fila-seleccionada" : "")">
+                    <td>@f.EncFechaDocto.ToString("dd/MM/yyyy")</td>
+                    <td>@f.EncSerieDocto-@f.EncNumeroDocto</td>
+                    <td>@f.TdoDescripcion</td>
+                    <td>@f.EncMontoTotal.ToString("N2")</td>
+                    <td>
+                        @if (f.EncEstado == "G")
+                        {
+                            <span class="estado-badge estado-badge-grabada">Grabada</span>
+                        }
+                        else
+                        {
+                            <span class="estado-badge estado-badge-anulada">Anulada</span>
+                        }
+                    </td>
+                    <td>
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarFacturaAsync(f)" />
+                            <AuthorizeView Policy="Permiso:VENTAS_FACTURA_ANULAR">
+                                <Authorized>
+                                    @if (f.EncEstado == "G")
+                                    {
+                                        <BotonIcono Icono="ban" Tooltip="Anular factura" Variante="peligro" OnClick="() => AnularAsync(f)" />
+                                    }
+                                </Authorized>
+                            </AuthorizeView>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
 @if (encabezadoSeleccionado is not null)
 {
-    <div class="panel-detalle">
-        <h2>Detalle: @encabezadoSeleccionado.EncSerieDocto-@encabezadoSeleccionado.EncNumeroUnico</h2>
-        <p>
-            <strong>Cliente:</strong> @encabezadoSeleccionado.EncNombresCliente @encabezadoSeleccionado.EncApellidosCliente
-            (NIT: @(encabezadoSeleccionado.CliNit ?? "C/F"))<br />
-            <strong>Estado:</strong> @(encabezadoSeleccionado.EncEstado == "G" ? "Grabada" : "Anulada")
-        </p>
-
-        <table class="tabla-datos">
-            <thead><tr><th>Descripción</th><th>Cantidad</th><th>Precio unitario (IVA incluido)</th><th>Descuento</th><th>Subtotal</th></tr></thead>
-            <tbody>
-                @foreach (var d in detalleSeleccionado)
-                {
-                    var precioConIva = d.DetPrecioUnitario * (1 + (d.DetPorcIva ?? 0) / 100m);
-                    var descuentoConIva = d.DetValorDescuento * (1 + (d.DetPorcIva ?? 0) / 100m);
-                    var subtotalConIva = d.DetSubTotal * (1 + (d.DetPorcIva ?? 0) / 100m);
+    <div class="doc-card">
+        <div class="doc-card-header">
+            <div>
+                <h2>@encabezadoSeleccionado.EncSerieDocto-@encabezadoSeleccionado.EncNumeroUnico</h2>
+                <p>@encabezadoSeleccionado.EncNombresCliente @encabezadoSeleccionado.EncApellidosCliente · NIT: @(encabezadoSeleccionado.CliNit ?? "C/F")</p>
+            </div>
+            @if (encabezadoSeleccionado.EncEstado == "G")
+            {
+                <span class="estado-badge estado-badge-grabada">Grabada</span>
+            }
+            else
+            {
+                <span class="estado-badge estado-badge-anulada">Anulada</span>
+            }
+        </div>
+        <div class="doc-card-body">
+            <table class="doc-tabla">
+                <thead>
                     <tr>
-                        <td>@d.DetDescripcion</td>
-                        <td>@d.DetCantidad</td>
-                        <td>@precioConIva.ToString("N2")</td>
-                        <td>@descuentoConIva.ToString("N2")</td>
-                        <td>@subtotalConIva.ToString("N2")</td>
+                        <th>Descripción</th>
+                        <th class="num">Cantidad</th>
+                        <th class="num">Precio unit. (IVA incl.)</th>
+                        <th class="num">Descuento</th>
+                        <th class="num">Subtotal</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var d in detalleSeleccionado)
+                    {
+                        var precioConIva = d.DetPrecioUnitario * (1 + (d.DetPorcIva ?? 0) / 100m);
+                        var descuentoConIva = d.DetValorDescuento * (1 + (d.DetPorcIva ?? 0) / 100m);
+                        var subtotalConIva = d.DetSubTotal * (1 + (d.DetPorcIva ?? 0) / 100m);
+                        <tr>
+                            <td>@d.DetDescripcion</td>
+                            <td class="num">@d.DetCantidad</td>
+                            <td class="num">@precioConIva.ToString("N2")</td>
+                            <td class="num">@descuentoConIva.ToString("N2")</td>
+                            <td class="num">@subtotalConIva.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 }
 
@@ -276,6 +350,7 @@
     private decimal TotalDescuento => lineas.Sum(l => l.ValorDescuento);
     private decimal Total => Subtotal - TotalDescuento;
     private decimal IvaIncluido => Math.Round(Total * PorcentajeIva / (100m + PorcentajeIva), 2);
+    private string MonedaSimbolo => monedas.FirstOrDefault(m => m.MonId == nuevaFactura.MonId)?.MonSimbolo ?? "Q";
 
     protected override async Task OnInitializedAsync()
     {
@@ -339,8 +414,25 @@
 
     private async Task BuscarProductosAsync()
     {
-        var texto = string.IsNullOrWhiteSpace(textoBusquedaProducto) ? null : textoBusquedaProducto;
-        productosEncontrados = await ProductoRepository.ConsultarAsync(texto, texto, prtId: null, estado: "A", pagina: 1, tamanioPagina: 20);
+        var texto = string.IsNullOrWhiteSpace(textoBusquedaProducto) ? null : textoBusquedaProducto.Trim();
+        if (texto is null)
+        {
+            productosEncontrados = Array.Empty<Producto>();
+            return;
+        }
+
+        // sp_producto_consultar combina código y descripción con AND (pensado
+        // para el filtro avanzado de dos cajas de Productos.razor). Aquí se
+        // quiere buscar por nombre O código, así que se consulta cada campo
+        // por separado y se combinan los resultados sin duplicados.
+        var porCodigo = await ProductoRepository.ConsultarAsync(texto, null, prtId: null, estado: "A", pagina: 1, tamanioPagina: 20);
+        var porDescripcion = await ProductoRepository.ConsultarAsync(null, texto, prtId: null, estado: "A", pagina: 1, tamanioPagina: 20);
+        productosEncontrados = porCodigo
+            .Concat(porDescripcion)
+            .GroupBy(p => p.ProId)
+            .Select(g => g.First())
+            .Take(20)
+            .ToList();
     }
 
     private void AgregarLinea(Producto producto)
@@ -459,6 +551,18 @@
             mensaje = ex.Message;
             esMensajeError = true;
         }
+    }
+
+    private static string Iniciales(string? nombre)
+    {
+        if (string.IsNullOrWhiteSpace(nombre)) return "?";
+        var partes = nombre.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return partes.Length switch
+        {
+            0 => "?",
+            1 => partes[0][..1].ToUpperInvariant(),
+            _ => string.Concat(partes[0][..1], partes[1][..1]).ToUpperInvariant()
+        };
     }
 
     private sealed class NuevaFacturaModelo
