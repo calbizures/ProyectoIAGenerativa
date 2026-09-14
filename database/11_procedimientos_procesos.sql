@@ -446,9 +446,13 @@ BEGIN
 		FROM dbo.cont_cuenta_contable WHERE cta_codigo = '2105';
 	END
 
+	-- EXEC no acepta una expresión (concatenación, CAST) directamente como
+	-- valor de un parámetro con nombre; se calcula antes en una variable.
+	DECLARE @asi_descripcion VARCHAR(256) = 'Generado automáticamente desde documento ' + CAST(@enc_id AS VARCHAR(10));
+
 	EXEC dbo.sp_contabilidad_insertar_asiento
 		@asi_fecha = @fecha,
-		@asi_descripcion = 'Generado automáticamente desde documento ' + CAST(@enc_id AS VARCHAR(10)),
+		@asi_descripcion = @asi_descripcion,
 		@asi_origen = @origen,
 		@enc_id = @enc_id,
 		@pdo_id = @pdo_id,
@@ -757,7 +761,7 @@ BEGIN
 			   UpdFechaHora = SYSDATETIME()
 		 WHERE cpp_id = @cpp_id;
 
-		DECLARE @pdo_id INT, @asi_id INT, @detalle dbo.cont_asiento_det_type;
+		DECLARE @pdo_id INT, @asi_id INT, @detalle dbo.cont_asiento_det_type, @fecha_hoy DATE = CAST(GETDATE() AS DATE);
 		EXEC dbo.sp_contabilidad_obtener_o_crear_periodo @fecha = NULL, @usu_id = @usu_id, @pdo_id = @pdo_id OUTPUT;
 
 		INSERT INTO @detalle (cta_id, asd_debe, asd_haber, asd_descripcion)
@@ -765,8 +769,10 @@ BEGIN
 		UNION ALL
 		SELECT cta_id, 0, @valor_pago, 'Cobro cuota ' + CAST(@cpp_id AS VARCHAR(10)) FROM dbo.cont_cuenta_contable WHERE cta_codigo = '1205';
 
+		-- EXEC no acepta una expresión directamente como valor de un
+		-- parámetro con nombre; @fecha_hoy ya se calculó arriba.
 		EXEC dbo.sp_contabilidad_insertar_asiento
-			@asi_fecha = CAST(GETDATE() AS DATE), @asi_descripcion = 'Cobro cuota de cliente',
+			@asi_fecha = @fecha_hoy, @asi_descripcion = 'Cobro cuota de cliente',
 			@asi_origen = 'PAGO_CLIENTE', @usu_id = @usu_id, @detalle = @detalle, @asi_id = @asi_id OUTPUT;
 
 		COMMIT TRANSACTION;
@@ -833,7 +839,7 @@ BEGIN
 			   UpdFechaHora = SYSDATETIME()
 		 WHERE ppg_id = @ppg_id;
 
-		DECLARE @pdo_id INT, @asi_id INT, @detalle dbo.cont_asiento_det_type;
+		DECLARE @pdo_id INT, @asi_id INT, @detalle dbo.cont_asiento_det_type, @fecha_hoy DATE = CAST(GETDATE() AS DATE);
 		EXEC dbo.sp_contabilidad_obtener_o_crear_periodo @fecha = NULL, @usu_id = @usu_id, @pdo_id = @pdo_id OUTPUT;
 
 		INSERT INTO @detalle (cta_id, asd_debe, asd_haber, asd_descripcion)
@@ -841,8 +847,12 @@ BEGIN
 		UNION ALL
 		SELECT cta_id, 0, @valor_pago, 'Pago a proveedor - cheque ' + @bce_numero_cheque FROM dbo.cont_cuenta_contable WHERE cta_codigo = '1110';
 
+		-- EXEC no acepta una expresión directamente como valor de un
+		-- parámetro con nombre; se calculan antes en variables.
+		DECLARE @asi_descripcion VARCHAR(256) = 'Pago a proveedor con cheque ' + @bce_numero_cheque;
+
 		EXEC dbo.sp_contabilidad_insertar_asiento
-			@asi_fecha = CAST(GETDATE() AS DATE), @asi_descripcion = 'Pago a proveedor con cheque ' + @bce_numero_cheque,
+			@asi_fecha = @fecha_hoy, @asi_descripcion = @asi_descripcion,
 			@asi_origen = 'PAGO_PROVEEDOR', @enc_id = @enc_id, @pdo_id = @pdo_id, @usu_id = @usu_id,
 			@detalle = @detalle, @asi_id = @asi_id OUTPUT;
 

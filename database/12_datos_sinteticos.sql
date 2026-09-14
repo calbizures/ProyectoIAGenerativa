@@ -394,6 +394,9 @@ BEGIN
 		DECLARE @det2 dbo.compra_det_type;
 		DECLARE @pro_sel INT, @precio_sel NUMERIC(12,2), @cant_sel INT = 10 + (ABS(CHECKSUM(NEWID())) % 30);
 		DECLARE @prv_sel INT;
+		-- EXEC no acepta una expresión directamente como valor de un
+		-- parámetro con nombre; la fecha se calcula antes en una variable.
+		DECLARE @fecha_compra_i DATE = DATEADD(DAY, -1 * (ABS(CHECKSUM(NEWID())) % 120), CAST(GETDATE() AS DATE));
 
 		SELECT TOP 1 @pro_sel = pp.pro_id, @precio_sel = pp.precio
 		FROM #producto_precio pp
@@ -409,7 +412,7 @@ BEGIN
 
 		DECLARE @enc_compra INT;
 		EXEC dbo.sp_compras_crear_documento
-			@enc_fecha_docto = DATEADD(DAY, -1 * (ABS(CHECKSUM(NEWID())) % 120), CAST(GETDATE() AS DATE)),
+			@enc_fecha_docto = @fecha_compra_i,
 			@enc_numero_docto = CONCAT('REST-', @i),
 			@prv_id = @prv_sel, @tdo_id = @tdo_comp, @enc_numero_cuotas = 1,
 			@detalle = @det2, @enc_id = @enc_compra OUTPUT;
@@ -522,9 +525,13 @@ FETCH NEXT FROM pagos_cur INTO @ppg_id, @valor_pend;
 WHILE @@FETCH_STATUS = 0
 BEGIN
 	BEGIN TRY
+		-- EXEC no acepta una expresión directamente como valor de un
+		-- parámetro con nombre; el número de cheque se calcula antes.
+		DECLARE @numero_cheque VARCHAR(16) = CAST(@numero_cheque_base + @contador AS VARCHAR(16));
+
 		EXEC dbo.sp_bancos_emitir_cheque_pago_proveedor
 			@ppg_id = @ppg_id, @cbc_id = @cbc_id,
-			@bce_numero_cheque = CAST(@numero_cheque_base + @contador AS VARCHAR(16)),
+			@bce_numero_cheque = @numero_cheque,
 			@valor_pago = @valor_pend,
 			@bmp_id = (SELECT TOP 1 bmp_id FROM dbo.bco_motivo_pago WHERE bmp_descripcion = 'Pago a proveedores'),
 			@usu_id = @usu_admin, @bce_id = @bce_id OUTPUT;
