@@ -1,5 +1,6 @@
 using Erp.Data.Inventario;
 using Erp.Data.Security;
+using Erp.Data.Ventas;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Erp.Data;
@@ -19,6 +20,8 @@ public static class DependencyInjection
 		services.AddScoped<IPermisoRepository, PermisoRepository>();
 		services.AddScoped<IAuthRepository, AuthRepository>();
 		services.AddScoped<IProductoRepository, ProductoRepository>();
+		services.AddScoped<IBodegaRepository, BodegaRepository>();
+		services.AddScoped<IFacturaRepository, FacturaRepository>();
 		return services;
 	}
 }
