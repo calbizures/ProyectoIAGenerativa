@@ -227,8 +227,8 @@ GO
 ------------------------------------------------------------
 INSERT INTO dbo.inv_documento_tipo (tdo_codigo, tdo_descripcion, tdo_naturaleza, afecta_costo) VALUES
 ('FCAM', 'Factura cambiaria', '-', 'S'),
-('COMP', 'Compra a proveedor (inventariable)', '+', 'S'),
-('GAST', 'Compra de gasto (no inventariable)', '+', 'N');
+('COMP', 'Compra inventariable', '+', 'S'),
+('GAST', 'Compra no inventariable', '+', 'N');
 GO
 
 INSERT INTO dbo.conf_correlativos (tdo_id, serie, correlativo)
