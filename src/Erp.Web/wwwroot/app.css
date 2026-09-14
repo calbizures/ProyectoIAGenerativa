@@ -426,8 +426,10 @@ h1:focus {
     background: #eaf3ff;
 }
 
-.tabla-datos td button, .barra-filtros button {
-    margin-right: 0.35rem;
+.acciones-fila {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
 }
 
 .panel-formulario, .panel-detalle {
@@ -576,4 +578,115 @@ a.modulo-card:hover {
         flex: none;
         max-width: 280px;
     }
+}
+
+.icono {
+    flex-shrink: 0;
+}
+
+.boton-icono {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid #d7dee8;
+    border-radius: 8px;
+    background: #ffffff;
+    color: var(--si-navy-700);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+}
+
+.boton-icono-con-etiqueta {
+    width: auto;
+    padding: 0 0.9rem 0 0.75rem;
+}
+
+.boton-icono-etiqueta {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.boton-icono:hover:not(:disabled) {
+    background: #eef4fb;
+    border-color: var(--si-cyan-400);
+    color: var(--si-blue-600);
+}
+
+.boton-icono:active:not(:disabled) {
+    transform: scale(0.94);
+}
+
+.boton-icono:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.boton-icono-primario {
+    background: linear-gradient(135deg, var(--si-navy-700), var(--si-blue-500));
+    border-color: transparent;
+    color: #ffffff;
+}
+
+.boton-icono-primario:hover:not(:disabled) {
+    filter: brightness(1.08);
+    color: #ffffff;
+}
+
+.boton-icono-peligro {
+    border-color: #f3c6c1;
+    color: #c0392b;
+}
+
+.boton-icono-peligro:hover:not(:disabled) {
+    background: #fdecea;
+    border-color: #e0342a;
+    color: #c0392b;
+}
+
+.boton-icono-fantasma {
+    border-color: transparent;
+    background: transparent;
+}
+
+.boton-icono-fantasma:hover:not(:disabled) {
+    background: rgba(13, 27, 76, 0.06);
+}
+
+.boton-icono-tip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: var(--si-navy-900);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 0.3rem 0.55rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s, transform 0.12s;
+    z-index: 20;
+}
+
+.boton-icono-tip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--si-navy-900);
+}
+
+.boton-icono:hover .boton-icono-tip,
+.boton-icono:focus-visible .boton-icono-tip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
 }

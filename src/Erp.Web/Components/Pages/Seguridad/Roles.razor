@@ -18,7 +18,7 @@
 }
 
 <div class="barra-filtros">
-    <button @onclick="() => mostrarNuevo = true">Nuevo rol</button>
+    <BotonIcono Icono="plus" Tooltip="Nuevo rol" Etiqueta="Nuevo rol" Variante="primario" OnClick="() => mostrarNuevo = true" />
 </div>
 
 @if (mostrarNuevo)
@@ -28,8 +28,10 @@
         <ValidationSummary />
         <div class="campo"><label>Código</label><InputText @bind-Value="nuevoRol.Codigo" /></div>
         <div class="campo"><label>Nombre</label><InputText @bind-Value="nuevoRol.Nombre" /></div>
-        <button type="submit">Guardar</button>
-        <button type="button" @onclick="() => mostrarNuevo = false">Cancelar</button>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+        </div>
     </EditForm>
 }
 
@@ -45,11 +47,13 @@
                 <td>@rol.RolNombre</td>
                 <td>@(rol.RolEstado == "A" ? "Activo" : "Inactivo")</td>
                 <td>
-                    <button @onclick="() => SeleccionarAsync(rol)">Detalle</button>
-                    @if (rol.RolEstado == "A")
-                    {
-                        <button @onclick="() => DesactivarAsync(rol)">Desactivar</button>
-                    }
+                    <div class="acciones-fila">
+                        <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(rol)" />
+                        @if (rol.RolEstado == "A")
+                        {
+                            <BotonIcono Icono="trash-2" Tooltip="Desactivar rol" Variante="peligro" OnClick="() => DesactivarAsync(rol)" />
+                        }
+                    </div>
                 </td>
             </tr>
         }
@@ -64,7 +68,7 @@
         <EditForm Model="edicionRol" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
             <div class="campo"><label>Nombre</label><InputText @bind-Value="edicionRol.Nombre" /></div>
-            <button type="submit">Guardar cambios</button>
+            <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
         </EditForm>
 
         <h3>Permisos asignados</h3>

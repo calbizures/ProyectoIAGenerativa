@@ -18,8 +18,8 @@
 
 <div class="barra-filtros">
     <input placeholder="Filtrar por módulo" @bind="filtroModulo" />
-    <button @onclick="BuscarAsync">Buscar</button>
-    <button @onclick="() => mostrarNuevo = true">Nuevo permiso</button>
+    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+    <BotonIcono Icono="plus" Tooltip="Nuevo permiso" Etiqueta="Nuevo permiso" Variante="primario" OnClick="() => mostrarNuevo = true" />
 </div>
 
 @if (mostrarNuevo)
@@ -30,8 +30,10 @@
         <div class="campo"><label>Módulo</label><InputText @bind-Value="nuevoPermiso.Modulo" /></div>
         <div class="campo"><label>Código</label><InputText @bind-Value="nuevoPermiso.Codigo" /></div>
         <div class="campo"><label>Descripción</label><InputText @bind-Value="nuevoPermiso.Descripcion" /></div>
-        <button type="submit">Guardar</button>
-        <button type="button" @onclick="() => mostrarNuevo = false">Cancelar</button>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+        </div>
     </EditForm>
 }
 

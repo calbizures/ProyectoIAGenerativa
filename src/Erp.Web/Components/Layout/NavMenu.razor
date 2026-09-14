@@ -6,13 +6,13 @@
 
     <nav class="sidebar-nav">
         <NavLink href="" Match="NavLinkMatch.All" class="sidebar-link">
-            <span class="sidebar-icono">🏠</span>
+            <span class="sidebar-icono"><Icono Nombre="home" Tamano="17" /></span>
             <span class="sidebar-titulo">Inicio</span>
         </NavLink>
 
         <AuthorizeView Policy="Permiso:SEGURIDAD_USUARIO_ADMIN">
             <Authorized>
-                <SidebarNodo Titulo="Seguridad" Icono="🔐" ExpandidoInicial="true">
+                <SidebarNodo Titulo="Seguridad" IconoNombre="lock" ExpandidoInicial="true">
                     <NavLink href="usuarios" class="sidebar-hijo-link">Usuarios</NavLink>
                     <NavLink href="roles" class="sidebar-hijo-link">Roles</NavLink>
                     <NavLink href="permisos" class="sidebar-hijo-link">Permisos</NavLink>
@@ -20,11 +20,11 @@
             </Authorized>
         </AuthorizeView>
 
-        <SidebarNodo Titulo="Inventario" Icono="📦" Disponible="false" />
-        <SidebarNodo Titulo="Ventas / POS" Icono="🧾" Disponible="false" />
-        <SidebarNodo Titulo="Compras" Icono="🛒" Disponible="false" />
-        <SidebarNodo Titulo="Bancos" Icono="🏦" Disponible="false" />
-        <SidebarNodo Titulo="Contabilidad" Icono="📊" Disponible="false" />
+        <SidebarNodo Titulo="Inventario" IconoNombre="package" Disponible="false" />
+        <SidebarNodo Titulo="Ventas / POS" IconoNombre="receipt" Disponible="false" />
+        <SidebarNodo Titulo="Compras" IconoNombre="shopping-cart" Disponible="false" />
+        <SidebarNodo Titulo="Bancos" IconoNombre="landmark" Disponible="false" />
+        <SidebarNodo Titulo="Contabilidad" IconoNombre="bar-chart-2" Disponible="false" />
     </nav>
 
     <AuthorizeView>

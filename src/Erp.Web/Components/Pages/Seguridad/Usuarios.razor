@@ -24,8 +24,8 @@
         <option value="I">Inactivos</option>
         <option value="">Todos</option>
     </select>
-    <button @onclick="BuscarAsync">Buscar</button>
-    <button @onclick="MostrarFormularioNuevo">Nuevo usuario</button>
+    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+    <BotonIcono Icono="plus" Tooltip="Nuevo usuario" Etiqueta="Nuevo usuario" Variante="primario" OnClick="MostrarFormularioNuevo" />
 </div>
 
 @if (mostrarNuevo)
@@ -37,8 +37,10 @@
         <div class="campo"><label>Usuario</label><InputText @bind-Value="nuevoUsuario.Usuario" /></div>
         <div class="campo"><label>Email</label><InputText @bind-Value="nuevoUsuario.Email" /></div>
         <div class="campo"><label>Contraseña</label><InputText type="password" @bind-Value="nuevoUsuario.Password" /></div>
-        <button type="submit">Guardar</button>
-        <button type="button" @onclick="() => mostrarNuevo = false">Cancelar</button>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+        </div>
     </EditForm>
 }
 
@@ -63,11 +65,13 @@
                 <td>@(u.UsuEstado == "A" ? "Activo" : "Inactivo")</td>
                 <td>@(u.UsuBloqueado ? "Sí" : "No")</td>
                 <td>
-                    <button @onclick="() => SeleccionarAsync(u)">Detalle</button>
-                    @if (u.UsuEstado == "A")
-                    {
-                        <button @onclick="() => DesactivarAsync(u)">Desactivar</button>
-                    }
+                    <div class="acciones-fila">
+                        <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(u)" />
+                        @if (u.UsuEstado == "A")
+                        {
+                            <BotonIcono Icono="trash-2" Tooltip="Desactivar usuario" Variante="peligro" OnClick="() => DesactivarAsync(u)" />
+                        }
+                    </div>
                 </td>
             </tr>
         }
@@ -83,7 +87,7 @@
             <DataAnnotationsValidator />
             <div class="campo"><label>Usuario</label><InputText @bind-Value="edicionUsuario.Usuario" /></div>
             <div class="campo"><label>Email</label><InputText @bind-Value="edicionUsuario.Email" /></div>
-            <button type="submit">Guardar cambios</button>
+            <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
         </EditForm>
 
         <h3>Cambiar contraseña</h3>
@@ -92,7 +96,7 @@
             <ValidationSummary />
             <div class="campo"><label>Contraseña actual</label><InputText type="password" @bind-Value="cambioPassword.Actual" /></div>
             <div class="campo"><label>Contraseña nueva</label><InputText type="password" @bind-Value="cambioPassword.Nueva" /></div>
-            <button type="submit">Cambiar contraseña</button>
+            <BotonIcono Icono="save" Tooltip="Cambiar contraseña" Etiqueta="Cambiar contraseña" Variante="primario" TipoBoton="submit" />
         </EditForm>
 
         <h3>Roles asignados</h3>
