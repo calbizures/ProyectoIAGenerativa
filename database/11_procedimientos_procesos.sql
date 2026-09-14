@@ -539,13 +539,13 @@ BEGIN
 			(enc_fecha_docto, enc_numero_autorizacion, enc_serie_docto, enc_numero_docto,
 			 cli_id, enc_nombres_cliente, enc_apellidos_cliente, cli_nit, tdo_id, pve_id,
 			 enc_fecha_primer_pago, enc_monto_enganche, enc_numero_cuotas, enc_monto_total,
-			 enc_valor_descuento, enc_direccion_cliente, mon_id, usu_id_creacion,
+			 enc_valor_descuento, enc_direccion_cliente, mon_id, usu_id_creacion, enc_numero_unico,
 			 InsUsuario, InsFechaHora)
 		VALUES
 			(@enc_fecha_docto, @enc_numero_autorizacion, @enc_serie_docto, @enc_numero_docto,
 			 @cli_id, @enc_nombres_cliente, @enc_apellidos_cliente, @cli_nit, @tdo_id, @pve_id,
 			 @enc_fecha_primer_pago, @enc_monto_enganche, @enc_numero_cuotas, @monto_total,
-			 @enc_valor_descuento, @enc_direccion_cliente, @mon_id, @usu_id,
+			 @enc_valor_descuento, @enc_direccion_cliente, @mon_id, @usu_id, @enc_numero_unico,
 			 @usu_id, SYSDATETIME());
 
 		SET @enc_id = SCOPE_IDENTITY();
@@ -563,7 +563,7 @@ BEGIN
 		EXEC dbo.sp_pos_generar_plan_pagos_cliente @enc_id = @enc_id, @usu_id = @usu_id;
 
 		UPDATE dbo.inv_documento_enc
-		   SET enc_estado = 'G', enc_numero_unico = @enc_numero_unico,
+		   SET enc_estado = 'G',
 			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
 		 WHERE enc_id = @enc_id;
 

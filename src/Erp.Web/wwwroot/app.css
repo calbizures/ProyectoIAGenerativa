@@ -751,3 +751,15 @@ a.modulo-card:hover {
     font-size: 1rem;
     color: var(--si-navy-900) !important;
 }
+
+.totales-factura-nota {
+    font-size: 0.78rem !important;
+    font-style: italic;
+    color: #8a92a3 !important;
+}
+
+.nota-iva {
+    font-size: 0.85rem;
+    color: #5b6478;
+    margin: 0 0 0.5rem;
+}

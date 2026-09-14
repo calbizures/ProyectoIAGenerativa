@@ -129,14 +129,14 @@
             </table>
         }
 
+        <p class="nota-iva">El precio unitario ya incluye IVA (12%), como se factura en Guatemala — no se suma aparte.</p>
         <table class="tabla-datos">
             <thead>
                 <tr>
                     <th>Producto</th>
                     <th>Cantidad</th>
-                    <th>Precio unitario</th>
+                    <th>Precio unitario (IVA incluido)</th>
                     <th>Descuento</th>
-                    <th>% IVA</th>
                     <th>Subtotal</th>
                     <th></th>
                 </tr>
@@ -144,7 +144,7 @@
             <tbody>
                 @if (lineas.Count == 0)
                 {
-                    <tr><td colspan="7">Agregue al menos un producto.</td></tr>
+                    <tr><td colspan="6">Agregue al menos un producto.</td></tr>
                 }
                 @foreach (var linea in lineas)
                 {
@@ -153,7 +153,6 @@
                         <td><input type="number" min="1" @bind="linea.Cantidad" class="celda-numero" /></td>
                         <td><input type="number" step="0.01" @bind="linea.PrecioUnitario" class="celda-numero" /></td>
                         <td><input type="number" step="0.01" @bind="linea.ValorDescuento" class="celda-numero" /></td>
-                        <td><input type="number" step="0.01" @bind="linea.PorcentajeIva" class="celda-numero" /></td>
                         <td>@linea.SubTotal.ToString("N2")</td>
                         <td><BotonIcono Icono="trash-2" Tooltip="Quitar línea" Variante="peligro" OnClick="() => lineas.Remove(linea)" /></td>
                     </tr>
@@ -164,8 +163,8 @@
         <div class="totales-factura">
             <div><span>Subtotal</span><span>@Subtotal.ToString("N2")</span></div>
             <div><span>Descuento</span><span>@TotalDescuento.ToString("N2")</span></div>
-            <div><span>IVA</span><span>@TotalIva.ToString("N2")</span></div>
             <div class="totales-factura-total"><span>Total</span><span>@Total.ToString("N2")</span></div>
+            <div class="totales-factura-nota"><span>IVA incluido (12%)</span><span>@IvaIncluido.ToString("N2")</span></div>
         </div>
 
         <div class="acciones-fila">
@@ -217,17 +216,19 @@
         </p>
 
         <table class="tabla-datos">
-            <thead><tr><th>Descripción</th><th>Cantidad</th><th>Precio unitario</th><th>Descuento</th><th>% IVA</th><th>Subtotal</th></tr></thead>
+            <thead><tr><th>Descripción</th><th>Cantidad</th><th>Precio unitario (IVA incluido)</th><th>Descuento</th><th>Subtotal</th></tr></thead>
             <tbody>
                 @foreach (var d in detalleSeleccionado)
                 {
+                    var precioConIva = d.DetPrecioUnitario * (1 + (d.DetPorcIva ?? 0) / 100m);
+                    var descuentoConIva = d.DetValorDescuento * (1 + (d.DetPorcIva ?? 0) / 100m);
+                    var subtotalConIva = d.DetSubTotal * (1 + (d.DetPorcIva ?? 0) / 100m);
                     <tr>
                         <td>@d.DetDescripcion</td>
                         <td>@d.DetCantidad</td>
-                        <td>@d.DetPrecioUnitario.ToString("N2")</td>
-                        <td>@d.DetValorDescuento.ToString("N2")</td>
-                        <td>@(d.DetPorcIva?.ToString("N2") ?? "0.00")</td>
-                        <td>@d.DetSubTotal.ToString("N2")</td>
+                        <td>@precioConIva.ToString("N2")</td>
+                        <td>@descuentoConIva.ToString("N2")</td>
+                        <td>@subtotalConIva.ToString("N2")</td>
                     </tr>
                 }
             </tbody>
@@ -263,10 +264,18 @@
     private readonly NuevaFacturaModelo nuevaFactura = new();
     private readonly List<LineaCaptura> lineas = new();
 
+    // En Guatemala el IVA (12%) va incluido en el precio unitario que ve el
+    // cliente; no se suma aparte. El total es simplemente subtotal - descuento,
+    // y el IVA que se muestra es solo informativo (extraído del total, no
+    // sumado a él). Internamente sí se envía como precio neto + %IVA al SP,
+    // porque así espera los datos sp_ventas_crear_factura para el asiento
+    // contable (ver GrabarFacturaAsync).
+    private const decimal PorcentajeIva = 12m;
+
     private decimal Subtotal => lineas.Sum(l => l.SubTotal);
     private decimal TotalDescuento => lineas.Sum(l => l.ValorDescuento);
-    private decimal TotalIva => lineas.Sum(l => (l.SubTotal - l.ValorDescuento) * (l.PorcentajeIva / 100m));
-    private decimal Total => Subtotal - TotalDescuento + TotalIva;
+    private decimal Total => Subtotal - TotalDescuento;
+    private decimal IvaIncluido => Math.Round(Total * PorcentajeIva / (100m + PorcentajeIva), 2);
 
     protected override async Task OnInitializedAsync()
     {
@@ -342,9 +351,8 @@
             Descripcion = producto.ProDescripcion,
             BienOServicio = producto.ProTipoItem,
             Cantidad = 1,
-            PrecioUnitario = producto.ProCostoUnitario,
-            ValorDescuento = 0,
-            PorcentajeIva = 12
+            PrecioUnitario = Math.Round(producto.ProCostoUnitario, 2),
+            ValorDescuento = 0
         });
         productosEncontrados = Array.Empty<Producto>();
         textoBusquedaProducto = "";
@@ -376,6 +384,30 @@
         try
         {
             var usuId = await ObtenerUsuIdActualAsync();
+
+            // El operador captura precios y descuento CON IVA incluido (como se
+            // vende al público en Guatemala); el procedimiento almacenado espera
+            // precio/subtotal SIN impuesto y el %IVA por separado para poder
+            // armar el asiento contable (Ventas vs. IVA por pagar), así que aquí
+            // se convierte de bruto a neto antes de enviarlo.
+            var detalle = lineas.Select(l =>
+            {
+                var precioUnitarioNeto = Math.Round(l.PrecioUnitario / (1 + PorcentajeIva / 100m), 2);
+                var valorDescuentoNeto = Math.Round(l.ValorDescuento / (1 + PorcentajeIva / 100m), 2);
+                return new NuevaLineaFactura
+                {
+                    ProId = l.ProId,
+                    BienOServicio = l.BienOServicio,
+                    Cantidad = l.Cantidad,
+                    Descripcion = l.Descripcion,
+                    PrecioUnitario = precioUnitarioNeto,
+                    ValorDescuento = valorDescuentoNeto,
+                    SubTotal = Math.Round(precioUnitarioNeto * l.Cantidad, 2),
+                    PorcentajeIva = PorcentajeIva,
+                    BodId = nuevaFactura.BodId
+                };
+            }).ToList();
+
             var encabezado = new NuevaFacturaEncabezado
             {
                 FechaDocumento = nuevaFactura.Fecha,
@@ -387,21 +419,8 @@
                 PveId = nuevaFactura.PveId,
                 MonId = nuevaFactura.MonId,
                 NumeroCuotas = 1,
-                ValorDescuento = TotalDescuento
+                ValorDescuento = detalle.Sum(d => d.ValorDescuento)
             };
-
-            var detalle = lineas.Select(l => new NuevaLineaFactura
-            {
-                ProId = l.ProId,
-                BienOServicio = l.BienOServicio,
-                Cantidad = l.Cantidad,
-                Descripcion = l.Descripcion,
-                PrecioUnitario = l.PrecioUnitario,
-                ValorDescuento = l.ValorDescuento,
-                SubTotal = l.SubTotal,
-                PorcentajeIva = l.PorcentajeIva,
-                BodId = nuevaFactura.BodId
-            }).ToList();
 
             var (_, numeroUnico) = await FacturaRepository.CrearAsync(encabezado, detalle, usuId);
             mostrarNuevaFactura = false;
@@ -462,7 +481,6 @@
         public int Cantidad { get; set; } = 1;
         public decimal PrecioUnitario { get; set; }
         public decimal ValorDescuento { get; set; }
-        public decimal PorcentajeIva { get; set; } = 12;
         public decimal SubTotal => Cantidad * PrecioUnitario;
     }
 }

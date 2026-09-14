@@ -279,9 +279,21 @@ CREATE TABLE [dbo].[inv_documento_enc](
 	[UpdUsuario]					INT				NULL,
 	[UpdFechaHora]					DATETIME2(0)	NULL,
 	CONSTRAINT [PK_inv_documento_enc] PRIMARY KEY CLUSTERED ([enc_id] ASC),
-	CONSTRAINT [UQ_inv_documento_enc_numero_unico] UNIQUE ([enc_numero_unico]),
 	CONSTRAINT [CK_inv_documento_enc_estado] CHECK ([enc_estado] IN ('P','G','A'))
 );
+GO
+
+-- Índice único FILTRADO (no una UNIQUE constraint corriente): las compras
+-- (sp_compras_crear_documento) nunca llenan enc_numero_unico a propósito, así
+-- que con una UNIQUE constraint normal (que en SQL Server solo permite UN
+-- NULL en toda la tabla) apenas la primera compra de la vida del sistema
+-- podía insertarse; cualquier compra o factura siguiente chocaba contra ese
+-- primer NULL. Filtrando el índice por "IS NOT NULL" se preserva la
+-- unicidad real (dos facturas no pueden compartir número) sin limitar
+-- cuántos documentos pueden dejarlo en NULL.
+CREATE UNIQUE INDEX [UQ_inv_documento_enc_numero_unico]
+	ON [dbo].[inv_documento_enc] ([enc_numero_unico])
+	WHERE [enc_numero_unico] IS NOT NULL;
 GO
 
 CREATE TABLE [dbo].[inv_documento_det](

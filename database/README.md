@@ -27,12 +27,18 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 10_procedimientos_crud.sql
 11_procedimientos_procesos.sql
 12_datos_sinteticos.sql   -- opcional, solo para ambientes de prueba
+13_correccion_numero_unico.sql   -- solo si ya corriste 00-12 antes de esta fecha
 ```
 
 Cada archivo empieza con `USE [erp_db];` y usa `CREATE OR ALTER` en objetos
 programables, así que se pueden volver a correr sin borrar la base primero
 (excepto `00` y las tablas, que fallan si ya existen — están pensadas para
 una carga inicial única).
+
+Si tu base ya existía **antes** de que se agregara `13_correccion_numero_unico.sql`,
+corre ese script una sola vez (ver la sección "Correcciones posteriores" más
+abajo); una instalación nueva desde cero ya no lo necesita porque `03` y `11`
+quedaron corregidos directamente.
 
 ## Qué se mantuvo del script original
 
@@ -186,6 +192,25 @@ Decisiones de diseño:
    asiento contable asociado (no revierte automáticamente cuotas de plan de
    pago ya generadas: cancelar un documento no implica necesariamente
    cancelar un compromiso de pago ya acordado con el cliente/proveedor).
+
+## Correcciones posteriores (encontradas al construir el frontend)
+
+9. **`enc_numero_unico` con una `UNIQUE` constraint normal sobre columna
+   nullable.** En SQL Server ese tipo de restricción solo permite **un**
+   valor `NULL` en toda la tabla (a diferencia de PostgreSQL/Oracle). Como
+   `sp_compras_crear_documento` nunca llena esa columna (las compras no usan
+   ese correlativo), la primera compra de la vida del sistema la deja en
+   `NULL`, y cualquier documento posterior que también intentara insertarse
+   con `NULL` en ese instante (toda factura nueva, porque el `INSERT`
+   original de `sp_ventas_crear_factura` la dejaba en `NULL` momentáneamente
+   antes de un `UPDATE` posterior) chocaba contra ese primer `NULL` y fallaba
+   con `Violation of UNIQUE KEY constraint ... duplicate key value is
+   (<NULL>)`. Se cambia por un **índice único filtrado**
+   (`WHERE enc_numero_unico IS NOT NULL`, ver `03_tablas_inventario.sql`) y
+   `sp_ventas_crear_factura` ahora graba `enc_numero_unico` directo en el
+   `INSERT` en vez de en un `UPDATE` posterior (`11_procedimientos_procesos.sql`).
+   Quien ya haya corrido `00`-`12` antes de este cambio debe correr
+   `13_correccion_numero_unico.sql` una sola vez contra su base existente.
 
 ## Módulos nuevos
 
