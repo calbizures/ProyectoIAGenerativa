@@ -1,0 +1,18 @@
+<div class="nav-menu">
+    <NavLink href="" Match="NavLinkMatch.All">Inicio</NavLink>
+
+    <AuthorizeView>
+        <Authorized>
+            <nav class="nav-menu-seguridad">
+                <NavLink href="usuarios">Usuarios</NavLink>
+                <NavLink href="roles">Roles</NavLink>
+                <NavLink href="permisos">Permisos</NavLink>
+            </nav>
+
+            <span class="nav-menu-usuario">@context.User.Identity?.Name</span>
+            <form method="post" action="logout">
+                <button type="submit">Cerrar sesión</button>
+            </form>
+        </Authorized>
+    </AuthorizeView>
+</div>

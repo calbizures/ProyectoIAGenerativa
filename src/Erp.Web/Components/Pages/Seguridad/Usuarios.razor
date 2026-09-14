@@ -1,0 +1,294 @@
+@page "/usuarios"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:SEGURIDAD_USUARIO_ADMIN")]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.Security
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IUsuarioRepository UsuarioRepository
+@inject IRolRepository RolRepository
+
+<PageTitle>Usuarios</PageTitle>
+
+<h1>Usuarios</h1>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+}
+
+<div class="barra-filtros">
+    <input placeholder="Buscar por usuario" @bind="filtroUsuario" />
+    <select @bind="filtroEstado">
+        <option value="A">Activos</option>
+        <option value="I">Inactivos</option>
+        <option value="">Todos</option>
+    </select>
+    <button @onclick="BuscarAsync">Buscar</button>
+    <button @onclick="MostrarFormularioNuevo">Nuevo usuario</button>
+</div>
+
+@if (mostrarNuevo)
+{
+    <EditForm Model="nuevoUsuario" OnValidSubmit="CrearUsuarioAsync" class="panel-formulario">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="campo"><label>Código</label><InputText @bind-Value="nuevoUsuario.Codigo" /></div>
+        <div class="campo"><label>Usuario</label><InputText @bind-Value="nuevoUsuario.Usuario" /></div>
+        <div class="campo"><label>Email</label><InputText @bind-Value="nuevoUsuario.Email" /></div>
+        <div class="campo"><label>Contraseña</label><InputText type="password" @bind-Value="nuevoUsuario.Password" /></div>
+        <button type="submit">Guardar</button>
+        <button type="button" @onclick="() => mostrarNuevo = false">Cancelar</button>
+    </EditForm>
+}
+
+<table class="tabla-datos">
+    <thead>
+        <tr>
+            <th>Código</th>
+            <th>Usuario</th>
+            <th>Email</th>
+            <th>Estado</th>
+            <th>Bloqueado</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var u in usuarios)
+        {
+            <tr class="@(seleccionado?.UsuId == u.UsuId ? "fila-seleccionada" : "")">
+                <td>@u.UsuCodigo</td>
+                <td>@u.UsuUsuario</td>
+                <td>@u.UsuEmail</td>
+                <td>@(u.UsuEstado == "A" ? "Activo" : "Inactivo")</td>
+                <td>@(u.UsuBloqueado ? "Sí" : "No")</td>
+                <td>
+                    <button @onclick="() => SeleccionarAsync(u)">Detalle</button>
+                    @if (u.UsuEstado == "A")
+                    {
+                        <button @onclick="() => DesactivarAsync(u)">Desactivar</button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (seleccionado is not null)
+{
+    <div class="panel-detalle">
+        <h2>Detalle: @seleccionado.UsuUsuario</h2>
+
+        <EditForm Model="edicionUsuario" OnValidSubmit="GuardarEdicionAsync">
+            <DataAnnotationsValidator />
+            <div class="campo"><label>Usuario</label><InputText @bind-Value="edicionUsuario.Usuario" /></div>
+            <div class="campo"><label>Email</label><InputText @bind-Value="edicionUsuario.Email" /></div>
+            <button type="submit">Guardar cambios</button>
+        </EditForm>
+
+        <h3>Cambiar contraseña</h3>
+        <EditForm Model="cambioPassword" OnValidSubmit="CambiarPasswordAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="campo"><label>Contraseña actual</label><InputText type="password" @bind-Value="cambioPassword.Actual" /></div>
+            <div class="campo"><label>Contraseña nueva</label><InputText type="password" @bind-Value="cambioPassword.Nueva" /></div>
+            <button type="submit">Cambiar contraseña</button>
+        </EditForm>
+
+        <h3>Roles asignados</h3>
+        <table class="tabla-datos">
+            <thead><tr><th>Rol</th><th>Asignado</th></tr></thead>
+            <tbody>
+                @foreach (var rol in todosLosRoles)
+                {
+                    var asignado = rolesAsignados.Any(r => r.RolId == rol.RolId);
+                    <tr>
+                        <td>@rol.RolNombre</td>
+                        <td>
+                            <input type="checkbox" checked="@asignado"
+                                   @onchange="e => CambiarRolAsync(rol.RolId, (bool)(e.Value ?? false))" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<Usuario> usuarios = Array.Empty<Usuario>();
+    private IReadOnlyList<Rol> todosLosRoles = Array.Empty<Rol>();
+    private IReadOnlyList<UsuarioRol> rolesAsignados = Array.Empty<UsuarioRol>();
+    private Usuario? seleccionado;
+
+    private string filtroUsuario = "";
+    private string filtroEstado = "A";
+    private bool mostrarNuevo;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private readonly NuevoUsuarioModelo nuevoUsuario = new();
+    private readonly EdicionUsuarioModelo edicionUsuario = new();
+    private readonly CambioPasswordModelo cambioPassword = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        todosLosRoles = await RolRepository.ConsultarAsync(estado: "A");
+        await BuscarAsync();
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        var estado = await AuthenticationStateTask;
+        return estado.User.ObtenerUsuId();
+    }
+
+    private async Task BuscarAsync()
+    {
+        usuarios = await UsuarioRepository.ConsultarAsync(
+            string.IsNullOrWhiteSpace(filtroUsuario) ? null : filtroUsuario,
+            string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado,
+            pagina: 1,
+            tamanioPagina: 100);
+    }
+
+    private void MostrarFormularioNuevo()
+    {
+        mensaje = null;
+        mostrarNuevo = true;
+    }
+
+    private async Task CrearUsuarioAsync()
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await UsuarioRepository.InsertarAsync(nuevoUsuario.Codigo, nuevoUsuario.Usuario, nuevoUsuario.Password, nuevoUsuario.Email, usuId);
+            mostrarNuevo = false;
+            mensaje = "Usuario creado correctamente.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task SeleccionarAsync(Usuario usuario)
+    {
+        seleccionado = usuario;
+        edicionUsuario.Usuario = usuario.UsuUsuario;
+        edicionUsuario.Email = usuario.UsuEmail;
+        cambioPassword.Actual = "";
+        cambioPassword.Nueva = "";
+        mensaje = null;
+
+        var (_, roles) = await UsuarioRepository.ConsultarPorIdAsync(usuario.UsuId);
+        rolesAsignados = roles;
+    }
+
+    private async Task GuardarEdicionAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await UsuarioRepository.ActualizarAsync(seleccionado.UsuId, edicionUsuario.Usuario, edicionUsuario.Email, usuId);
+            mensaje = "Cambios guardados.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task CambiarPasswordAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            await UsuarioRepository.CambiarPasswordAsync(seleccionado.UsuId, cambioPassword.Actual, cambioPassword.Nueva);
+            cambioPassword.Actual = "";
+            cambioPassword.Nueva = "";
+            mensaje = "Contraseña actualizada.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task DesactivarAsync(Usuario usuario)
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await UsuarioRepository.EliminarAsync(usuario.UsuId, usuId);
+            mensaje = "Usuario desactivado.";
+            esMensajeError = false;
+            if (seleccionado?.UsuId == usuario.UsuId) seleccionado = null;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task CambiarRolAsync(int rolId, bool asignar)
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            if (asignar)
+            {
+                var usuId = await ObtenerUsuIdActualAsync();
+                await UsuarioRepository.AsignarRolAsync(seleccionado.UsuId, rolId, usuId);
+            }
+            else
+            {
+                await UsuarioRepository.RevocarRolAsync(seleccionado.UsuId, rolId);
+            }
+
+            var (_, roles) = await UsuarioRepository.ConsultarPorIdAsync(seleccionado.UsuId);
+            rolesAsignados = roles;
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private sealed class NuevoUsuarioModelo
+    {
+        [Required] public string Codigo { get; set; } = "";
+        [Required] public string Usuario { get; set; } = "";
+        [Required] public string Password { get; set; } = "";
+        public string? Email { get; set; }
+    }
+
+    private sealed class EdicionUsuarioModelo
+    {
+        [Required] public string Usuario { get; set; } = "";
+        public string? Email { get; set; }
+    }
+
+    private sealed class CambioPasswordModelo
+    {
+        [Required] public string Actual { get; set; } = "";
+        [Required] public string Nueva { get; set; } = "";
+    }
+}

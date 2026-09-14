@@ -1,0 +1,98 @@
+@page "/login"
+@* Deliberadamente sin @rendermode: esta página se queda en SSR estático para
+   poder llamar HttpContext.SignInAsync durante el POST del formulario. Un
+   componente interactivo (circuito Blazor Server) ya tiene la respuesta en
+   streaming y no admite escribir la cookie de autenticación. *@
+@attribute [AllowAnonymous]
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using Erp.Data.Security
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@inject IAuthRepository AuthRepository
+
+<PageTitle>Iniciar sesión</PageTitle>
+
+<div class="login-contenedor">
+    <h1>ERP - Iniciar sesión</h1>
+
+    @if (mensajeError is not null)
+    {
+        <p class="login-error">@mensajeError</p>
+    }
+
+    <EditForm Model="modelo" FormName="login" OnValidSubmit="IniciarSesionAsync" method="post">
+        <DataAnnotationsValidator />
+
+        <div class="login-campo">
+            <label for="usuario">Usuario</label>
+            <InputText id="usuario" @bind-Value="modelo.Usuario" autofocus />
+            <ValidationMessage For="() => modelo.Usuario" />
+        </div>
+
+        <div class="login-campo">
+            <label for="password">Contraseña</label>
+            <InputText id="password" type="password" @bind-Value="modelo.Password" />
+            <ValidationMessage For="() => modelo.Password" />
+        </div>
+
+        <button type="submit">Ingresar</button>
+    </EditForm>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private LoginModelo modelo { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = default!;
+
+    private string? mensajeError;
+
+    protected override void OnInitialized() => modelo ??= new();
+
+    private async Task IniciarSesionAsync()
+    {
+        var resultado = await AuthRepository.LoginAsync(modelo.Usuario, modelo.Password);
+        if (!resultado.EsExitoso || resultado.UsuId is null)
+        {
+            mensajeError = resultado.Mensaje;
+            return;
+        }
+
+        var claims = await AuthRepository.ObtenerClaimsAsync(resultado.UsuId.Value);
+
+        var identidad = new ClaimsIdentity(CookieAuthenticationDefaults.AuthenticationScheme);
+        identidad.AddClaim(new Claim(ClaimTypes.NameIdentifier, resultado.UsuId.Value.ToString()));
+        identidad.AddClaim(new Claim(ClaimTypes.Name, modelo.Usuario));
+        foreach (var rolCodigo in claims.Roles)
+        {
+            identidad.AddClaim(new Claim(ClaimTypes.Role, rolCodigo));
+        }
+        foreach (var permisoCodigo in claims.Permisos)
+        {
+            identidad.AddClaim(new Claim(Erp.Web.Security.ClaimsPermiso.TipoClaim, permisoCodigo));
+        }
+
+        var principal = new ClaimsPrincipal(identidad);
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+        var destino = string.IsNullOrWhiteSpace(ReturnUrl) ? "/" : ReturnUrl;
+        NavigationManager.NavigateTo(destino, forceLoad: true);
+    }
+
+    private sealed class LoginModelo
+    {
+        [Required(ErrorMessage = "El usuario es obligatorio")]
+        public string Usuario { get; set; } = "";
+
+        [Required(ErrorMessage = "La contraseña es obligatoria")]
+        public string Password { get; set; } = "";
+    }
+}
