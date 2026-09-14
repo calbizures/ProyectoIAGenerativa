@@ -32,6 +32,20 @@
 
 	5) No existía ningún procedimiento para anular un documento ya grabado.
 	   Se agrega sp_documento_anular.
+
+	Auditoría: igual que en 10_procedimientos_crud.sql, todo procedimiento que
+	inserta o actualiza una fila recibe (o ya recibía, para su propio uso de
+	negocio: p.ej. inv_documento_enc.usu_id_creacion) un parámetro @usu_id y
+	lo graba en InsUsuario/UpdUsuario junto con InsFechaHora/UpdFechaHora =
+	SYSDATETIME(). Los procedimientos internos que antes no necesitaban saber
+	quién ejecuta la acción (sp_inventario_ajustar_existencia_documento,
+	sp_inventario_recalcular_existencias_completo,
+	sp_pos_generar_plan_pagos_cliente, sp_inv_generar_plan_pagos_proveedor,
+	sp_contabilidad_obtener_o_crear_periodo) ahora reciben @usu_id también,
+	y los procedimientos de más arriba en la cadena de llamadas
+	(sp_ventas_crear_factura, sp_compras_crear_documento, sp_documento_anular,
+	sp_pos_registrar_pago_cuota, sp_bancos_emitir_cheque_pago_proveedor) se lo
+	pasan hacia abajo.
 */
 USE [erp_db];
 GO
@@ -41,7 +55,8 @@ GO
 ------------------------------------------------------------
 CREATE OR ALTER PROCEDURE [dbo].[sp_inventario_ajustar_existencia_documento]
 	@enc_id		INT,
-	@reversar	BIT = 0		-- 1 = revertir el efecto (usado al anular un documento)
+	@reversar	BIT = 0,	-- 1 = revertir el efecto (usado al anular un documento)
+	@usu_id		INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -89,9 +104,12 @@ BEGIN
 	USING @movimientos AS origen
 		ON destino.pro_id = origen.pro_id AND destino.bod_id = origen.bod_id
 	WHEN MATCHED THEN
-		UPDATE SET existencia = destino.existencia + origen.cantidad
+		UPDATE SET existencia = destino.existencia + origen.cantidad,
+				   UpdUsuario = @usu_id,
+				   UpdFechaHora = SYSDATETIME()
 	WHEN NOT MATCHED THEN
-		INSERT (bod_id, pro_id, existencia) VALUES (origen.bod_id, origen.pro_id, origen.cantidad);
+		INSERT (bod_id, pro_id, existencia, InsUsuario, InsFechaHora)
+		VALUES (origen.bod_id, origen.pro_id, origen.cantidad, @usu_id, SYSDATETIME());
 
 	;WITH totales AS (
 		SELECT pro_id, SUM(cantidad) AS cantidad, SUM(costo) AS costo
@@ -103,7 +121,9 @@ BEGIN
 		   p.pro_total_costo   = p.pro_total_costo + t.costo,
 		   p.pro_costo_unitario = CASE WHEN p.pro_total_cantidad + t.cantidad > 0
 										THEN (p.pro_total_costo + t.costo) / (p.pro_total_cantidad + t.cantidad)
-										ELSE 0 END
+										ELSE 0 END,
+		   p.UpdUsuario = @usu_id,
+		   p.UpdFechaHora = SYSDATETIME()
 	FROM dbo.inv_producto p
 	INNER JOIN totales t ON t.pro_id = p.pro_id;
 END;
@@ -118,16 +138,19 @@ GO
 	factura o una compra.
 */
 CREATE OR ALTER PROCEDURE [dbo].[sp_inventario_recalcular_existencias_completo]
+	@usu_id INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
 
 	UPDATE dbo.inv_producto
-	   SET pro_total_cantidad = 0, pro_total_costo = 0, pro_costo_unitario = 0
+	   SET pro_total_cantidad = 0, pro_total_costo = 0, pro_costo_unitario = 0,
+		   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
 	 WHERE pro_maneja_existencia = 1;
 
 	UPDATE peb
-	   SET existencia = 0
+	   SET existencia = 0,
+		   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
 	FROM dbo.inv_producto_existencia_bodega peb
 	INNER JOIN dbo.inv_producto pro ON pro.pro_id = peb.pro_id
 	WHERE pro.pro_maneja_existencia = 1;
@@ -144,7 +167,7 @@ BEGIN
 	FETCH NEXT FROM c1 INTO @enc_id;
 	WHILE @@FETCH_STATUS = 0
 	BEGIN
-		EXEC dbo.sp_inventario_ajustar_existencia_documento @enc_id = @enc_id, @reversar = 0;
+		EXEC dbo.sp_inventario_ajustar_existencia_documento @enc_id = @enc_id, @reversar = 0, @usu_id = @usu_id;
 		FETCH NEXT FROM c1 INTO @enc_id;
 	END
 	CLOSE c1;
@@ -156,7 +179,8 @@ GO
 -- Planes de pago (cuotas)
 ------------------------------------------------------------
 CREATE OR ALTER PROCEDURE [dbo].[sp_pos_generar_plan_pagos_cliente]
-	@enc_id INT
+	@enc_id	INT,
+	@usu_id	INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -182,9 +206,11 @@ BEGIN
 		WHILE @contador <= @numero_cuotas
 		BEGIN
 			INSERT INTO dbo.pos_cliente_plan_pagos
-				(cpp_nro_cuota, cpp_fecha_maxima_pago, cpp_valor_cuota, cpp_saldo_cuota, enc_id, cli_id, cpp_estado)
+				(cpp_nro_cuota, cpp_fecha_maxima_pago, cpp_valor_cuota, cpp_saldo_cuota, enc_id, cli_id, cpp_estado,
+				 InsUsuario, InsFechaHora)
 			VALUES
-				(@contador, @fecha_iteracion, @valor_cuota, @valor_cuota, @enc_id, @cli_id, 'P');
+				(@contador, @fecha_iteracion, @valor_cuota, @valor_cuota, @enc_id, @cli_id, 'P',
+				 @usu_id, SYSDATETIME());
 
 			SET @contador = @contador + 1;
 			SET @fecha_iteracion = DATEADD(MONTH, 1, @fecha_iteracion);
@@ -201,7 +227,9 @@ BEGIN
 		IF @monto_restante <> 0
 			UPDATE dbo.pos_cliente_plan_pagos
 			   SET cpp_valor_cuota = cpp_valor_cuota + @monto_restante,
-				   cpp_saldo_cuota = cpp_saldo_cuota + @monto_restante
+				   cpp_saldo_cuota = cpp_saldo_cuota + @monto_restante,
+				   UpdUsuario = @usu_id,
+				   UpdFechaHora = SYSDATETIME()
 			 WHERE enc_id = @enc_id
 			   AND cpp_nro_cuota = (SELECT MAX(cpp_nro_cuota) FROM dbo.pos_cliente_plan_pagos WHERE enc_id = @enc_id);
 	END
@@ -209,7 +237,8 @@ END;
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[sp_inv_generar_plan_pagos_proveedor]
-	@enc_id INT
+	@enc_id	INT,
+	@usu_id	INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -231,9 +260,11 @@ BEGIN
 		WHILE @contador <= @numero_cuotas
 		BEGIN
 			INSERT INTO dbo.inv_proveedor_plan_pago
-				(ppg_nro_pago, ppg_fecha_pago, ppg_valor_pago, enc_id, prv_id, ppg_estado)
+				(ppg_nro_pago, ppg_fecha_pago, ppg_valor_pago, enc_id, prv_id, ppg_estado,
+				 InsUsuario, InsFechaHora)
 			VALUES
-				(@contador, @fecha_iteracion, @valor_cuota, @enc_id, @prv_id, 'P');
+				(@contador, @fecha_iteracion, @valor_cuota, @enc_id, @prv_id, 'P',
+				 @usu_id, SYSDATETIME());
 
 			SET @contador = @contador + 1;
 			SET @fecha_iteracion = DATEADD(MONTH, 1, @fecha_iteracion);
@@ -248,7 +279,9 @@ BEGIN
 
 		IF @monto_restante <> 0
 			UPDATE dbo.inv_proveedor_plan_pago
-			   SET ppg_valor_pago = ppg_valor_pago + @monto_restante
+			   SET ppg_valor_pago = ppg_valor_pago + @monto_restante,
+				   UpdUsuario = @usu_id,
+				   UpdFechaHora = SYSDATETIME()
 			 WHERE enc_id = @enc_id
 			   AND ppg_nro_pago = (SELECT MAX(ppg_nro_pago) FROM dbo.inv_proveedor_plan_pago WHERE enc_id = @enc_id);
 	END
@@ -260,6 +293,7 @@ GO
 ------------------------------------------------------------
 CREATE OR ALTER PROCEDURE [dbo].[sp_contabilidad_obtener_o_crear_periodo]
 	@fecha	DATE = NULL,
+	@usu_id	INT = NULL,
 	@pdo_id	INT OUTPUT
 AS
 BEGIN
@@ -272,7 +306,8 @@ BEGIN
 
 	IF @pdo_id IS NULL
 	BEGIN
-		INSERT INTO dbo.cont_periodo_contable (pdo_anio, pdo_mes) VALUES (@anio, @mes);
+		INSERT INTO dbo.cont_periodo_contable (pdo_anio, pdo_mes, InsUsuario, InsFechaHora)
+		VALUES (@anio, @mes, @usu_id, SYSDATETIME());
 		SET @pdo_id = SCOPE_IDENTITY();
 	END
 END;
@@ -299,18 +334,20 @@ BEGIN
 		THROW 51302, 'El asiento no está balanceado: la suma del Debe debe ser igual a la suma del Haber.', 1;
 
 	IF @pdo_id IS NULL
-		EXEC dbo.sp_contabilidad_obtener_o_crear_periodo @fecha = @asi_fecha, @pdo_id = @pdo_id OUTPUT;
+		EXEC dbo.sp_contabilidad_obtener_o_crear_periodo @fecha = @asi_fecha, @usu_id = @usu_id, @pdo_id = @pdo_id OUTPUT;
 
 	BEGIN TRY
 		BEGIN TRANSACTION;
 
-		INSERT INTO dbo.cont_asiento_enc (asi_fecha, asi_descripcion, asi_origen, enc_id, pdo_id, usu_id)
-		VALUES (@asi_fecha, @asi_descripcion, @asi_origen, @enc_id, @pdo_id, @usu_id);
+		INSERT INTO dbo.cont_asiento_enc
+			(asi_fecha, asi_descripcion, asi_origen, enc_id, pdo_id, usu_id, InsUsuario, InsFechaHora)
+		VALUES
+			(@asi_fecha, @asi_descripcion, @asi_origen, @enc_id, @pdo_id, @usu_id, @usu_id, SYSDATETIME());
 
 		SET @asi_id = SCOPE_IDENTITY();
 
-		INSERT INTO dbo.cont_asiento_det (asi_id, cta_id, asd_debe, asd_haber, asd_descripcion)
-		SELECT @asi_id, cta_id, asd_debe, asd_haber, asd_descripcion
+		INSERT INTO dbo.cont_asiento_det (asi_id, cta_id, asd_debe, asd_haber, asd_descripcion, InsUsuario, InsFechaHora)
+		SELECT @asi_id, cta_id, asd_debe, asd_haber, asd_descripcion, @usu_id, SYSDATETIME()
 		FROM @detalle;
 
 		COMMIT TRANSACTION;
@@ -365,7 +402,7 @@ BEGIN
 	WHERE det.enc_id = @enc_id AND pro.pro_maneja_existencia = 1;
 
 	DECLARE @pdo_id INT;
-	EXEC dbo.sp_contabilidad_obtener_o_crear_periodo @fecha = @fecha, @pdo_id = @pdo_id OUTPUT;
+	EXEC dbo.sp_contabilidad_obtener_o_crear_periodo @fecha = @fecha, @usu_id = @usu_id, @pdo_id = @pdo_id OUTPUT;
 
 	DECLARE @detalle dbo.cont_asiento_det_type;
 
@@ -486,7 +523,11 @@ BEGIN
 		IF @serie IS NULL
 			THROW 51403, 'No existe una serie de correlativos configurada para este tipo de documento.', 1;
 
-		UPDATE dbo.conf_correlativos SET correlativo = @correlativo WHERE tdo_id = @tdo_id;
+		UPDATE dbo.conf_correlativos
+		   SET correlativo = @correlativo,
+			   UpdUsuario = @usu_id,
+			   UpdFechaHora = SYSDATETIME()
+		 WHERE tdo_id = @tdo_id;
 
 		SET @enc_numero_unico = @serie + '-' + CAST(@correlativo AS VARCHAR(20));
 
@@ -494,30 +535,35 @@ BEGIN
 			(enc_fecha_docto, enc_numero_autorizacion, enc_serie_docto, enc_numero_docto,
 			 cli_id, enc_nombres_cliente, enc_apellidos_cliente, cli_nit, tdo_id, pve_id,
 			 enc_fecha_primer_pago, enc_monto_enganche, enc_numero_cuotas, enc_monto_total,
-			 enc_valor_descuento, enc_direccion_cliente, mon_id, usu_id_creacion)
+			 enc_valor_descuento, enc_direccion_cliente, mon_id, usu_id_creacion,
+			 InsUsuario, InsFechaHora)
 		VALUES
 			(@enc_fecha_docto, @enc_numero_autorizacion, @enc_serie_docto, @enc_numero_docto,
 			 @cli_id, @enc_nombres_cliente, @enc_apellidos_cliente, @cli_nit, @tdo_id, @pve_id,
 			 @enc_fecha_primer_pago, @enc_monto_enganche, @enc_numero_cuotas, @monto_total,
-			 @enc_valor_descuento, @enc_direccion_cliente, @mon_id, @usu_id);
+			 @enc_valor_descuento, @enc_direccion_cliente, @mon_id, @usu_id,
+			 @usu_id, SYSDATETIME());
 
 		SET @enc_id = SCOPE_IDENTITY();
 
 		INSERT INTO dbo.inv_documento_det
 			(enc_id, det_item, det_bien_o_servicio, det_cantidad, det_descripcion,
-			 det_precio_unitario, det_valor_descuento, det_sub_total, det_porc_iva, bod_id, pro_id, ppr_id)
+			 det_precio_unitario, det_valor_descuento, det_sub_total, det_porc_iva, bod_id, pro_id, ppr_id,
+			 InsUsuario, InsFechaHora)
 		SELECT
 			@enc_id, det_item, det_bien_o_servicio, det_cantidad, det_descripcion,
-			det_precio_unitario, det_valor_descuento, det_sub_total, det_porc_iva, bod_id, pro_id, ppr_id
+			det_precio_unitario, det_valor_descuento, det_sub_total, det_porc_iva, bod_id, pro_id, ppr_id,
+			@usu_id, SYSDATETIME()
 		FROM @detalle;
 
-		EXEC dbo.sp_pos_generar_plan_pagos_cliente @enc_id = @enc_id;
+		EXEC dbo.sp_pos_generar_plan_pagos_cliente @enc_id = @enc_id, @usu_id = @usu_id;
 
 		UPDATE dbo.inv_documento_enc
-		   SET enc_estado = 'G', enc_numero_unico = @enc_numero_unico
+		   SET enc_estado = 'G', enc_numero_unico = @enc_numero_unico,
+			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
 		 WHERE enc_id = @enc_id;
 
-		EXEC dbo.sp_inventario_ajustar_existencia_documento @enc_id = @enc_id;
+		EXEC dbo.sp_inventario_ajustar_existencia_documento @enc_id = @enc_id, @usu_id = @usu_id;
 
 		DECLARE @asi_id INT;
 		EXEC dbo.sp_contabilidad_generar_asiento_documento @enc_id = @enc_id, @usu_id = @usu_id, @asi_id = @asi_id OUTPUT;
@@ -575,28 +621,35 @@ BEGIN
 			(enc_fecha_docto, enc_numero_autorizacion, enc_serie_docto, enc_numero_docto,
 			 prv_id, prv_enc_nombres_proveedor, prv_enc_apellidos_proveedor, prv_nit, tdo_id,
 			 enc_fecha_primer_pago, enc_monto_enganche, enc_numero_cuotas, enc_monto_total,
-			 enc_valor_descuento, mon_id, usu_id_creacion)
+			 enc_valor_descuento, mon_id, usu_id_creacion,
+			 InsUsuario, InsFechaHora)
 		VALUES
 			(@enc_fecha_docto, @enc_numero_autorizacion, @enc_serie_docto, @enc_numero_docto,
 			 @prv_id, @prv_enc_nombres_proveedor, @prv_enc_apellidos_proveedor, @prv_nit, @tdo_id,
 			 @enc_fecha_primer_pago, @enc_monto_enganche, @enc_numero_cuotas, @monto_total,
-			 @enc_valor_descuento, @mon_id, @usu_id);
+			 @enc_valor_descuento, @mon_id, @usu_id,
+			 @usu_id, SYSDATETIME());
 
 		SET @enc_id = SCOPE_IDENTITY();
 
 		INSERT INTO dbo.inv_documento_det
 			(enc_id, det_item, det_bien_o_servicio, det_cantidad, det_descripcion,
-			 det_precio_unitario, det_valor_descuento, det_sub_total, det_porc_iva, bod_id, pro_id)
+			 det_precio_unitario, det_valor_descuento, det_sub_total, det_porc_iva, bod_id, pro_id,
+			 InsUsuario, InsFechaHora)
 		SELECT
 			@enc_id, det_item, det_bien_o_servicio, det_cantidad, det_descripcion,
-			det_precio_unitario, det_valor_descuento, det_sub_total, det_porc_iva, bod_id, pro_id
+			det_precio_unitario, det_valor_descuento, det_sub_total, det_porc_iva, bod_id, pro_id,
+			@usu_id, SYSDATETIME()
 		FROM @detalle;
 
-		EXEC dbo.sp_inv_generar_plan_pagos_proveedor @enc_id = @enc_id;
+		EXEC dbo.sp_inv_generar_plan_pagos_proveedor @enc_id = @enc_id, @usu_id = @usu_id;
 
-		UPDATE dbo.inv_documento_enc SET enc_estado = 'G' WHERE enc_id = @enc_id;
+		UPDATE dbo.inv_documento_enc
+		   SET enc_estado = 'G',
+			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
+		 WHERE enc_id = @enc_id;
 
-		EXEC dbo.sp_inventario_ajustar_existencia_documento @enc_id = @enc_id;
+		EXEC dbo.sp_inventario_ajustar_existencia_documento @enc_id = @enc_id, @usu_id = @usu_id;
 
 		DECLARE @asi_id INT;
 		EXEC dbo.sp_contabilidad_generar_asiento_documento @enc_id = @enc_id, @usu_id = @usu_id, @asi_id = @asi_id OUTPUT;
@@ -637,10 +690,17 @@ BEGIN
 	BEGIN TRY
 		BEGIN TRANSACTION;
 
-		EXEC dbo.sp_inventario_ajustar_existencia_documento @enc_id = @enc_id, @reversar = 1;
+		EXEC dbo.sp_inventario_ajustar_existencia_documento @enc_id = @enc_id, @reversar = 1, @usu_id = @usu_id;
 
-		UPDATE dbo.inv_documento_enc SET enc_estado = 'A' WHERE enc_id = @enc_id;
-		UPDATE dbo.cont_asiento_enc SET asi_estado = 'N' WHERE enc_id = @enc_id;
+		UPDATE dbo.inv_documento_enc
+		   SET enc_estado = 'A',
+			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
+		 WHERE enc_id = @enc_id;
+
+		UPDATE dbo.cont_asiento_enc
+		   SET asi_estado = 'N',
+			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
+		 WHERE enc_id = @enc_id;
 
 		COMMIT TRANSACTION;
 	END TRY
@@ -681,22 +741,24 @@ BEGIN
 	BEGIN TRY
 		BEGIN TRANSACTION;
 
-		INSERT INTO dbo.pos_pago_enc (cli_id, pca_id, usu_id)
-		VALUES (@cli_id, @pca_id, @usu_id);
+		INSERT INTO dbo.pos_pago_enc (cli_id, pca_id, usu_id, InsUsuario, InsFechaHora)
+		VALUES (@cli_id, @pca_id, @usu_id, @usu_id, SYSDATETIME());
 
 		SET @ppe_id = SCOPE_IDENTITY();
 
-		INSERT INTO dbo.pos_pago_det (ppe_id, cpp_id, ppd_valor_aplicado)
-		VALUES (@ppe_id, @cpp_id, @valor_pago);
+		INSERT INTO dbo.pos_pago_det (ppe_id, cpp_id, ppd_valor_aplicado, InsUsuario, InsFechaHora)
+		VALUES (@ppe_id, @cpp_id, @valor_pago, @usu_id, SYSDATETIME());
 
 		UPDATE dbo.pos_cliente_plan_pagos
 		   SET cpp_saldo_cuota = cpp_saldo_cuota - @valor_pago,
 			   cpp_fecha_real_pago = CASE WHEN cpp_saldo_cuota - @valor_pago <= 0 THEN CAST(GETDATE() AS DATE) ELSE cpp_fecha_real_pago END,
-			   cpp_estado = CASE WHEN cpp_saldo_cuota - @valor_pago <= 0 THEN 'A' ELSE cpp_estado END
+			   cpp_estado = CASE WHEN cpp_saldo_cuota - @valor_pago <= 0 THEN 'A' ELSE cpp_estado END,
+			   UpdUsuario = @usu_id,
+			   UpdFechaHora = SYSDATETIME()
 		 WHERE cpp_id = @cpp_id;
 
 		DECLARE @pdo_id INT, @asi_id INT, @detalle dbo.cont_asiento_det_type;
-		EXEC dbo.sp_contabilidad_obtener_o_crear_periodo @fecha = NULL, @pdo_id = @pdo_id OUTPUT;
+		EXEC dbo.sp_contabilidad_obtener_o_crear_periodo @fecha = NULL, @usu_id = @usu_id, @pdo_id = @pdo_id OUTPUT;
 
 		INSERT INTO @detalle (cta_id, asd_debe, asd_haber, asd_descripcion)
 		SELECT cta_id, @valor_pago, 0, 'Cobro cuota ' + CAST(@cpp_id AS VARCHAR(10)) FROM dbo.cont_cuenta_contable WHERE cta_codigo = '1105'
@@ -749,25 +811,30 @@ BEGIN
 		BEGIN TRANSACTION;
 
 		INSERT INTO dbo.bco_cheque_emitido_enc
-			(cbc_id, bce_fecha_emision, usu_id, bce_numero_cheque, bce_documento_ref, bce_valor, bmp_id)
+			(cbc_id, bce_fecha_emision, usu_id, bce_numero_cheque, bce_documento_ref, bce_valor, bmp_id,
+			 InsUsuario, InsFechaHora)
 		VALUES
-			(@cbc_id, CAST(GETDATE() AS DATE), @usu_id, @bce_numero_cheque, CAST(@enc_id AS VARCHAR(16)), @valor_pago, @bmp_id);
+			(@cbc_id, CAST(GETDATE() AS DATE), @usu_id, @bce_numero_cheque, CAST(@enc_id AS VARCHAR(16)), @valor_pago, @bmp_id,
+			 @usu_id, SYSDATETIME());
 
 		SET @bce_id = SCOPE_IDENTITY();
 
-		INSERT INTO dbo.bco_cheque_emitido_det (bce_id, bmp_id, enc_id, ced_valor, ced_abono_cancelacion)
+		INSERT INTO dbo.bco_cheque_emitido_det (bce_id, bmp_id, enc_id, ced_valor, ced_abono_cancelacion, InsUsuario, InsFechaHora)
 		VALUES (@bce_id, @bmp_id, @enc_id, @valor_pago,
-				CASE WHEN @valor_pagado + @valor_pago >= @valor_programado THEN 'C' ELSE 'A' END);
+				CASE WHEN @valor_pagado + @valor_pago >= @valor_programado THEN 'C' ELSE 'A' END,
+				@usu_id, SYSDATETIME());
 
 		UPDATE dbo.inv_proveedor_plan_pago
 		   SET ppg_valor_real_pago = @valor_pagado + @valor_pago,
 			   ppg_fecha_real_pago = CAST(GETDATE() AS DATE),
 			   ppg_numero_cheque = @bce_numero_cheque,
-			   ppg_estado = CASE WHEN @valor_pagado + @valor_pago >= @valor_programado THEN 'A' ELSE ppg_estado END
+			   ppg_estado = CASE WHEN @valor_pagado + @valor_pago >= @valor_programado THEN 'A' ELSE ppg_estado END,
+			   UpdUsuario = @usu_id,
+			   UpdFechaHora = SYSDATETIME()
 		 WHERE ppg_id = @ppg_id;
 
 		DECLARE @pdo_id INT, @asi_id INT, @detalle dbo.cont_asiento_det_type;
-		EXEC dbo.sp_contabilidad_obtener_o_crear_periodo @fecha = NULL, @pdo_id = @pdo_id OUTPUT;
+		EXEC dbo.sp_contabilidad_obtener_o_crear_periodo @fecha = NULL, @usu_id = @usu_id, @pdo_id = @pdo_id OUTPUT;
 
 		INSERT INTO @detalle (cta_id, asd_debe, asd_haber, asd_descripcion)
 		SELECT cta_id, @valor_pago, 0, 'Pago a proveedor - cheque ' + @bce_numero_cheque FROM dbo.cont_cuenta_contable WHERE cta_codigo = '2105'
@@ -802,8 +869,8 @@ BEGIN
 	IF EXISTS (SELECT 1 FROM dbo.pos_caja_apertura WHERE pcr_id = @pcr_id AND pca_estado = 'A')
 		THROW 51701, 'Ya existe una apertura de caja activa para esta caja receptora.', 1;
 
-	INSERT INTO dbo.pos_caja_apertura (pcr_id, usu_id_apertura)
-	VALUES (@pcr_id, @usu_id);
+	INSERT INTO dbo.pos_caja_apertura (pcr_id, usu_id_apertura, InsUsuario, InsFechaHora)
+	VALUES (@pcr_id, @usu_id, @usu_id, SYSDATETIME());
 
 	SET @pca_id = SCOPE_IDENTITY();
 END;
@@ -820,7 +887,8 @@ BEGIN
 		THROW 51702, 'La apertura de caja indicada no existe o ya está cerrada.', 1;
 
 	UPDATE dbo.pos_caja_apertura
-	   SET pca_estado = 'C', pca_fecha_cierre = SYSDATETIME(), usu_id_cierre = @usu_id
+	   SET pca_estado = 'C', pca_fecha_cierre = SYSDATETIME(), usu_id_cierre = @usu_id,
+		   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
 	 WHERE pca_id = @pca_id;
 END;
 GO
@@ -854,10 +922,13 @@ BEGIN
 		RETURN;
 	END
 
+	-- Es el propio usuario quien produce el cambio (éxito o intento fallido):
+	-- UpdUsuario queda como el mismo @usu_id encontrado arriba.
 	IF HASHBYTES('SHA2_256', CAST(@salt AS VARCHAR(36)) + @usu_password) = @hash
 	BEGIN
 		UPDATE dbo.gen_usuario
-		   SET usu_intentos_fallidos = 0, usu_ultimo_login = SYSDATETIME()
+		   SET usu_intentos_fallidos = 0, usu_ultimo_login = SYSDATETIME(),
+			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
 		 WHERE usu_id = @usu_id;
 
 		SELECT 'success' AS estado, 'Bienvenido, ' + @usu_usuario + '.' AS mensaje, @usu_id AS usu_id;
@@ -866,7 +937,8 @@ BEGIN
 	BEGIN
 		UPDATE dbo.gen_usuario
 		   SET usu_intentos_fallidos = usu_intentos_fallidos + 1,
-			   usu_bloqueado = CASE WHEN usu_intentos_fallidos + 1 >= 5 THEN 1 ELSE 0 END
+			   usu_bloqueado = CASE WHEN usu_intentos_fallidos + 1 >= 5 THEN 1 ELSE 0 END,
+			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
 		 WHERE usu_id = @usu_id;
 
 		SELECT 'error' AS estado, 'Usuario o contraseña no son válidos.' AS mensaje;
