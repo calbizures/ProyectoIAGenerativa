@@ -1,3 +1,4 @@
+using Erp.Data.Compras;
 using Erp.Data.Inventario;
 using Erp.Data.Security;
 using Erp.Data.Ventas;
@@ -22,6 +23,7 @@ public static class DependencyInjection
 		services.AddScoped<IProductoRepository, ProductoRepository>();
 		services.AddScoped<IBodegaRepository, BodegaRepository>();
 		services.AddScoped<IFacturaRepository, FacturaRepository>();
+		services.AddScoped<ICompraRepository, CompraRepository>();
 		return services;
 	}
 }

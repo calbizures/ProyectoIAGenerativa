@@ -34,7 +34,13 @@
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <SidebarNodo Titulo="Compras" IconoNombre="shopping-cart" Disponible="false" />
+        <AuthorizeView Policy="Permiso:COMPRAS_DOCUMENTO_CREAR">
+            <Authorized>
+                <SidebarNodo Titulo="Compras" IconoNombre="shopping-cart">
+                    <NavLink href="compras" class="sidebar-hijo-link">Compras</NavLink>
+                </SidebarNodo>
+            </Authorized>
+        </AuthorizeView>
         <SidebarNodo Titulo="Bancos" IconoNombre="landmark" Disponible="false" />
         <SidebarNodo Titulo="Contabilidad" IconoNombre="bar-chart-2" Disponible="false" />
     </nav>

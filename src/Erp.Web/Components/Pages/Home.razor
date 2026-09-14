@@ -62,11 +62,22 @@
             </NotAuthorized>
         </AuthorizeView>
 
-        <div class="modulo-card modulo-card-proximamente">
-            <span class="modulo-icono"><Icono Nombre="shopping-cart" Tamano="26" /></span>
-            <span class="modulo-titulo">Compras</span>
-            <span class="modulo-badge">Próximamente</span>
-        </div>
+        <AuthorizeView Policy="Permiso:COMPRAS_DOCUMENTO_CREAR">
+            <Authorized>
+                <a href="compras" class="modulo-card">
+                    <span class="modulo-icono"><Icono Nombre="shopping-cart" Tamano="26" /></span>
+                    <span class="modulo-titulo">Compras</span>
+                    <span class="modulo-desc">Compras a proveedores</span>
+                </a>
+            </Authorized>
+            <NotAuthorized>
+                <div class="modulo-card modulo-card-proximamente">
+                    <span class="modulo-icono"><Icono Nombre="shopping-cart" Tamano="26" /></span>
+                    <span class="modulo-titulo">Compras</span>
+                    <span class="modulo-badge">Próximamente</span>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
 
         <div class="modulo-card modulo-card-proximamente">
             <span class="modulo-icono"><Icono Nombre="landmark" Tamano="26" /></span>
