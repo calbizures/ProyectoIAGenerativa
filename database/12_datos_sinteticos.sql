@@ -9,10 +9,57 @@
 	bugs del script original: correlativos, existencias, asientos).
 
 	Los montos, nombres y NIT/DPI son ficticios.
+
+	Este script se puede correr las veces que se quiera: el primer bloque
+	deja todas las tablas en cero antes de volver a sembrar datos, así que
+	nunca queda nada duplicado ni a medias por una corrida anterior que
+	haya fallado.
 */
 USE [erp_db];
 GO
 SET NOCOUNT ON;
+GO
+
+------------------------------------------------------------
+-- Limpieza: deja todas las tablas en cero antes de sembrar datos, para
+-- que este script se pueda volver a correr sin duplicar nada.
+--
+-- No se usa TRUNCATE TABLE porque SQL Server no permite truncar una tabla
+-- referenciada por una FOREIGN KEY, y en este modelo casi todas lo son.
+-- En su lugar: se desactivan todas las llaves foráneas, se borra el
+-- contenido de cada tabla con DELETE (con las FK desactivadas ya no
+-- importa el orden), se reinicia el contador IDENTITY de cada tabla a 0
+-- (el mismo efecto que tendría un TRUNCATE) y al final se vuelven a
+-- activar y revalidar todas las llaves foráneas.
+------------------------------------------------------------
+DECLARE @sql NVARCHAR(MAX);
+
+SET @sql = N'';
+SELECT @sql = @sql + N'ALTER TABLE ' + QUOTENAME(SCHEMA_NAME(t.schema_id)) + N'.' + QUOTENAME(t.name)
+	+ N' NOCHECK CONSTRAINT ALL;' + CHAR(10)
+FROM sys.tables t
+WHERE EXISTS (SELECT 1 FROM sys.foreign_keys fk WHERE fk.parent_object_id = t.object_id);
+EXEC sp_executesql @sql;
+
+SET @sql = N'';
+SELECT @sql = @sql + N'DELETE FROM ' + QUOTENAME(SCHEMA_NAME(t.schema_id)) + N'.' + QUOTENAME(t.name) + N';' + CHAR(10)
+FROM sys.tables t
+WHERE SCHEMA_NAME(t.schema_id) = N'dbo';
+EXEC sp_executesql @sql;
+
+SET @sql = N'';
+SELECT @sql = @sql + N'DBCC CHECKIDENT (''dbo.' + t.name + N''', RESEED, 0);' + CHAR(10)
+FROM sys.tables t
+WHERE SCHEMA_NAME(t.schema_id) = N'dbo'
+  AND EXISTS (SELECT 1 FROM sys.identity_columns ic WHERE ic.object_id = t.object_id);
+EXEC sp_executesql @sql;
+
+SET @sql = N'';
+SELECT @sql = @sql + N'ALTER TABLE ' + QUOTENAME(SCHEMA_NAME(t.schema_id)) + N'.' + QUOTENAME(t.name)
+	+ N' WITH CHECK CHECK CONSTRAINT ALL;' + CHAR(10)
+FROM sys.tables t
+WHERE EXISTS (SELECT 1 FROM sys.foreign_keys fk WHERE fk.parent_object_id = t.object_id);
+EXEC sp_executesql @sql;
 GO
 
 ------------------------------------------------------------
