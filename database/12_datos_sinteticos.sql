@@ -102,10 +102,15 @@ INSERT INTO dbo.bco_motivo_pago (bmp_descripcion) VALUES
 ('Pago a proveedores'), ('Pago de servicios'), ('Gastos varios'), ('Devolución a cliente');
 GO
 
+-- EXEC no acepta una subconsulta ni ninguna otra expresión directamente
+-- como valor de un parámetro con nombre: solo constantes o variables. Por
+-- eso en todo este script cada (SELECT ...) que antes iba pegado al
+-- parámetro ahora se resuelve primero en una variable.
 DECLARE @bcb_id INT;
+DECLARE @gef_bi_id INT = (SELECT gef_id FROM dbo.gen_entidad_financiera WHERE gef_codigo = 'BI');
 EXEC dbo.sp_cuenta_bancaria_insertar
 	@bcb_numero_cuenta = '301-0001122-3', @bcb_descripcion = 'Cuenta monetaria BI',
-	@gef_id = (SELECT gef_id FROM dbo.gen_entidad_financiera WHERE gef_codigo = 'BI'), @bcb_id = @bcb_id OUTPUT;
+	@gef_id = @gef_bi_id, @bcb_id = @bcb_id OUTPUT;
 
 INSERT INTO dbo.bco_cuenta_bancaria_chequera (cbc_cheque_del, cbc_cheque_al, cbc_fecha_recepcion_chequera, bcb_id)
 VALUES (1001, 1100, DATEADD(MONTH, -3, GETDATE()), @bcb_id);
@@ -182,10 +187,12 @@ GO
 -- Bodegas y vendedores
 ------------------------------------------------------------
 DECLARE @bod1 INT, @bod2 INT;
+DECLARE @suc1_id INT = (SELECT suc_id FROM dbo.gen_sucursal WHERE suc_codigo = 'SUC01');
+DECLARE @suc2_id INT = (SELECT suc_id FROM dbo.gen_sucursal WHERE suc_codigo = 'SUC02');
 EXEC dbo.sp_bodega_insertar @bod_codigo = 'BOD01', @bod_descripcion = 'Bodega principal Zona 10',
-	@suc_id = (SELECT suc_id FROM dbo.gen_sucursal WHERE suc_codigo = 'SUC01'), @bod_id = @bod1 OUTPUT;
+	@suc_id = @suc1_id, @bod_id = @bod1 OUTPUT;
 EXEC dbo.sp_bodega_insertar @bod_codigo = 'BOD02', @bod_descripcion = 'Bodega sucursal Mixco',
-	@suc_id = (SELECT suc_id FROM dbo.gen_sucursal WHERE suc_codigo = 'SUC02'), @bod_id = @bod2 OUTPUT;
+	@suc_id = @suc2_id, @bod_id = @bod2 OUTPUT;
 GO
 
 INSERT INTO dbo.pos_vendedor (pve_codigo, pve_nombres, pve_apellidos, pve_fecha_ingreso, pve_porc_comision) VALUES
@@ -282,9 +289,12 @@ OPEN productos_cur;
 FETCH NEXT FROM productos_cur INTO @codigo, @desc, @prt, @tipo, @maneja, @precio;
 WHILE @@FETCH_STATUS = 0
 BEGIN
+	DECLARE @prt_id_sel INT;
+	SELECT @prt_id_sel = prt_id FROM dbo.inv_producto_tipo WHERE prt_codigo = @prt;
+
 	EXEC dbo.sp_producto_insertar
 		@pro_codigo = @codigo, @pro_descripcion = @desc,
-		@prt_id = (SELECT prt_id FROM dbo.inv_producto_tipo WHERE prt_codigo = @prt),
+		@prt_id = @prt_id_sel,
 		@pro_tipo_item = @tipo, @pro_maneja_existencia = @maneja, @pro_id = @pro_id OUTPUT;
 
 	INSERT INTO dbo.inv_producto_precio (ppr_precio_unitario_venta, ppr_descripcion, ppr_vigencia_desde, pro_id, bod_id, mon_id)
@@ -353,9 +363,11 @@ GO
 -- Apertura de caja para poder registrar cobros
 ------------------------------------------------------------
 DECLARE @pca_id INT;
+DECLARE @pcr1_id INT = (SELECT TOP 1 pcr_id FROM dbo.pos_caja_receptora ORDER BY pcr_id);
+DECLARE @usu_cajero_id INT = (SELECT usu_id FROM dbo.gen_usuario WHERE usu_usuario = 'mgarcia');
 EXEC dbo.sp_pos_caja_abrir
-	@pcr_id = (SELECT TOP 1 pcr_id FROM dbo.pos_caja_receptora ORDER BY pcr_id),
-	@usu_id = (SELECT usu_id FROM dbo.gen_usuario WHERE usu_usuario = 'mgarcia'),
+	@pcr_id = @pcr1_id,
+	@usu_id = @usu_cajero_id,
 	@pca_id = @pca_id OUTPUT;
 GO
 
@@ -374,10 +386,12 @@ INNER JOIN dbo.inv_producto pro ON pro.pro_id = pp.pro_id
 WHERE pro.pro_maneja_existencia = 1;
 
 DECLARE @enc_compra_inicial INT;
+DECLARE @prv1_id INT = (SELECT TOP 1 prv_id FROM dbo.inv_proveedor ORDER BY prv_id);
+DECLARE @tdo_comp_id INT = (SELECT tdo_id FROM dbo.inv_documento_tipo WHERE tdo_codigo='COMP');
 EXEC dbo.sp_compras_crear_documento
 	@enc_fecha_docto = @fecha_compra, @enc_numero_docto = 'INV-INICIAL-001',
-	@prv_id = (SELECT TOP 1 prv_id FROM dbo.inv_proveedor ORDER BY prv_id),
-	@tdo_id = (SELECT tdo_id FROM dbo.inv_documento_tipo WHERE tdo_codigo='COMP'),
+	@prv_id = @prv1_id,
+	@tdo_id = @tdo_comp_id,
 	@enc_numero_cuotas = 1, @detalle = @det, @enc_id = @enc_compra_inicial OUTPUT;
 GO
 
@@ -395,8 +409,9 @@ BEGIN
 		DECLARE @pro_sel INT, @precio_sel NUMERIC(12,2), @cant_sel INT = 10 + (ABS(CHECKSUM(NEWID())) % 30);
 		DECLARE @prv_sel INT;
 		-- EXEC no acepta una expresión directamente como valor de un
-		-- parámetro con nombre; la fecha se calcula antes en una variable.
+		-- parámetro con nombre; se calculan antes en variables.
 		DECLARE @fecha_compra_i DATE = DATEADD(DAY, -1 * (ABS(CHECKSUM(NEWID())) % 120), CAST(GETDATE() AS DATE));
+		DECLARE @numero_docto_compra VARCHAR(32) = CONCAT('REST-', @i);
 
 		SELECT TOP 1 @pro_sel = pp.pro_id, @precio_sel = pp.precio
 		FROM #producto_precio pp
@@ -413,7 +428,7 @@ BEGIN
 		DECLARE @enc_compra INT;
 		EXEC dbo.sp_compras_crear_documento
 			@enc_fecha_docto = @fecha_compra_i,
-			@enc_numero_docto = CONCAT('REST-', @i),
+			@enc_numero_docto = @numero_docto_compra,
 			@prv_id = @prv_sel, @tdo_id = @tdo_comp, @enc_numero_cuotas = 1,
 			@detalle = @det2, @enc_id = @enc_compra OUTPUT;
 	END TRY
@@ -431,6 +446,7 @@ GO
 DECLARE @i INT = 1;
 DECLARE @bod1 INT = (SELECT bod_id FROM dbo.inv_bodega WHERE bod_codigo='BOD01');
 DECLARE @tdo_fcam INT = (SELECT tdo_id FROM dbo.inv_documento_tipo WHERE tdo_codigo='FCAM');
+DECLARE @usu_vend_id INT = (SELECT usu_id FROM dbo.gen_usuario WHERE usu_usuario = 'jperez');
 
 WHILE @i <= 35
 BEGIN
@@ -462,12 +478,12 @@ BEGIN
 
 		IF EXISTS (SELECT 1 FROM @det3)
 		BEGIN
-			DECLARE @enc_venta INT, @numero_unico VARCHAR(16);
+			DECLARE @enc_venta INT, @numero_unico VARCHAR(16), @numero_docto_venta VARCHAR(32) = CONCAT('FAC-', @i);
 			EXEC dbo.sp_ventas_crear_factura
-				@enc_fecha_docto = @fecha_venta, @enc_numero_docto = CONCAT('FAC-', @i),
+				@enc_fecha_docto = @fecha_venta, @enc_numero_docto = @numero_docto_venta,
 				@cli_id = @cli_sel, @tdo_id = @tdo_fcam, @pve_id = @vend_sel,
 				@enc_fecha_primer_pago = @fecha_primer_pago, @enc_numero_cuotas = @cuotas,
-				@usu_id = (SELECT usu_id FROM dbo.gen_usuario WHERE usu_usuario = 'jperez'),
+				@usu_id = @usu_vend_id,
 				@detalle = @det3, @enc_id = @enc_venta OUTPUT, @enc_numero_unico = @numero_unico OUTPUT;
 		END
 	END TRY
@@ -512,6 +528,7 @@ GO
 ------------------------------------------------------------
 DECLARE @cbc_id INT = (SELECT TOP 1 cbc_id FROM dbo.bco_cuenta_bancaria_chequera ORDER BY cbc_id);
 DECLARE @usu_admin INT = (SELECT usu_id FROM dbo.gen_usuario WHERE usu_usuario = 'admin');
+DECLARE @bmp_pago_id INT = (SELECT TOP 1 bmp_id FROM dbo.bco_motivo_pago WHERE bmp_descripcion = 'Pago a proveedores');
 DECLARE @ppg_id INT, @valor_pend NUMERIC(12,2), @bce_id INT, @numero_cheque_base INT = 1001, @contador INT = 0;
 
 DECLARE pagos_cur CURSOR LOCAL FAST_FORWARD FOR
@@ -533,7 +550,7 @@ BEGIN
 			@ppg_id = @ppg_id, @cbc_id = @cbc_id,
 			@bce_numero_cheque = @numero_cheque,
 			@valor_pago = @valor_pend,
-			@bmp_id = (SELECT TOP 1 bmp_id FROM dbo.bco_motivo_pago WHERE bmp_descripcion = 'Pago a proveedores'),
+			@bmp_id = @bmp_pago_id,
 			@usu_id = @usu_admin, @bce_id = @bce_id OUTPUT;
 	END TRY
 	BEGIN CATCH
@@ -549,11 +566,12 @@ GO
 -- Anulación de un par de documentos (demuestra sp_documento_anular)
 ------------------------------------------------------------
 DECLARE @enc_a INT, @enc_b INT;
+DECLARE @usu_admin_id INT = (SELECT usu_id FROM dbo.gen_usuario WHERE usu_usuario='admin');
 SELECT TOP 1 @enc_a = enc_id FROM dbo.inv_documento_enc WHERE enc_estado = 'G' AND tdo_id = (SELECT tdo_id FROM dbo.inv_documento_tipo WHERE tdo_codigo='FCAM') ORDER BY enc_id DESC;
-IF @enc_a IS NOT NULL EXEC dbo.sp_documento_anular @enc_id = @enc_a, @usu_id = (SELECT usu_id FROM dbo.gen_usuario WHERE usu_usuario='admin');
+IF @enc_a IS NOT NULL EXEC dbo.sp_documento_anular @enc_id = @enc_a, @usu_id = @usu_admin_id;
 
 SELECT TOP 1 @enc_b = enc_id FROM dbo.inv_documento_enc WHERE enc_estado = 'G' AND tdo_id = (SELECT tdo_id FROM dbo.inv_documento_tipo WHERE tdo_codigo='FCAM') ORDER BY enc_id ASC;
-IF @enc_b IS NOT NULL AND @enc_b <> @enc_a EXEC dbo.sp_documento_anular @enc_id = @enc_b, @usu_id = (SELECT usu_id FROM dbo.gen_usuario WHERE usu_usuario='admin');
+IF @enc_b IS NOT NULL AND @enc_b <> @enc_a EXEC dbo.sp_documento_anular @enc_id = @enc_b, @usu_id = @usu_admin_id;
 GO
 
 ------------------------------------------------------------
