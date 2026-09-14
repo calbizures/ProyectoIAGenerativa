@@ -5,7 +5,25 @@
 	- <prefijo>_id           : llave primaria IDENTITY(1,1).
 	- <prefijo>_estado CHAR(1): 'A' Activo / 'I' Inactivo (excepto donde se
 	  documente lo contrario, p.ej. asientos contables usan 'A'/'N').
-	- Las llaves foráneas se agregan todas juntas en 06_llaves_foraneas.sql.
+	- Las llaves foráneas se agregan todas juntas en 06_llaves_foraneas.sql
+	  (incluidas las de InsUsuario/UpdUsuario descritas abajo).
+
+	Auditoría de creación/modificación por fila:
+	- Toda tabla (excepto [gen_auditoria], que ya es en sí misma la bitácora
+	  de auditoría y nunca se actualiza) agrega cuatro columnas al final:
+	  [InsUsuario], [InsFechaHora], [UpdUsuario], [UpdFechaHora]. Se dejan en
+	  PascalCase a propósito, distinto del resto de columnas
+	  (<prefijo>_columna), para que se identifiquen de un vistazo como
+	  metadatos de auditoría y no como parte del negocio.
+	- [InsUsuario]/[UpdUsuario] son NULL porque hoy los procedimientos de
+	  10_procedimientos_crud.sql y 11_procedimientos_procesos.sql no reciben
+	  todavía el usuario que ejecuta la acción en cada operación; quedan
+	  listas para poblarse (a mano o cuando se conecte la aplicación) sin
+	  romper ningún INSERT/UPDATE existente. [InsFechaHora] sí se completa
+	  sola con SYSDATETIME().
+	- Las llaves foráneas de estas columnas hacia [gen_usuario] se generan
+	  con un bloque de SQL dinámico al final de 06_llaves_foraneas.sql, para
+	  no repetir a mano más de cien líneas de ALTER TABLE.
 */
 USE [erp_db];
 GO
@@ -21,6 +39,10 @@ CREATE TABLE [dbo].[gen_pais](
 	[pai_codigo_numero]	VARCHAR(3)		NULL,
 	[pai_nacionalidad]		VARCHAR(64)		NULL,
 	[pai_estado]			CHAR(1)			NOT NULL DEFAULT ('A'),
+	[InsUsuario]			INT				NULL,
+	[InsFechaHora]			DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]			INT				NULL,
+	[UpdFechaHora]			DATETIME2(0)	NULL,
 	CONSTRAINT [PK_gen_pais] PRIMARY KEY CLUSTERED ([pai_id] ASC),
 	CONSTRAINT [UQ_gen_pais_alfa2] UNIQUE ([pai_codigo_alfa2]),
 	CONSTRAINT [UQ_gen_pais_alfa3] UNIQUE ([pai_codigo_alfa3]),
@@ -34,6 +56,10 @@ CREATE TABLE [dbo].[gen_estado](
 	[pai_id]		INT				NOT NULL,
 	[est_nombre]	VARCHAR(128)	NOT NULL,
 	[est_estado]	CHAR(1)			NOT NULL DEFAULT ('A'),
+	[InsUsuario]	INT				NULL,
+	[InsFechaHora]	DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]	INT				NULL,
+	[UpdFechaHora]	DATETIME2(0)	NULL,
 	CONSTRAINT [PK_gen_estado] PRIMARY KEY CLUSTERED ([est_id] ASC),
 	CONSTRAINT [UQ_gen_estado_pais_codigo] UNIQUE ([pai_id], [est_codigo]),
 	CONSTRAINT [CK_gen_estado_estado] CHECK ([est_estado] IN ('A','I'))
@@ -46,6 +72,10 @@ CREATE TABLE [dbo].[gen_provincia](
 	[est_id]		INT				NOT NULL,
 	[prov_nombre]	VARCHAR(128)	NOT NULL,
 	[prov_estado]	CHAR(1)			NOT NULL DEFAULT ('A'),
+	[InsUsuario]	INT				NULL,
+	[InsFechaHora]	DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]	INT				NULL,
+	[UpdFechaHora]	DATETIME2(0)	NULL,
 	CONSTRAINT [PK_gen_provincia] PRIMARY KEY CLUSTERED ([prov_id] ASC),
 	CONSTRAINT [UQ_gen_provincia_estado_codigo] UNIQUE ([est_id], [prov_codigo]),
 	CONSTRAINT [CK_gen_provincia_estado] CHECK ([prov_estado] IN ('A','I'))
@@ -56,6 +86,10 @@ CREATE TABLE [dbo].[gen_profesion](
 	[prf_id]			INT				IDENTITY(1,1)	NOT NULL,
 	[prf_descripcion]	VARCHAR(128)	NOT NULL,
 	[prf_estado]		CHAR(1)			NOT NULL DEFAULT ('A'),
+	[InsUsuario]		INT				NULL,
+	[InsFechaHora]		DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]		INT				NULL,
+	[UpdFechaHora]		DATETIME2(0)	NULL,
 	CONSTRAINT [PK_gen_profesion] PRIMARY KEY CLUSTERED ([prf_id] ASC),
 	CONSTRAINT [UQ_gen_profesion_descripcion] UNIQUE ([prf_descripcion]),
 	CONSTRAINT [CK_gen_profesion_estado] CHECK ([prf_estado] IN ('A','I'))
@@ -76,6 +110,10 @@ CREATE TABLE [dbo].[gen_compania](
 	[cia_telefono]								VARCHAR(16)		NULL,
 	[cia_email]									VARCHAR(64)		NULL,
 	[cia_estado]								CHAR(1)			NOT NULL DEFAULT ('A'),
+	[InsUsuario]								INT				NULL,
+	[InsFechaHora]								DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]								INT				NULL,
+	[UpdFechaHora]								DATETIME2(0)	NULL,
 	CONSTRAINT [PK_gen_compania] PRIMARY KEY CLUSTERED ([cia_id] ASC),
 	CONSTRAINT [UQ_gen_compania_nit] UNIQUE ([cia_nit]),
 	CONSTRAINT [CK_gen_compania_estado] CHECK ([cia_estado] IN ('A','I'))
@@ -90,6 +128,10 @@ CREATE TABLE [dbo].[gen_sucursal](
 	[suc_telefono]		VARCHAR(16)		NULL,
 	[cia_id]			INT				NOT NULL,
 	[suc_estado]		CHAR(1)			NOT NULL DEFAULT ('A'),
+	[InsUsuario]		INT				NULL,
+	[InsFechaHora]		DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]		INT				NULL,
+	[UpdFechaHora]		DATETIME2(0)	NULL,
 	CONSTRAINT [PK_gen_sucursal] PRIMARY KEY CLUSTERED ([suc_id] ASC),
 	CONSTRAINT [UQ_gen_sucursal_cia_codigo] UNIQUE ([cia_id], [suc_codigo]),
 	CONSTRAINT [CK_gen_sucursal_estado] CHECK ([suc_estado] IN ('A','I'))
@@ -102,6 +144,10 @@ GO
 CREATE TABLE [dbo].[gen_entidad_financiera_tipo](
 	[geft_id]			INT				IDENTITY(1,1)	NOT NULL,
 	[geft_descripcion]	VARCHAR(50)		NOT NULL,
+	[InsUsuario]		INT				NULL,
+	[InsFechaHora]		DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]		INT				NULL,
+	[UpdFechaHora]		DATETIME2(0)	NULL,
 	CONSTRAINT [PK_gen_entidad_financiera_tipo] PRIMARY KEY CLUSTERED ([geft_id] ASC),
 	CONSTRAINT [UQ_gen_entidad_financiera_tipo_desc] UNIQUE ([geft_descripcion])
 );
@@ -113,6 +159,10 @@ CREATE TABLE [dbo].[gen_entidad_financiera](
 	[gef_codigo]		VARCHAR(16)		NOT NULL,
 	[gef_descripcion]	VARCHAR(50)		NOT NULL,
 	[gef_estado]		CHAR(1)			NOT NULL DEFAULT ('A'),
+	[InsUsuario]		INT				NULL,
+	[InsFechaHora]		DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]		INT				NULL,
+	[UpdFechaHora]		DATETIME2(0)	NULL,
 	CONSTRAINT [PK_gen_entidad_financiera] PRIMARY KEY CLUSTERED ([gef_id] ASC),
 	CONSTRAINT [UQ_gen_entidad_financiera_codigo] UNIQUE ([gef_codigo]),
 	CONSTRAINT [CK_gen_entidad_financiera_estado] CHECK ([gef_estado] IN ('A','I'))
@@ -129,6 +179,10 @@ CREATE TABLE [dbo].[gen_moneda](
 	[mon_simbolo]	VARCHAR(5)		NULL,
 	[mon_es_local]	BIT				NOT NULL DEFAULT (0),	-- moneda funcional/base de la compañía
 	[mon_estado]	CHAR(1)			NOT NULL DEFAULT ('A'),
+	[InsUsuario]	INT				NULL,
+	[InsFechaHora]	DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]	INT				NULL,
+	[UpdFechaHora]	DATETIME2(0)	NULL,
 	CONSTRAINT [PK_gen_moneda] PRIMARY KEY CLUSTERED ([mon_id] ASC),
 	CONSTRAINT [UQ_gen_moneda_codigo] UNIQUE ([mon_codigo]),
 	CONSTRAINT [CK_gen_moneda_estado] CHECK ([mon_estado] IN ('A','I'))
@@ -146,6 +200,10 @@ CREATE TABLE [dbo].[gen_tipo_cambio](
 	[mon_id]		INT				NOT NULL,
 	[tpc_fecha]		DATE			NOT NULL,
 	[tpc_valor]		DECIMAL(12,6)	NOT NULL,		-- unidades de moneda local por 1 unidad de [mon_id]
+	[InsUsuario]	INT				NULL,
+	[InsFechaHora]	DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]	INT				NULL,
+	[UpdFechaHora]	DATETIME2(0)	NULL,
 	CONSTRAINT [PK_gen_tipo_cambio] PRIMARY KEY CLUSTERED ([tpc_id] ASC),
 	CONSTRAINT [UQ_gen_tipo_cambio_mon_fecha] UNIQUE ([mon_id], [tpc_fecha]),
 	CONSTRAINT [CK_gen_tipo_cambio_valor] CHECK ([tpc_valor] > 0)
@@ -167,6 +225,10 @@ CREATE TABLE [dbo].[gen_usuario](
 	[usu_bloqueado]			BIT					NOT NULL DEFAULT (0),
 	[usu_ultimo_login]		DATETIME2(0)		NULL,
 	[usu_estado]			CHAR(1)				NOT NULL DEFAULT ('A'),
+	[InsUsuario]			INT					NULL,	-- autorreferencia a gen_usuario; NULL en el primer usuario (bootstrap)
+	[InsFechaHora]			DATETIME2(0)		NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]			INT					NULL,
+	[UpdFechaHora]			DATETIME2(0)		NULL,
 	CONSTRAINT [PK_gen_usuario] PRIMARY KEY CLUSTERED ([usu_id] ASC),
 	CONSTRAINT [UQ_gen_usuario_codigo] UNIQUE ([usu_codigo]),
 	CONSTRAINT [UQ_gen_usuario_usuario] UNIQUE ([usu_usuario]),
@@ -182,6 +244,10 @@ CREATE TABLE [dbo].[sec_rol](
 	[rol_codigo]	VARCHAR(32)		NOT NULL,
 	[rol_nombre]	VARCHAR(64)		NOT NULL,
 	[rol_estado]	CHAR(1)			NOT NULL DEFAULT ('A'),
+	[InsUsuario]	INT				NULL,
+	[InsFechaHora]	DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]	INT				NULL,
+	[UpdFechaHora]	DATETIME2(0)	NULL,
 	CONSTRAINT [PK_sec_rol] PRIMARY KEY CLUSTERED ([rol_id] ASC),
 	CONSTRAINT [UQ_sec_rol_codigo] UNIQUE ([rol_codigo]),
 	CONSTRAINT [CK_sec_rol_estado] CHECK ([rol_estado] IN ('A','I'))
@@ -194,6 +260,10 @@ CREATE TABLE [dbo].[sec_permiso](
 	[per_codigo]		VARCHAR(64)		NOT NULL,		-- p.ej. INVENTARIO_PRODUCTO_CREAR
 	[per_descripcion]	VARCHAR(128)	NULL,
 	[per_estado]		CHAR(1)			NOT NULL DEFAULT ('A'),
+	[InsUsuario]		INT				NULL,
+	[InsFechaHora]		DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]		INT				NULL,
+	[UpdFechaHora]		DATETIME2(0)	NULL,
 	CONSTRAINT [PK_sec_permiso] PRIMARY KEY CLUSTERED ([per_id] ASC),
 	CONSTRAINT [UQ_sec_permiso_codigo] UNIQUE ([per_codigo]),
 	CONSTRAINT [CK_sec_permiso_estado] CHECK ([per_estado] IN ('A','I'))
@@ -201,21 +271,33 @@ CREATE TABLE [dbo].[sec_permiso](
 GO
 
 CREATE TABLE [dbo].[sec_rol_permiso](
-	[rol_id]	INT	NOT NULL,
-	[per_id]	INT	NOT NULL,
+	[rol_id]		INT				NOT NULL,
+	[per_id]		INT				NOT NULL,
+	[InsUsuario]	INT				NULL,
+	[InsFechaHora]	DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]	INT				NULL,
+	[UpdFechaHora]	DATETIME2(0)	NULL,
 	CONSTRAINT [PK_sec_rol_permiso] PRIMARY KEY CLUSTERED ([rol_id] ASC, [per_id] ASC)
 );
 GO
 
 CREATE TABLE [dbo].[sec_usuario_rol](
-	[usu_id]	INT	NOT NULL,
-	[rol_id]	INT	NOT NULL,
+	[usu_id]		INT				NOT NULL,
+	[rol_id]		INT				NOT NULL,
+	[InsUsuario]	INT				NULL,
+	[InsFechaHora]	DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]	INT				NULL,
+	[UpdFechaHora]	DATETIME2(0)	NULL,
 	CONSTRAINT [PK_sec_usuario_rol] PRIMARY KEY CLUSTERED ([usu_id] ASC, [rol_id] ASC)
 );
 GO
 
 ------------------------------------------------------------
 -- Auditoría de cambios (módulo nuevo)
+--
+-- Esta tabla ES la bitácora de auditoría: no lleva InsUsuario/InsFechaHora/
+-- UpdUsuario/UpdFechaHora porque ya tiene sus propias columnas equivalentes
+-- ([usu_id], [aud_fecha]) y sus filas nunca se actualizan, solo se insertan.
 ------------------------------------------------------------
 CREATE TABLE [dbo].[gen_auditoria](
 	[aud_id]				BIGINT			IDENTITY(1,1)	NOT NULL,
@@ -243,6 +325,10 @@ CREATE TABLE [dbo].[conf_correlativos](
 	[serie]			VARCHAR(32)		NOT NULL,
 	[correlativo]	NUMERIC(12, 0)	NOT NULL DEFAULT (0),	-- antes "correlatio" (typo corregido)
 	[cor_estado]	CHAR(1)			NOT NULL DEFAULT ('A'),
+	[InsUsuario]	INT				NULL,
+	[InsFechaHora]	DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]	INT				NULL,
+	[UpdFechaHora]	DATETIME2(0)	NULL,
 	CONSTRAINT [PK_conf_correlativos] PRIMARY KEY CLUSTERED ([id_serie] ASC),
 	CONSTRAINT [UQ_conf_correlativos_serie] UNIQUE ([serie]),
 	CONSTRAINT [CK_conf_correlativos_estado] CHECK ([cor_estado] IN ('A','I'))

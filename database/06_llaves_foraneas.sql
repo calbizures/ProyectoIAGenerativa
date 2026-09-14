@@ -114,3 +114,34 @@ ALTER TABLE [dbo].[cont_asiento_enc]  ADD CONSTRAINT [FK_cont_asiento_enc_usuari
 ALTER TABLE [dbo].[cont_asiento_det]  ADD CONSTRAINT [FK_cont_asiento_det_encabezado] FOREIGN KEY([asi_id]) REFERENCES [dbo].[cont_asiento_enc]([asi_id]);
 ALTER TABLE [dbo].[cont_asiento_det]  ADD CONSTRAINT [FK_cont_asiento_det_cuenta] FOREIGN KEY([cta_id]) REFERENCES [dbo].[cont_cuenta_contable]([cta_id]);
 GO
+
+------------------------------------------------------------
+-- Auditoría: InsUsuario / UpdUsuario -> gen_usuario
+--
+-- Todas las tablas de 02-05 (excepto [gen_auditoria], que no lleva estas
+-- columnas: ver su comentario en 02_tablas_generales_seguridad.sql) tienen
+-- [InsUsuario] y [UpdUsuario]. En vez de repetir a mano más de cien
+-- ALTER TABLE, se generan por SQL dinámico recorriendo el catálogo del
+-- sistema: para cada columna llamada InsUsuario/UpdUsuario que todavía no
+-- tenga llave foránea, crea una hacia [gen_usuario]([usu_id]).
+------------------------------------------------------------
+DECLARE @sql_auditoria NVARCHAR(MAX) = N'';
+
+SELECT @sql_auditoria = @sql_auditoria + N'
+ALTER TABLE ' + QUOTENAME(s.name) + N'.' + QUOTENAME(t.name)
+	+ N' ADD CONSTRAINT ' + QUOTENAME(N'FK_' + t.name + N'_' + c.name)
+	+ N' FOREIGN KEY (' + QUOTENAME(c.name) + N') REFERENCES [dbo].[gen_usuario]([usu_id]);'
+FROM sys.columns c
+INNER JOIN sys.tables t ON t.object_id = c.object_id
+INNER JOIN sys.schemas s ON s.schema_id = t.schema_id
+WHERE s.name = N'dbo'
+  AND c.name IN (N'InsUsuario', N'UpdUsuario')
+  AND NOT EXISTS (
+		SELECT 1
+		FROM sys.foreign_key_columns fkc
+		WHERE fkc.parent_object_id = c.object_id
+		  AND fkc.parent_column_id = c.column_id
+	  );
+
+EXEC sp_executesql @sql_auditoria;
+GO

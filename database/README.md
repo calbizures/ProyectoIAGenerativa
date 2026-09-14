@@ -71,6 +71,56 @@ parámetro de tabla (TVP) para el detalle también se mantuvieron.
   quedaba ya cubierta por un `UNIQUE`/`PRIMARY KEY` — el script original
   prácticamente no tenía más índices que el de la llave primaria.
 
+## Auditoría por fila (`InsUsuario` / `InsFechaHora` / `UpdUsuario` / `UpdFechaHora`)
+
+Todas las tablas de `02_tablas_generales_seguridad.sql`, `03_tablas_inventario.sql`,
+`04_tablas_pos_bancos.sql` y `05_tablas_contabilidad.sql` — 50 en total —
+agregan cuatro columnas al final:
+
+| Columna | Tipo | Se llena... |
+|---|---|---|
+| `InsUsuario` | `INT NULL` | con el usuario que creó la fila |
+| `InsFechaHora` | `DATETIME2(0) NOT NULL DEFAULT (SYSDATETIME())` | sola, al insertar |
+| `UpdUsuario` | `INT NULL` | con el usuario de la última actualización |
+| `UpdFechaHora` | `DATETIME2(0) NULL` | con la fecha/hora de la última actualización |
+
+Se dejan en **PascalCase**, a propósito distinto de la convención
+`<prefijo>_columna` del resto del modelo, para que se identifiquen de un
+vistazo como metadatos de auditoría y no como columnas de negocio.
+
+Decisiones de diseño:
+
+- `InsUsuario`/`UpdUsuario` son `INT NULL` con llave foránea hacia
+  `gen_usuario([usu_id])`. Se generan al final de `06_llaves_foraneas.sql`
+  con un bloque de SQL dinámico que recorre `sys.columns`/`sys.tables` (en
+  vez de escribir a mano más de cien `ALTER TABLE`), así que ese script
+  ahora también debe volver a correrse.
+- Se dejan nulas — a diferencia de `InsFechaHora`, que sí es obligatoria —
+  porque hoy los procedimientos de `10_procedimientos_crud.sql` y
+  `11_procedimientos_procesos.sql` **no** reciben todavía el usuario que
+  ejecuta cada operación. Con columnas nulas, ningún `INSERT`/`UPDATE`
+  existente (CRUD, procesos de negocio, `12_datos_sinteticos.sql`) se rompe;
+  simplemente esas columnas quedan en `NULL` hasta que se conecten.
+- Única excepción: `gen_auditoria` no las lleva, porque esa tabla **es** la
+  bitácora de auditoría (ya tiene sus propias columnas `usu_id`/`aud_fecha`
+  equivalentes) y sus filas nunca se actualizan, solo se insertan.
+- En `inv_documento_enc` y `cont_asiento_enc`, que ya traían columnas
+  equivalentes (`usu_id_creacion`/`enc_fecha_grabado` y
+  `usu_id`/`asi_fecha_creacion` respectivamente), las nuevas columnas se
+  agregan de todas formas para que las 50 tablas sean consistentes; las
+  columnas anteriores se conservan por compatibilidad.
+- No se agregaron índices sobre `InsUsuario`/`UpdUsuario` (ver
+  `07_indices_restricciones.sql`): son columnas de "quién", poco usadas para
+  filtrar/unir en el uso normal del ERP, y sumar ~100 índices más solo por
+  simetría habría sido puro costo de escritura sin beneficio real.
+
+**Pendiente si se quiere aprovechar esto de verdad:** hoy nada llena
+`InsUsuario`/`UpdUsuario` automáticamente. El siguiente paso natural es que
+los procedimientos `sp_<entidad>_insertar`/`sp_<entidad>_actualizar` reciban
+un `@usu_id` y lo graben ahí (y en `UpdFechaHora` en el caso de actualizar).
+No se hizo en esta pasada porque no fue lo que se pidió — se pidió
+regenerar los scripts que crean las tablas — pero es la continuación lógica.
+
 ## Errores corregidos (no eran solo de estilo)
 
 1. **`UPDATE` sin `WHERE`.** `spr_guarda_compra` y `spr_guarda_factura`

@@ -12,6 +12,12 @@
 	detalle de un asiento SIEMPRE debe insertarse en una sola sentencia
 	(un solo INSERT con todas las líneas, tal como hacen los procedimientos
 	de negocio) y no línea por línea.
+
+	Todas las tablas agregan además [InsUsuario]/[InsFechaHora]/[UpdUsuario]/
+	[UpdFechaHora] (ver el comentario de cabecera de 02_tablas_generales_seguridad.sql
+	para la convención completa). En [cont_asiento_enc] esto es adicional a
+	[usu_id]/[asi_fecha_creacion], que ya existían con el mismo fin y se
+	conservan por compatibilidad.
 */
 USE [erp_db];
 GO
@@ -26,6 +32,10 @@ CREATE TABLE [dbo].[cont_cuenta_contable](
 	[cta_id_padre]			INT				NULL,
 	[cta_nivel]				INT				NOT NULL DEFAULT (1),
 	[cta_estado]			CHAR(1)			NOT NULL DEFAULT ('A'),
+	[InsUsuario]			INT				NULL,
+	[InsFechaHora]			DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]			INT				NULL,
+	[UpdFechaHora]			DATETIME2(0)	NULL,
 	CONSTRAINT [PK_cont_cuenta_contable] PRIMARY KEY CLUSTERED ([cta_id] ASC),
 	CONSTRAINT [UQ_cont_cuenta_contable_codigo] UNIQUE ([cta_codigo]),
 	CONSTRAINT [CK_cont_cuenta_contable_tipo] CHECK ([cta_tipo] IN ('A','P','K','I','G')),
@@ -40,10 +50,14 @@ ALTER TABLE [dbo].[cont_cuenta_contable]
 GO
 
 CREATE TABLE [dbo].[cont_periodo_contable](
-	[pdo_id]		INT		IDENTITY(1,1)	NOT NULL,
-	[pdo_anio]		INT		NOT NULL,
-	[pdo_mes]		INT		NOT NULL,
-	[pdo_estado]	CHAR(1)	NOT NULL DEFAULT ('A'),	-- A=Abierto, C=Cerrado
+	[pdo_id]		INT				IDENTITY(1,1)	NOT NULL,
+	[pdo_anio]		INT				NOT NULL,
+	[pdo_mes]		INT				NOT NULL,
+	[pdo_estado]	CHAR(1)			NOT NULL DEFAULT ('A'),	-- A=Abierto, C=Cerrado
+	[InsUsuario]	INT				NULL,
+	[InsFechaHora]	DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]	INT				NULL,
+	[UpdFechaHora]	DATETIME2(0)	NULL,
 	CONSTRAINT [PK_cont_periodo_contable] PRIMARY KEY CLUSTERED ([pdo_id] ASC),
 	CONSTRAINT [UQ_cont_periodo_contable] UNIQUE ([pdo_anio], [pdo_mes]),
 	CONSTRAINT [CK_cont_periodo_contable_mes] CHECK ([pdo_mes] BETWEEN 1 AND 12),
@@ -61,6 +75,10 @@ CREATE TABLE [dbo].[cont_asiento_enc](
 	[usu_id]				INT				NULL,
 	[asi_fecha_creacion]	DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
 	[asi_estado]			CHAR(1)			NOT NULL DEFAULT ('A'),	-- A=Activo, N=Anulado
+	[InsUsuario]			INT				NULL,
+	[InsFechaHora]			DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]			INT				NULL,
+	[UpdFechaHora]			DATETIME2(0)	NULL,
 	CONSTRAINT [PK_cont_asiento_enc] PRIMARY KEY CLUSTERED ([asi_id] ASC),
 	CONSTRAINT [CK_cont_asiento_enc_origen] CHECK ([asi_origen] IN ('MANUAL','VENTA','COMPRA','PAGO_CLIENTE','PAGO_PROVEEDOR')),
 	CONSTRAINT [CK_cont_asiento_enc_estado] CHECK ([asi_estado] IN ('A','N'))
@@ -74,6 +92,10 @@ CREATE TABLE [dbo].[cont_asiento_det](
 	[asd_debe]			DECIMAL(14, 2)	NOT NULL DEFAULT (0),
 	[asd_haber]			DECIMAL(14, 2)	NOT NULL DEFAULT (0),
 	[asd_descripcion]	VARCHAR(256)	NULL,
+	[InsUsuario]		INT				NULL,
+	[InsFechaHora]		DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]		INT				NULL,
+	[UpdFechaHora]		DATETIME2(0)	NULL,
 	CONSTRAINT [PK_cont_asiento_det] PRIMARY KEY CLUSTERED ([asd_id] ASC),
 	CONSTRAINT [CK_cont_asiento_det_signos] CHECK (
 		([asd_debe] > 0 AND [asd_haber] = 0) OR
