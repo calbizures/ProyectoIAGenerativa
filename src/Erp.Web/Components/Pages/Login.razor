@@ -1,4 +1,5 @@
 @page "/login"
+@layout Layout.LoginLayout
 @* Deliberadamente sin @rendermode: esta página se queda en SSR estático para
    poder llamar HttpContext.SignInAsync durante el POST del formulario. Un
    componente interactivo (circuito Blazor Server) ya tiene la respuesta en
@@ -13,31 +14,41 @@
 
 <PageTitle>Iniciar sesión</PageTitle>
 
-<div class="login-contenedor">
-    <h1>ERP - Iniciar sesión</h1>
+<div class="login-pagina">
+    <div class="login-marca">
+        <img src="images/logo-si.svg" alt="Servicios Informáticos Integrados" class="login-logo" />
+        <p class="login-eslogan">Plataforma ERP para inventario, ventas, bancos y contabilidad.</p>
+    </div>
 
-    @if (mensajeError is not null)
-    {
-        <p class="login-error">@mensajeError</p>
-    }
+    <div class="login-panel-formulario">
+        <div class="login-card">
+            <h1>Iniciar sesión</h1>
+            <p class="login-subtitulo">Ingresa tus credenciales para continuar</p>
 
-    <EditForm Model="modelo" FormName="login" OnValidSubmit="IniciarSesionAsync" method="post">
-        <DataAnnotationsValidator />
+            @if (mensajeError is not null)
+            {
+                <p class="login-error">@mensajeError</p>
+            }
 
-        <div class="login-campo">
-            <label for="usuario">Usuario</label>
-            <InputText id="usuario" @bind-Value="modelo.Usuario" autofocus />
-            <ValidationMessage For="() => modelo.Usuario" />
+            <EditForm Model="modelo" FormName="login" OnValidSubmit="IniciarSesionAsync" method="post">
+                <DataAnnotationsValidator />
+
+                <div class="login-campo">
+                    <label for="usuario">Usuario</label>
+                    <InputText id="usuario" @bind-Value="modelo.Usuario" autofocus placeholder="Tu usuario" />
+                    <ValidationMessage For="() => modelo.Usuario" />
+                </div>
+
+                <div class="login-campo">
+                    <label for="password">Contraseña</label>
+                    <InputText id="password" type="password" @bind-Value="modelo.Password" placeholder="••••••••" />
+                    <ValidationMessage For="() => modelo.Password" />
+                </div>
+
+                <button type="submit" class="login-boton">Ingresar</button>
+            </EditForm>
         </div>
-
-        <div class="login-campo">
-            <label for="password">Contraseña</label>
-            <InputText id="password" type="password" @bind-Value="modelo.Password" />
-            <ValidationMessage For="() => modelo.Password" />
-        </div>
-
-        <button type="submit">Ingresar</button>
-    </EditForm>
+    </div>
 </div>
 
 @code {

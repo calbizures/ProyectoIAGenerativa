@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 430" width="460" height="430">
+  <defs>
+    <linearGradient id="siTileGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1b4c"/>
+      <stop offset="0.55" stop-color="#124a9c"/>
+      <stop offset="1" stop-color="#1e88e5"/>
+    </linearGradient>
+    <linearGradient id="siSwooshGrad" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#1e88e5"/>
+      <stop offset="1" stop-color="#7ee0fb"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="110" y="20" width="240" height="240" rx="34" fill="url(#siTileGrad)"/>
+
+  <g transform="translate(110,20)">
+    <text x="72" y="172" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="150" fill="#f4faff">S</text>
+    <rect x="152" y="52" width="30" height="140" rx="6" fill="#f4faff"/>
+
+    <rect x="196" y="30" width="16" height="16" fill="#7ee0fb"/>
+    <rect x="176" y="50" width="13" height="13" fill="#4fc3f7"/>
+    <rect x="210" y="52" width="11" height="11" fill="#29b6f6"/>
+
+    <path d="M6,182 C64,214 140,206 176,158 C196,131 206,100 222,66 L222,58 C204,96 182,132 152,158 C112,196 50,202 6,172 Z"
+          fill="url(#siSwooshGrad)"/>
+  </g>
+
+  <text x="230" y="330" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif" font-weight="800" font-size="50" letter-spacing="3" fill="#0d1b4c">SERVICIOS</text>
+
+  <g>
+    <line x1="18" y1="378" x2="62" y2="378" stroke="#29b6f6" stroke-width="2"/>
+    <text x="230" y="384" text-anchor="middle" font-family="'Segoe UI', Arial, Helvetica, sans-serif" font-weight="600" font-size="18" letter-spacing="2.5" fill="#1e88e5">INFORMÁTICOS INTEGRADOS</text>
+    <line x1="398" y1="378" x2="442" y2="378" stroke="#29b6f6" stroke-width="2"/>
+  </g>
+</svg>
