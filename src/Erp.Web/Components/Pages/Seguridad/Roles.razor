@@ -1,0 +1,225 @@
+@page "/roles"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:SEGURIDAD_USUARIO_ADMIN")]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.Security
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IRolRepository RolRepository
+@inject IPermisoRepository PermisoRepository
+
+<PageTitle>Roles</PageTitle>
+
+<h1>Roles</h1>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+}
+
+<div class="barra-filtros">
+    <BotonIcono Icono="plus" Tooltip="Nuevo rol" Etiqueta="Nuevo rol" Variante="primario" OnClick="() => mostrarNuevo = true" />
+</div>
+
+@if (mostrarNuevo)
+{
+    <EditForm Model="nuevoRol" OnValidSubmit="CrearRolAsync" class="panel-formulario">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="campo"><label>Código</label><InputText @bind-Value="nuevoRol.Codigo" /></div>
+        <div class="campo"><label>Nombre</label><InputText @bind-Value="nuevoRol.Nombre" /></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+        </div>
+    </EditForm>
+}
+
+<table class="tabla-datos">
+    <thead>
+        <tr><th>Código</th><th>Nombre</th><th>Estado</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var rol in roles)
+        {
+            <tr class="@(seleccionado?.RolId == rol.RolId ? "fila-seleccionada" : "")">
+                <td>@rol.RolCodigo</td>
+                <td>@rol.RolNombre</td>
+                <td>@(rol.RolEstado == "A" ? "Activo" : "Inactivo")</td>
+                <td>
+                    <div class="acciones-fila">
+                        <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(rol)" />
+                        @if (rol.RolEstado == "A")
+                        {
+                            <BotonIcono Icono="trash-2" Tooltip="Desactivar rol" Variante="peligro" OnClick="() => DesactivarAsync(rol)" />
+                        }
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (seleccionado is not null)
+{
+    <div class="panel-detalle">
+        <h2>Detalle: @seleccionado.RolNombre</h2>
+
+        <EditForm Model="edicionRol" OnValidSubmit="GuardarEdicionAsync">
+            <DataAnnotationsValidator />
+            <div class="campo"><label>Nombre</label><InputText @bind-Value="edicionRol.Nombre" /></div>
+            <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+        </EditForm>
+
+        <h3>Permisos asignados</h3>
+        <table class="tabla-datos">
+            <thead><tr><th>Módulo</th><th>Permiso</th><th>Asignado</th></tr></thead>
+            <tbody>
+                @foreach (var permiso in todosLosPermisos)
+                {
+                    var asignado = permisosAsignadosId.Contains(permiso.PerId);
+                    <tr>
+                        <td>@permiso.PerModulo</td>
+                        <td>@permiso.PerCodigo — @permiso.PerDescripcion</td>
+                        <td>
+                            <input type="checkbox" checked="@asignado"
+                                   @onchange="e => CambiarPermisoAsync(permiso.PerId, (bool)(e.Value ?? false))" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<Rol> roles = Array.Empty<Rol>();
+    private IReadOnlyList<Permiso> todosLosPermisos = Array.Empty<Permiso>();
+    private IReadOnlyList<int> permisosAsignadosId = Array.Empty<int>();
+    private Rol? seleccionado;
+
+    private bool mostrarNuevo;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private readonly NuevoRolModelo nuevoRol = new();
+    private readonly EdicionRolModelo edicionRol = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        todosLosPermisos = await PermisoRepository.ConsultarAsync(modulo: null, estado: "A");
+        await BuscarAsync();
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        var estado = await AuthenticationStateTask;
+        return estado.User.ObtenerUsuId();
+    }
+
+    private async Task BuscarAsync()
+    {
+        roles = await RolRepository.ConsultarAsync(estado: "A");
+    }
+
+    private async Task CrearRolAsync()
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await RolRepository.InsertarAsync(nuevoRol.Codigo, nuevoRol.Nombre, usuId);
+            mostrarNuevo = false;
+            mensaje = "Rol creado correctamente.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task SeleccionarAsync(Rol rol)
+    {
+        seleccionado = rol;
+        edicionRol.Nombre = rol.RolNombre;
+        mensaje = null;
+        permisosAsignadosId = await RolRepository.ConsultarPermisosAsignadosAsync(rol.RolId);
+    }
+
+    private async Task GuardarEdicionAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await RolRepository.ActualizarAsync(seleccionado.RolId, edicionRol.Nombre, usuId);
+            mensaje = "Cambios guardados.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task DesactivarAsync(Rol rol)
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await RolRepository.EliminarAsync(rol.RolId, usuId);
+            mensaje = "Rol desactivado.";
+            esMensajeError = false;
+            if (seleccionado?.RolId == rol.RolId) seleccionado = null;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task CambiarPermisoAsync(int perId, bool asignar)
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            if (asignar)
+            {
+                var usuId = await ObtenerUsuIdActualAsync();
+                await RolRepository.AsignarPermisoAsync(seleccionado.RolId, perId, usuId);
+            }
+            else
+            {
+                await RolRepository.RevocarPermisoAsync(seleccionado.RolId, perId);
+            }
+
+            permisosAsignadosId = await RolRepository.ConsultarPermisosAsignadosAsync(seleccionado.RolId);
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private sealed class NuevoRolModelo
+    {
+        [Required] public string Codigo { get; set; } = "";
+        [Required] public string Nombre { get; set; } = "";
+    }
+
+    private sealed class EdicionRolModelo
+    {
+        [Required] public string Nombre { get; set; } = "";
+    }
+}

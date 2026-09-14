@@ -1,0 +1,108 @@
+@page "/permisos"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:SEGURIDAD_USUARIO_ADMIN")]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.Security
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IPermisoRepository PermisoRepository
+
+<PageTitle>Permisos</PageTitle>
+
+<h1>Permisos</h1>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+}
+
+<div class="barra-filtros">
+    <input placeholder="Filtrar por módulo" @bind="filtroModulo" />
+    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+    <BotonIcono Icono="plus" Tooltip="Nuevo permiso" Etiqueta="Nuevo permiso" Variante="primario" OnClick="() => mostrarNuevo = true" />
+</div>
+
+@if (mostrarNuevo)
+{
+    <EditForm Model="nuevoPermiso" OnValidSubmit="CrearPermisoAsync" class="panel-formulario">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="campo"><label>Módulo</label><InputText @bind-Value="nuevoPermiso.Modulo" /></div>
+        <div class="campo"><label>Código</label><InputText @bind-Value="nuevoPermiso.Codigo" /></div>
+        <div class="campo"><label>Descripción</label><InputText @bind-Value="nuevoPermiso.Descripcion" /></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+        </div>
+    </EditForm>
+}
+
+<table class="tabla-datos">
+    <thead>
+        <tr><th>Módulo</th><th>Código</th><th>Descripción</th><th>Estado</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var permiso in permisos)
+        {
+            <tr>
+                <td>@permiso.PerModulo</td>
+                <td>@permiso.PerCodigo</td>
+                <td>@permiso.PerDescripcion</td>
+                <td>@(permiso.PerEstado == "A" ? "Activo" : "Inactivo")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<Permiso> permisos = Array.Empty<Permiso>();
+    private string filtroModulo = "";
+    private bool mostrarNuevo;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private readonly NuevoPermisoModelo nuevoPermiso = new();
+
+    protected override async Task OnInitializedAsync() => await BuscarAsync();
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        var estado = await AuthenticationStateTask;
+        return estado.User.ObtenerUsuId();
+    }
+
+    private async Task BuscarAsync()
+    {
+        permisos = await PermisoRepository.ConsultarAsync(
+            string.IsNullOrWhiteSpace(filtroModulo) ? null : filtroModulo, estado: null);
+    }
+
+    private async Task CrearPermisoAsync()
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await PermisoRepository.InsertarAsync(nuevoPermiso.Modulo, nuevoPermiso.Codigo, nuevoPermiso.Descripcion, usuId);
+            mostrarNuevo = false;
+            mensaje = "Permiso creado correctamente.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private sealed class NuevoPermisoModelo
+    {
+        [Required] public string Modulo { get; set; } = "";
+        [Required] public string Codigo { get; set; } = "";
+        public string? Descripcion { get; set; }
+    }
+}
