@@ -128,12 +128,23 @@ Decisiones de diseño:
   `InsUsuario`/`InsFechaHora` al insertar en las tablas de asignación;
   los procedimientos `_revocar_*` (`DELETE`) no aplican, porque la fila
   desaparece.
-- `11_procedimientos_procesos.sql` (crear factura/compra, pagos, cheques,
-  anular documento, asientos automáticos) **todavía no** está conectado:
-  esos procedimientos siguen sin recibir/grabar `InsUsuario`/`UpdUsuario`
-  en las tablas que tocan (`inv_documento_enc`, `inv_documento_det`,
-  `pos_pago_enc`, `bco_cheque_emitido_enc`, `cont_asiento_enc`, etc.). Es la
-  continuación lógica si se quiere trazabilidad completa también ahí.
+- `11_procedimientos_procesos.sql` también está conectado: `@usu_id` se
+  graba en todas las filas que tocan `sp_ventas_crear_factura`,
+  `sp_compras_crear_documento` (encabezado y detalle del documento, el plan
+  de cuotas que generan, el ajuste de existencias y el asiento contable
+  automático), `sp_documento_anular` (reversa de existencias y anulación del
+  asiento), `sp_pos_registrar_pago_cuota` (el pago y la cuota abonada),
+  `sp_bancos_emitir_cheque_pago_proveedor` (el cheque y la cuota pagada),
+  `sp_pos_caja_abrir`/`sp_pos_caja_cerrar` y `sp_seguridad_login` (que se
+  graba a sí mismo como `UpdUsuario`, tanto en un login exitoso como en uno
+  fallido). Los procedimientos internos que antes no necesitaban saber quién
+  ejecuta la acción (`sp_inventario_ajustar_existencia_documento`,
+  `sp_inventario_recalcular_existencias_completo`,
+  `sp_pos_generar_plan_pagos_cliente`, `sp_inv_generar_plan_pagos_proveedor`,
+  `sp_contabilidad_obtener_o_crear_periodo`) ahora reciben `@usu_id` también,
+  para poder pasarlo hacia abajo en la cadena de llamadas.
+  `12_datos_sinteticos.sql` no necesitó cambios: todos los parámetros nuevos
+  son opcionales y las llamadas existentes ya usaban argumentos con nombre.
 
 ## Errores corregidos (no eran solo de estilo)
 
