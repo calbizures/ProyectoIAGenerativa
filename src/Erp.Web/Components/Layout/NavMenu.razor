@@ -1,18 +1,40 @@
-<div class="nav-menu">
-    <NavLink href="" Match="NavLinkMatch.All">Inicio</NavLink>
+<aside class="sidebar">
+    <div class="sidebar-marca">
+        <img src="images/logo-si-icono.svg" alt="SI" class="sidebar-logo" />
+        <span class="sidebar-marca-texto">ERP · Servicios Informáticos Integrados</span>
+    </div>
+
+    <nav class="sidebar-nav">
+        <NavLink href="" Match="NavLinkMatch.All" class="sidebar-link">
+            <span class="sidebar-icono">🏠</span>
+            <span class="sidebar-titulo">Inicio</span>
+        </NavLink>
+
+        <AuthorizeView Policy="Permiso:SEGURIDAD_USUARIO_ADMIN">
+            <Authorized>
+                <SidebarNodo Titulo="Seguridad" Icono="🔐" ExpandidoInicial="true">
+                    <NavLink href="usuarios" class="sidebar-hijo-link">Usuarios</NavLink>
+                    <NavLink href="roles" class="sidebar-hijo-link">Roles</NavLink>
+                    <NavLink href="permisos" class="sidebar-hijo-link">Permisos</NavLink>
+                </SidebarNodo>
+            </Authorized>
+        </AuthorizeView>
+
+        <SidebarNodo Titulo="Inventario" Icono="📦" Disponible="false" />
+        <SidebarNodo Titulo="Ventas / POS" Icono="🧾" Disponible="false" />
+        <SidebarNodo Titulo="Compras" Icono="🛒" Disponible="false" />
+        <SidebarNodo Titulo="Bancos" Icono="🏦" Disponible="false" />
+        <SidebarNodo Titulo="Contabilidad" Icono="📊" Disponible="false" />
+    </nav>
 
     <AuthorizeView>
         <Authorized>
-            <nav class="nav-menu-seguridad">
-                <NavLink href="usuarios">Usuarios</NavLink>
-                <NavLink href="roles">Roles</NavLink>
-                <NavLink href="permisos">Permisos</NavLink>
-            </nav>
-
-            <span class="nav-menu-usuario">@context.User.Identity?.Name</span>
-            <form method="post" action="logout">
-                <button type="submit">Cerrar sesión</button>
-            </form>
+            <div class="sidebar-usuario">
+                <span class="sidebar-usuario-nombre">@context.User.Identity?.Name</span>
+                <form method="post" action="logout">
+                    <button type="submit" class="sidebar-boton-salir">Cerrar sesión</button>
+                </form>
+            </div>
         </Authorized>
     </AuthorizeView>
-</div>
+</aside>

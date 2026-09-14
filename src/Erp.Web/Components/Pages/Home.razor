@@ -1,7 +1,75 @@
-﻿@page "/"
+@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Inicio</PageTitle>
 
-<h1>Hello, world!</h1>
+<section class="inicio-hero">
+    <div class="inicio-hero-texto">
+        <p class="inicio-hero-etiqueta">SISTEMA ERP</p>
+        <h1>Bienvenido, @nombreUsuario</h1>
+        <p class="inicio-hero-descripcion">
+            Plataforma integral para inventario, ventas, compras, bancos y contabilidad
+            de Servicios Informáticos Integrados.
+        </p>
+    </div>
+    <img src="images/hero-erp.svg" alt="" class="inicio-hero-ilustracion" />
+</section>
 
-Welcome to your new app.
+<section class="inicio-modulos">
+    <h2>Módulos</h2>
+    <div class="modulos-grid">
+        <AuthorizeView Policy="Permiso:SEGURIDAD_USUARIO_ADMIN">
+            <Authorized>
+                <a href="usuarios" class="modulo-card">
+                    <span class="modulo-icono">🔐</span>
+                    <span class="modulo-titulo">Seguridad</span>
+                    <span class="modulo-desc">Usuarios, roles y permisos</span>
+                </a>
+            </Authorized>
+        </AuthorizeView>
+
+        <div class="modulo-card modulo-card-proximamente">
+            <span class="modulo-icono">📦</span>
+            <span class="modulo-titulo">Inventario</span>
+            <span class="modulo-badge">Próximamente</span>
+        </div>
+
+        <div class="modulo-card modulo-card-proximamente">
+            <span class="modulo-icono">🧾</span>
+            <span class="modulo-titulo">Ventas / POS</span>
+            <span class="modulo-badge">Próximamente</span>
+        </div>
+
+        <div class="modulo-card modulo-card-proximamente">
+            <span class="modulo-icono">🛒</span>
+            <span class="modulo-titulo">Compras</span>
+            <span class="modulo-badge">Próximamente</span>
+        </div>
+
+        <div class="modulo-card modulo-card-proximamente">
+            <span class="modulo-icono">🏦</span>
+            <span class="modulo-titulo">Bancos</span>
+            <span class="modulo-badge">Próximamente</span>
+        </div>
+
+        <div class="modulo-card modulo-card-proximamente">
+            <span class="modulo-icono">📊</span>
+            <span class="modulo-titulo">Contabilidad</span>
+            <span class="modulo-badge">Próximamente</span>
+        </div>
+    </div>
+</section>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private string nombreUsuario = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationStateTask is null) return;
+        var estado = await AuthenticationStateTask;
+        nombreUsuario = estado.User.Identity?.Name ?? "";
+    }
+}

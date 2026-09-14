@@ -1,0 +1,39 @@
+<div class="sidebar-nodo">
+    <button type="button" class="sidebar-nodo-header @(Disponible ? "" : "sidebar-nodo-inactivo")" @onclick="Alternar">
+        <span class="sidebar-icono">@Icono</span>
+        <span class="sidebar-titulo">@Titulo</span>
+        @if (!Disponible)
+        {
+            <span class="sidebar-badge">Próx.</span>
+        }
+        <span class="sidebar-chevron @(expandido ? "sidebar-chevron-abierto" : "")">›</span>
+    </button>
+
+    @if (expandido)
+    {
+        <div class="sidebar-nodo-hijos">
+            @if (Disponible)
+            {
+                @ChildContent
+            }
+            else
+            {
+                <span class="sidebar-proximamente">Módulo en construcción</span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Titulo { get; set; } = "";
+    [Parameter] public string Icono { get; set; } = "";
+    [Parameter] public bool Disponible { get; set; } = true;
+    [Parameter] public bool ExpandidoInicial { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool expandido;
+
+    protected override void OnInitialized() => expandido = ExpandidoInicial;
+
+    private void Alternar() => expandido = !expandido;
+}
