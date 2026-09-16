@@ -1,0 +1,221 @@
+@page "/proveedores"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:COMPRAS_DOCUMENTO_CREAR")]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.Compras
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IProveedorRepository ProveedorRepository
+
+<PageTitle>Proveedores</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Proveedores</h1>
+    <p>Mantenimiento de proveedores.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+}
+
+<div class="barra-herramientas">
+    <input placeholder="Buscar por código, nombre o NIT" @bind="textoBusqueda" />
+    <select @bind="filtroEstado">
+        <option value="A">Activos</option>
+        <option value="I">Inactivos</option>
+        <option value="">Todos</option>
+    </select>
+    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+    <span class="barra-herramientas-separador"></span>
+    <BotonIcono Icono="plus" Tooltip="Nuevo proveedor" Etiqueta="Nuevo proveedor" Variante="primario" OnClick="MostrarFormularioNuevo" />
+</div>
+
+@if (mostrarNuevo)
+{
+    <EditForm Model="nuevoProveedor" OnValidSubmit="CrearProveedorAsync" class="panel-formulario">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="campo"><label>Código</label><InputText @bind-Value="nuevoProveedor.Codigo" /></div>
+        <div class="campo"><label>Nombre comercial</label><InputText @bind-Value="nuevoProveedor.NombreComercial" /></div>
+        <div class="campo"><label>NIT</label><InputText @bind-Value="nuevoProveedor.Nit" /></div>
+        <div class="campo"><label>Contacto</label><InputText @bind-Value="nuevoProveedor.Contacto" /></div>
+        <div class="campo"><label>Teléfono oficina</label><InputText @bind-Value="nuevoProveedor.TelefonoOficina" /></div>
+        <div class="campo"><label>Dirección</label><InputText @bind-Value="nuevoProveedor.Direccion" /></div>
+        <div class="campo"><label>Email empresa</label><InputText @bind-Value="nuevoProveedor.EmailEmpresa" /></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+        </div>
+    </EditForm>
+}
+
+<table class="tabla-datos">
+    <thead>
+        <tr><th>Código</th><th>Nombre comercial</th><th>NIT</th><th>Contacto</th><th>Estado</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var p in proveedores)
+        {
+            <tr class="@(seleccionado?.PrvId == p.PrvId ? "fila-seleccionada" : "")">
+                <td>@p.PrvCodigo</td>
+                <td>@p.PrvNombreComercial</td>
+                <td>@p.PrvNit</td>
+                <td>@p.PrvContacto</td>
+                <td>@(p.PrvEstado == "A" ? "Activo" : "Inactivo")</td>
+                <td>
+                    <div class="acciones-fila">
+                        <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(p)" />
+                        @if (p.PrvEstado == "A")
+                        {
+                            <BotonIcono Icono="trash-2" Tooltip="Desactivar proveedor" Variante="peligro" OnClick="() => DesactivarAsync(p)" />
+                        }
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (seleccionado is not null)
+{
+    <div class="panel-detalle">
+        <h2>Detalle: @seleccionado.PrvNombreComercial</h2>
+        <EditForm Model="edicionProveedor" OnValidSubmit="GuardarEdicionAsync">
+            <DataAnnotationsValidator />
+            <div class="campo"><label>Nombre comercial</label><InputText @bind-Value="edicionProveedor.NombreComercial" /></div>
+            <div class="campo"><label>NIT</label><InputText @bind-Value="edicionProveedor.Nit" /></div>
+            <div class="campo"><label>Contacto</label><InputText @bind-Value="edicionProveedor.Contacto" /></div>
+            <div class="campo"><label>Teléfono oficina</label><InputText @bind-Value="edicionProveedor.TelefonoOficina" /></div>
+            <div class="campo"><label>Dirección</label><InputText @bind-Value="edicionProveedor.Direccion" /></div>
+            <div class="campo"><label>Email empresa</label><InputText @bind-Value="edicionProveedor.EmailEmpresa" /></div>
+            <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+        </EditForm>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<Proveedor> proveedores = Array.Empty<Proveedor>();
+    private Proveedor? seleccionado;
+
+    private string textoBusqueda = "";
+    private string filtroEstado = "A";
+    private bool mostrarNuevo;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private readonly ProveedorModelo nuevoProveedor = new();
+    private readonly ProveedorModelo edicionProveedor = new();
+
+    protected override async Task OnInitializedAsync() => await BuscarAsync();
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        var estado = await AuthenticationStateTask;
+        return estado.User.ObtenerUsuId();
+    }
+
+    private async Task BuscarAsync()
+    {
+        proveedores = await ProveedorRepository.ConsultarAsync(
+            string.IsNullOrWhiteSpace(textoBusqueda) ? null : textoBusqueda,
+            string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado);
+    }
+
+    private void MostrarFormularioNuevo()
+    {
+        mensaje = null;
+        nuevoProveedor.Codigo = "";
+        nuevoProveedor.NombreComercial = "";
+        nuevoProveedor.Nit = null;
+        nuevoProveedor.Contacto = null;
+        nuevoProveedor.TelefonoOficina = null;
+        nuevoProveedor.Direccion = null;
+        nuevoProveedor.EmailEmpresa = null;
+        mostrarNuevo = true;
+    }
+
+    private async Task CrearProveedorAsync()
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ProveedorRepository.InsertarAsync(
+                nuevoProveedor.Codigo, nuevoProveedor.NombreComercial, nuevoProveedor.Nit, nuevoProveedor.Contacto,
+                nuevoProveedor.Direccion, nuevoProveedor.TelefonoOficina, nuevoProveedor.EmailEmpresa, usuId);
+            mostrarNuevo = false;
+            mensaje = "Proveedor creado correctamente.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private void SeleccionarAsync(Proveedor proveedor)
+    {
+        seleccionado = proveedor;
+        edicionProveedor.NombreComercial = proveedor.PrvNombreComercial;
+        edicionProveedor.Nit = proveedor.PrvNit;
+        edicionProveedor.Contacto = proveedor.PrvContacto;
+        edicionProveedor.TelefonoOficina = proveedor.PrvTelefonoOficina;
+        edicionProveedor.EmailEmpresa = proveedor.PrvEmailEmpresa;
+        mensaje = null;
+    }
+
+    private async Task GuardarEdicionAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ProveedorRepository.ActualizarAsync(
+                seleccionado.PrvId, edicionProveedor.NombreComercial, edicionProveedor.Nit, edicionProveedor.Contacto,
+                edicionProveedor.Direccion, edicionProveedor.TelefonoOficina, edicionProveedor.EmailEmpresa, usuId);
+            mensaje = "Cambios guardados.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task DesactivarAsync(Proveedor proveedor)
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ProveedorRepository.EliminarAsync(proveedor.PrvId, usuId);
+            mensaje = "Proveedor desactivado.";
+            esMensajeError = false;
+            if (seleccionado?.PrvId == proveedor.PrvId) seleccionado = null;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private sealed class ProveedorModelo
+    {
+        [Required] public string Codigo { get; set; } = "";
+        [Required] public string NombreComercial { get; set; } = "";
+        public string? Nit { get; set; }
+        public string? Contacto { get; set; }
+        public string? TelefonoOficina { get; set; }
+        public string? Direccion { get; set; }
+        public string? EmailEmpresa { get; set; }
+    }
+}

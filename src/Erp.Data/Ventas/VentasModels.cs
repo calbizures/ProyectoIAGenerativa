@@ -21,6 +21,9 @@ public sealed class Vendedor
 	public string PveCodigo { get; set; } = "";
 	public string PveNombres { get; set; } = "";
 	public string? PveApellidos { get; set; }
+	public DateTime? PveFechaIngreso { get; set; }
+	public decimal PvePorcComision { get; set; }
+	public string PveEstado { get; set; } = "A";
 }
 
 public sealed class Moneda

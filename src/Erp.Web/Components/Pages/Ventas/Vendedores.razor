@@ -1,0 +1,204 @@
+@page "/vendedores"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR")]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.Ventas
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IVendedorRepository VendedorRepository
+
+<PageTitle>Vendedores</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Vendedores</h1>
+    <p>Mantenimiento de vendedores.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+}
+
+<div class="barra-herramientas">
+    <select @bind="filtroEstado">
+        <option value="A">Activos</option>
+        <option value="I">Inactivos</option>
+        <option value="">Todos</option>
+    </select>
+    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+    <span class="barra-herramientas-separador"></span>
+    <BotonIcono Icono="plus" Tooltip="Nuevo vendedor" Etiqueta="Nuevo vendedor" Variante="primario" OnClick="MostrarFormularioNuevo" />
+</div>
+
+@if (mostrarNuevo)
+{
+    <EditForm Model="nuevoVendedor" OnValidSubmit="CrearVendedorAsync" class="panel-formulario">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="campo"><label>Código</label><InputText @bind-Value="nuevoVendedor.Codigo" /></div>
+        <div class="campo"><label>Nombres</label><InputText @bind-Value="nuevoVendedor.Nombres" /></div>
+        <div class="campo"><label>Apellidos</label><InputText @bind-Value="nuevoVendedor.Apellidos" /></div>
+        <div class="campo"><label>Fecha de ingreso</label><InputDate @bind-Value="nuevoVendedor.FechaIngreso" /></div>
+        <div class="campo"><label>% Comisión</label><InputNumber @bind-Value="nuevoVendedor.PorcentajeComision" step="0.01" /></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+        </div>
+    </EditForm>
+}
+
+<table class="tabla-datos">
+    <thead>
+        <tr><th>Código</th><th>Nombres</th><th>Apellidos</th><th>% Comisión</th><th>Estado</th><th>Acciones</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var v in vendedores)
+        {
+            <tr class="@(seleccionado?.PveId == v.PveId ? "fila-seleccionada" : "")">
+                <td>@v.PveCodigo</td>
+                <td>@v.PveNombres</td>
+                <td>@v.PveApellidos</td>
+                <td>@v.PvePorcComision.ToString("N2")</td>
+                <td>@(v.PveEstado == "A" ? "Activo" : "Inactivo")</td>
+                <td>
+                    <div class="acciones-fila">
+                        <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(v)" />
+                        @if (v.PveEstado == "A")
+                        {
+                            <BotonIcono Icono="trash-2" Tooltip="Desactivar vendedor" Variante="peligro" OnClick="() => DesactivarAsync(v)" />
+                        }
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (seleccionado is not null)
+{
+    <div class="panel-detalle">
+        <h2>Detalle: @seleccionado.PveNombres @seleccionado.PveApellidos</h2>
+        <EditForm Model="edicionVendedor" OnValidSubmit="GuardarEdicionAsync">
+            <DataAnnotationsValidator />
+            <div class="campo"><label>Nombres</label><InputText @bind-Value="edicionVendedor.Nombres" /></div>
+            <div class="campo"><label>Apellidos</label><InputText @bind-Value="edicionVendedor.Apellidos" /></div>
+            <div class="campo"><label>Fecha de ingreso</label><InputDate @bind-Value="edicionVendedor.FechaIngreso" /></div>
+            <div class="campo"><label>% Comisión</label><InputNumber @bind-Value="edicionVendedor.PorcentajeComision" step="0.01" /></div>
+            <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+        </EditForm>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<Vendedor> vendedores = Array.Empty<Vendedor>();
+    private Vendedor? seleccionado;
+
+    private string filtroEstado = "A";
+    private bool mostrarNuevo;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private readonly VendedorModelo nuevoVendedor = new();
+    private readonly VendedorModelo edicionVendedor = new();
+
+    protected override async Task OnInitializedAsync() => await BuscarAsync();
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        var estado = await AuthenticationStateTask;
+        return estado.User.ObtenerUsuId();
+    }
+
+    private async Task BuscarAsync()
+    {
+        vendedores = await VendedorRepository.ConsultarAsync(string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado);
+    }
+
+    private void MostrarFormularioNuevo()
+    {
+        mensaje = null;
+        nuevoVendedor.Codigo = "";
+        nuevoVendedor.Nombres = "";
+        nuevoVendedor.Apellidos = null;
+        nuevoVendedor.FechaIngreso = DateTime.Today;
+        nuevoVendedor.PorcentajeComision = 0;
+        mostrarNuevo = true;
+    }
+
+    private async Task CrearVendedorAsync()
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await VendedorRepository.InsertarAsync(nuevoVendedor.Codigo, nuevoVendedor.Nombres, nuevoVendedor.Apellidos, nuevoVendedor.FechaIngreso, nuevoVendedor.PorcentajeComision, usuId);
+            mostrarNuevo = false;
+            mensaje = "Vendedor creado correctamente.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private void SeleccionarAsync(Vendedor vendedor)
+    {
+        seleccionado = vendedor;
+        edicionVendedor.Nombres = vendedor.PveNombres;
+        edicionVendedor.Apellidos = vendedor.PveApellidos;
+        edicionVendedor.FechaIngreso = vendedor.PveFechaIngreso;
+        edicionVendedor.PorcentajeComision = vendedor.PvePorcComision;
+        mensaje = null;
+    }
+
+    private async Task GuardarEdicionAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await VendedorRepository.ActualizarAsync(seleccionado.PveId, edicionVendedor.Nombres, edicionVendedor.Apellidos, edicionVendedor.FechaIngreso, edicionVendedor.PorcentajeComision, usuId);
+            mensaje = "Cambios guardados.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task DesactivarAsync(Vendedor vendedor)
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await VendedorRepository.EliminarAsync(vendedor.PveId, usuId);
+            mensaje = "Vendedor desactivado.";
+            esMensajeError = false;
+            if (seleccionado?.PveId == vendedor.PveId) seleccionado = null;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private sealed class VendedorModelo
+    {
+        [Required] public string Codigo { get; set; } = "";
+        [Required] public string Nombres { get; set; } = "";
+        public string? Apellidos { get; set; }
+        public DateTime? FechaIngreso { get; set; } = DateTime.Today;
+        public decimal PorcentajeComision { get; set; }
+    }
+}
