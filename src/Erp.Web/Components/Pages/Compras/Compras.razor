@@ -9,6 +9,7 @@
 @inject ICompraRepository CompraRepository
 @inject IProductoRepository ProductoRepository
 @inject IBodegaRepository BodegaRepository
+@inject IProveedorRepository ProveedorRepository
 
 <PageTitle>Compras</PageTitle>
 
@@ -53,6 +54,8 @@
                 <p class="doc-seccion-titulo"><Icono Nombre="file-text" Tamano="15" /> Datos generales</p>
                 <div class="doc-grid">
                     <div class="campo"><label>Fecha</label><input type="date" @bind="nuevaCompra.Fecha" /></div>
+                    <div class="campo"><label>Serie</label><input @bind="nuevaCompra.SerieDocumento" /></div>
+                    <div class="campo"><label>Número</label><input @bind="nuevaCompra.NumeroDocumento" /></div>
                     <div class="campo">
                         <label>Tipo de documento</label>
                         <select @bind="nuevaCompra.TdoId">
@@ -93,6 +96,7 @@
                         <div class="doc-buscador-fila">
                             <input placeholder="Buscar proveedor por código, nombre o NIT" @bind="textoBusquedaProveedor" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProveedoresAsync(); })" />
                             <BotonIcono Icono="search" Tooltip="Buscar proveedor" OnClick="BuscarProveedoresAsync" />
+                            <BotonIcono Icono="plus" Tooltip="Proveedor nuevo" OnClick="() => mostrarNuevoProveedor = !mostrarNuevoProveedor" />
                         </div>
                         @if (proveedoresEncontrados.Count > 0)
                         {
@@ -107,6 +111,22 @@
                                         </span>
                                     </div>
                                 }
+                            </div>
+                        }
+                        @if (mostrarNuevoProveedor)
+                        {
+                            <div class="doc-alta-rapida">
+                                <p class="doc-alta-rapida-titulo">Proveedor nuevo</p>
+                                <div class="doc-grid">
+                                    <div class="campo"><label>Código</label><input @bind="nuevoProveedorRapido.Codigo" /></div>
+                                    <div class="campo"><label>Nombre comercial</label><input @bind="nuevoProveedorRapido.NombreComercial" /></div>
+                                    <div class="campo"><label>NIT</label><input @bind="nuevoProveedorRapido.Nit" /></div>
+                                    <div class="campo"><label>Teléfono</label><input @bind="nuevoProveedorRapido.Telefono" /></div>
+                                </div>
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="save" Tooltip="Guardar proveedor" Etiqueta="Guardar proveedor" Variante="primario" OnClick="CrearProveedorRapidoAsync" />
+                                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevoProveedor = false" />
+                                </div>
                             </div>
                         }
                     </div>
@@ -200,6 +220,32 @@
                     <div class="doc-totales-total"><span>Total</span><span>@MonedaSimbolo @Total.ToString("N2")</span></div>
                     <div class="doc-totales-nota">IVA incluido (12%): @MonedaSimbolo @IvaIncluido.ToString("N2")</div>
                 </div>
+            </div>
+
+            <div class="doc-seccion">
+                <p class="doc-seccion-titulo"><Icono Nombre="credit-card" Tamano="15" /> Forma de pago</p>
+                <div class="doc-grid">
+                    <div class="campo">
+                        <label>Condición</label>
+                        <select @bind="condicionPagoCompra">
+                            <option value="contado">Contado</option>
+                            <option value="credito">Crédito del proveedor</option>
+                        </select>
+                    </div>
+                    @if (condicionPagoCompra == "credito")
+                    {
+                        <div class="campo"><label>Enganche</label><input type="number" step="0.01" min="0" @bind="nuevaCompra.MontoEnganche" /></div>
+                        <div class="campo"><label>Número de cuotas</label><input type="number" min="1" @bind="nuevaCompra.NumeroCuotas" /></div>
+                        <div class="campo"><label>Fecha del primer pago</label><input type="date" @bind="nuevaCompra.FechaPrimerPago" /></div>
+                    }
+                </div>
+                @if (condicionPagoCompra == "credito")
+                {
+                    <div class="doc-nota">
+                        <Icono Nombre="info" Tamano="15" />
+                        <span>Plan de pagos al proveedor: @nuevaCompra.NumeroCuotas cuota(s) de @MonedaSimbolo @ValorCuotaCompra.ToString("N2"), a partir del enganche de @MonedaSimbolo @nuevaCompra.MontoEnganche.ToString("N2").</span>
+                    </div>
+                }
             </div>
         </div>
 
@@ -310,6 +356,8 @@
     private IReadOnlyList<Moneda> monedas = Array.Empty<Moneda>();
     private IReadOnlyList<Bodega> bodegas = Array.Empty<Bodega>();
     private IReadOnlyList<Proveedor> proveedoresEncontrados = Array.Empty<Proveedor>();
+    private bool mostrarNuevoProveedor;
+    private readonly ProveedorRapidoModelo nuevoProveedorRapido = new();
     private IReadOnlyList<Producto> productosEncontrados = Array.Empty<Producto>();
 
     private CompraEncabezadoDetalle? encabezadoSeleccionado;
@@ -339,6 +387,10 @@
     private decimal Total => Subtotal - TotalDescuento;
     private decimal IvaIncluido => Math.Round(Total * PorcentajeIva / (100m + PorcentajeIva), 2);
     private string MonedaSimbolo => monedas.FirstOrDefault(m => m.MonId == nuevaCompra.MonId)?.MonSimbolo ?? "Q";
+    private string condicionPagoCompra = "contado";
+    private decimal ValorCuotaCompra => nuevaCompra.NumeroCuotas > 0
+        ? Math.Round((Total - nuevaCompra.MontoEnganche) / nuevaCompra.NumeroCuotas, 2)
+        : 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -375,12 +427,19 @@
     {
         mensaje = null;
         nuevaCompra.Fecha = DateTime.Today;
+        nuevaCompra.SerieDocumento = null;
+        nuevaCompra.NumeroDocumento = null;
         nuevaCompra.PrvId = null;
         nuevaCompra.NombreProveedor = null;
         nuevaCompra.Nit = null;
+        nuevaCompra.MontoEnganche = 0;
+        nuevaCompra.NumeroCuotas = 1;
+        nuevaCompra.FechaPrimerPago = null;
+        condicionPagoCompra = "contado";
         lineas.Clear();
         proveedoresEncontrados = Array.Empty<Proveedor>();
         productosEncontrados = Array.Empty<Producto>();
+        mostrarNuevoProveedor = false;
         mostrarNuevaCompra = true;
         return Task.CompletedTask;
     }
@@ -397,6 +456,40 @@
         nuevaCompra.NombreProveedor = proveedor.PrvNombreComercial;
         nuevaCompra.Nit = proveedor.PrvNit;
         proveedoresEncontrados = Array.Empty<Proveedor>();
+    }
+
+    private async Task CrearProveedorRapidoAsync()
+    {
+        if (string.IsNullOrWhiteSpace(nuevoProveedorRapido.Codigo) || string.IsNullOrWhiteSpace(nuevoProveedorRapido.NombreComercial))
+        {
+            mensaje = "Código y nombre comercial son obligatorios para crear el proveedor.";
+            esMensajeError = true;
+            return;
+        }
+
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            var prvId = await ProveedorRepository.InsertarAsync(
+                nuevoProveedorRapido.Codigo, nuevoProveedorRapido.NombreComercial, nuevoProveedorRapido.Nit, null,
+                null, nuevoProveedorRapido.Telefono, null, usuId);
+
+            nuevaCompra.PrvId = prvId;
+            nuevaCompra.NombreProveedor = nuevoProveedorRapido.NombreComercial;
+            nuevaCompra.Nit = nuevoProveedorRapido.Nit;
+
+            proveedoresEncontrados = Array.Empty<Proveedor>();
+            mostrarNuevoProveedor = false;
+            nuevoProveedorRapido.Codigo = "";
+            nuevoProveedorRapido.NombreComercial = "";
+            nuevoProveedorRapido.Nit = null;
+            nuevoProveedorRapido.Telefono = null;
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
     }
 
     private async Task BuscarProductosAsync()
@@ -459,6 +552,13 @@
             return;
         }
 
+        if (condicionPagoCompra == "credito" && (nuevaCompra.FechaPrimerPago is null || nuevaCompra.NumeroCuotas < 1))
+        {
+            mensaje = "Para crédito del proveedor debe indicar el número de cuotas y la fecha del primer pago.";
+            esMensajeError = true;
+            return;
+        }
+
         try
         {
             var usuId = await ObtenerUsuIdActualAsync();
@@ -484,12 +584,16 @@
             var encabezado = new NuevaCompraEncabezado
             {
                 FechaDocumento = nuevaCompra.Fecha,
+                SerieDocumento = nuevaCompra.SerieDocumento,
+                NumeroDocumento = nuevaCompra.NumeroDocumento,
                 PrvId = nuevaCompra.PrvId.Value,
                 NombreProveedor = nuevaCompra.NombreProveedor,
                 Nit = nuevaCompra.Nit,
                 TdoId = nuevaCompra.TdoId,
                 MonId = nuevaCompra.MonId,
-                NumeroCuotas = 1,
+                FechaPrimerPago = condicionPagoCompra == "credito" ? nuevaCompra.FechaPrimerPago : null,
+                MontoEnganche = condicionPagoCompra == "credito" ? nuevaCompra.MontoEnganche : 0,
+                NumeroCuotas = condicionPagoCompra == "credito" ? nuevaCompra.NumeroCuotas : 1,
                 ValorDescuento = detalle.Sum(d => d.ValorDescuento)
             };
 
@@ -547,12 +651,25 @@
     private sealed class NuevaCompraModelo
     {
         public DateTime Fecha { get; set; } = DateTime.Today;
+        public string? SerieDocumento { get; set; }
+        public string? NumeroDocumento { get; set; }
         public int? PrvId { get; set; }
         public string? NombreProveedor { get; set; }
         public string? Nit { get; set; }
         public int TdoId { get; set; }
         public int BodId { get; set; }
         public int? MonId { get; set; }
+        public DateTime? FechaPrimerPago { get; set; }
+        public decimal MontoEnganche { get; set; }
+        public int NumeroCuotas { get; set; } = 1;
+    }
+
+    private sealed class ProveedorRapidoModelo
+    {
+        public string Codigo { get; set; } = "";
+        public string NombreComercial { get; set; } = "";
+        public string? Nit { get; set; }
+        public string? Telefono { get; set; }
     }
 
     private sealed class LineaCaptura

@@ -9,6 +9,7 @@
 @inject IFacturaRepository FacturaRepository
 @inject IProductoRepository ProductoRepository
 @inject IBodegaRepository BodegaRepository
+@inject IClienteRepository ClienteRepository
 
 <PageTitle>Facturas</PageTitle>
 
@@ -57,6 +58,8 @@
                 <p class="doc-seccion-titulo"><Icono Nombre="file-text" Tamano="15" /> Datos generales</p>
                 <div class="doc-grid">
                     <div class="campo"><label>Fecha</label><input type="date" @bind="nuevaFactura.Fecha" /></div>
+                    <div class="campo"><label>Serie</label><input @bind="nuevaFactura.SerieDocumento" /></div>
+                    <div class="campo"><label>Número</label><input @bind="nuevaFactura.NumeroDocumento" /></div>
                     <div class="campo">
                         <label>Vendedor</label>
                         <select @bind="nuevaFactura.PveId">
@@ -98,6 +101,7 @@
                         <div class="doc-buscador-fila">
                             <input placeholder="Buscar cliente por código, nombre o NIT" @bind="textoBusquedaCliente" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarClientesAsync(); })" />
                             <BotonIcono Icono="search" Tooltip="Buscar cliente" OnClick="BuscarClientesAsync" />
+                            <BotonIcono Icono="plus" Tooltip="Cliente nuevo" OnClick="() => mostrarNuevoCliente = !mostrarNuevoCliente" />
                         </div>
                         @if (clientesEncontrados.Count > 0)
                         {
@@ -112,6 +116,23 @@
                                         </span>
                                     </div>
                                 }
+                            </div>
+                        }
+                        @if (mostrarNuevoCliente)
+                        {
+                            <div class="doc-alta-rapida">
+                                <p class="doc-alta-rapida-titulo">Cliente nuevo</p>
+                                <div class="doc-grid">
+                                    <div class="campo"><label>Código</label><input @bind="nuevoClienteRapido.Codigo" /></div>
+                                    <div class="campo"><label>Nombres</label><input @bind="nuevoClienteRapido.Nombres" /></div>
+                                    <div class="campo"><label>Apellidos</label><input @bind="nuevoClienteRapido.Apellidos" /></div>
+                                    <div class="campo"><label>NIT</label><input @bind="nuevoClienteRapido.Nit" /></div>
+                                    <div class="campo"><label>Teléfono</label><input @bind="nuevoClienteRapido.Telefono" /></div>
+                                </div>
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="save" Tooltip="Guardar cliente" Etiqueta="Guardar cliente" Variante="primario" OnClick="CrearClienteRapidoAsync" />
+                                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevoCliente = false" />
+                                </div>
                             </div>
                         }
                     </div>
@@ -205,6 +226,32 @@
                     <div class="doc-totales-total"><span>Total</span><span>@MonedaSimbolo @Total.ToString("N2")</span></div>
                     <div class="doc-totales-nota">IVA incluido (12%): @MonedaSimbolo @IvaIncluido.ToString("N2")</div>
                 </div>
+            </div>
+
+            <div class="doc-seccion">
+                <p class="doc-seccion-titulo"><Icono Nombre="credit-card" Tamano="15" /> Forma de pago</p>
+                <div class="doc-grid">
+                    <div class="campo">
+                        <label>Condición</label>
+                        <select @bind="condicionPagoFactura">
+                            <option value="contado">Contado</option>
+                            <option value="credito">Crédito</option>
+                        </select>
+                    </div>
+                    @if (condicionPagoFactura == "credito")
+                    {
+                        <div class="campo"><label>Enganche</label><input type="number" step="0.01" min="0" @bind="nuevaFactura.MontoEnganche" /></div>
+                        <div class="campo"><label>Número de cuotas</label><input type="number" min="1" @bind="nuevaFactura.NumeroCuotas" /></div>
+                        <div class="campo"><label>Fecha del primer pago</label><input type="date" @bind="nuevaFactura.FechaPrimerPago" /></div>
+                    }
+                </div>
+                @if (condicionPagoFactura == "credito")
+                {
+                    <div class="doc-nota">
+                        <Icono Nombre="info" Tamano="15" />
+                        <span>Plan de pagos: @nuevaFactura.NumeroCuotas cuota(s) de @MonedaSimbolo @ValorCuotaFactura.ToString("N2"), a partir del enganche de @MonedaSimbolo @nuevaFactura.MontoEnganche.ToString("N2").</span>
+                    </div>
+                }
             </div>
         </div>
 
@@ -319,6 +366,8 @@
     private IReadOnlyList<Moneda> monedas = Array.Empty<Moneda>();
     private IReadOnlyList<Bodega> bodegas = Array.Empty<Bodega>();
     private IReadOnlyList<Cliente> clientesEncontrados = Array.Empty<Cliente>();
+    private bool mostrarNuevoCliente;
+    private readonly ClienteRapidoModelo nuevoClienteRapido = new();
     private IReadOnlyList<Producto> productosEncontrados = Array.Empty<Producto>();
     private int tdoIdFactura;
 
@@ -349,6 +398,10 @@
     private decimal Subtotal => lineas.Sum(l => l.SubTotal);
     private decimal TotalDescuento => lineas.Sum(l => l.ValorDescuento);
     private decimal Total => Subtotal - TotalDescuento;
+    private string condicionPagoFactura = "contado";
+    private decimal ValorCuotaFactura => nuevaFactura.NumeroCuotas > 0
+        ? Math.Round((Total - nuevaFactura.MontoEnganche) / nuevaFactura.NumeroCuotas, 2)
+        : 0;
     private decimal IvaIncluido => Math.Round(Total * PorcentajeIva / (100m + PorcentajeIva), 2);
     private string MonedaSimbolo => monedas.FirstOrDefault(m => m.MonId == nuevaFactura.MonId)?.MonSimbolo ?? "Q";
 
@@ -386,13 +439,20 @@
     {
         mensaje = null;
         nuevaFactura.Fecha = DateTime.Today;
+        nuevaFactura.SerieDocumento = null;
+        nuevaFactura.NumeroDocumento = null;
         nuevaFactura.CliId = null;
         nuevaFactura.NombresCliente = null;
         nuevaFactura.ApellidosCliente = null;
         nuevaFactura.Nit = null;
+        nuevaFactura.MontoEnganche = 0;
+        nuevaFactura.NumeroCuotas = 1;
+        nuevaFactura.FechaPrimerPago = null;
+        condicionPagoFactura = "contado";
         lineas.Clear();
         clientesEncontrados = Array.Empty<Cliente>();
         productosEncontrados = Array.Empty<Producto>();
+        mostrarNuevoCliente = false;
         mostrarNuevaFactura = true;
         return Task.CompletedTask;
     }
@@ -410,6 +470,42 @@
         nuevaFactura.ApellidosCliente = cliente.CliApellidos;
         nuevaFactura.Nit = cliente.CliNit;
         clientesEncontrados = Array.Empty<Cliente>();
+    }
+
+    private async Task CrearClienteRapidoAsync()
+    {
+        if (string.IsNullOrWhiteSpace(nuevoClienteRapido.Codigo) || string.IsNullOrWhiteSpace(nuevoClienteRapido.Nombres))
+        {
+            mensaje = "Código y nombres son obligatorios para crear el cliente.";
+            esMensajeError = true;
+            return;
+        }
+
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            var cliId = await ClienteRepository.InsertarAsync(
+                nuevoClienteRapido.Codigo, nuevoClienteRapido.Nombres, nuevoClienteRapido.Apellidos, null,
+                nuevoClienteRapido.Telefono, nuevoClienteRapido.Nit, null, 0, usuId);
+
+            nuevaFactura.CliId = cliId;
+            nuevaFactura.NombresCliente = nuevoClienteRapido.Nombres;
+            nuevaFactura.ApellidosCliente = nuevoClienteRapido.Apellidos;
+            nuevaFactura.Nit = nuevoClienteRapido.Nit;
+
+            clientesEncontrados = Array.Empty<Cliente>();
+            mostrarNuevoCliente = false;
+            nuevoClienteRapido.Codigo = "";
+            nuevoClienteRapido.Nombres = "";
+            nuevoClienteRapido.Apellidos = null;
+            nuevoClienteRapido.Nit = null;
+            nuevoClienteRapido.Telefono = null;
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
     }
 
     private async Task BuscarProductosAsync()
@@ -473,6 +569,13 @@
             return;
         }
 
+        if (condicionPagoFactura == "credito" && (nuevaFactura.FechaPrimerPago is null || nuevaFactura.NumeroCuotas < 1))
+        {
+            mensaje = "Para crédito debe indicar el número de cuotas y la fecha del primer pago.";
+            esMensajeError = true;
+            return;
+        }
+
         try
         {
             var usuId = await ObtenerUsuIdActualAsync();
@@ -503,6 +606,8 @@
             var encabezado = new NuevaFacturaEncabezado
             {
                 FechaDocumento = nuevaFactura.Fecha,
+                SerieDocumento = nuevaFactura.SerieDocumento,
+                NumeroDocumento = nuevaFactura.NumeroDocumento,
                 CliId = nuevaFactura.CliId.Value,
                 NombresCliente = nuevaFactura.NombresCliente,
                 ApellidosCliente = nuevaFactura.ApellidosCliente,
@@ -510,7 +615,9 @@
                 TdoId = tdoIdFactura,
                 PveId = nuevaFactura.PveId,
                 MonId = nuevaFactura.MonId,
-                NumeroCuotas = 1,
+                FechaPrimerPago = condicionPagoFactura == "credito" ? nuevaFactura.FechaPrimerPago : null,
+                MontoEnganche = condicionPagoFactura == "credito" ? nuevaFactura.MontoEnganche : 0,
+                NumeroCuotas = condicionPagoFactura == "credito" ? nuevaFactura.NumeroCuotas : 1,
                 ValorDescuento = detalle.Sum(d => d.ValorDescuento)
             };
 
@@ -568,6 +675,8 @@
     private sealed class NuevaFacturaModelo
     {
         public DateTime Fecha { get; set; } = DateTime.Today;
+        public string? SerieDocumento { get; set; }
+        public string? NumeroDocumento { get; set; }
         public int? CliId { get; set; }
         public string? NombresCliente { get; set; }
         public string? ApellidosCliente { get; set; }
@@ -575,6 +684,18 @@
         public int? PveId { get; set; }
         public int BodId { get; set; }
         public int? MonId { get; set; }
+        public DateTime? FechaPrimerPago { get; set; }
+        public decimal MontoEnganche { get; set; }
+        public int NumeroCuotas { get; set; } = 1;
+    }
+
+    private sealed class ClienteRapidoModelo
+    {
+        public string Codigo { get; set; } = "";
+        public string Nombres { get; set; } = "";
+        public string? Apellidos { get; set; }
+        public string? Nit { get; set; }
+        public string? Telefono { get; set; }
     }
 
     private sealed class LineaCaptura

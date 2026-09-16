@@ -187,7 +187,7 @@ BEGIN
 
 	DECLARE @contador INT, @fecha_iteracion DATE, @valor_cuota NUMERIC(13, 2),
 			@cli_id INT, @numero_cuotas INT, @fecha_primer_pago DATE,
-			@monto_enganche NUMERIC(13, 2), @monto_total NUMERIC(13, 2), @valor_descuento NUMERIC(13, 2);
+			@monto_enganche NUMERIC(13, 2), @monto_total NUMERIC(13, 2);
 
 	SELECT @cli_id = cli_id, @numero_cuotas = enc_numero_cuotas,
 		   @fecha_primer_pago = enc_fecha_primer_pago, @monto_total = enc_monto_total,
@@ -195,12 +195,13 @@ BEGIN
 	FROM dbo.inv_documento_enc
 	WHERE enc_id = @enc_id;
 
-	SELECT @valor_descuento = SUM(det_valor_descuento) FROM dbo.inv_documento_det WHERE enc_id = @enc_id;
-
+	-- enc_monto_total ya viene neto de descuento (ver sp_ventas_crear_factura),
+	-- así que aquí sólo se resta el enganche; restar también el descuento
+	-- duplicaba la resta y dejaba el monto financiado por debajo del real.
 	IF @fecha_primer_pago IS NOT NULL AND @monto_total IS NOT NULL AND @numero_cuotas IS NOT NULL AND @numero_cuotas > 0
 	BEGIN
 		SET @contador = 1;
-		SET @valor_cuota = ((ISNULL(@monto_total, 0) - ISNULL(@valor_descuento, 0)) - ISNULL(@monto_enganche, 0)) / @numero_cuotas;
+		SET @valor_cuota = (ISNULL(@monto_total, 0) - ISNULL(@monto_enganche, 0)) / @numero_cuotas;
 		SET @fecha_iteracion = @fecha_primer_pago;
 
 		WHILE @contador <= @numero_cuotas
@@ -222,7 +223,7 @@ BEGIN
 		DECLARE @monto_cuotas NUMERIC(12, 2), @monto_restante NUMERIC(12, 2);
 
 		SELECT @monto_cuotas = SUM(cpp_valor_cuota) FROM dbo.pos_cliente_plan_pagos WHERE enc_id = @enc_id;
-		SET @monto_restante = ((ISNULL(@monto_total, 0) - ISNULL(@valor_descuento, 0)) - ISNULL(@monto_enganche, 0)) - ISNULL(@monto_cuotas, 0);
+		SET @monto_restante = (ISNULL(@monto_total, 0) - ISNULL(@monto_enganche, 0)) - ISNULL(@monto_cuotas, 0);
 
 		IF @monto_restante <> 0
 			UPDATE dbo.pos_cliente_plan_pagos
@@ -244,17 +245,19 @@ BEGIN
 	SET NOCOUNT ON;
 
 	DECLARE @contador INT, @fecha_iteracion DATE, @valor_cuota NUMERIC(13, 2),
-			@prv_id INT, @numero_cuotas INT, @fecha_primer_pago DATE, @monto_total NUMERIC(13, 2);
+			@prv_id INT, @numero_cuotas INT, @fecha_primer_pago DATE,
+			@monto_total NUMERIC(13, 2), @monto_enganche NUMERIC(13, 2);
 
 	SELECT @prv_id = prv_id, @numero_cuotas = enc_numero_cuotas,
-		   @fecha_primer_pago = enc_fecha_primer_pago, @monto_total = enc_monto_total
+		   @fecha_primer_pago = enc_fecha_primer_pago, @monto_total = enc_monto_total,
+		   @monto_enganche = enc_monto_enganche
 	FROM dbo.inv_documento_enc
 	WHERE enc_id = @enc_id;
 
 	IF @fecha_primer_pago IS NOT NULL AND @monto_total IS NOT NULL AND @numero_cuotas IS NOT NULL AND @numero_cuotas > 0
 	BEGIN
 		SET @contador = 1;
-		SET @valor_cuota = @monto_total / @numero_cuotas;
+		SET @valor_cuota = (ISNULL(@monto_total, 0) - ISNULL(@monto_enganche, 0)) / @numero_cuotas;
 		SET @fecha_iteracion = @fecha_primer_pago;
 
 		WHILE @contador <= @numero_cuotas
@@ -275,7 +278,7 @@ BEGIN
 		DECLARE @monto_cuotas NUMERIC(12, 2), @monto_restante NUMERIC(12, 2);
 
 		SELECT @monto_cuotas = SUM(ppg_valor_pago) FROM dbo.inv_proveedor_plan_pago WHERE enc_id = @enc_id;
-		SET @monto_restante = @monto_total - @monto_cuotas;
+		SET @monto_restante = (ISNULL(@monto_total, 0) - ISNULL(@monto_enganche, 0)) - ISNULL(@monto_cuotas, 0);
 
 		IF @monto_restante <> 0
 			UPDATE dbo.inv_proveedor_plan_pago

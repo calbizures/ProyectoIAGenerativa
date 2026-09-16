@@ -28,6 +28,8 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 11_procedimientos_procesos.sql
 12_datos_sinteticos.sql   -- opcional, solo para ambientes de prueba
 13_correccion_numero_unico.sql   -- solo si ya corriste 00-12 antes de esta fecha
+14_procedimientos_vendedor.sql   -- solo si ya corriste 00-12 antes de esta fecha
+15_correccion_plan_pagos.sql     -- solo si ya corriste 00-14 antes de esta fecha
 ```
 
 Cada archivo empieza con `USE [erp_db];` y usa `CREATE OR ALTER` en objetos
@@ -211,6 +213,27 @@ Decisiones de diseño:
    `INSERT` en vez de en un `UPDATE` posterior (`11_procedimientos_procesos.sql`).
    Quien ya haya corrido `00`-`12` antes de este cambio debe correr
    `13_correccion_numero_unico.sql` una sola vez contra su base existente.
+10. **`pos_vendedor` sin procedimientos.** Existía la tabla (sembrada por
+    `12_datos_sinteticos.sql`) pero no había alta/baja/edición/consulta. Se
+    agregan en `10_procedimientos_crud.sql`. A solicitud explícita, estos
+    procedimientos usan el estándar de nomenclatura **`pa` + PascalCase**
+    (`paVendedorInsertar`, `paVendedorActualizar`, `paVendedorEliminar`,
+    `paVendedorConsultar`, `paVendedorConsultarPorId`) en vez de
+    `sp_<entidad>_<accion>` — es el único módulo con ese estándar por ahora;
+    los procedimientos existentes no se renombraron para no romper llamadas
+    ya desplegadas. Quien ya haya corrido `00`-`12` debe correr
+    `14_procedimientos_vendedor.sql` una sola vez.
+11. **Plan de pagos con el enganche/descuento mal aplicado.** Al exponer en
+    el frontend los campos de crédito (enganche, cuotas, fecha del primer
+    pago) se encontró que `sp_pos_generar_plan_pagos_cliente` restaba el
+    descuento dos veces (una porque `enc_monto_total` ya viene neto de
+    descuento, y otra porque el procedimiento lo volvía a restar), y que
+    `sp_inv_generar_plan_pagos_proveedor` nunca restaba el enganche aunque
+    sí se captura y se guarda. Ambos quedan con la misma fórmula
+    `valor_cuota = (monto_total - monto_enganche) / número_cuotas`
+    (`11_procedimientos_procesos.sql`). Quien ya haya corrido `00`-`14` debe
+    correr `15_correccion_plan_pagos.sql` una sola vez; no recalcula planes
+    de pago ya generados.
 
 ## Módulos nuevos
 

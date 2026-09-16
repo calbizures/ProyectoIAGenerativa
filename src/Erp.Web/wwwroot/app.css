@@ -1029,6 +1029,21 @@ a.modulo-card:hover {
     height: 26px;
 }
 
+.doc-alta-rapida {
+    margin-top: 0.6rem;
+    border: 1px dashed #b9cbe8;
+    border-radius: 10px;
+    background: #f7faff;
+    padding: 0.9rem 1rem;
+}
+
+.doc-alta-rapida-titulo {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--si-navy-700);
+    margin: 0 0 0.6rem;
+}
+
 .doc-nota {
     display: flex;
     align-items: center;
