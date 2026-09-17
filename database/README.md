@@ -257,6 +257,30 @@ Decisiones de diseño:
     (`11_procedimientos_procesos.sql`). Quien ya haya corrido `00`-`14` debe
     correr `15_correccion_plan_pagos.sql` una sola vez; no recalcula planes
     de pago ya generados.
+12. **Reactivar usuario.** `sp_usuario_eliminar` (baja lógica) no tenía
+    contraparte para reactivar. Se agrega `paUsuarioActivar`
+    (`10_procedimientos_crud.sql`). Quien ya haya corrido `00`-`15` debe
+    correr `16_activar_usuario.sql` una sola vez.
+13. **Listado de documentos sin código de tipo ni nombre de cliente/
+    proveedor.** El listado de Facturas/Compras mostraba la descripción
+    completa del tipo de documento y no traía el nombre del cliente o
+    proveedor. Se agrega `tdo_codigo`, `cli_nombres`/`cli_apellidos` y
+    `prv_nombre_comercial` al resultado, y de paso se renombra
+    `sp_documento_consultar` a **`paDocumentoConsultar`**
+    (`10_procedimientos_crud.sql`). Quien ya haya corrido `00`-`16` debe
+    correr `17_documento_consultar_codigo_cliente.sql` una sola vez (borra
+    el procedimiento viejo y crea el nuevo).
+14. **Detalle de producto sin CRUD.** Existían las tablas
+    `inv_producto_caracteristica`, `inv_producto_tipo_caracteristica`,
+    `inv_producto_existencia_bodega` e `inv_producto_precio`, pero solo se
+    podían leer (nunca dar de alta/editar/eliminar) desde el frontend. Se
+    agregan `paProductoTipoCaracteristicaConsultar`,
+    `paProductoCaracteristicaInsertar/Actualizar/Eliminar/Consultar`,
+    `paProductoExistenciaConsultar` (solo consulta — la existencia la
+    mantienen los procesos de negocio) y
+    `paProductoPrecioInsertar/Actualizar/Eliminar/Consultar/ConsultarPorId`
+    (`10_procedimientos_crud.sql`). Quien ya haya corrido `00`-`17` debe
+    correr `18_procedimientos_detalle_producto.sql` una sola vez.
 
 ## Módulos nuevos
 

@@ -20,7 +20,7 @@ public sealed class ProductoPrecioRepository(IDbConnectionFactory connectionFact
 		parametros.Add("@usu_id", usuarioAccionId);
 		parametros.Add("@ppr_id", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-		await connection.ExecuteAsync("dbo.sp_producto_precio_insertar", parametros, commandType: CommandType.StoredProcedure);
+		await connection.ExecuteAsync("dbo.paProductoPrecioInsertar", parametros, commandType: CommandType.StoredProcedure);
 		return parametros.Get<int>("@ppr_id");
 	}
 
@@ -39,14 +39,14 @@ public sealed class ProductoPrecioRepository(IDbConnectionFactory connectionFact
 			ppr_vigencia_hasta = vigenciaHasta,
 			usu_id = usuarioAccionId
 		};
-		await connection.ExecuteAsync("dbo.sp_producto_precio_actualizar", parametros, commandType: CommandType.StoredProcedure);
+		await connection.ExecuteAsync("dbo.paProductoPrecioActualizar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
 	public async Task EliminarAsync(int pprId, int? usuarioAccionId)
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new { ppr_id = pprId, usu_id = usuarioAccionId };
-		await connection.ExecuteAsync("dbo.sp_producto_precio_eliminar", parametros, commandType: CommandType.StoredProcedure);
+		await connection.ExecuteAsync("dbo.paProductoPrecioEliminar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
 	public async Task<IReadOnlyList<ProductoPrecio>> ConsultarAsync(int? proId, int? bodId, string? estado)
@@ -54,7 +54,7 @@ public sealed class ProductoPrecioRepository(IDbConnectionFactory connectionFact
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new { pro_id = proId, bod_id = bodId, ppr_estado = estado };
 		var filas = await connection.QueryAsync<ProductoPrecio>(
-			"dbo.sp_producto_precio_consultar", parametros, commandType: CommandType.StoredProcedure);
+			"dbo.paProductoPrecioConsultar", parametros, commandType: CommandType.StoredProcedure);
 		return filas.ToList();
 	}
 

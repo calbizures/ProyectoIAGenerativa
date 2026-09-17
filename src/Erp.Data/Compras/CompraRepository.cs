@@ -68,7 +68,7 @@ public sealed class CompraRepository(IDbConnectionFactory connectionFactory) : I
 		await connection.ExecuteAsync("dbo.sp_documento_anular", parametros, commandType: CommandType.StoredProcedure);
 	}
 
-	// sp_documento_consultar filtra por un único @tdo_id; como Compras agrupa
+	// paDocumentoConsultar filtra por un único @tdo_id; como Compras agrupa
 	// más de un tipo de documento (COMP, GAST), se consulta cada tipo por
 	// separado y se combinan los resultados (mismo criterio que la búsqueda
 	// de productos por código/descripción en Facturas.razor).
@@ -90,7 +90,7 @@ public sealed class CompraRepository(IDbConnectionFactory connectionFactory) : I
 				pagina = 1,
 				tamanio_pagina = tamanioPagina
 			};
-			var filas = await connection.QueryAsync<CompraEncabezado>("dbo.sp_documento_consultar", parametros, commandType: CommandType.StoredProcedure);
+			var filas = await connection.QueryAsync<CompraEncabezado>("dbo.paDocumentoConsultar", parametros, commandType: CommandType.StoredProcedure);
 			resultados.AddRange(filas);
 		}
 

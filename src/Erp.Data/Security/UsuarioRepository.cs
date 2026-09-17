@@ -44,7 +44,7 @@ public sealed class UsuarioRepository(IDbConnectionFactory connectionFactory) : 
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new { usu_id = usuId, usu_id_accion = usuarioAccionId };
-		await connection.ExecuteAsync("dbo.sp_usuario_activar", parametros, commandType: CommandType.StoredProcedure);
+		await connection.ExecuteAsync("dbo.paUsuarioActivar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
 	public async Task CambiarPasswordAsync(int usuId, string passwordActual, string passwordNuevo)

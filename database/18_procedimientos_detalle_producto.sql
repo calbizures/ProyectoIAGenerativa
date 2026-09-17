@@ -14,17 +14,36 @@
 --     se edita a mano.
 --   * inv_producto_precio: CRUD completo (baja lógica con ppr_estado).
 --
+-- Todos usan el estándar de nomenclatura vigente para procedimientos y
+-- alias nuevos (pa + PascalCase, alias de tabla de 4+ caracteres; ver
+-- "Estándares de nomenclatura" en README.md).
+--
 -- Seguro de correr una sola vez contra una base ya creada con 00-17.
 ------------------------------------------------------------------------------
 
 USE [erp_db];
 GO
 
+-- Por si ya habías corrido una versión anterior de este script con los
+-- nombres viejos (sp_producto_...), antes de fijar el estándar pa+PascalCase.
+DROP PROCEDURE IF EXISTS [dbo].[sp_producto_tipo_caracteristica_consultar];
+DROP PROCEDURE IF EXISTS [dbo].[sp_producto_caracteristica_insertar];
+DROP PROCEDURE IF EXISTS [dbo].[sp_producto_caracteristica_actualizar];
+DROP PROCEDURE IF EXISTS [dbo].[sp_producto_caracteristica_eliminar];
+DROP PROCEDURE IF EXISTS [dbo].[sp_producto_caracteristica_consultar];
+DROP PROCEDURE IF EXISTS [dbo].[sp_producto_existencia_consultar];
+DROP PROCEDURE IF EXISTS [dbo].[sp_producto_precio_insertar];
+DROP PROCEDURE IF EXISTS [dbo].[sp_producto_precio_actualizar];
+DROP PROCEDURE IF EXISTS [dbo].[sp_producto_precio_eliminar];
+DROP PROCEDURE IF EXISTS [dbo].[sp_producto_precio_consultar];
+DROP PROCEDURE IF EXISTS [dbo].[sp_producto_precio_consultar_por_id];
+GO
+
 ------------------------------------------------------------
 -- inv_producto_tipo_caracteristica (catálogo, solo consulta desde el
 -- frontend; se siembra con 12_datos_sinteticos.sql)
 ------------------------------------------------------------
-CREATE OR ALTER PROCEDURE [dbo].[sp_producto_tipo_caracteristica_consultar]
+CREATE OR ALTER PROCEDURE [dbo].[paProductoTipoCaracteristicaConsultar]
 	@ptc_estado CHAR(1) = 'A'
 AS
 BEGIN
@@ -40,7 +59,7 @@ GO
 ------------------------------------------------------------
 -- inv_producto_caracteristica
 ------------------------------------------------------------
-CREATE OR ALTER PROCEDURE [dbo].[sp_producto_caracteristica_insertar]
+CREATE OR ALTER PROCEDURE [dbo].[paProductoCaracteristicaInsertar]
 	@pro_id				INT,
 	@ptc_id				INT,
 	@pca_valor			VARCHAR(64),
@@ -66,7 +85,7 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[sp_producto_caracteristica_actualizar]
+CREATE OR ALTER PROCEDURE [dbo].[paProductoCaracteristicaActualizar]
 	@pca_id				INT,
 	@pca_valor			VARCHAR(64),
 	@pca_descripcion	VARCHAR(64) = NULL,
@@ -87,7 +106,7 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[sp_producto_caracteristica_eliminar]
+CREATE OR ALTER PROCEDURE [dbo].[paProductoCaracteristicaEliminar]
 	@pca_id INT
 AS
 BEGIN
@@ -102,20 +121,20 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[sp_producto_caracteristica_consultar]
+CREATE OR ALTER PROCEDURE [dbo].[paProductoCaracteristicaConsultar]
 	@pro_id INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
 
-	SELECT pca.pca_id, pca.pca_valor, pca.pca_descripcion, pca.pro_id,
-		   pro.pro_codigo, pro.pro_descripcion,
-		   pca.ptc_id, ptc.ptc_codigo, ptc.ptc_descripcion
-	FROM dbo.inv_producto_caracteristica pca
-	INNER JOIN dbo.inv_producto pro ON pro.pro_id = pca.pro_id
-	INNER JOIN dbo.inv_producto_tipo_caracteristica ptc ON ptc.ptc_id = pca.ptc_id
-	WHERE (@pro_id IS NULL OR pca.pro_id = @pro_id)
-	ORDER BY pro.pro_descripcion, ptc.ptc_orden;
+	SELECT prca.pca_id, prca.pca_valor, prca.pca_descripcion, prca.pro_id,
+		   prod.pro_codigo, prod.pro_descripcion,
+		   prca.ptc_id, ptca.ptc_codigo, ptca.ptc_descripcion
+	FROM dbo.inv_producto_caracteristica prca
+	INNER JOIN dbo.inv_producto prod ON prod.pro_id = prca.pro_id
+	INNER JOIN dbo.inv_producto_tipo_caracteristica ptca ON ptca.ptc_id = prca.ptc_id
+	WHERE (@pro_id IS NULL OR prca.pro_id = @pro_id)
+	ORDER BY prod.pro_descripcion, ptca.ptc_orden;
 END;
 GO
 
@@ -123,28 +142,28 @@ GO
 -- inv_producto_existencia_bodega (solo consulta; la existencia la
 -- mantienen los procesos de negocio al grabar/anular documentos)
 ------------------------------------------------------------
-CREATE OR ALTER PROCEDURE [dbo].[sp_producto_existencia_consultar]
+CREATE OR ALTER PROCEDURE [dbo].[paProductoExistenciaConsultar]
 	@pro_id	INT = NULL,
 	@bod_id	INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
 
-	SELECT peb.peb_id, peb.pro_id, pro.pro_codigo, pro.pro_descripcion,
-		   peb.bod_id, bod.bod_descripcion, peb.existencia
-	FROM dbo.inv_producto_existencia_bodega peb
-	INNER JOIN dbo.inv_producto pro ON pro.pro_id = peb.pro_id
-	INNER JOIN dbo.inv_bodega bod ON bod.bod_id = peb.bod_id
-	WHERE (@pro_id IS NULL OR peb.pro_id = @pro_id)
-	  AND (@bod_id IS NULL OR peb.bod_id = @bod_id)
-	ORDER BY pro.pro_descripcion, bod.bod_descripcion;
+	SELECT pexi.peb_id, pexi.pro_id, prod.pro_codigo, prod.pro_descripcion,
+		   pexi.bod_id, bode.bod_descripcion, pexi.existencia
+	FROM dbo.inv_producto_existencia_bodega pexi
+	INNER JOIN dbo.inv_producto prod ON prod.pro_id = pexi.pro_id
+	INNER JOIN dbo.inv_bodega bode ON bode.bod_id = pexi.bod_id
+	WHERE (@pro_id IS NULL OR pexi.pro_id = @pro_id)
+	  AND (@bod_id IS NULL OR pexi.bod_id = @bod_id)
+	ORDER BY prod.pro_descripcion, bode.bod_descripcion;
 END;
 GO
 
 ------------------------------------------------------------
 -- inv_producto_precio
 ------------------------------------------------------------
-CREATE OR ALTER PROCEDURE [dbo].[sp_producto_precio_insertar]
+CREATE OR ALTER PROCEDURE [dbo].[paProductoPrecioInsertar]
 	@pro_id							INT,
 	@bod_id							INT,
 	@mon_id							INT,
@@ -172,7 +191,7 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[sp_producto_precio_actualizar]
+CREATE OR ALTER PROCEDURE [dbo].[paProductoPrecioActualizar]
 	@ppr_id							INT,
 	@bod_id							INT,
 	@mon_id							INT,
@@ -201,7 +220,7 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[sp_producto_precio_eliminar]
+CREATE OR ALTER PROCEDURE [dbo].[paProductoPrecioEliminar]
 	@ppr_id	INT,
 	@usu_id	INT = NULL
 AS
@@ -219,7 +238,7 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[sp_producto_precio_consultar]
+CREATE OR ALTER PROCEDURE [dbo].[paProductoPrecioConsultar]
 	@pro_id		INT = NULL,
 	@bod_id		INT = NULL,
 	@ppr_estado	CHAR(1) = 'A'
@@ -227,29 +246,29 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 
-	SELECT ppr.ppr_id, ppr.pro_id, pro.pro_codigo, pro.pro_descripcion,
-		   ppr.bod_id, bod.bod_descripcion, ppr.mon_id, mon.mon_codigo,
-		   ppr.ppr_precio_unitario_venta, ppr.ppr_descripcion,
-		   ppr.ppr_vigencia_desde, ppr.ppr_vigencia_hasta, ppr.ppr_estado
-	FROM dbo.inv_producto_precio ppr
-	INNER JOIN dbo.inv_producto pro ON pro.pro_id = ppr.pro_id
-	INNER JOIN dbo.inv_bodega bod ON bod.bod_id = ppr.bod_id
-	INNER JOIN dbo.gen_moneda mon ON mon.mon_id = ppr.mon_id
-	WHERE (@pro_id IS NULL OR ppr.pro_id = @pro_id)
-	  AND (@bod_id IS NULL OR ppr.bod_id = @bod_id)
-	  AND (@ppr_estado IS NULL OR ppr.ppr_estado = @ppr_estado)
-	ORDER BY pro.pro_descripcion, bod.bod_descripcion, ppr.ppr_vigencia_desde DESC;
+	SELECT prec.ppr_id, prec.pro_id, prod.pro_codigo, prod.pro_descripcion,
+		   prec.bod_id, bode.bod_descripcion, prec.mon_id, mone.mon_codigo,
+		   prec.ppr_precio_unitario_venta, prec.ppr_descripcion,
+		   prec.ppr_vigencia_desde, prec.ppr_vigencia_hasta, prec.ppr_estado
+	FROM dbo.inv_producto_precio prec
+	INNER JOIN dbo.inv_producto prod ON prod.pro_id = prec.pro_id
+	INNER JOIN dbo.inv_bodega bode ON bode.bod_id = prec.bod_id
+	INNER JOIN dbo.gen_moneda mone ON mone.mon_id = prec.mon_id
+	WHERE (@pro_id IS NULL OR prec.pro_id = @pro_id)
+	  AND (@bod_id IS NULL OR prec.bod_id = @bod_id)
+	  AND (@ppr_estado IS NULL OR prec.ppr_estado = @ppr_estado)
+	ORDER BY prod.pro_descripcion, bode.bod_descripcion, prec.ppr_vigencia_desde DESC;
 END;
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[sp_producto_precio_consultar_por_id]
+CREATE OR ALTER PROCEDURE [dbo].[paProductoPrecioConsultarPorId]
 	@ppr_id INT
 AS
 BEGIN
 	SET NOCOUNT ON;
 
-	SELECT ppr.*
-	FROM dbo.inv_producto_precio ppr
-	WHERE ppr.ppr_id = @ppr_id;
+	SELECT prec.*
+	FROM dbo.inv_producto_precio prec
+	WHERE prec.ppr_id = @ppr_id;
 END;
 GO

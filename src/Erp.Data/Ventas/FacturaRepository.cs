@@ -91,7 +91,7 @@ public sealed class FacturaRepository(IDbConnectionFactory connectionFactory) : 
 			pagina,
 			tamanio_pagina = tamanioPagina
 		};
-		var filas = await connection.QueryAsync<FacturaEncabezado>("dbo.sp_documento_consultar", parametros, commandType: CommandType.StoredProcedure);
+		var filas = await connection.QueryAsync<FacturaEncabezado>("dbo.paDocumentoConsultar", parametros, commandType: CommandType.StoredProcedure);
 		return filas.ToList();
 	}
 

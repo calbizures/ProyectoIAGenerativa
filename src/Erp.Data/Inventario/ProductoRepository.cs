@@ -92,7 +92,7 @@ public sealed class ProductoRepository(IDbConnectionFactory connectionFactory) :
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new { pro_id = proId, bod_id = bodId };
 		var filas = await connection.QueryAsync<ProductoExistenciaBodega>(
-			"dbo.sp_producto_existencia_consultar", parametros, commandType: CommandType.StoredProcedure);
+			"dbo.paProductoExistenciaConsultar", parametros, commandType: CommandType.StoredProcedure);
 		return filas.ToList();
 	}
 }
