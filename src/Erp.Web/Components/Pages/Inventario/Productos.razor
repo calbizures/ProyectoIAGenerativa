@@ -117,11 +117,11 @@
 
         <EditForm Model="edicionProducto" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
-            <div class="campo"><label>Código</label><InputText @bind-Value="edicionProducto.Codigo" /></div>
-            <div class="campo"><label>Descripción</label><InputText @bind-Value="edicionProducto.Descripcion" /></div>
+            <div class="campo"><label>Código</label><InputText @bind-Value="edicionProducto.Codigo" disabled="@(!editando)" /></div>
+            <div class="campo"><label>Descripción</label><InputText @bind-Value="edicionProducto.Descripcion" disabled="@(!editando)" /></div>
             <div class="campo">
                 <label>Tipo de producto</label>
-                <select @bind="edicionProducto.PrtId">
+                <select @bind="edicionProducto.PrtId" disabled="@(!editando)">
                     @foreach (var tipo in tiposProducto)
                     {
                         <option value="@tipo.PrtId">@tipo.PrtDescripcion</option>
@@ -130,17 +130,27 @@
             </div>
             <div class="campo">
                 <label>Clasificación</label>
-                <select @bind="edicionProducto.TipoItem">
+                <select @bind="edicionProducto.TipoItem" disabled="@(!editando)">
                     <option value="B">Bien</option>
                     <option value="S">Servicio</option>
                 </select>
             </div>
             <div class="campo campo-checkbox">
-                <label><input type="checkbox" @bind="edicionProducto.ManejaExistencia" /> Maneja existencia</label>
+                <label><input type="checkbox" @bind="edicionProducto.ManejaExistencia" disabled="@(!editando)" /> Maneja existencia</label>
             </div>
             <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_EDITAR" Context="autorizacionEdicion">
                 <Authorized Context="autorizacionEdicion">
-                    <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+                    <div class="acciones-fila">
+                        @if (!editando)
+                        {
+                            <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="() => editando = true" />
+                        }
+                        else
+                        {
+                            <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+                            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicionAsync" />
+                        }
+                    </div>
                 </Authorized>
             </AuthorizeView>
         </EditForm>
@@ -302,6 +312,7 @@
     private IReadOnlyList<MonedaInventario> monedasDisponibles = Array.Empty<MonedaInventario>();
     private IReadOnlyList<Bodega> bodegasDisponibles = Array.Empty<Bodega>();
     private Producto? seleccionado;
+    private bool editando;
 
     private bool mostrarNuevaCaracteristica;
     private readonly CaracteristicaModelo nuevaCaracteristica = new();
@@ -383,6 +394,7 @@
     private async Task SeleccionarAsync(Producto producto)
     {
         seleccionado = producto;
+        editando = false;
         edicionProducto.Codigo = producto.ProCodigo;
         edicionProducto.Descripcion = producto.ProDescripcion;
         edicionProducto.PrtId = producto.PrtId;
@@ -399,6 +411,11 @@
 
         mostrarNuevoPrecio = false;
         preciosProducto = await PrecioRepository.ConsultarAsync(producto.ProId, bodId: null, estado: "A");
+    }
+
+    private async Task CancelarEdicionAsync()
+    {
+        if (seleccionado is not null) await SeleccionarAsync(seleccionado);
     }
 
     private void EditarCaracteristica(ProductoCaracteristica caracteristica)
@@ -536,6 +553,7 @@
                 edicionProducto.TipoItem, edicionProducto.ManejaExistencia, idPadre: null, porcentajeRentabilidad: null, usuId);
             mensaje = "Cambios guardados.";
             esMensajeError = false;
+            editando = false;
             await BuscarAsync();
         }
         catch (Exception ex)

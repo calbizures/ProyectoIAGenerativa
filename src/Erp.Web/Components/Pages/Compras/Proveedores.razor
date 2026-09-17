@@ -83,13 +83,23 @@
         <h2>Detalle: @seleccionado.PrvNombreComercial</h2>
         <EditForm Model="edicionProveedor" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
-            <div class="campo"><label>Nombre comercial</label><InputText @bind-Value="edicionProveedor.NombreComercial" /></div>
-            <div class="campo"><label>NIT</label><InputText @bind-Value="edicionProveedor.Nit" /></div>
-            <div class="campo"><label>Contacto</label><InputText @bind-Value="edicionProveedor.Contacto" /></div>
-            <div class="campo"><label>Teléfono oficina</label><InputText @bind-Value="edicionProveedor.TelefonoOficina" /></div>
-            <div class="campo"><label>Dirección</label><InputText @bind-Value="edicionProveedor.Direccion" /></div>
-            <div class="campo"><label>Email empresa</label><InputText @bind-Value="edicionProveedor.EmailEmpresa" /></div>
-            <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+            <div class="campo"><label>Nombre comercial</label><InputText @bind-Value="edicionProveedor.NombreComercial" disabled="@(!editando)" /></div>
+            <div class="campo"><label>NIT</label><InputText @bind-Value="edicionProveedor.Nit" disabled="@(!editando)" /></div>
+            <div class="campo"><label>Contacto</label><InputText @bind-Value="edicionProveedor.Contacto" disabled="@(!editando)" /></div>
+            <div class="campo"><label>Teléfono oficina</label><InputText @bind-Value="edicionProveedor.TelefonoOficina" disabled="@(!editando)" /></div>
+            <div class="campo"><label>Dirección</label><InputText @bind-Value="edicionProveedor.Direccion" disabled="@(!editando)" /></div>
+            <div class="campo"><label>Email empresa</label><InputText @bind-Value="edicionProveedor.EmailEmpresa" disabled="@(!editando)" /></div>
+            <div class="acciones-fila">
+                @if (!editando)
+                {
+                    <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="() => editando = true" />
+                }
+                else
+                {
+                    <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />
+                }
+            </div>
         </EditForm>
     </div>
 }
@@ -100,6 +110,7 @@
 
     private IReadOnlyList<Proveedor> proveedores = Array.Empty<Proveedor>();
     private Proveedor? seleccionado;
+    private bool editando;
 
     private string textoBusqueda = "";
     private string filtroEstado = "A";
@@ -162,12 +173,18 @@
     private void SeleccionarAsync(Proveedor proveedor)
     {
         seleccionado = proveedor;
+        editando = false;
         edicionProveedor.NombreComercial = proveedor.PrvNombreComercial;
         edicionProveedor.Nit = proveedor.PrvNit;
         edicionProveedor.Contacto = proveedor.PrvContacto;
         edicionProveedor.TelefonoOficina = proveedor.PrvTelefonoOficina;
         edicionProveedor.EmailEmpresa = proveedor.PrvEmailEmpresa;
         mensaje = null;
+    }
+
+    private void CancelarEdicion()
+    {
+        if (seleccionado is not null) SeleccionarAsync(seleccionado);
     }
 
     private async Task GuardarEdicionAsync()
@@ -181,6 +198,7 @@
                 edicionProveedor.Direccion, edicionProveedor.TelefonoOficina, edicionProveedor.EmailEmpresa, usuId);
             mensaje = "Cambios guardados.";
             esMensajeError = false;
+            editando = false;
             await BuscarAsync();
         }
         catch (Exception ex)

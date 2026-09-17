@@ -80,11 +80,21 @@
         <h2>Detalle: @seleccionado.PveNombres @seleccionado.PveApellidos</h2>
         <EditForm Model="edicionVendedor" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
-            <div class="campo"><label>Nombres</label><InputText @bind-Value="edicionVendedor.Nombres" /></div>
-            <div class="campo"><label>Apellidos</label><InputText @bind-Value="edicionVendedor.Apellidos" /></div>
-            <div class="campo"><label>Fecha de ingreso</label><InputDate @bind-Value="edicionVendedor.FechaIngreso" /></div>
-            <div class="campo"><label>% Comisión</label><InputNumber @bind-Value="edicionVendedor.PorcentajeComision" step="0.01" /></div>
-            <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+            <div class="campo"><label>Nombres</label><InputText @bind-Value="edicionVendedor.Nombres" disabled="@(!editando)" /></div>
+            <div class="campo"><label>Apellidos</label><InputText @bind-Value="edicionVendedor.Apellidos" disabled="@(!editando)" /></div>
+            <div class="campo"><label>Fecha de ingreso</label><InputDate @bind-Value="edicionVendedor.FechaIngreso" disabled="@(!editando)" /></div>
+            <div class="campo"><label>% Comisión</label><InputNumber @bind-Value="edicionVendedor.PorcentajeComision" step="0.01" disabled="@(!editando)" /></div>
+            <div class="acciones-fila">
+                @if (!editando)
+                {
+                    <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="() => editando = true" />
+                }
+                else
+                {
+                    <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />
+                }
+            </div>
         </EditForm>
     </div>
 }
@@ -95,6 +105,7 @@
 
     private IReadOnlyList<Vendedor> vendedores = Array.Empty<Vendedor>();
     private Vendedor? seleccionado;
+    private bool editando;
 
     private string filtroEstado = "A";
     private bool mostrarNuevo;
@@ -150,11 +161,17 @@
     private void SeleccionarAsync(Vendedor vendedor)
     {
         seleccionado = vendedor;
+        editando = false;
         edicionVendedor.Nombres = vendedor.PveNombres;
         edicionVendedor.Apellidos = vendedor.PveApellidos;
         edicionVendedor.FechaIngreso = vendedor.PveFechaIngreso;
         edicionVendedor.PorcentajeComision = vendedor.PvePorcComision;
         mensaje = null;
+    }
+
+    private void CancelarEdicion()
+    {
+        if (seleccionado is not null) SeleccionarAsync(seleccionado);
     }
 
     private async Task GuardarEdicionAsync()
@@ -166,6 +183,7 @@
             await VendedorRepository.ActualizarAsync(seleccionado.PveId, edicionVendedor.Nombres, edicionVendedor.Apellidos, edicionVendedor.FechaIngreso, edicionVendedor.PorcentajeComision, usuId);
             mensaje = "Cambios guardados.";
             esMensajeError = false;
+            editando = false;
             await BuscarAsync();
         }
         catch (Exception ex)

@@ -85,14 +85,24 @@
         <h2>Detalle: @seleccionado.NombreCompleto</h2>
         <EditForm Model="edicionCliente" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
-            <div class="campo"><label>Nombres</label><InputText @bind-Value="edicionCliente.Nombres" /></div>
-            <div class="campo"><label>Apellidos</label><InputText @bind-Value="edicionCliente.Apellidos" /></div>
-            <div class="campo"><label>NIT</label><InputText @bind-Value="edicionCliente.Nit" /></div>
-            <div class="campo"><label>Teléfono celular</label><InputText @bind-Value="edicionCliente.TelefonoCelular" /></div>
-            <div class="campo"><label>Dirección</label><InputText @bind-Value="edicionCliente.Direccion" /></div>
-            <div class="campo"><label>Email</label><InputText @bind-Value="edicionCliente.Email" /></div>
-            <div class="campo"><label>Límite de crédito</label><InputNumber @bind-Value="edicionCliente.LimiteCredito" step="0.01" /></div>
-            <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+            <div class="campo"><label>Nombres</label><InputText @bind-Value="edicionCliente.Nombres" disabled="@(!editando)" /></div>
+            <div class="campo"><label>Apellidos</label><InputText @bind-Value="edicionCliente.Apellidos" disabled="@(!editando)" /></div>
+            <div class="campo"><label>NIT</label><InputText @bind-Value="edicionCliente.Nit" disabled="@(!editando)" /></div>
+            <div class="campo"><label>Teléfono celular</label><InputText @bind-Value="edicionCliente.TelefonoCelular" disabled="@(!editando)" /></div>
+            <div class="campo"><label>Dirección</label><InputText @bind-Value="edicionCliente.Direccion" disabled="@(!editando)" /></div>
+            <div class="campo"><label>Email</label><InputText @bind-Value="edicionCliente.Email" disabled="@(!editando)" /></div>
+            <div class="campo"><label>Límite de crédito</label><InputNumber @bind-Value="edicionCliente.LimiteCredito" step="0.01" disabled="@(!editando)" /></div>
+            <div class="acciones-fila">
+                @if (!editando)
+                {
+                    <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="() => editando = true" />
+                }
+                else
+                {
+                    <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />
+                }
+            </div>
         </EditForm>
     </div>
 }
@@ -103,6 +113,7 @@
 
     private IReadOnlyList<Cliente> clientes = Array.Empty<Cliente>();
     private Cliente? seleccionado;
+    private bool editando;
 
     private string textoBusqueda = "";
     private string filtroEstado = "A";
@@ -166,6 +177,7 @@
     private void SeleccionarAsync(Cliente cliente)
     {
         seleccionado = cliente;
+        editando = false;
         edicionCliente.Nombres = cliente.CliNombres;
         edicionCliente.Apellidos = cliente.CliApellidos;
         edicionCliente.Nit = cliente.CliNit;
@@ -173,6 +185,11 @@
         edicionCliente.Direccion = cliente.CliDireccion;
         edicionCliente.LimiteCredito = cliente.CliLimiteCredito;
         mensaje = null;
+    }
+
+    private void CancelarEdicion()
+    {
+        if (seleccionado is not null) SeleccionarAsync(seleccionado);
     }
 
     private async Task GuardarEdicionAsync()
@@ -186,6 +203,7 @@
                 edicionCliente.TelefonoCelular, edicionCliente.Nit, edicionCliente.Email, edicionCliente.LimiteCredito, usuId);
             mensaje = "Cambios guardados.";
             esMensajeError = false;
+            editando = false;
             await BuscarAsync();
         }
         catch (Exception ex)

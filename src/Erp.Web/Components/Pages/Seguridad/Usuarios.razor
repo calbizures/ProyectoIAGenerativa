@@ -89,9 +89,19 @@
 
         <EditForm Model="edicionUsuario" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
-            <div class="campo"><label>Usuario</label><InputText @bind-Value="edicionUsuario.Usuario" /></div>
-            <div class="campo"><label>Email</label><InputText @bind-Value="edicionUsuario.Email" /></div>
-            <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+            <div class="campo"><label>Usuario</label><InputText @bind-Value="edicionUsuario.Usuario" disabled="@(!editando)" /></div>
+            <div class="campo"><label>Email</label><InputText @bind-Value="edicionUsuario.Email" disabled="@(!editando)" /></div>
+            <div class="acciones-fila">
+                @if (!editando)
+                {
+                    <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="() => editando = true" />
+                }
+                else
+                {
+                    <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicionAsync" />
+                }
+            </div>
         </EditForm>
 
         <h3>Cambiar contraseña</h3>
@@ -131,6 +141,7 @@
     private IReadOnlyList<Rol> todosLosRoles = Array.Empty<Rol>();
     private IReadOnlyList<UsuarioRol> rolesAsignados = Array.Empty<UsuarioRol>();
     private Usuario? seleccionado;
+    private bool editando;
 
     private string filtroUsuario = "";
     private string filtroEstado = "A";
@@ -191,6 +202,7 @@
     private async Task SeleccionarAsync(Usuario usuario)
     {
         seleccionado = usuario;
+        editando = false;
         edicionUsuario.Usuario = usuario.UsuUsuario;
         edicionUsuario.Email = usuario.UsuEmail;
         cambioPassword.Actual = "";
@@ -199,6 +211,11 @@
 
         var (_, roles) = await UsuarioRepository.ConsultarPorIdAsync(usuario.UsuId);
         rolesAsignados = roles;
+    }
+
+    private async Task CancelarEdicionAsync()
+    {
+        if (seleccionado is not null) await SeleccionarAsync(seleccionado);
     }
 
     private async Task GuardarEdicionAsync()
@@ -210,6 +227,7 @@
             await UsuarioRepository.ActualizarAsync(seleccionado.UsuId, edicionUsuario.Usuario, edicionUsuario.Email, usuId);
             mensaje = "Cambios guardados.";
             esMensajeError = false;
+            editando = false;
             await BuscarAsync();
         }
         catch (Exception ex)

@@ -67,8 +67,18 @@
 
         <EditForm Model="edicionRol" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
-            <div class="campo"><label>Nombre</label><InputText @bind-Value="edicionRol.Nombre" /></div>
-            <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+            <div class="campo"><label>Nombre</label><InputText @bind-Value="edicionRol.Nombre" disabled="@(!editando)" /></div>
+            <div class="acciones-fila">
+                @if (!editando)
+                {
+                    <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="() => editando = true" />
+                }
+                else
+                {
+                    <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicionAsync" />
+                }
+            </div>
         </EditForm>
 
         <h3>Permisos asignados</h3>
@@ -100,6 +110,7 @@
     private IReadOnlyList<Permiso> todosLosPermisos = Array.Empty<Permiso>();
     private IReadOnlyList<int> permisosAsignadosId = Array.Empty<int>();
     private Rol? seleccionado;
+    private bool editando;
 
     private bool mostrarNuevo;
     private string? mensaje;
@@ -147,9 +158,15 @@
     private async Task SeleccionarAsync(Rol rol)
     {
         seleccionado = rol;
+        editando = false;
         edicionRol.Nombre = rol.RolNombre;
         mensaje = null;
         permisosAsignadosId = await RolRepository.ConsultarPermisosAsignadosAsync(rol.RolId);
+    }
+
+    private async Task CancelarEdicionAsync()
+    {
+        if (seleccionado is not null) await SeleccionarAsync(seleccionado);
     }
 
     private async Task GuardarEdicionAsync()
@@ -161,6 +178,7 @@
             await RolRepository.ActualizarAsync(seleccionado.RolId, edicionRol.Nombre, usuId);
             mensaje = "Cambios guardados.";
             esMensajeError = false;
+            editando = false;
             await BuscarAsync();
         }
         catch (Exception ex)
