@@ -37,16 +37,16 @@
 
 <table class="tabla-datos">
     <thead>
-        <tr><th>Código</th><th>Nombre</th><th>Estado</th><th>Acciones</th></tr>
+        <tr><th class="col-codigo">Código</th><th>Nombre</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
     </thead>
     <tbody>
         @foreach (var rol in roles)
         {
             <tr class="@(seleccionado?.RolId == rol.RolId ? "fila-seleccionada" : "")">
-                <td>@rol.RolCodigo</td>
+                <td class="col-codigo">@rol.RolCodigo</td>
                 <td>@rol.RolNombre</td>
-                <td>@(rol.RolEstado == "A" ? "Activo" : "Inactivo")</td>
-                <td>
+                <td class="col-estado">@(rol.RolEstado == "A" ? "Activo" : "Inactivo")</td>
+                <td class="col-acciones">
                     <div class="acciones-fila">
                         <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(rol)" />
                         @if (rol.RolEstado == "A")

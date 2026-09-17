@@ -53,19 +53,19 @@
 
 <table class="tabla-datos">
     <thead>
-        <tr><th>Código</th><th>Nombre</th><th>NIT</th><th>Teléfono</th><th>Límite crédito</th><th>Estado</th><th>Acciones</th></tr>
+        <tr><th class="col-codigo">Código</th><th>Nombre</th><th class="col-codigo">NIT</th><th class="col-telefono">Teléfono</th><th class="num col-monto">Límite crédito</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
     </thead>
     <tbody>
         @foreach (var c in clientes)
         {
             <tr class="@(seleccionado?.CliId == c.CliId ? "fila-seleccionada" : "")">
-                <td>@c.CliCodigo</td>
+                <td class="col-codigo">@c.CliCodigo</td>
                 <td>@c.NombreCompleto</td>
-                <td>@c.CliNit</td>
-                <td>@c.CliTelefonoCelular</td>
-                <td>@c.CliLimiteCredito.ToString("N2")</td>
-                <td>@(c.CliEstado == "A" ? "Activo" : "Inactivo")</td>
-                <td>
+                <td class="col-codigo">@c.CliNit</td>
+                <td class="col-telefono">@c.CliTelefonoCelular</td>
+                <td class="num col-monto">@c.CliLimiteCredito.ToString("N2")</td>
+                <td class="col-estado">@(c.CliEstado == "A" ? "Activo" : "Inactivo")</td>
+                <td class="col-acciones">
                     <div class="acciones-fila">
                         <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(c)" />
                         @if (c.CliEstado == "A")

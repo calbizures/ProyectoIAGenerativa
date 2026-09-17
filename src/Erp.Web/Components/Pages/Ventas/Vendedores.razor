@@ -49,18 +49,18 @@
 
 <table class="tabla-datos">
     <thead>
-        <tr><th>Código</th><th>Nombres</th><th>Apellidos</th><th>% Comisión</th><th>Estado</th><th>Acciones</th></tr>
+        <tr><th class="col-codigo">Código</th><th>Nombres</th><th>Apellidos</th><th class="num col-estado">% Comisión</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
     </thead>
     <tbody>
         @foreach (var v in vendedores)
         {
             <tr class="@(seleccionado?.PveId == v.PveId ? "fila-seleccionada" : "")">
-                <td>@v.PveCodigo</td>
+                <td class="col-codigo">@v.PveCodigo</td>
                 <td>@v.PveNombres</td>
                 <td>@v.PveApellidos</td>
-                <td>@v.PvePorcComision.ToString("N2")</td>
-                <td>@(v.PveEstado == "A" ? "Activo" : "Inactivo")</td>
-                <td>
+                <td class="num col-estado">@v.PvePorcComision.ToString("N2")</td>
+                <td class="col-estado">@(v.PveEstado == "A" ? "Activo" : "Inactivo")</td>
+                <td class="col-acciones">
                     <div class="acciones-fila">
                         <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(v)" />
                         @if (v.PveEstado == "A")

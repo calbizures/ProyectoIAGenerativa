@@ -47,24 +47,24 @@
 <table class="tabla-datos">
     <thead>
         <tr>
-            <th>Código</th>
+            <th class="col-codigo">Código</th>
             <th>Usuario</th>
             <th>Email</th>
-            <th>Estado</th>
-            <th>Bloqueado</th>
-            <th>Acciones</th>
+            <th class="col-estado">Estado</th>
+            <th class="col-estado">Bloqueado</th>
+            <th class="col-acciones">Acciones</th>
         </tr>
     </thead>
     <tbody>
         @foreach (var u in usuarios)
         {
             <tr class="@(seleccionado?.UsuId == u.UsuId ? "fila-seleccionada" : "")">
-                <td>@u.UsuCodigo</td>
+                <td class="col-codigo">@u.UsuCodigo</td>
                 <td>@u.UsuUsuario</td>
                 <td>@u.UsuEmail</td>
-                <td>@(u.UsuEstado == "A" ? "Activo" : "Inactivo")</td>
-                <td>@(u.UsuBloqueado ? "Sí" : "No")</td>
-                <td>
+                <td class="col-estado">@(u.UsuEstado == "A" ? "Activo" : "Inactivo")</td>
+                <td class="col-estado">@(u.UsuBloqueado ? "Sí" : "No")</td>
+                <td class="col-acciones">
                     <div class="acciones-fila">
                         <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(u)" />
                         @if (u.UsuEstado == "A")

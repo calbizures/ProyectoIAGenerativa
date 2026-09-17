@@ -73,26 +73,26 @@
 <table class="tabla-datos">
     <thead>
         <tr>
-            <th>Código</th>
+            <th class="col-codigo">Código</th>
             <th>Descripción</th>
-            <th>Tipo</th>
-            <th>Existencia</th>
-            <th>Costo unitario</th>
-            <th>Estado</th>
-            <th>Acciones</th>
+            <th class="col-telefono">Tipo</th>
+            <th class="num col-estado">Existencia</th>
+            <th class="num col-monto">Costo unitario</th>
+            <th class="col-estado">Estado</th>
+            <th class="col-acciones">Acciones</th>
         </tr>
     </thead>
     <tbody>
         @foreach (var p in productos)
         {
             <tr class="@(seleccionado?.ProId == p.ProId ? "fila-seleccionada" : "")">
-                <td>@p.ProCodigo</td>
+                <td class="col-codigo">@p.ProCodigo</td>
                 <td>@p.ProDescripcion</td>
-                <td>@p.PrtDescripcion</td>
-                <td>@(p.ProManejaExistencia ? p.ProTotalCantidad.ToString("N0") : "—")</td>
-                <td>@p.ProCostoUnitario.ToString("N5")</td>
-                <td>@(p.ProEstado == "A" ? "Activo" : "Inactivo")</td>
-                <td>
+                <td class="col-telefono">@p.PrtDescripcion</td>
+                <td class="num col-estado">@(p.ProManejaExistencia ? p.ProTotalCantidad.ToString("N0") : "—")</td>
+                <td class="num col-monto">@p.ProCostoUnitario.ToString("N5")</td>
+                <td class="col-estado">@(p.ProEstado == "A" ? "Activo" : "Inactivo")</td>
+                <td class="col-acciones">
                     <div class="acciones-fila">
                         <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(p)" />
                         <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_EDITAR">

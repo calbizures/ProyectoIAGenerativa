@@ -438,6 +438,7 @@ h1:focus {
 .tabla-datos th.col-estado, .tabla-datos td.col-estado { width: 90px; white-space: nowrap; }
 .tabla-datos th.col-acciones, .tabla-datos td.col-acciones { width: 96px; white-space: nowrap; }
 .tabla-datos th.col-monto, .tabla-datos td.col-monto { width: 110px; }
+.tabla-datos th.col-telefono, .tabla-datos td.col-telefono { width: 120px; white-space: nowrap; }
 
 .acciones-fila {
     display: flex;
