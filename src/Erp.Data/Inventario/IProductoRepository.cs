@@ -8,4 +8,5 @@ public interface IProductoRepository
 	Task<IReadOnlyList<Producto>> ConsultarAsync(string? codigo, string? descripcion, int? prtId, string? estado, int pagina, int tamanioPagina);
 	Task<(Producto? Producto, IReadOnlyList<ProductoExistenciaBodega> Existencias)> ConsultarPorIdAsync(int proId);
 	Task<IReadOnlyList<ProductoTipo>> ConsultarTiposAsync();
+	Task<IReadOnlyList<ProductoExistenciaBodega>> ConsultarExistenciasAsync(int? proId, int? bodId);
 }

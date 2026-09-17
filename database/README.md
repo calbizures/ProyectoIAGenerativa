@@ -30,6 +30,9 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 13_correccion_numero_unico.sql   -- solo si ya corriste 00-12 antes de esta fecha
 14_procedimientos_vendedor.sql   -- solo si ya corriste 00-12 antes de esta fecha
 15_correccion_plan_pagos.sql     -- solo si ya corriste 00-14 antes de esta fecha
+16_activar_usuario.sql                        -- solo si ya corriste 00-15 antes de esta fecha
+17_documento_consultar_codigo_cliente.sql     -- solo si ya corriste 00-16 antes de esta fecha
+18_procedimientos_detalle_producto.sql        -- solo si ya corriste 00-17 antes de esta fecha
 ```
 
 Cada archivo empieza con `USE [erp_db];` y usa `CREATE OR ALTER` en objetos

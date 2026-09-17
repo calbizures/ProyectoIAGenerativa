@@ -86,4 +86,13 @@ public sealed class ProductoRepository(IDbConnectionFactory connectionFactory) :
 			"SELECT prt_id, prt_codigo, prt_descripcion FROM dbo.inv_producto_tipo WHERE prt_estado = 'A' ORDER BY prt_descripcion");
 		return filas.ToList();
 	}
+
+	public async Task<IReadOnlyList<ProductoExistenciaBodega>> ConsultarExistenciasAsync(int? proId, int? bodId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new { pro_id = proId, bod_id = bodId };
+		var filas = await connection.QueryAsync<ProductoExistenciaBodega>(
+			"dbo.sp_producto_existencia_consultar", parametros, commandType: CommandType.StoredProcedure);
+		return filas.ToList();
+	}
 }
