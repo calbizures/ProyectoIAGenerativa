@@ -40,6 +40,13 @@ public sealed class UsuarioRepository(IDbConnectionFactory connectionFactory) : 
 		await connection.ExecuteAsync("dbo.sp_usuario_eliminar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
+	public async Task ActivarAsync(int usuId, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new { usu_id = usuId, usu_id_accion = usuarioAccionId };
+		await connection.ExecuteAsync("dbo.sp_usuario_activar", parametros, commandType: CommandType.StoredProcedure);
+	}
+
 	public async Task CambiarPasswordAsync(int usuId, string passwordActual, string passwordNuevo)
 	{
 		using var connection = connectionFactory.CreateConnection();

@@ -48,10 +48,14 @@ public sealed class FacturaEncabezado
 	public DateTime EncFechaDocto { get; set; }
 	public string? EncSerieDocto { get; set; }
 	public string? EncNumeroDocto { get; set; }
+	public string TdoCodigo { get; set; } = "";
 	public string TdoDescripcion { get; set; } = "";
 	public int? CliId { get; set; }
+	public string? CliNombres { get; set; }
+	public string? CliApellidos { get; set; }
 	public decimal EncMontoTotal { get; set; }
 	public string EncEstado { get; set; } = "";
+	public string NombreCliente => $"{CliNombres} {CliApellidos}".Trim();
 }
 
 public sealed class FacturaEncabezadoDetalle

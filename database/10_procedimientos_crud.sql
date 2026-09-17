@@ -493,6 +493,24 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER PROCEDURE [dbo].[sp_usuario_activar]
+	@usu_id			INT,
+	@usu_id_accion	INT = NULL
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	IF NOT EXISTS (SELECT 1 FROM dbo.gen_usuario WHERE usu_id = @usu_id)
+		THROW 51032, 'El usuario indicado no existe.', 1;
+
+	UPDATE dbo.gen_usuario
+	   SET usu_estado = 'A',
+		   UpdUsuario = @usu_id_accion,
+		   UpdFechaHora = SYSDATETIME()
+	 WHERE usu_id = @usu_id;
+END;
+GO
+
 CREATE OR ALTER PROCEDURE [dbo].[sp_usuario_consultar]
 	@usu_usuario	VARCHAR(128) = NULL,
 	@usu_estado		CHAR(1) = 'A',
@@ -970,9 +988,12 @@ BEGIN
 	SET NOCOUNT ON;
 
 	SELECT enc.enc_id, enc.enc_fecha_docto, enc.enc_serie_docto, enc.enc_numero_docto,
-		   tdo.tdo_descripcion, enc.cli_id, enc.prv_id, enc.enc_monto_total, enc.enc_estado
+		   tdo.tdo_codigo, tdo.tdo_descripcion, enc.cli_id, enc.prv_id, enc.enc_monto_total, enc.enc_estado,
+		   cli.cli_nombres, cli.cli_apellidos, prv.prv_nombre_comercial
 	FROM dbo.inv_documento_enc enc
 	INNER JOIN dbo.inv_documento_tipo tdo ON tdo.tdo_id = enc.tdo_id
+	LEFT JOIN dbo.pos_cliente cli ON cli.cli_id = enc.cli_id
+	LEFT JOIN dbo.inv_proveedor prv ON prv.prv_id = enc.prv_id
 	WHERE (@tdo_id IS NULL OR enc.tdo_id = @tdo_id)
 	  AND (@cli_id IS NULL OR enc.cli_id = @cli_id)
 	  AND (@prv_id IS NULL OR enc.prv_id = @prv_id)

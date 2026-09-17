@@ -266,21 +266,22 @@
     <h2>Historial</h2>
     <table class="tabla-datos">
         <thead>
-            <tr><th>Fecha</th><th>Serie/Número</th><th>Tipo</th><th>Total</th><th>Estado</th><th>Acciones</th></tr>
+            <tr><th class="col-fecha">Fecha</th><th class="col-serie">Serie/Número</th><th class="col-tipo">Tipo</th><th>Cliente</th><th class="num col-monto">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
         </thead>
         <tbody>
             @if (facturas.Count == 0)
             {
-                <tr><td colspan="6" class="doc-tabla-vacia">No hay facturas para los filtros seleccionados.</td></tr>
+                <tr><td colspan="7" class="doc-tabla-vacia">No hay facturas para los filtros seleccionados.</td></tr>
             }
             @foreach (var f in facturas)
             {
                 <tr class="@(encabezadoSeleccionado?.EncId == f.EncId ? "fila-seleccionada" : "")">
-                    <td>@f.EncFechaDocto.ToString("dd/MM/yyyy")</td>
-                    <td>@f.EncSerieDocto-@f.EncNumeroDocto</td>
-                    <td>@f.TdoDescripcion</td>
-                    <td>@f.EncMontoTotal.ToString("N2")</td>
-                    <td>
+                    <td class="col-fecha">@f.EncFechaDocto.ToString("dd/MM/yyyy")</td>
+                    <td class="col-serie">@f.EncSerieDocto-@f.EncNumeroDocto</td>
+                    <td class="col-tipo">@f.TdoCodigo</td>
+                    <td>@f.NombreCliente</td>
+                    <td class="num col-monto">@f.EncMontoTotal.ToString("N2")</td>
+                    <td class="col-estado">
                         @if (f.EncEstado == "G")
                         {
                             <span class="estado-badge estado-badge-grabada">Grabada</span>

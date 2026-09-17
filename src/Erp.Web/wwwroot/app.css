@@ -426,6 +426,19 @@ h1:focus {
     background: #eaf3ff;
 }
 
+.tabla-datos th.num, .tabla-datos td.num {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.tabla-datos th.col-fecha, .tabla-datos td.col-fecha { width: 92px; white-space: nowrap; }
+.tabla-datos th.col-serie, .tabla-datos td.col-serie { width: 110px; white-space: nowrap; }
+.tabla-datos th.col-codigo, .tabla-datos td.col-codigo { width: 90px; white-space: nowrap; }
+.tabla-datos th.col-tipo, .tabla-datos td.col-tipo { width: 64px; white-space: nowrap; }
+.tabla-datos th.col-estado, .tabla-datos td.col-estado { width: 90px; white-space: nowrap; }
+.tabla-datos th.col-acciones, .tabla-datos td.col-acciones { width: 96px; white-space: nowrap; }
+.tabla-datos th.col-monto, .tabla-datos td.col-monto { width: 110px; }
+
 .acciones-fila {
     display: flex;
     gap: 0.35rem;

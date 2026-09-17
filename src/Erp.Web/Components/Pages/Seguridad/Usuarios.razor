@@ -71,6 +71,10 @@
                         {
                             <BotonIcono Icono="trash-2" Tooltip="Desactivar usuario" Variante="peligro" OnClick="() => DesactivarAsync(u)" />
                         }
+                        else
+                        {
+                            <BotonIcono Icono="refresh-cw" Tooltip="Activar usuario" Variante="primario" OnClick="() => ActivarAsync(u)" />
+                        }
                     </div>
                 </td>
             </tr>
@@ -242,6 +246,23 @@
             mensaje = "Usuario desactivado.";
             esMensajeError = false;
             if (seleccionado?.UsuId == usuario.UsuId) seleccionado = null;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task ActivarAsync(Usuario usuario)
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await UsuarioRepository.ActivarAsync(usuario.UsuId, usuId);
+            mensaje = "Usuario activado.";
+            esMensajeError = false;
             await BuscarAsync();
         }
         catch (Exception ex)

@@ -86,7 +86,7 @@
                 <td>@p.ProCodigo</td>
                 <td>@p.ProDescripcion</td>
                 <td>@p.PrtDescripcion</td>
-                <td>@(p.ProManejaExistencia ? p.ProTotalCantidad.ToString("N2") : "—")</td>
+                <td>@(p.ProManejaExistencia ? p.ProTotalCantidad.ToString("N0") : "—")</td>
                 <td>@p.ProCostoUnitario.ToString("N5")</td>
                 <td>@(p.ProEstado == "A" ? "Activo" : "Inactivo")</td>
                 <td>
@@ -154,7 +154,7 @@
                 {
                     <tr>
                         <td>@existencia.BodDescripcion</td>
-                        <td>@existencia.Existencia.ToString("N2")</td>
+                        <td>@existencia.Existencia.ToString("N0")</td>
                     </tr>
                 }
             </tbody>

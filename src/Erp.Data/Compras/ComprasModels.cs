@@ -34,8 +34,10 @@ public sealed class CompraEncabezado
 	public DateTime EncFechaDocto { get; set; }
 	public string? EncSerieDocto { get; set; }
 	public string? EncNumeroDocto { get; set; }
+	public string TdoCodigo { get; set; } = "";
 	public string TdoDescripcion { get; set; } = "";
 	public int? PrvId { get; set; }
+	public string? PrvNombreComercial { get; set; }
 	public decimal EncMontoTotal { get; set; }
 	public string EncEstado { get; set; } = "";
 }
