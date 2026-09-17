@@ -35,6 +35,24 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 18_procedimientos_detalle_producto.sql        -- solo si ya corriste 00-17 antes de esta fecha
 ```
 
+## Estándares de nomenclatura (a partir de este punto)
+
+A solicitud explícita, todo procedimiento almacenado **nuevo** y todo alias
+de tabla **nuevo** en el SQL que se agregue de aquí en adelante debe seguir:
+
+- **Procedimientos almacenados:** prefijo `pa` + PascalCase, sin guiones
+  bajos (ej. `paProductoInsertar`, `paClienteConsultarPorId`).
+- **Alias de tabla en consultas:** mínimo 4 caracteres (ej. `prod` en vez de
+  `pro`, `enca` en vez de `enc`).
+
+Esto **no aplica retroactivamente**: los ~90 procedimientos `sp_<entidad>_
+<accion>` y los alias de 3 caracteres (`pro`, `cli`, `enc`, `bod`, `mon`,
+`tdo`, `prv`, `ppr`, `pca`, `ptc`, `peb`...) que ya están desplegados se
+dejan como están para no romper llamadas existentes desde `Erp.Data`. Si
+en algún momento se pide migrar los objetos existentes a este estándar,
+es un cambio aparte y coordinado (afecta la capa de datos del frontend a
+la vez), no algo para hacer de forma incremental sin avisar.
+
 Cada archivo empieza con `USE [erp_db];` y usa `CREATE OR ALTER` en objetos
 programables, así que se pueden volver a correr sin borrar la base primero
 (excepto `00` y las tablas, que fallan si ya existen — están pensadas para
@@ -222,9 +240,11 @@ Decisiones de diseño:
     procedimientos usan el estándar de nomenclatura **`pa` + PascalCase**
     (`paVendedorInsertar`, `paVendedorActualizar`, `paVendedorEliminar`,
     `paVendedorConsultar`, `paVendedorConsultarPorId`) en vez de
-    `sp_<entidad>_<accion>` — es el único módulo con ese estándar por ahora;
-    los procedimientos existentes no se renombraron para no romper llamadas
-    ya desplegadas. Quien ya haya corrido `00`-`12` debe correr
+    `sp_<entidad>_<accion>`. En ese momento fue el único módulo con ese
+    estándar; desde la sección "Estándares de nomenclatura" arriba, es el
+    estándar para todo procedimiento nuevo — los ~90 procedimientos
+    `sp_<entidad>_<accion>` existentes no se renombraron para no romper
+    llamadas ya desplegadas. Quien ya haya corrido `00`-`12` debe correr
     `14_procedimientos_vendedor.sql` una sola vez.
 11. **Plan de pagos con el enganche/descuento mal aplicado.** Al exponer en
     el frontend los campos de crédito (enganche, cuotas, fecha del primer
