@@ -1,0 +1,274 @@
+@page "/precios"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR")]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.Inventario
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IProductoPrecioRepository PrecioRepository
+@inject IProductoRepository ProductoRepository
+@inject IBodegaRepository BodegaRepository
+
+<PageTitle>Precios de productos</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Precios de productos</h1>
+    <p>Mantenimiento de precios por producto, bodega y moneda.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+}
+
+<div class="barra-herramientas">
+    <select @bind="filtroProId">
+        <option value="0">Todos los productos</option>
+        @foreach (var p in productos)
+        {
+            <option value="@p.ProId">@p.ProCodigo - @p.ProDescripcion</option>
+        }
+    </select>
+    <select @bind="filtroEstado">
+        <option value="A">Vigentes</option>
+        <option value="I">Desactivados</option>
+        <option value="">Todos</option>
+    </select>
+    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+    <span class="barra-herramientas-separador"></span>
+    <BotonIcono Icono="plus" Tooltip="Nuevo precio" Etiqueta="Nuevo precio" Variante="primario" OnClick="MostrarFormularioNuevo" />
+    <BotonIcono Icono="upload" Tooltip="Importar desde Excel" Etiqueta="Importar Excel" OnClick="() => mostrarImportar = !mostrarImportar" />
+</div>
+
+@if (mostrarImportar)
+{
+    <ImportadorExcel Titulo="Importar precios desde Excel"
+                      Columnas="@(new[] { "pro_codigo", "bod_codigo", "mon_codigo", "ppr_precio_unitario_venta", "ppr_descripcion", "ppr_vigencia_desde", "ppr_vigencia_hasta" })"
+                      OnImportar="ImportarAsync" />
+}
+
+@if (mostrarNuevo)
+{
+    <EditForm Model="nuevoPrecio" OnValidSubmit="CrearPrecioAsync" class="panel-formulario">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="campo">
+            <label>Producto</label>
+            <select @bind="nuevoPrecio.ProId">
+                <option value="0">Seleccione...</option>
+                @foreach (var p in productos)
+                {
+                    <option value="@p.ProId">@p.ProCodigo - @p.ProDescripcion</option>
+                }
+            </select>
+        </div>
+        <div class="campo">
+            <label>Bodega</label>
+            <select @bind="nuevoPrecio.BodId">
+                <option value="0">Seleccione...</option>
+                @foreach (var bod in bodegas)
+                {
+                    <option value="@bod.BodId">@bod.BodDescripcion</option>
+                }
+            </select>
+        </div>
+        <div class="campo">
+            <label>Moneda</label>
+            <select @bind="nuevoPrecio.MonId">
+                <option value="0">Seleccione...</option>
+                @foreach (var mon in monedas)
+                {
+                    <option value="@mon.MonId">@mon.MonCodigo</option>
+                }
+            </select>
+        </div>
+        <div class="campo"><label>Precio unitario de venta</label><InputNumber @bind-Value="nuevoPrecio.PrecioUnitarioVenta" step="0.01" /></div>
+        <div class="campo"><label>Descripción</label><InputText @bind-Value="nuevoPrecio.Descripcion" /></div>
+        <div class="campo"><label>Vigencia desde</label><InputDate @bind-Value="nuevoPrecio.VigenciaDesde" /></div>
+        <div class="campo"><label>Vigencia hasta</label><InputDate @bind-Value="nuevoPrecio.VigenciaHasta" /></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+        </div>
+    </EditForm>
+}
+
+<table class="tabla-datos">
+    <thead>
+        <tr><th>Producto</th><th>Bodega</th><th>Moneda</th><th class="num">Precio</th><th class="col-fecha">Desde</th><th class="col-fecha">Hasta</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+    </thead>
+    <tbody>
+        @if (precios.Count == 0)
+        {
+            <tr><td colspan="8">Sin precios para los filtros seleccionados.</td></tr>
+        }
+        @foreach (var p in precios)
+        {
+            <tr>
+                <td>@p.ProCodigo - @p.ProDescripcion</td>
+                <td>@p.BodDescripcion</td>
+                <td>@p.MonCodigo</td>
+                <td class="num">@p.PprPrecioUnitarioVenta.ToString("N2")</td>
+                <td class="col-fecha">@p.PprVigenciaDesde.ToString("dd/MM/yyyy")</td>
+                <td class="col-fecha">@(p.PprVigenciaHasta?.ToString("dd/MM/yyyy") ?? "—")</td>
+                <td class="col-estado">@(p.PprEstado == "A" ? "Vigente" : "Desactivado")</td>
+                <td>
+                    @if (p.PprEstado == "A")
+                    {
+                        <BotonIcono Icono="trash-2" Tooltip="Desactivar precio" Variante="peligro" OnClick="() => EliminarAsync(p)" />
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<ProductoPrecio> precios = Array.Empty<ProductoPrecio>();
+    private IReadOnlyList<Producto> productos = Array.Empty<Producto>();
+    private IReadOnlyList<Bodega> bodegas = Array.Empty<Bodega>();
+    private IReadOnlyList<MonedaInventario> monedas = Array.Empty<MonedaInventario>();
+
+    private int filtroProId;
+    private string filtroEstado = "A";
+    private bool mostrarNuevo;
+    private bool mostrarImportar;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private readonly PrecioModelo nuevoPrecio = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        productos = await ProductoRepository.ConsultarAsync(null, null, prtId: null, estado: "A", pagina: 1, tamanioPagina: 500);
+        bodegas = await BodegaRepository.ConsultarAsync(sucId: null, estado: "A");
+        monedas = await PrecioRepository.ConsultarMonedasAsync();
+        await BuscarAsync();
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        var estado = await AuthenticationStateTask;
+        return estado.User.ObtenerUsuId();
+    }
+
+    private async Task BuscarAsync()
+    {
+        precios = await PrecioRepository.ConsultarAsync(
+            filtroProId == 0 ? null : filtroProId,
+            bodId: null,
+            string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado);
+    }
+
+    private void MostrarFormularioNuevo()
+    {
+        mensaje = null;
+        nuevoPrecio.ProId = 0;
+        nuevoPrecio.BodId = 0;
+        nuevoPrecio.MonId = 0;
+        nuevoPrecio.PrecioUnitarioVenta = 0;
+        nuevoPrecio.Descripcion = null;
+        nuevoPrecio.VigenciaDesde = DateTime.Today;
+        nuevoPrecio.VigenciaHasta = null;
+        mostrarNuevo = true;
+    }
+
+    private async Task CrearPrecioAsync()
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await PrecioRepository.InsertarAsync(
+                nuevoPrecio.ProId, nuevoPrecio.BodId, nuevoPrecio.MonId, nuevoPrecio.PrecioUnitarioVenta,
+                nuevoPrecio.Descripcion, nuevoPrecio.VigenciaDesde, nuevoPrecio.VigenciaHasta, usuId);
+            mostrarNuevo = false;
+            mensaje = "Precio creado correctamente.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task EliminarAsync(ProductoPrecio precio)
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await PrecioRepository.EliminarAsync(precio.PprId, usuId);
+            mensaje = "Precio desactivado.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task ImportarAsync(IReadOnlyList<Dictionary<string, string>> filas)
+    {
+        var usuId = await ObtenerUsuIdActualAsync();
+        var exitosas = 0;
+        var errores = new List<string>();
+
+        foreach (var fila in filas)
+        {
+            try
+            {
+                var proCodigo = fila.GetValueOrDefault("pro_codigo", "").Trim();
+                var bodCodigo = fila.GetValueOrDefault("bod_codigo", "").Trim();
+                var monCodigo = fila.GetValueOrDefault("mon_codigo", "").Trim();
+                var descripcion = fila.GetValueOrDefault("ppr_descripcion", "").Trim();
+
+                var producto = productos.FirstOrDefault(p => p.ProCodigo.Equals(proCodigo, StringComparison.OrdinalIgnoreCase))
+                    ?? throw new InvalidOperationException($"No existe el producto '{proCodigo}'.");
+                var bodega = bodegas.FirstOrDefault(b => b.BodCodigo.Equals(bodCodigo, StringComparison.OrdinalIgnoreCase))
+                    ?? throw new InvalidOperationException($"No existe la bodega '{bodCodigo}'.");
+                var moneda = monedas.FirstOrDefault(m => m.MonCodigo.Equals(monCodigo, StringComparison.OrdinalIgnoreCase))
+                    ?? throw new InvalidOperationException($"No existe la moneda '{monCodigo}'.");
+
+                var precio = decimal.Parse(fila.GetValueOrDefault("ppr_precio_unitario_venta", "0"), System.Globalization.CultureInfo.InvariantCulture);
+                var vigenciaDesde = DateTime.Parse(fila.GetValueOrDefault("ppr_vigencia_desde", ""), System.Globalization.CultureInfo.InvariantCulture);
+                var vigenciaHastaTexto = fila.GetValueOrDefault("ppr_vigencia_hasta", "");
+                DateTime? vigenciaHasta = string.IsNullOrWhiteSpace(vigenciaHastaTexto)
+                    ? null
+                    : DateTime.Parse(vigenciaHastaTexto, System.Globalization.CultureInfo.InvariantCulture);
+
+                await PrecioRepository.InsertarAsync(producto.ProId, bodega.BodId, moneda.MonId, precio,
+                    string.IsNullOrWhiteSpace(descripcion) ? null : descripcion, vigenciaDesde, vigenciaHasta, usuId);
+                exitosas++;
+            }
+            catch (Exception ex)
+            {
+                errores.Add(ex.Message);
+            }
+        }
+
+        mensaje = errores.Count == 0
+            ? $"Se importaron {exitosas} precios correctamente."
+            : $"Se importaron {exitosas} de {filas.Count}. Errores: {string.Join(" | ", errores.Take(5))}";
+        esMensajeError = errores.Count > 0;
+        mostrarImportar = false;
+        await BuscarAsync();
+    }
+
+    private sealed class PrecioModelo
+    {
+        [Range(1, int.MaxValue, ErrorMessage = "Seleccione un producto")] public int ProId { get; set; }
+        [Range(1, int.MaxValue, ErrorMessage = "Seleccione una bodega")] public int BodId { get; set; }
+        [Range(1, int.MaxValue, ErrorMessage = "Seleccione una moneda")] public int MonId { get; set; }
+        public decimal PrecioUnitarioVenta { get; set; }
+        public string? Descripcion { get; set; }
+        public DateTime VigenciaDesde { get; set; } = DateTime.Today;
+        public DateTime? VigenciaHasta { get; set; }
+    }
+}
