@@ -57,4 +57,12 @@ public sealed class ProductoPrecioRepository(IDbConnectionFactory connectionFact
 			"dbo.sp_producto_precio_consultar", parametros, commandType: CommandType.StoredProcedure);
 		return filas.ToList();
 	}
+
+	public async Task<IReadOnlyList<MonedaInventario>> ConsultarMonedasAsync()
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var filas = await connection.QueryAsync<MonedaInventario>(
+			"SELECT mon_id, mon_codigo, mon_nombre, mon_simbolo, mon_es_local FROM dbo.gen_moneda WHERE mon_estado = 'A' ORDER BY mon_es_local DESC, mon_codigo");
+		return filas.ToList();
+	}
 }

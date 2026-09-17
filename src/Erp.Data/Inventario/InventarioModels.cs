@@ -54,6 +54,15 @@ public sealed class ProductoCaracteristica
 	public string PtcDescripcion { get; set; } = "";
 }
 
+public sealed class MonedaInventario
+{
+	public int MonId { get; set; }
+	public string MonCodigo { get; set; } = "";
+	public string MonNombre { get; set; } = "";
+	public string? MonSimbolo { get; set; }
+	public bool MonEsLocal { get; set; }
+}
+
 public sealed class ProductoPrecio
 {
 	public int PprId { get; set; }

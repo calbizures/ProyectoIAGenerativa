@@ -6,6 +6,9 @@
 @using Erp.Web.Security
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IProductoRepository ProductoRepository
+@inject IProductoCaracteristicaRepository CaracteristicaRepository
+@inject IProductoPrecioRepository PrecioRepository
+@inject IBodegaRepository BodegaRepository
 
 <PageTitle>Productos</PageTitle>
 
@@ -144,7 +147,7 @@
 
         <h3>Existencia por bodega</h3>
         <table class="tabla-datos">
-            <thead><tr><th>Bodega</th><th>Existencia</th></tr></thead>
+            <thead><tr><th>Bodega</th><th class="num">Existencia</th></tr></thead>
             <tbody>
                 @if (existenciasPorBodega.Count == 0)
                 {
@@ -154,7 +157,131 @@
                 {
                     <tr>
                         <td>@existencia.BodDescripcion</td>
-                        <td>@existencia.Existencia.ToString("N0")</td>
+                        <td class="num">@existencia.Existencia.ToString("N0")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <h3>
+            Características
+            <BotonIcono Icono="plus" Tooltip="Agregar característica" OnClick="() => mostrarNuevaCaracteristica = !mostrarNuevaCaracteristica" />
+        </h3>
+        @if (mostrarNuevaCaracteristica)
+        {
+            <div class="panel-formulario">
+                <div class="campo">
+                    <label>Tipo</label>
+                    <select @bind="nuevaCaracteristica.PtcId">
+                        <option value="0">Seleccione...</option>
+                        @foreach (var tipo in tiposCaracteristica)
+                        {
+                            <option value="@tipo.PtcId">@tipo.PtcDescripcion</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo"><label>Valor</label><input @bind="nuevaCaracteristica.Valor" /></div>
+                <div class="campo"><label>Descripción</label><input @bind="nuevaCaracteristica.Descripcion" /></div>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Guardar característica" Etiqueta="Guardar" Variante="primario" OnClick="CrearCaracteristicaAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevaCaracteristica = false" />
+                </div>
+            </div>
+        }
+        <table class="tabla-datos">
+            <thead><tr><th>Tipo</th><th>Valor</th><th>Descripción</th><th class="col-acciones">Acciones</th></tr></thead>
+            <tbody>
+                @if (caracteristicasProducto.Count == 0)
+                {
+                    <tr><td colspan="4">Sin características registradas.</td></tr>
+                }
+                @foreach (var c in caracteristicasProducto)
+                {
+                    <tr>
+                        @if (pcaEditandoId == c.PcaId)
+                        {
+                            <td>@c.PtcDescripcion</td>
+                            <td><input @bind="pcaEditValor" /></td>
+                            <td><input @bind="pcaEditDescripcion" /></td>
+                            <td>
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="GuardarCaracteristicaAsync" />
+                                    <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => pcaEditandoId = null" />
+                                </div>
+                            </td>
+                        }
+                        else
+                        {
+                            <td>@c.PtcDescripcion</td>
+                            <td>@c.PcaValor</td>
+                            <td>@c.PcaDescripcion</td>
+                            <td>
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => EditarCaracteristica(c)" />
+                                    <BotonIcono Icono="trash-2" Tooltip="Eliminar" Variante="peligro" OnClick="() => EliminarCaracteristicaAsync(c)" />
+                                </div>
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <h3>
+            Precios
+            <BotonIcono Icono="plus" Tooltip="Agregar precio" OnClick="() => mostrarNuevoPrecio = !mostrarNuevoPrecio" />
+        </h3>
+        @if (mostrarNuevoPrecio)
+        {
+            <div class="panel-formulario">
+                <div class="campo">
+                    <label>Bodega</label>
+                    <select @bind="nuevoPrecio.BodId">
+                        <option value="0">Seleccione...</option>
+                        @foreach (var bod in bodegasDisponibles)
+                        {
+                            <option value="@bod.BodId">@bod.BodDescripcion</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo">
+                    <label>Moneda</label>
+                    <select @bind="nuevoPrecio.MonId">
+                        <option value="0">Seleccione...</option>
+                        @foreach (var mon in monedasDisponibles)
+                        {
+                            <option value="@mon.MonId">@mon.MonCodigo</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo"><label>Precio unitario de venta</label><input type="number" step="0.01" @bind="nuevoPrecio.PrecioUnitarioVenta" /></div>
+                <div class="campo"><label>Descripción</label><input @bind="nuevoPrecio.Descripcion" /></div>
+                <div class="campo"><label>Vigencia desde</label><input type="date" @bind="nuevoPrecio.VigenciaDesde" /></div>
+                <div class="campo"><label>Vigencia hasta</label><input type="date" @bind="nuevoPrecio.VigenciaHasta" /></div>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Guardar precio" Etiqueta="Guardar" Variante="primario" OnClick="CrearPrecioAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevoPrecio = false" />
+                </div>
+            </div>
+        }
+        <table class="tabla-datos">
+            <thead><tr><th>Bodega</th><th>Moneda</th><th class="num">Precio</th><th class="col-fecha">Desde</th><th class="col-fecha">Hasta</th><th class="col-acciones">Acciones</th></tr></thead>
+            <tbody>
+                @if (preciosProducto.Count == 0)
+                {
+                    <tr><td colspan="6">Sin precios vigentes.</td></tr>
+                }
+                @foreach (var p in preciosProducto)
+                {
+                    <tr>
+                        <td>@p.BodDescripcion</td>
+                        <td>@p.MonCodigo</td>
+                        <td class="num">@p.PprPrecioUnitarioVenta.ToString("N2")</td>
+                        <td class="col-fecha">@p.PprVigenciaDesde.ToString("dd/MM/yyyy")</td>
+                        <td class="col-fecha">@(p.PprVigenciaHasta?.ToString("dd/MM/yyyy") ?? "—")</td>
+                        <td>
+                            <BotonIcono Icono="trash-2" Tooltip="Desactivar precio" Variante="peligro" OnClick="() => EliminarPrecioAsync(p)" />
+                        </td>
                     </tr>
                 }
             </tbody>
@@ -169,7 +296,21 @@
     private IReadOnlyList<Producto> productos = Array.Empty<Producto>();
     private IReadOnlyList<ProductoTipo> tiposProducto = Array.Empty<ProductoTipo>();
     private IReadOnlyList<ProductoExistenciaBodega> existenciasPorBodega = Array.Empty<ProductoExistenciaBodega>();
+    private IReadOnlyList<ProductoTipoCaracteristica> tiposCaracteristica = Array.Empty<ProductoTipoCaracteristica>();
+    private IReadOnlyList<ProductoCaracteristica> caracteristicasProducto = Array.Empty<ProductoCaracteristica>();
+    private IReadOnlyList<ProductoPrecio> preciosProducto = Array.Empty<ProductoPrecio>();
+    private IReadOnlyList<MonedaInventario> monedasDisponibles = Array.Empty<MonedaInventario>();
+    private IReadOnlyList<Bodega> bodegasDisponibles = Array.Empty<Bodega>();
     private Producto? seleccionado;
+
+    private bool mostrarNuevaCaracteristica;
+    private readonly CaracteristicaModelo nuevaCaracteristica = new();
+    private int? pcaEditandoId;
+    private string pcaEditValor = "";
+    private string? pcaEditDescripcion;
+
+    private bool mostrarNuevoPrecio;
+    private readonly PrecioModelo nuevoPrecio = new();
 
     private string filtroCodigo = "";
     private string filtroDescripcion = "";
@@ -184,6 +325,9 @@
     protected override async Task OnInitializedAsync()
     {
         tiposProducto = await ProductoRepository.ConsultarTiposAsync();
+        tiposCaracteristica = await CaracteristicaRepository.ConsultarTiposAsync("A");
+        bodegasDisponibles = await BodegaRepository.ConsultarAsync(sucId: null, estado: "A");
+        monedasDisponibles = await PrecioRepository.ConsultarMonedasAsync();
         await BuscarAsync();
     }
 
@@ -248,6 +392,137 @@
 
         var (_, existencias) = await ProductoRepository.ConsultarPorIdAsync(producto.ProId);
         existenciasPorBodega = existencias;
+
+        mostrarNuevaCaracteristica = false;
+        pcaEditandoId = null;
+        caracteristicasProducto = await CaracteristicaRepository.ConsultarAsync(producto.ProId);
+
+        mostrarNuevoPrecio = false;
+        preciosProducto = await PrecioRepository.ConsultarAsync(producto.ProId, bodId: null, estado: "A");
+    }
+
+    private void EditarCaracteristica(ProductoCaracteristica caracteristica)
+    {
+        pcaEditandoId = caracteristica.PcaId;
+        pcaEditValor = caracteristica.PcaValor;
+        pcaEditDescripcion = caracteristica.PcaDescripcion;
+    }
+
+    private async Task CrearCaracteristicaAsync()
+    {
+        if (seleccionado is null) return;
+        if (nuevaCaracteristica.PtcId == 0 || string.IsNullOrWhiteSpace(nuevaCaracteristica.Valor))
+        {
+            mensaje = "Debe seleccionar el tipo e indicar el valor de la característica.";
+            esMensajeError = true;
+            return;
+        }
+
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await CaracteristicaRepository.InsertarAsync(seleccionado.ProId, nuevaCaracteristica.PtcId, nuevaCaracteristica.Valor, nuevaCaracteristica.Descripcion, usuId);
+            caracteristicasProducto = await CaracteristicaRepository.ConsultarAsync(seleccionado.ProId);
+            mostrarNuevaCaracteristica = false;
+            nuevaCaracteristica.PtcId = 0;
+            nuevaCaracteristica.Valor = "";
+            nuevaCaracteristica.Descripcion = null;
+            mensaje = "Característica agregada.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task GuardarCaracteristicaAsync()
+    {
+        if (seleccionado is null || pcaEditandoId is null) return;
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await CaracteristicaRepository.ActualizarAsync(pcaEditandoId.Value, pcaEditValor, pcaEditDescripcion, usuId);
+            caracteristicasProducto = await CaracteristicaRepository.ConsultarAsync(seleccionado.ProId);
+            pcaEditandoId = null;
+            mensaje = "Característica actualizada.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task EliminarCaracteristicaAsync(ProductoCaracteristica caracteristica)
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            await CaracteristicaRepository.EliminarAsync(caracteristica.PcaId);
+            caracteristicasProducto = await CaracteristicaRepository.ConsultarAsync(seleccionado.ProId);
+            mensaje = "Característica eliminada.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task CrearPrecioAsync()
+    {
+        if (seleccionado is null) return;
+        if (nuevoPrecio.BodId == 0 || nuevoPrecio.MonId == 0)
+        {
+            mensaje = "Debe seleccionar bodega y moneda para el precio.";
+            esMensajeError = true;
+            return;
+        }
+
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await PrecioRepository.InsertarAsync(
+                seleccionado.ProId, nuevoPrecio.BodId, nuevoPrecio.MonId, nuevoPrecio.PrecioUnitarioVenta,
+                nuevoPrecio.Descripcion, nuevoPrecio.VigenciaDesde, nuevoPrecio.VigenciaHasta, usuId);
+            preciosProducto = await PrecioRepository.ConsultarAsync(seleccionado.ProId, bodId: null, estado: "A");
+            mostrarNuevoPrecio = false;
+            nuevoPrecio.BodId = 0;
+            nuevoPrecio.MonId = 0;
+            nuevoPrecio.PrecioUnitarioVenta = 0;
+            nuevoPrecio.Descripcion = null;
+            nuevoPrecio.VigenciaDesde = DateTime.Today;
+            nuevoPrecio.VigenciaHasta = null;
+            mensaje = "Precio agregado.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task EliminarPrecioAsync(ProductoPrecio precio)
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await PrecioRepository.EliminarAsync(precio.PprId, usuId);
+            preciosProducto = await PrecioRepository.ConsultarAsync(seleccionado.ProId, bodId: null, estado: "A");
+            mensaje = "Precio desactivado.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
     }
 
     private async Task GuardarEdicionAsync()
@@ -295,5 +570,22 @@
         [Range(1, int.MaxValue, ErrorMessage = "Seleccione un tipo de producto")] public int PrtId { get; set; }
         public string TipoItem { get; set; } = "B";
         public bool ManejaExistencia { get; set; } = true;
+    }
+
+    private sealed class CaracteristicaModelo
+    {
+        public int PtcId { get; set; }
+        public string Valor { get; set; } = "";
+        public string? Descripcion { get; set; }
+    }
+
+    private sealed class PrecioModelo
+    {
+        public int BodId { get; set; }
+        public int MonId { get; set; }
+        public decimal PrecioUnitarioVenta { get; set; }
+        public string? Descripcion { get; set; }
+        public DateTime VigenciaDesde { get; set; } = DateTime.Today;
+        public DateTime? VigenciaHasta { get; set; }
     }
 }

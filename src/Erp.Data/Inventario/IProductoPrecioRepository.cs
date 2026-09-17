@@ -8,4 +8,5 @@ public interface IProductoPrecioRepository
 		DateTime vigenciaDesde, DateTime? vigenciaHasta, int? usuarioAccionId);
 	Task EliminarAsync(int pprId, int? usuarioAccionId);
 	Task<IReadOnlyList<ProductoPrecio>> ConsultarAsync(int? proId, int? bodId, string? estado);
+	Task<IReadOnlyList<MonedaInventario>> ConsultarMonedasAsync();
 }
