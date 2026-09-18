@@ -1,0 +1,275 @@
+@page "/clientes"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR")]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.Ventas
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IClienteRepository ClienteRepository
+
+<PageTitle>Clientes</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Clientes</h1>
+    <p>Mantenimiento de clientes.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+}
+
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
+
+@if (pestanaActiva == "lista")
+{
+    <div class="barra-herramientas">
+        <input placeholder="Buscar por código, nombre o NIT" @bind="textoBusqueda" />
+        <select @bind="filtroEstado">
+            <option value="A">Activos</option>
+            <option value="I">Inactivos</option>
+            <option value="">Todos</option>
+        </select>
+        <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+        <span class="barra-herramientas-separador"></span>
+        <BotonIcono Icono="plus" Tooltip="Nuevo cliente" Etiqueta="Nuevo cliente" Variante="primario" OnClick="MostrarFormularioNuevo" />
+    </div>
+
+    @if (mostrarNuevo)
+    {
+        <EditForm Model="nuevoCliente" OnValidSubmit="CrearClienteAsync" class="panel-formulario">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="campo"><label>Código</label><InputText @bind-Value="nuevoCliente.Codigo" /></div>
+            <div class="campo"><label>Nombres</label><InputText @bind-Value="nuevoCliente.Nombres" /></div>
+            <div class="campo"><label>Apellidos</label><InputText @bind-Value="nuevoCliente.Apellidos" /></div>
+            <div class="campo"><label>NIT</label><InputText @bind-Value="nuevoCliente.Nit" /></div>
+            <div class="campo"><label>Teléfono celular</label><InputText @bind-Value="nuevoCliente.TelefonoCelular" /></div>
+            <div class="campo"><label>Dirección</label><InputText @bind-Value="nuevoCliente.Direccion" /></div>
+            <div class="campo"><label>Email</label><InputText @bind-Value="nuevoCliente.Email" /></div>
+            <div class="campo"><label>Límite de crédito</label><InputNumber @bind-Value="nuevoCliente.LimiteCredito" step="0.01" /></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+            </div>
+        </EditForm>
+    }
+
+    <table class="tabla-datos">
+        <thead>
+            <tr><th class="col-codigo">Código</th><th>Nombre</th><th class="col-codigo">NIT</th><th class="col-telefono">Teléfono</th><th class="num col-monto">Límite crédito</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var c in clientes)
+            {
+                <tr class="@(seleccionado?.CliId == c.CliId ? "fila-seleccionada" : "")">
+                    <td class="col-codigo">@c.CliCodigo</td>
+                    <td>@c.NombreCompleto</td>
+                    <td class="col-codigo">@c.CliNit</td>
+                    <td class="col-telefono">@c.CliTelefonoCelular</td>
+                    <td class="num col-monto">@c.CliLimiteCredito.ToString("N2")</td>
+                    <td class="col-estado">@(c.CliEstado == "A" ? "Activo" : "Inactivo")</td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(c)" />
+                            @if (c.CliEstado == "A")
+                            {
+                                <BotonIcono Icono="trash-2" Tooltip="Desactivar cliente" Variante="peligro" OnClick="() => DesactivarAsync(c)" />
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (pestanaActiva == "detalle" && seleccionado is not null)
+{
+    <div class="panel-detalle">
+        <h2>Detalle: @seleccionado.NombreCompleto</h2>
+        <div class="campo"><label>Nombres</label><span class="valor-detalle">@seleccionado.CliNombres</span></div>
+        <div class="campo"><label>Apellidos</label><span class="valor-detalle">@seleccionado.CliApellidos</span></div>
+        <div class="campo"><label>NIT</label><span class="valor-detalle">@seleccionado.CliNit</span></div>
+        <div class="campo"><label>Teléfono celular</label><span class="valor-detalle">@seleccionado.CliTelefonoCelular</span></div>
+        <div class="campo"><label>Dirección</label><span class="valor-detalle">@seleccionado.CliDireccion</span></div>
+        <div class="campo"><label>Límite de crédito</label><span class="valor-detalle">@seleccionado.CliLimiteCredito.ToString("N2")</span></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+        </div>
+    </div>
+}
+else if (pestanaActiva == "editar" && seleccionado is not null)
+{
+    <div class="panel-formulario">
+        <h2>Editar: @seleccionado.NombreCompleto</h2>
+        <EditForm Model="edicionCliente" OnValidSubmit="GuardarEdicionAsync">
+            <DataAnnotationsValidator />
+            <div class="campo"><label>Nombres</label><InputText @bind-Value="edicionCliente.Nombres" /></div>
+            <div class="campo"><label>Apellidos</label><InputText @bind-Value="edicionCliente.Apellidos" /></div>
+            <div class="campo"><label>NIT</label><InputText @bind-Value="edicionCliente.Nit" /></div>
+            <div class="campo"><label>Teléfono celular</label><InputText @bind-Value="edicionCliente.TelefonoCelular" /></div>
+            <div class="campo"><label>Dirección</label><InputText @bind-Value="edicionCliente.Direccion" /></div>
+            <div class="campo"><label>Email</label><InputText @bind-Value="edicionCliente.Email" /></div>
+            <div class="campo"><label>Límite de crédito</label><InputNumber @bind-Value="edicionCliente.LimiteCredito" step="0.01" /></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<Cliente> clientes = Array.Empty<Cliente>();
+    private Cliente? seleccionado;
+    private string pestanaActiva = "lista";
+
+    private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
+        ? new[] { new PestanaItem("lista", "Lista") }
+        : pestanaActiva == "editar"
+            ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar") }
+            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle") };
+
+    private string textoBusqueda = "";
+    private string filtroEstado = "A";
+    private bool mostrarNuevo;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private readonly ClienteModelo nuevoCliente = new();
+    private readonly ClienteModelo edicionCliente = new();
+
+    protected override async Task OnInitializedAsync() => await BuscarAsync();
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        var estado = await AuthenticationStateTask;
+        return estado.User.ObtenerUsuId();
+    }
+
+    private async Task BuscarAsync()
+    {
+        clientes = await ClienteRepository.ConsultarAsync(
+            string.IsNullOrWhiteSpace(textoBusqueda) ? null : textoBusqueda,
+            string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado);
+    }
+
+    private void MostrarFormularioNuevo()
+    {
+        mensaje = null;
+        nuevoCliente.Codigo = "";
+        nuevoCliente.Nombres = "";
+        nuevoCliente.Apellidos = null;
+        nuevoCliente.Nit = null;
+        nuevoCliente.TelefonoCelular = null;
+        nuevoCliente.Direccion = null;
+        nuevoCliente.Email = null;
+        nuevoCliente.LimiteCredito = 0;
+        mostrarNuevo = true;
+    }
+
+    private async Task CrearClienteAsync()
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ClienteRepository.InsertarAsync(
+                nuevoCliente.Codigo, nuevoCliente.Nombres, nuevoCliente.Apellidos, nuevoCliente.Direccion,
+                nuevoCliente.TelefonoCelular, nuevoCliente.Nit, nuevoCliente.Email, nuevoCliente.LimiteCredito, usuId);
+            mostrarNuevo = false;
+            mensaje = "Cliente creado correctamente.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private void SeleccionarAsync(Cliente cliente)
+    {
+        seleccionado = cliente;
+        pestanaActiva = "detalle";
+        mensaje = null;
+    }
+
+    private void IniciarEdicion()
+    {
+        if (seleccionado is null) return;
+        edicionCliente.Nombres = seleccionado.CliNombres;
+        edicionCliente.Apellidos = seleccionado.CliApellidos;
+        edicionCliente.Nit = seleccionado.CliNit;
+        edicionCliente.TelefonoCelular = seleccionado.CliTelefonoCelular;
+        edicionCliente.Direccion = seleccionado.CliDireccion;
+        edicionCliente.LimiteCredito = seleccionado.CliLimiteCredito;
+        mensaje = null;
+        pestanaActiva = "editar";
+    }
+
+    private void CancelarEdicion()
+    {
+        pestanaActiva = "detalle";
+    }
+
+    private async Task GuardarEdicionAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ClienteRepository.ActualizarAsync(
+                seleccionado.CliId, edicionCliente.Nombres, edicionCliente.Apellidos, edicionCliente.Direccion,
+                edicionCliente.TelefonoCelular, edicionCliente.Nit, edicionCliente.Email, edicionCliente.LimiteCredito, usuId);
+            mensaje = "Cambios guardados.";
+            esMensajeError = false;
+            await BuscarAsync();
+            seleccionado = clientes.FirstOrDefault(c => c.CliId == seleccionado.CliId) ?? seleccionado;
+            pestanaActiva = "detalle";
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task DesactivarAsync(Cliente cliente)
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ClienteRepository.EliminarAsync(cliente.CliId, usuId);
+            mensaje = "Cliente desactivado.";
+            esMensajeError = false;
+            if (seleccionado?.CliId == cliente.CliId)
+            {
+                seleccionado = null;
+                pestanaActiva = "lista";
+            }
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private sealed class ClienteModelo
+    {
+        [Required] public string Codigo { get; set; } = "";
+        [Required] public string Nombres { get; set; } = "";
+        public string? Apellidos { get; set; }
+        public string? Nit { get; set; }
+        public string? TelefonoCelular { get; set; }
+        public string? Direccion { get; set; }
+        public string? Email { get; set; }
+        public decimal LimiteCredito { get; set; }
+    }
+}

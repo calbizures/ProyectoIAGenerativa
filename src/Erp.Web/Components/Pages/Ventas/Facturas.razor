@@ -1,0 +1,712 @@
+@page "/facturas"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR")]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.Inventario
+@using Erp.Data.Ventas
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IFacturaRepository FacturaRepository
+@inject IProductoRepository ProductoRepository
+@inject IBodegaRepository BodegaRepository
+@inject IClienteRepository ClienteRepository
+
+<PageTitle>Facturas</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Facturas</h1>
+    <p>Ventas y facturación a clientes.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+}
+
+<div class="barra-herramientas">
+    <input type="date" @bind="filtroFechaDesde" title="Desde" />
+    <input type="date" @bind="filtroFechaHasta" title="Hasta" />
+    <select @bind="filtroEstado">
+        <option value="">Todas</option>
+        <option value="G">Grabadas</option>
+        <option value="A">Anuladas</option>
+    </select>
+    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+
+    <span class="barra-herramientas-separador"></span>
+
+    <AuthorizeView Policy="Permiso:VENTAS_FACTURA_CREAR">
+        <Authorized>
+            <BotonIcono Icono="plus" Tooltip="Nueva factura" Etiqueta="Nueva factura" Variante="primario" OnClick="MostrarNuevaFacturaAsync" />
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+@if (mostrarNuevaFactura)
+{
+    <div class="doc-card">
+        <div class="doc-card-header">
+            <div>
+                <h2>Nueva factura</h2>
+                <p>Complete los datos generales, seleccione el cliente y agregue los productos.</p>
+            </div>
+            <Icono Nombre="receipt" Tamano="30" />
+        </div>
+
+        <div class="doc-card-body">
+            <div class="doc-seccion">
+                <p class="doc-seccion-titulo"><Icono Nombre="file-text" Tamano="15" /> Datos generales</p>
+                <div class="doc-grid">
+                    <div class="campo"><label>Fecha</label><input type="date" @bind="nuevaFactura.Fecha" /></div>
+                    <div class="campo"><label>Serie</label><input @bind="nuevaFactura.SerieDocumento" /></div>
+                    <div class="campo"><label>Número</label><input @bind="nuevaFactura.NumeroDocumento" /></div>
+                    <div class="campo">
+                        <label>Vendedor</label>
+                        <select @bind="nuevaFactura.PveId">
+                            <option value="">(Sin asignar)</option>
+                            @foreach (var v in vendedores)
+                            {
+                                <option value="@v.PveId">@v.PveNombres @v.PveApellidos</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label>Bodega</label>
+                        <select @bind="nuevaFactura.BodId">
+                            <option value="0">Seleccione...</option>
+                            @foreach (var b in bodegas)
+                            {
+                                <option value="@b.BodId">@b.BodDescripcion</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label>Moneda</label>
+                        <select @bind="nuevaFactura.MonId">
+                            @foreach (var m in monedas)
+                            {
+                                <option value="@m.MonId">@m.MonCodigo</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="doc-seccion">
+                <p class="doc-seccion-titulo"><Icono Nombre="user" Tamano="15" /> Cliente</p>
+
+                @if (nuevaFactura.CliId is null)
+                {
+                    <div class="doc-buscador">
+                        <div class="doc-buscador-fila">
+                            <input placeholder="Buscar cliente por código, nombre o NIT" @bind="textoBusquedaCliente" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarClientesAsync(); })" />
+                            <BotonIcono Icono="search" Tooltip="Buscar cliente" OnClick="BuscarClientesAsync" />
+                            <BotonIcono Icono="plus" Tooltip="Cliente nuevo" OnClick="() => mostrarNuevoCliente = !mostrarNuevoCliente" />
+                        </div>
+                        @if (clientesEncontrados.Count > 0)
+                        {
+                            <div class="doc-buscador-resultados">
+                                @foreach (var c in clientesEncontrados)
+                                {
+                                    <div class="doc-resultado-fila" @onclick="() => SeleccionarCliente(c)">
+                                        <span class="doc-avatar">@Iniciales(c.NombreCompleto)</span>
+                                        <span class="doc-resultado-texto">
+                                            <strong>@c.NombreCompleto</strong>
+                                            <span>@c.CliCodigo · NIT @(c.CliNit ?? "C/F")</span>
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        @if (mostrarNuevoCliente)
+                        {
+                            <div class="doc-alta-rapida">
+                                <p class="doc-alta-rapida-titulo">Cliente nuevo</p>
+                                <div class="doc-grid">
+                                    <div class="campo"><label>Código</label><input @bind="nuevoClienteRapido.Codigo" /></div>
+                                    <div class="campo"><label>Nombres</label><input @bind="nuevoClienteRapido.Nombres" /></div>
+                                    <div class="campo"><label>Apellidos</label><input @bind="nuevoClienteRapido.Apellidos" /></div>
+                                    <div class="campo"><label>NIT</label><input @bind="nuevoClienteRapido.Nit" /></div>
+                                    <div class="campo"><label>Teléfono</label><input @bind="nuevoClienteRapido.Telefono" /></div>
+                                </div>
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="save" Tooltip="Guardar cliente" Etiqueta="Guardar cliente" Variante="primario" OnClick="CrearClienteRapidoAsync" />
+                                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevoCliente = false" />
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="doc-chip">
+                        <span class="doc-avatar">@Iniciales($"{nuevaFactura.NombresCliente} {nuevaFactura.ApellidosCliente}")</span>
+                        <span class="doc-chip-texto">
+                            <strong>@nuevaFactura.NombresCliente @nuevaFactura.ApellidosCliente</strong>
+                            <span>NIT: @(nuevaFactura.Nit ?? "C/F")</span>
+                        </span>
+                        <BotonIcono Icono="x" Tooltip="Cambiar cliente" Variante="fantasma" OnClick="() => nuevaFactura.CliId = null" />
+                    </div>
+                }
+            </div>
+
+            <div class="doc-seccion">
+                <p class="doc-seccion-titulo"><Icono Nombre="package" Tamano="15" /> Detalle de productos</p>
+
+                <div class="doc-buscador">
+                    <div class="doc-buscador-fila">
+                        <input placeholder="Buscar producto por código o descripción" @bind="textoBusquedaProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
+                        <BotonIcono Icono="search" Tooltip="Buscar producto" OnClick="BuscarProductosAsync" />
+                    </div>
+                    @if (productosEncontrados.Count > 0)
+                    {
+                        <div class="doc-buscador-resultados">
+                            @foreach (var p in productosEncontrados)
+                            {
+                                <div class="doc-resultado-fila" @onclick="() => AgregarLinea(p)">
+                                    <span class="doc-avatar doc-avatar-icono"><Icono Nombre="package" Tamano="15" /></span>
+                                    <span class="doc-resultado-texto">
+                                        <strong>@p.ProDescripcion</strong>
+                                        <span>@p.ProCodigo</span>
+                                    </span>
+                                    <span class="doc-resultado-precio">@MonedaSimbolo @p.ProCostoUnitario.ToString("N2")</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="doc-nota">
+                    <Icono Nombre="check-circle" Tamano="15" />
+                    <span>El precio unitario ya incluye IVA (12%), como se factura en Guatemala — no se suma aparte.</span>
+                </div>
+
+                <table class="doc-tabla">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th class="num">Cantidad</th>
+                            <th class="num">Precio unit. (IVA incl.)</th>
+                            <th class="num">Descuento</th>
+                            <th class="num">Subtotal</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (lineas.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="6">
+                                    <div class="doc-tabla-vacia">
+                                        <Icono Nombre="package" Tamano="26" />
+                                        Usa el buscador de arriba para agregar productos a la factura.
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var linea in lineas)
+                        {
+                            <tr>
+                                <td>@linea.Descripcion</td>
+                                <td class="num"><input type="number" min="1" @bind="linea.Cantidad" /></td>
+                                <td class="num"><input type="number" step="0.01" @bind="linea.PrecioUnitario" /></td>
+                                <td class="num"><input type="number" step="0.01" @bind="linea.ValorDescuento" /></td>
+                                <td class="num">@MonedaSimbolo @linea.SubTotal.ToString("N2")</td>
+                                <td><BotonIcono Icono="trash-2" Tooltip="Quitar línea" Variante="peligro" OnClick="() => lineas.Remove(linea)" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="doc-seccion doc-totales-envoltorio">
+                <div class="doc-totales">
+                    <div class="doc-totales-fila"><span>Subtotal</span><span>@MonedaSimbolo @Subtotal.ToString("N2")</span></div>
+                    <div class="doc-totales-fila"><span>Descuento</span><span>@MonedaSimbolo @TotalDescuento.ToString("N2")</span></div>
+                    <div class="doc-totales-total"><span>Total</span><span>@MonedaSimbolo @Total.ToString("N2")</span></div>
+                    <div class="doc-totales-nota">IVA incluido (12%): @MonedaSimbolo @IvaIncluido.ToString("N2")</div>
+                </div>
+            </div>
+
+            <div class="doc-seccion">
+                <p class="doc-seccion-titulo"><Icono Nombre="credit-card" Tamano="15" /> Forma de pago</p>
+                <div class="doc-grid">
+                    <div class="campo">
+                        <label>Condición</label>
+                        <select @bind="condicionPagoFactura">
+                            <option value="contado">Contado</option>
+                            <option value="credito">Crédito</option>
+                        </select>
+                    </div>
+                    @if (condicionPagoFactura == "credito")
+                    {
+                        <div class="campo"><label>Enganche</label><input type="number" step="0.01" min="0" @bind="nuevaFactura.MontoEnganche" /></div>
+                        <div class="campo"><label>Número de cuotas</label><input type="number" min="1" @bind="nuevaFactura.NumeroCuotas" /></div>
+                        <div class="campo"><label>Fecha del primer pago</label><input type="date" @bind="nuevaFactura.FechaPrimerPago" /></div>
+                    }
+                </div>
+                @if (condicionPagoFactura == "credito")
+                {
+                    <div class="doc-nota">
+                        <Icono Nombre="info" Tamano="15" />
+                        <span>Plan de pagos: @nuevaFactura.NumeroCuotas cuota(s) de @MonedaSimbolo @ValorCuotaFactura.ToString("N2"), a partir del enganche de @MonedaSimbolo @nuevaFactura.MontoEnganche.ToString("N2").</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="doc-card-footer">
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevaFactura = false" />
+            <BotonIcono Icono="save" Tooltip="Grabar factura" Etiqueta="Grabar factura" Variante="primario" OnClick="GrabarFacturaAsync" />
+        </div>
+    </div>
+}
+
+<div class="tarjeta">
+    <h2>Historial</h2>
+    <table class="tabla-datos">
+        <thead>
+            <tr><th class="col-fecha">Fecha</th><th class="col-serie">Serie/Número</th><th class="col-tipo">Tipo</th><th>Cliente</th><th class="num col-monto">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+        </thead>
+        <tbody>
+            @if (facturas.Count == 0)
+            {
+                <tr><td colspan="7" class="doc-tabla-vacia">No hay facturas para los filtros seleccionados.</td></tr>
+            }
+            @foreach (var f in facturas)
+            {
+                <tr class="@(encabezadoSeleccionado?.EncId == f.EncId ? "fila-seleccionada" : "")">
+                    <td class="col-fecha">@f.EncFechaDocto.ToString("dd/MM/yyyy")</td>
+                    <td class="col-serie">@f.EncSerieDocto-@f.EncNumeroDocto</td>
+                    <td class="col-tipo">@f.TdoCodigo</td>
+                    <td>@f.NombreCliente</td>
+                    <td class="num col-monto">@f.EncMontoTotal.ToString("N2")</td>
+                    <td class="col-estado">
+                        @if (f.EncEstado == "G")
+                        {
+                            <span class="estado-badge estado-badge-grabada">Grabada</span>
+                        }
+                        else
+                        {
+                            <span class="estado-badge estado-badge-anulada">Anulada</span>
+                        }
+                    </td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarFacturaAsync(f)" />
+                            <AuthorizeView Policy="Permiso:VENTAS_FACTURA_ANULAR">
+                                <Authorized>
+                                    @if (f.EncEstado == "G")
+                                    {
+                                        <BotonIcono Icono="ban" Tooltip="Anular factura" Variante="peligro" OnClick="() => AnularAsync(f)" />
+                                    }
+                                </Authorized>
+                            </AuthorizeView>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (encabezadoSeleccionado is not null)
+{
+    <div class="doc-card">
+        <div class="doc-card-header">
+            <div>
+                <h2>@encabezadoSeleccionado.EncSerieDocto-@encabezadoSeleccionado.EncNumeroUnico</h2>
+                <p>@encabezadoSeleccionado.EncNombresCliente @encabezadoSeleccionado.EncApellidosCliente · NIT: @(encabezadoSeleccionado.CliNit ?? "C/F")</p>
+            </div>
+            @if (encabezadoSeleccionado.EncEstado == "G")
+            {
+                <span class="estado-badge estado-badge-grabada">Grabada</span>
+            }
+            else
+            {
+                <span class="estado-badge estado-badge-anulada">Anulada</span>
+            }
+        </div>
+        <div class="doc-card-body">
+            <table class="doc-tabla">
+                <thead>
+                    <tr>
+                        <th>Descripción</th>
+                        <th class="num">Cantidad</th>
+                        <th class="num">Precio unit. (IVA incl.)</th>
+                        <th class="num">Descuento</th>
+                        <th class="num">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in detalleSeleccionado)
+                    {
+                        var precioConIva = d.DetPrecioUnitario * (1 + (d.DetPorcIva ?? 0) / 100m);
+                        var descuentoConIva = d.DetValorDescuento * (1 + (d.DetPorcIva ?? 0) / 100m);
+                        var subtotalConIva = d.DetSubTotal * (1 + (d.DetPorcIva ?? 0) / 100m);
+                        <tr>
+                            <td>@d.DetDescripcion</td>
+                            <td class="num">@d.DetCantidad</td>
+                            <td class="num">@precioConIva.ToString("N2")</td>
+                            <td class="num">@descuentoConIva.ToString("N2")</td>
+                            <td class="num">@subtotalConIva.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<FacturaEncabezado> facturas = Array.Empty<FacturaEncabezado>();
+    private IReadOnlyList<Vendedor> vendedores = Array.Empty<Vendedor>();
+    private IReadOnlyList<Moneda> monedas = Array.Empty<Moneda>();
+    private IReadOnlyList<Bodega> bodegas = Array.Empty<Bodega>();
+    private IReadOnlyList<Cliente> clientesEncontrados = Array.Empty<Cliente>();
+    private bool mostrarNuevoCliente;
+    private readonly ClienteRapidoModelo nuevoClienteRapido = new();
+    private IReadOnlyList<Producto> productosEncontrados = Array.Empty<Producto>();
+    private int tdoIdFactura;
+
+    private FacturaEncabezadoDetalle? encabezadoSeleccionado;
+    private IReadOnlyList<FacturaDetalleLinea> detalleSeleccionado = Array.Empty<FacturaDetalleLinea>();
+
+    private DateTime? filtroFechaDesde;
+    private DateTime? filtroFechaHasta;
+    private string filtroEstado = "";
+    private bool mostrarNuevaFactura;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private string textoBusquedaCliente = "";
+    private string textoBusquedaProducto = "";
+
+    private readonly NuevaFacturaModelo nuevaFactura = new();
+    private readonly List<LineaCaptura> lineas = new();
+
+    // En Guatemala el IVA (12%) va incluido en el precio unitario que ve el
+    // cliente; no se suma aparte. El total es simplemente subtotal - descuento,
+    // y el IVA que se muestra es solo informativo (extraído del total, no
+    // sumado a él). Internamente sí se envía como precio neto + %IVA al SP,
+    // porque así espera los datos sp_ventas_crear_factura para el asiento
+    // contable (ver GrabarFacturaAsync).
+    private const decimal PorcentajeIva = 12m;
+
+    private decimal Subtotal => lineas.Sum(l => l.SubTotal);
+    private decimal TotalDescuento => lineas.Sum(l => l.ValorDescuento);
+    private decimal Total => Subtotal - TotalDescuento;
+    private string condicionPagoFactura = "contado";
+    private decimal ValorCuotaFactura => nuevaFactura.NumeroCuotas > 0
+        ? Math.Round((Total - nuevaFactura.MontoEnganche) / nuevaFactura.NumeroCuotas, 2)
+        : 0;
+    private decimal IvaIncluido => Math.Round(Total * PorcentajeIva / (100m + PorcentajeIva), 2);
+    private string MonedaSimbolo => monedas.FirstOrDefault(m => m.MonId == nuevaFactura.MonId)?.MonSimbolo ?? "Q";
+
+    protected override async Task OnInitializedAsync()
+    {
+        vendedores = await FacturaRepository.ConsultarVendedoresAsync();
+        monedas = await FacturaRepository.ConsultarMonedasAsync();
+        bodegas = await BodegaRepository.ConsultarAsync(sucId: null, estado: "A");
+
+        var tiposDocumento = await FacturaRepository.ConsultarTiposDocumentoAsync();
+        tdoIdFactura = tiposDocumento.FirstOrDefault()?.TdoId ?? 0;
+
+        var monedaLocal = monedas.FirstOrDefault(m => m.MonEsLocal);
+        if (monedaLocal is not null) nuevaFactura.MonId = monedaLocal.MonId;
+
+        await BuscarAsync();
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        var estado = await AuthenticationStateTask;
+        return estado.User.ObtenerUsuId();
+    }
+
+    private async Task BuscarAsync()
+    {
+        facturas = await FacturaRepository.ConsultarAsync(
+            tdoIdFactura, cliId: null, filtroFechaDesde, filtroFechaHasta,
+            string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado,
+            pagina: 1, tamanioPagina: 100);
+    }
+
+    private Task MostrarNuevaFacturaAsync()
+    {
+        mensaje = null;
+        nuevaFactura.Fecha = DateTime.Today;
+        nuevaFactura.SerieDocumento = null;
+        nuevaFactura.NumeroDocumento = null;
+        nuevaFactura.CliId = null;
+        nuevaFactura.NombresCliente = null;
+        nuevaFactura.ApellidosCliente = null;
+        nuevaFactura.Nit = null;
+        nuevaFactura.MontoEnganche = 0;
+        nuevaFactura.NumeroCuotas = 1;
+        nuevaFactura.FechaPrimerPago = null;
+        condicionPagoFactura = "contado";
+        lineas.Clear();
+        clientesEncontrados = Array.Empty<Cliente>();
+        productosEncontrados = Array.Empty<Producto>();
+        mostrarNuevoCliente = false;
+        mostrarNuevaFactura = true;
+        return Task.CompletedTask;
+    }
+
+    private async Task BuscarClientesAsync()
+    {
+        clientesEncontrados = await FacturaRepository.ConsultarClientesAsync(
+            string.IsNullOrWhiteSpace(textoBusquedaCliente) ? null : textoBusquedaCliente, "A");
+    }
+
+    private void SeleccionarCliente(Cliente cliente)
+    {
+        nuevaFactura.CliId = cliente.CliId;
+        nuevaFactura.NombresCliente = cliente.CliNombres;
+        nuevaFactura.ApellidosCliente = cliente.CliApellidos;
+        nuevaFactura.Nit = cliente.CliNit;
+        clientesEncontrados = Array.Empty<Cliente>();
+    }
+
+    private async Task CrearClienteRapidoAsync()
+    {
+        if (string.IsNullOrWhiteSpace(nuevoClienteRapido.Codigo) || string.IsNullOrWhiteSpace(nuevoClienteRapido.Nombres))
+        {
+            mensaje = "Código y nombres son obligatorios para crear el cliente.";
+            esMensajeError = true;
+            return;
+        }
+
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            var cliId = await ClienteRepository.InsertarAsync(
+                nuevoClienteRapido.Codigo, nuevoClienteRapido.Nombres, nuevoClienteRapido.Apellidos, null,
+                nuevoClienteRapido.Telefono, nuevoClienteRapido.Nit, null, 0, usuId);
+
+            nuevaFactura.CliId = cliId;
+            nuevaFactura.NombresCliente = nuevoClienteRapido.Nombres;
+            nuevaFactura.ApellidosCliente = nuevoClienteRapido.Apellidos;
+            nuevaFactura.Nit = nuevoClienteRapido.Nit;
+
+            clientesEncontrados = Array.Empty<Cliente>();
+            mostrarNuevoCliente = false;
+            nuevoClienteRapido.Codigo = "";
+            nuevoClienteRapido.Nombres = "";
+            nuevoClienteRapido.Apellidos = null;
+            nuevoClienteRapido.Nit = null;
+            nuevoClienteRapido.Telefono = null;
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task BuscarProductosAsync()
+    {
+        var texto = string.IsNullOrWhiteSpace(textoBusquedaProducto) ? null : textoBusquedaProducto.Trim();
+        if (texto is null)
+        {
+            productosEncontrados = Array.Empty<Producto>();
+            return;
+        }
+
+        // sp_producto_consultar combina código y descripción con AND (pensado
+        // para el filtro avanzado de dos cajas de Productos.razor). Aquí se
+        // quiere buscar por nombre O código, así que se consulta cada campo
+        // por separado y se combinan los resultados sin duplicados.
+        var porCodigo = await ProductoRepository.ConsultarAsync(texto, null, prtId: null, estado: "A", pagina: 1, tamanioPagina: 20);
+        var porDescripcion = await ProductoRepository.ConsultarAsync(null, texto, prtId: null, estado: "A", pagina: 1, tamanioPagina: 20);
+        productosEncontrados = porCodigo
+            .Concat(porDescripcion)
+            .GroupBy(p => p.ProId)
+            .Select(g => g.First())
+            .Take(20)
+            .ToList();
+    }
+
+    private void AgregarLinea(Producto producto)
+    {
+        lineas.Add(new LineaCaptura
+        {
+            ProId = producto.ProId,
+            Descripcion = producto.ProDescripcion,
+            BienOServicio = producto.ProTipoItem,
+            Cantidad = 1,
+            PrecioUnitario = Math.Round(producto.ProCostoUnitario, 2),
+            ValorDescuento = 0
+        });
+        productosEncontrados = Array.Empty<Producto>();
+        textoBusquedaProducto = "";
+    }
+
+    private async Task GrabarFacturaAsync()
+    {
+        if (nuevaFactura.CliId is null)
+        {
+            mensaje = "Debe seleccionar un cliente.";
+            esMensajeError = true;
+            return;
+        }
+
+        if (lineas.Count == 0)
+        {
+            mensaje = "Debe agregar al menos un producto.";
+            esMensajeError = true;
+            return;
+        }
+
+        if (nuevaFactura.BodId == 0)
+        {
+            mensaje = "Debe seleccionar una bodega.";
+            esMensajeError = true;
+            return;
+        }
+
+        if (condicionPagoFactura == "credito" && (nuevaFactura.FechaPrimerPago is null || nuevaFactura.NumeroCuotas < 1))
+        {
+            mensaje = "Para crédito debe indicar el número de cuotas y la fecha del primer pago.";
+            esMensajeError = true;
+            return;
+        }
+
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+
+            // El operador captura precios y descuento CON IVA incluido (como se
+            // vende al público en Guatemala); el procedimiento almacenado espera
+            // precio/subtotal SIN impuesto y el %IVA por separado para poder
+            // armar el asiento contable (Ventas vs. IVA por pagar), así que aquí
+            // se convierte de bruto a neto antes de enviarlo.
+            var detalle = lineas.Select(l =>
+            {
+                var precioUnitarioNeto = Math.Round(l.PrecioUnitario / (1 + PorcentajeIva / 100m), 2);
+                var valorDescuentoNeto = Math.Round(l.ValorDescuento / (1 + PorcentajeIva / 100m), 2);
+                return new NuevaLineaFactura
+                {
+                    ProId = l.ProId,
+                    BienOServicio = l.BienOServicio,
+                    Cantidad = l.Cantidad,
+                    Descripcion = l.Descripcion,
+                    PrecioUnitario = precioUnitarioNeto,
+                    ValorDescuento = valorDescuentoNeto,
+                    SubTotal = Math.Round(precioUnitarioNeto * l.Cantidad, 2),
+                    PorcentajeIva = PorcentajeIva,
+                    BodId = nuevaFactura.BodId
+                };
+            }).ToList();
+
+            var encabezado = new NuevaFacturaEncabezado
+            {
+                FechaDocumento = nuevaFactura.Fecha,
+                SerieDocumento = nuevaFactura.SerieDocumento,
+                NumeroDocumento = nuevaFactura.NumeroDocumento,
+                CliId = nuevaFactura.CliId.Value,
+                NombresCliente = nuevaFactura.NombresCliente,
+                ApellidosCliente = nuevaFactura.ApellidosCliente,
+                Nit = nuevaFactura.Nit,
+                TdoId = tdoIdFactura,
+                PveId = nuevaFactura.PveId,
+                MonId = nuevaFactura.MonId,
+                FechaPrimerPago = condicionPagoFactura == "credito" ? nuevaFactura.FechaPrimerPago : null,
+                MontoEnganche = condicionPagoFactura == "credito" ? nuevaFactura.MontoEnganche : 0,
+                NumeroCuotas = condicionPagoFactura == "credito" ? nuevaFactura.NumeroCuotas : 1,
+                ValorDescuento = detalle.Sum(d => d.ValorDescuento)
+            };
+
+            var (_, numeroUnico) = await FacturaRepository.CrearAsync(encabezado, detalle, usuId);
+            mostrarNuevaFactura = false;
+            mensaje = $"Factura {numeroUnico} grabada correctamente.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task SeleccionarFacturaAsync(FacturaEncabezado factura)
+    {
+        mensaje = null;
+        var (encabezado, detalle) = await FacturaRepository.ConsultarPorIdAsync(factura.EncId);
+        encabezadoSeleccionado = encabezado;
+        detalleSeleccionado = detalle;
+    }
+
+    private async Task AnularAsync(FacturaEncabezado factura)
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await FacturaRepository.AnularAsync(factura.EncId, usuId);
+            mensaje = "Factura anulada.";
+            esMensajeError = false;
+            if (encabezadoSeleccionado?.EncId == factura.EncId) encabezadoSeleccionado = null;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private static string Iniciales(string? nombre)
+    {
+        if (string.IsNullOrWhiteSpace(nombre)) return "?";
+        var partes = nombre.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return partes.Length switch
+        {
+            0 => "?",
+            1 => partes[0][..1].ToUpperInvariant(),
+            _ => string.Concat(partes[0][..1], partes[1][..1]).ToUpperInvariant()
+        };
+    }
+
+    private sealed class NuevaFacturaModelo
+    {
+        public DateTime Fecha { get; set; } = DateTime.Today;
+        public string? SerieDocumento { get; set; }
+        public string? NumeroDocumento { get; set; }
+        public int? CliId { get; set; }
+        public string? NombresCliente { get; set; }
+        public string? ApellidosCliente { get; set; }
+        public string? Nit { get; set; }
+        public int? PveId { get; set; }
+        public int BodId { get; set; }
+        public int? MonId { get; set; }
+        public DateTime? FechaPrimerPago { get; set; }
+        public decimal MontoEnganche { get; set; }
+        public int NumeroCuotas { get; set; } = 1;
+    }
+
+    private sealed class ClienteRapidoModelo
+    {
+        public string Codigo { get; set; } = "";
+        public string Nombres { get; set; } = "";
+        public string? Apellidos { get; set; }
+        public string? Nit { get; set; }
+        public string? Telefono { get; set; }
+    }
+
+    private sealed class LineaCaptura
+    {
+        public int ProId { get; set; }
+        public string Descripcion { get; set; } = "";
+        public string BienOServicio { get; set; } = "B";
+        public int Cantidad { get; set; } = 1;
+        public decimal PrecioUnitario { get; set; }
+        public decimal ValorDescuento { get; set; }
+        public decimal SubTotal => Cantidad * PrecioUnitario;
+    }
+}

@@ -1,0 +1,74 @@
+@* Línea de estado en el pie de cada pantalla: fecha/hora, usuario, base de datos y módulo actual. *@
+@implements IDisposable
+@inject Erp.Data.IDbConnectionFactory ConnectionFactory
+@inject NavigationManager NavigationManager
+
+<div class="barra-estado">
+    <span>@horaActual.ToString("dd/MM/yyyy HH:mm:ss")</span>
+    <span>Usuario: @(nombreUsuario ?? "—")</span>
+    <span>Base de datos: @nombreBaseDatos</span>
+    <span>Módulo: @ObtenerModulo()</span>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private DateTime horaActual = DateTime.Now;
+    private string? nombreUsuario;
+    private string nombreBaseDatos = "";
+    private Timer? temporizador;
+
+    private static readonly IReadOnlyDictionary<string, string> ModulosPorRuta = new Dictionary<string, string>
+    {
+        [""] = "Inicio",
+        ["usuarios"] = "Seguridad > Usuarios",
+        ["roles"] = "Seguridad > Roles",
+        ["permisos"] = "Seguridad > Permisos",
+        ["productos"] = "Inventario > Productos",
+        ["caracteristicas"] = "Inventario > Características",
+        ["existencias"] = "Inventario > Existencias",
+        ["precios"] = "Inventario > Precios",
+        ["facturas"] = "Ventas / POS > Facturas",
+        ["clientes"] = "Ventas / POS > Clientes",
+        ["vendedores"] = "Ventas / POS > Vendedores",
+        ["compras"] = "Compras > Compras",
+        ["proveedores"] = "Compras > Proveedores",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var conexion = ConnectionFactory.CreateConnection();
+        nombreBaseDatos = conexion.Database;
+
+        if (AuthenticationStateTask is not null)
+        {
+            var estado = await AuthenticationStateTask;
+            nombreUsuario = estado.User.Identity?.Name;
+        }
+
+        NavigationManager.LocationChanged += AlCambiarUbicacion;
+        temporizador = new Timer(_ => ActualizarHora(), null, 1000, 1000);
+    }
+
+    private void AlCambiarUbicacion(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+        => InvokeAsync(StateHasChanged);
+
+    private void ActualizarHora()
+    {
+        horaActual = DateTime.Now;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string ObtenerModulo()
+    {
+        var ruta = new Uri(NavigationManager.Uri).AbsolutePath.Trim('/').ToLowerInvariant();
+        return ModulosPorRuta.TryGetValue(ruta, out var modulo) ? modulo : ruta;
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= AlCambiarUbicacion;
+        temporizador?.Dispose();
+    }
+}
