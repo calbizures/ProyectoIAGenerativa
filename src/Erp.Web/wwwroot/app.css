@@ -57,6 +57,17 @@ h1:focus {
     padding: 2rem;
 }
 
+.barra-estado {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.5rem;
+    padding: 0.5rem 2rem;
+    background: #eef1f7;
+    border-top: 1px solid #dde3ec;
+    color: #667085;
+    font-size: 0.78rem;
+}
+
 .sidebar {
     width: 270px;
     flex-shrink: 0;
