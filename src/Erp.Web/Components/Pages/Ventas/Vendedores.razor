@@ -19,81 +19,91 @@
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
 }
 
-<div class="barra-herramientas">
-    <select @bind="filtroEstado">
-        <option value="A">Activos</option>
-        <option value="I">Inactivos</option>
-        <option value="">Todos</option>
-    </select>
-    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
-    <span class="barra-herramientas-separador"></span>
-    <BotonIcono Icono="plus" Tooltip="Nuevo vendedor" Etiqueta="Nuevo vendedor" Variante="primario" OnClick="MostrarFormularioNuevo" />
-</div>
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
 
-@if (mostrarNuevo)
+@if (pestanaActiva == "lista")
 {
-    <EditForm Model="nuevoVendedor" OnValidSubmit="CrearVendedorAsync" class="panel-formulario">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
-        <div class="campo"><label>Código</label><InputText @bind-Value="nuevoVendedor.Codigo" /></div>
-        <div class="campo"><label>Nombres</label><InputText @bind-Value="nuevoVendedor.Nombres" /></div>
-        <div class="campo"><label>Apellidos</label><InputText @bind-Value="nuevoVendedor.Apellidos" /></div>
-        <div class="campo"><label>Fecha de ingreso</label><InputDate @bind-Value="nuevoVendedor.FechaIngreso" /></div>
-        <div class="campo"><label>% Comisión</label><InputNumber @bind-Value="nuevoVendedor.PorcentajeComision" step="0.01" /></div>
-        <div class="acciones-fila">
-            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
-            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
-        </div>
-    </EditForm>
+    <div class="barra-herramientas">
+        <select @bind="filtroEstado">
+            <option value="A">Activos</option>
+            <option value="I">Inactivos</option>
+            <option value="">Todos</option>
+        </select>
+        <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+        <span class="barra-herramientas-separador"></span>
+        <BotonIcono Icono="plus" Tooltip="Nuevo vendedor" Etiqueta="Nuevo vendedor" Variante="primario" OnClick="MostrarFormularioNuevo" />
+    </div>
+
+    @if (mostrarNuevo)
+    {
+        <EditForm Model="nuevoVendedor" OnValidSubmit="CrearVendedorAsync" class="panel-formulario">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="campo"><label>Código</label><InputText @bind-Value="nuevoVendedor.Codigo" /></div>
+            <div class="campo"><label>Nombres</label><InputText @bind-Value="nuevoVendedor.Nombres" /></div>
+            <div class="campo"><label>Apellidos</label><InputText @bind-Value="nuevoVendedor.Apellidos" /></div>
+            <div class="campo"><label>Fecha de ingreso</label><InputDate @bind-Value="nuevoVendedor.FechaIngreso" /></div>
+            <div class="campo"><label>% Comisión</label><InputNumber @bind-Value="nuevoVendedor.PorcentajeComision" step="0.01" /></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+            </div>
+        </EditForm>
+    }
+
+    <table class="tabla-datos">
+        <thead>
+            <tr><th class="col-codigo">Código</th><th>Nombres</th><th>Apellidos</th><th class="num col-estado">% Comisión</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var v in vendedores)
+            {
+                <tr class="@(seleccionado?.PveId == v.PveId ? "fila-seleccionada" : "")">
+                    <td class="col-codigo">@v.PveCodigo</td>
+                    <td>@v.PveNombres</td>
+                    <td>@v.PveApellidos</td>
+                    <td class="num col-estado">@v.PvePorcComision.ToString("N2")</td>
+                    <td class="col-estado">@(v.PveEstado == "A" ? "Activo" : "Inactivo")</td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(v)" />
+                            @if (v.PveEstado == "A")
+                            {
+                                <BotonIcono Icono="trash-2" Tooltip="Desactivar vendedor" Variante="peligro" OnClick="() => DesactivarAsync(v)" />
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 }
-
-<table class="tabla-datos">
-    <thead>
-        <tr><th class="col-codigo">Código</th><th>Nombres</th><th>Apellidos</th><th class="num col-estado">% Comisión</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
-    </thead>
-    <tbody>
-        @foreach (var v in vendedores)
-        {
-            <tr class="@(seleccionado?.PveId == v.PveId ? "fila-seleccionada" : "")">
-                <td class="col-codigo">@v.PveCodigo</td>
-                <td>@v.PveNombres</td>
-                <td>@v.PveApellidos</td>
-                <td class="num col-estado">@v.PvePorcComision.ToString("N2")</td>
-                <td class="col-estado">@(v.PveEstado == "A" ? "Activo" : "Inactivo")</td>
-                <td class="col-acciones">
-                    <div class="acciones-fila">
-                        <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(v)" />
-                        @if (v.PveEstado == "A")
-                        {
-                            <BotonIcono Icono="trash-2" Tooltip="Desactivar vendedor" Variante="peligro" OnClick="() => DesactivarAsync(v)" />
-                        }
-                    </div>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-@if (seleccionado is not null)
+else if (pestanaActiva == "detalle" && seleccionado is not null)
 {
     <div class="panel-detalle">
         <h2>Detalle: @seleccionado.PveNombres @seleccionado.PveApellidos</h2>
+        <div class="campo"><label>Nombres</label><span class="valor-detalle">@seleccionado.PveNombres</span></div>
+        <div class="campo"><label>Apellidos</label><span class="valor-detalle">@seleccionado.PveApellidos</span></div>
+        <div class="campo"><label>Fecha de ingreso</label><span class="valor-detalle">@(seleccionado.PveFechaIngreso?.ToString("dd/MM/yyyy") ?? "—")</span></div>
+        <div class="campo"><label>% Comisión</label><span class="valor-detalle">@seleccionado.PvePorcComision.ToString("N2")</span></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+        </div>
+    </div>
+}
+else if (pestanaActiva == "editar" && seleccionado is not null)
+{
+    <div class="panel-formulario">
+        <h2>Editar: @seleccionado.PveNombres @seleccionado.PveApellidos</h2>
         <EditForm Model="edicionVendedor" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
-            <div class="campo"><label>Nombres</label><InputText @bind-Value="edicionVendedor.Nombres" disabled="@(!editando)" /></div>
-            <div class="campo"><label>Apellidos</label><InputText @bind-Value="edicionVendedor.Apellidos" disabled="@(!editando)" /></div>
-            <div class="campo"><label>Fecha de ingreso</label><InputDate @bind-Value="edicionVendedor.FechaIngreso" disabled="@(!editando)" /></div>
-            <div class="campo"><label>% Comisión</label><InputNumber @bind-Value="edicionVendedor.PorcentajeComision" step="0.01" disabled="@(!editando)" /></div>
+            <div class="campo"><label>Nombres</label><InputText @bind-Value="edicionVendedor.Nombres" /></div>
+            <div class="campo"><label>Apellidos</label><InputText @bind-Value="edicionVendedor.Apellidos" /></div>
+            <div class="campo"><label>Fecha de ingreso</label><InputDate @bind-Value="edicionVendedor.FechaIngreso" /></div>
+            <div class="campo"><label>% Comisión</label><InputNumber @bind-Value="edicionVendedor.PorcentajeComision" step="0.01" /></div>
             <div class="acciones-fila">
-                @if (!editando)
-                {
-                    <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="() => editando = true" />
-                }
-                else
-                {
-                    <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
-                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />
-                }
+                <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />
             </div>
         </EditForm>
     </div>
@@ -105,7 +115,13 @@
 
     private IReadOnlyList<Vendedor> vendedores = Array.Empty<Vendedor>();
     private Vendedor? seleccionado;
-    private bool editando;
+    private string pestanaActiva = "lista";
+
+    private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
+        ? new[] { new PestanaItem("lista", "Lista") }
+        : pestanaActiva == "editar"
+            ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar") }
+            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle") };
 
     private string filtroEstado = "A";
     private bool mostrarNuevo;
@@ -161,17 +177,24 @@
     private void SeleccionarAsync(Vendedor vendedor)
     {
         seleccionado = vendedor;
-        editando = false;
-        edicionVendedor.Nombres = vendedor.PveNombres;
-        edicionVendedor.Apellidos = vendedor.PveApellidos;
-        edicionVendedor.FechaIngreso = vendedor.PveFechaIngreso;
-        edicionVendedor.PorcentajeComision = vendedor.PvePorcComision;
+        pestanaActiva = "detalle";
         mensaje = null;
+    }
+
+    private void IniciarEdicion()
+    {
+        if (seleccionado is null) return;
+        edicionVendedor.Nombres = seleccionado.PveNombres;
+        edicionVendedor.Apellidos = seleccionado.PveApellidos;
+        edicionVendedor.FechaIngreso = seleccionado.PveFechaIngreso;
+        edicionVendedor.PorcentajeComision = seleccionado.PvePorcComision;
+        mensaje = null;
+        pestanaActiva = "editar";
     }
 
     private void CancelarEdicion()
     {
-        if (seleccionado is not null) SeleccionarAsync(seleccionado);
+        pestanaActiva = "detalle";
     }
 
     private async Task GuardarEdicionAsync()
@@ -183,8 +206,9 @@
             await VendedorRepository.ActualizarAsync(seleccionado.PveId, edicionVendedor.Nombres, edicionVendedor.Apellidos, edicionVendedor.FechaIngreso, edicionVendedor.PorcentajeComision, usuId);
             mensaje = "Cambios guardados.";
             esMensajeError = false;
-            editando = false;
             await BuscarAsync();
+            seleccionado = vendedores.FirstOrDefault(v => v.PveId == seleccionado.PveId) ?? seleccionado;
+            pestanaActiva = "detalle";
         }
         catch (Exception ex)
         {
@@ -201,7 +225,11 @@
             await VendedorRepository.EliminarAsync(vendedor.PveId, usuId);
             mensaje = "Vendedor desactivado.";
             esMensajeError = false;
-            if (seleccionado?.PveId == vendedor.PveId) seleccionado = null;
+            if (seleccionado?.PveId == vendedor.PveId)
+            {
+                seleccionado = null;
+                pestanaActiva = "lista";
+            }
             await BuscarAsync();
         }
         catch (Exception ex)

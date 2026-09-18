@@ -487,6 +487,39 @@ h1:focus {
     font-size: 0.9rem;
 }
 
+.campo .valor-detalle {
+    padding: 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+.pestanas-barra {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #dde3ec;
+}
+
+.pestana-boton {
+    padding: 0.55rem 1.1rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #667085;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+}
+
+.pestana-boton:hover {
+    color: var(--si-navy-700);
+}
+
+.pestana-boton.activa {
+    color: var(--si-navy-700);
+    border-bottom-color: var(--si-navy-700);
+    font-weight: 600;
+}
+
 .mensaje-error {
     color: #e50000;
 }

@@ -19,86 +19,97 @@
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
 }
 
-<div class="barra-herramientas">
-    <input placeholder="Buscar por código, nombre o NIT" @bind="textoBusqueda" />
-    <select @bind="filtroEstado">
-        <option value="A">Activos</option>
-        <option value="I">Inactivos</option>
-        <option value="">Todos</option>
-    </select>
-    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
-    <span class="barra-herramientas-separador"></span>
-    <BotonIcono Icono="plus" Tooltip="Nuevo proveedor" Etiqueta="Nuevo proveedor" Variante="primario" OnClick="MostrarFormularioNuevo" />
-</div>
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
 
-@if (mostrarNuevo)
+@if (pestanaActiva == "lista")
 {
-    <EditForm Model="nuevoProveedor" OnValidSubmit="CrearProveedorAsync" class="panel-formulario">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
-        <div class="campo"><label>Código</label><InputText @bind-Value="nuevoProveedor.Codigo" /></div>
-        <div class="campo"><label>Nombre comercial</label><InputText @bind-Value="nuevoProveedor.NombreComercial" /></div>
-        <div class="campo"><label>NIT</label><InputText @bind-Value="nuevoProveedor.Nit" /></div>
-        <div class="campo"><label>Contacto</label><InputText @bind-Value="nuevoProveedor.Contacto" /></div>
-        <div class="campo"><label>Teléfono oficina</label><InputText @bind-Value="nuevoProveedor.TelefonoOficina" /></div>
-        <div class="campo"><label>Dirección</label><InputText @bind-Value="nuevoProveedor.Direccion" /></div>
-        <div class="campo"><label>Email empresa</label><InputText @bind-Value="nuevoProveedor.EmailEmpresa" /></div>
-        <div class="acciones-fila">
-            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
-            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
-        </div>
-    </EditForm>
+    <div class="barra-herramientas">
+        <input placeholder="Buscar por código, nombre o NIT" @bind="textoBusqueda" />
+        <select @bind="filtroEstado">
+            <option value="A">Activos</option>
+            <option value="I">Inactivos</option>
+            <option value="">Todos</option>
+        </select>
+        <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+        <span class="barra-herramientas-separador"></span>
+        <BotonIcono Icono="plus" Tooltip="Nuevo proveedor" Etiqueta="Nuevo proveedor" Variante="primario" OnClick="MostrarFormularioNuevo" />
+    </div>
+
+    @if (mostrarNuevo)
+    {
+        <EditForm Model="nuevoProveedor" OnValidSubmit="CrearProveedorAsync" class="panel-formulario">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="campo"><label>Código</label><InputText @bind-Value="nuevoProveedor.Codigo" /></div>
+            <div class="campo"><label>Nombre comercial</label><InputText @bind-Value="nuevoProveedor.NombreComercial" /></div>
+            <div class="campo"><label>NIT</label><InputText @bind-Value="nuevoProveedor.Nit" /></div>
+            <div class="campo"><label>Contacto</label><InputText @bind-Value="nuevoProveedor.Contacto" /></div>
+            <div class="campo"><label>Teléfono oficina</label><InputText @bind-Value="nuevoProveedor.TelefonoOficina" /></div>
+            <div class="campo"><label>Dirección</label><InputText @bind-Value="nuevoProveedor.Direccion" /></div>
+            <div class="campo"><label>Email empresa</label><InputText @bind-Value="nuevoProveedor.EmailEmpresa" /></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+            </div>
+        </EditForm>
+    }
+
+    <table class="tabla-datos">
+        <thead>
+            <tr><th class="col-codigo">Código</th><th>Nombre comercial</th><th class="col-codigo">NIT</th><th>Contacto</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var p in proveedores)
+            {
+                <tr class="@(seleccionado?.PrvId == p.PrvId ? "fila-seleccionada" : "")">
+                    <td class="col-codigo">@p.PrvCodigo</td>
+                    <td>@p.PrvNombreComercial</td>
+                    <td class="col-codigo">@p.PrvNit</td>
+                    <td>@p.PrvContacto</td>
+                    <td class="col-estado">@(p.PrvEstado == "A" ? "Activo" : "Inactivo")</td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(p)" />
+                            @if (p.PrvEstado == "A")
+                            {
+                                <BotonIcono Icono="trash-2" Tooltip="Desactivar proveedor" Variante="peligro" OnClick="() => DesactivarAsync(p)" />
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 }
-
-<table class="tabla-datos">
-    <thead>
-        <tr><th class="col-codigo">Código</th><th>Nombre comercial</th><th class="col-codigo">NIT</th><th>Contacto</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
-    </thead>
-    <tbody>
-        @foreach (var p in proveedores)
-        {
-            <tr class="@(seleccionado?.PrvId == p.PrvId ? "fila-seleccionada" : "")">
-                <td class="col-codigo">@p.PrvCodigo</td>
-                <td>@p.PrvNombreComercial</td>
-                <td class="col-codigo">@p.PrvNit</td>
-                <td>@p.PrvContacto</td>
-                <td class="col-estado">@(p.PrvEstado == "A" ? "Activo" : "Inactivo")</td>
-                <td class="col-acciones">
-                    <div class="acciones-fila">
-                        <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(p)" />
-                        @if (p.PrvEstado == "A")
-                        {
-                            <BotonIcono Icono="trash-2" Tooltip="Desactivar proveedor" Variante="peligro" OnClick="() => DesactivarAsync(p)" />
-                        }
-                    </div>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-@if (seleccionado is not null)
+else if (pestanaActiva == "detalle" && seleccionado is not null)
 {
     <div class="panel-detalle">
         <h2>Detalle: @seleccionado.PrvNombreComercial</h2>
+        <div class="campo"><label>Nombre comercial</label><span class="valor-detalle">@seleccionado.PrvNombreComercial</span></div>
+        <div class="campo"><label>NIT</label><span class="valor-detalle">@seleccionado.PrvNit</span></div>
+        <div class="campo"><label>Contacto</label><span class="valor-detalle">@seleccionado.PrvContacto</span></div>
+        <div class="campo"><label>Teléfono oficina</label><span class="valor-detalle">@seleccionado.PrvTelefonoOficina</span></div>
+        <div class="campo"><label>Email empresa</label><span class="valor-detalle">@seleccionado.PrvEmailEmpresa</span></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+        </div>
+    </div>
+}
+else if (pestanaActiva == "editar" && seleccionado is not null)
+{
+    <div class="panel-formulario">
+        <h2>Editar: @seleccionado.PrvNombreComercial</h2>
         <EditForm Model="edicionProveedor" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
-            <div class="campo"><label>Nombre comercial</label><InputText @bind-Value="edicionProveedor.NombreComercial" disabled="@(!editando)" /></div>
-            <div class="campo"><label>NIT</label><InputText @bind-Value="edicionProveedor.Nit" disabled="@(!editando)" /></div>
-            <div class="campo"><label>Contacto</label><InputText @bind-Value="edicionProveedor.Contacto" disabled="@(!editando)" /></div>
-            <div class="campo"><label>Teléfono oficina</label><InputText @bind-Value="edicionProveedor.TelefonoOficina" disabled="@(!editando)" /></div>
-            <div class="campo"><label>Dirección</label><InputText @bind-Value="edicionProveedor.Direccion" disabled="@(!editando)" /></div>
-            <div class="campo"><label>Email empresa</label><InputText @bind-Value="edicionProveedor.EmailEmpresa" disabled="@(!editando)" /></div>
+            <div class="campo"><label>Nombre comercial</label><InputText @bind-Value="edicionProveedor.NombreComercial" /></div>
+            <div class="campo"><label>NIT</label><InputText @bind-Value="edicionProveedor.Nit" /></div>
+            <div class="campo"><label>Contacto</label><InputText @bind-Value="edicionProveedor.Contacto" /></div>
+            <div class="campo"><label>Teléfono oficina</label><InputText @bind-Value="edicionProveedor.TelefonoOficina" /></div>
+            <div class="campo"><label>Dirección</label><InputText @bind-Value="edicionProveedor.Direccion" /></div>
+            <div class="campo"><label>Email empresa</label><InputText @bind-Value="edicionProveedor.EmailEmpresa" /></div>
             <div class="acciones-fila">
-                @if (!editando)
-                {
-                    <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="() => editando = true" />
-                }
-                else
-                {
-                    <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
-                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />
-                }
+                <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />
             </div>
         </EditForm>
     </div>
@@ -110,7 +121,13 @@
 
     private IReadOnlyList<Proveedor> proveedores = Array.Empty<Proveedor>();
     private Proveedor? seleccionado;
-    private bool editando;
+    private string pestanaActiva = "lista";
+
+    private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
+        ? new[] { new PestanaItem("lista", "Lista") }
+        : pestanaActiva == "editar"
+            ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar") }
+            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle") };
 
     private string textoBusqueda = "";
     private string filtroEstado = "A";
@@ -173,18 +190,25 @@
     private void SeleccionarAsync(Proveedor proveedor)
     {
         seleccionado = proveedor;
-        editando = false;
-        edicionProveedor.NombreComercial = proveedor.PrvNombreComercial;
-        edicionProveedor.Nit = proveedor.PrvNit;
-        edicionProveedor.Contacto = proveedor.PrvContacto;
-        edicionProveedor.TelefonoOficina = proveedor.PrvTelefonoOficina;
-        edicionProveedor.EmailEmpresa = proveedor.PrvEmailEmpresa;
+        pestanaActiva = "detalle";
         mensaje = null;
+    }
+
+    private void IniciarEdicion()
+    {
+        if (seleccionado is null) return;
+        edicionProveedor.NombreComercial = seleccionado.PrvNombreComercial;
+        edicionProveedor.Nit = seleccionado.PrvNit;
+        edicionProveedor.Contacto = seleccionado.PrvContacto;
+        edicionProveedor.TelefonoOficina = seleccionado.PrvTelefonoOficina;
+        edicionProveedor.EmailEmpresa = seleccionado.PrvEmailEmpresa;
+        mensaje = null;
+        pestanaActiva = "editar";
     }
 
     private void CancelarEdicion()
     {
-        if (seleccionado is not null) SeleccionarAsync(seleccionado);
+        pestanaActiva = "detalle";
     }
 
     private async Task GuardarEdicionAsync()
@@ -198,8 +222,9 @@
                 edicionProveedor.Direccion, edicionProveedor.TelefonoOficina, edicionProveedor.EmailEmpresa, usuId);
             mensaje = "Cambios guardados.";
             esMensajeError = false;
-            editando = false;
             await BuscarAsync();
+            seleccionado = proveedores.FirstOrDefault(p => p.PrvId == seleccionado.PrvId) ?? seleccionado;
+            pestanaActiva = "detalle";
         }
         catch (Exception ex)
         {
@@ -216,7 +241,11 @@
             await ProveedorRepository.EliminarAsync(proveedor.PrvId, usuId);
             mensaje = "Proveedor desactivado.";
             esMensajeError = false;
-            if (seleccionado?.PrvId == proveedor.PrvId) seleccionado = null;
+            if (seleccionado?.PrvId == proveedor.PrvId)
+            {
+                seleccionado = null;
+                pestanaActiva = "lista";
+            }
             await BuscarAsync();
         }
         catch (Exception ex)

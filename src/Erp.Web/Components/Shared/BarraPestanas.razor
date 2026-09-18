@@ -1,0 +1,24 @@
+@* Barra de pestañas reutilizable: Lista / Detalle / Editar.
+   Uso: <BarraPestanas Pestanas="@pestanas" @bind-PestanaActiva="pestanaActiva" /> *@
+<div class="pestanas-barra">
+    @foreach (var p in Pestanas)
+    {
+        <button type="button"
+                class="@("pestana-boton" + (p.Id == PestanaActiva ? " activa" : ""))"
+                @onclick="() => Seleccionar(p.Id)">
+            @p.Etiqueta
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<PestanaItem> Pestanas { get; set; } = Array.Empty<PestanaItem>();
+    [Parameter] public string PestanaActiva { get; set; } = "";
+    [Parameter] public EventCallback<string> PestanaActivaChanged { get; set; }
+
+    private async Task Seleccionar(string id)
+    {
+        if (id == PestanaActiva) return;
+        await PestanaActivaChanged.InvokeAsync(id);
+    }
+}

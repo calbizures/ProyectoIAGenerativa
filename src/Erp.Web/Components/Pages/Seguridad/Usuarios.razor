@@ -17,92 +17,85 @@
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
 }
 
-<div class="barra-filtros">
-    <input placeholder="Buscar por usuario" @bind="filtroUsuario" />
-    <select @bind="filtroEstado">
-        <option value="A">Activos</option>
-        <option value="I">Inactivos</option>
-        <option value="">Todos</option>
-    </select>
-    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
-    <BotonIcono Icono="plus" Tooltip="Nuevo usuario" Etiqueta="Nuevo usuario" Variante="primario" OnClick="MostrarFormularioNuevo" />
-</div>
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
 
-@if (mostrarNuevo)
+@if (pestanaActiva == "lista")
 {
-    <EditForm Model="nuevoUsuario" OnValidSubmit="CrearUsuarioAsync" class="panel-formulario">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
-        <div class="campo"><label>Código</label><InputText @bind-Value="nuevoUsuario.Codigo" /></div>
-        <div class="campo"><label>Usuario</label><InputText @bind-Value="nuevoUsuario.Usuario" /></div>
-        <div class="campo"><label>Email</label><InputText @bind-Value="nuevoUsuario.Email" /></div>
-        <div class="campo"><label>Contraseña</label><InputText type="password" @bind-Value="nuevoUsuario.Password" /></div>
-        <div class="acciones-fila">
-            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
-            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
-        </div>
-    </EditForm>
-}
+    <div class="barra-filtros">
+        <input placeholder="Buscar por usuario" @bind="filtroUsuario" />
+        <select @bind="filtroEstado">
+            <option value="A">Activos</option>
+            <option value="I">Inactivos</option>
+            <option value="">Todos</option>
+        </select>
+        <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+        <BotonIcono Icono="plus" Tooltip="Nuevo usuario" Etiqueta="Nuevo usuario" Variante="primario" OnClick="MostrarFormularioNuevo" />
+    </div>
 
-<table class="tabla-datos">
-    <thead>
-        <tr>
-            <th class="col-codigo">Código</th>
-            <th>Usuario</th>
-            <th>Email</th>
-            <th class="col-estado">Estado</th>
-            <th class="col-estado">Bloqueado</th>
-            <th class="col-acciones">Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var u in usuarios)
-        {
-            <tr class="@(seleccionado?.UsuId == u.UsuId ? "fila-seleccionada" : "")">
-                <td class="col-codigo">@u.UsuCodigo</td>
-                <td>@u.UsuUsuario</td>
-                <td>@u.UsuEmail</td>
-                <td class="col-estado">@(u.UsuEstado == "A" ? "Activo" : "Inactivo")</td>
-                <td class="col-estado">@(u.UsuBloqueado ? "Sí" : "No")</td>
-                <td class="col-acciones">
-                    <div class="acciones-fila">
-                        <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(u)" />
-                        @if (u.UsuEstado == "A")
-                        {
-                            <BotonIcono Icono="trash-2" Tooltip="Desactivar usuario" Variante="peligro" OnClick="() => DesactivarAsync(u)" />
-                        }
-                        else
-                        {
-                            <BotonIcono Icono="refresh-cw" Tooltip="Activar usuario" Variante="primario" OnClick="() => ActivarAsync(u)" />
-                        }
-                    </div>
-                </td>
+    @if (mostrarNuevo)
+    {
+        <EditForm Model="nuevoUsuario" OnValidSubmit="CrearUsuarioAsync" class="panel-formulario">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="campo"><label>Código</label><InputText @bind-Value="nuevoUsuario.Codigo" /></div>
+            <div class="campo"><label>Usuario</label><InputText @bind-Value="nuevoUsuario.Usuario" /></div>
+            <div class="campo"><label>Email</label><InputText @bind-Value="nuevoUsuario.Email" /></div>
+            <div class="campo"><label>Contraseña</label><InputText type="password" @bind-Value="nuevoUsuario.Password" /></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+            </div>
+        </EditForm>
+    }
+
+    <table class="tabla-datos">
+        <thead>
+            <tr>
+                <th class="col-codigo">Código</th>
+                <th>Usuario</th>
+                <th>Email</th>
+                <th class="col-estado">Estado</th>
+                <th class="col-estado">Bloqueado</th>
+                <th class="col-acciones">Acciones</th>
             </tr>
-        }
-    </tbody>
-</table>
-
-@if (seleccionado is not null)
+        </thead>
+        <tbody>
+            @foreach (var u in usuarios)
+            {
+                <tr class="@(seleccionado?.UsuId == u.UsuId ? "fila-seleccionada" : "")">
+                    <td class="col-codigo">@u.UsuCodigo</td>
+                    <td>@u.UsuUsuario</td>
+                    <td>@u.UsuEmail</td>
+                    <td class="col-estado">@(u.UsuEstado == "A" ? "Activo" : "Inactivo")</td>
+                    <td class="col-estado">@(u.UsuBloqueado ? "Sí" : "No")</td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(u)" />
+                            @if (u.UsuEstado == "A")
+                            {
+                                <BotonIcono Icono="trash-2" Tooltip="Desactivar usuario" Variante="peligro" OnClick="() => DesactivarAsync(u)" />
+                            }
+                            else
+                            {
+                                <BotonIcono Icono="refresh-cw" Tooltip="Activar usuario" Variante="primario" OnClick="() => ActivarAsync(u)" />
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (pestanaActiva == "detalle" && seleccionado is not null)
 {
     <div class="panel-detalle">
         <h2>Detalle: @seleccionado.UsuUsuario</h2>
 
-        <EditForm Model="edicionUsuario" OnValidSubmit="GuardarEdicionAsync">
-            <DataAnnotationsValidator />
-            <div class="campo"><label>Usuario</label><InputText @bind-Value="edicionUsuario.Usuario" disabled="@(!editando)" /></div>
-            <div class="campo"><label>Email</label><InputText @bind-Value="edicionUsuario.Email" disabled="@(!editando)" /></div>
-            <div class="acciones-fila">
-                @if (!editando)
-                {
-                    <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="() => editando = true" />
-                }
-                else
-                {
-                    <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
-                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicionAsync" />
-                }
-            </div>
-        </EditForm>
+        <div class="campo"><label>Usuario</label><span class="valor-detalle">@seleccionado.UsuUsuario</span></div>
+        <div class="campo"><label>Email</label><span class="valor-detalle">@seleccionado.UsuEmail</span></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+        </div>
 
         <h3>Cambiar contraseña</h3>
         <EditForm Model="cambioPassword" OnValidSubmit="CambiarPasswordAsync">
@@ -132,6 +125,21 @@
         </table>
     </div>
 }
+else if (pestanaActiva == "editar" && seleccionado is not null)
+{
+    <div class="panel-formulario">
+        <h2>Editar: @seleccionado.UsuUsuario</h2>
+        <EditForm Model="edicionUsuario" OnValidSubmit="GuardarEdicionAsync">
+            <DataAnnotationsValidator />
+            <div class="campo"><label>Usuario</label><InputText @bind-Value="edicionUsuario.Usuario" /></div>
+            <div class="campo"><label>Email</label><InputText @bind-Value="edicionUsuario.Email" /></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicionAsync" />
+            </div>
+        </EditForm>
+    </div>
+}
 
 @code {
     [CascadingParameter]
@@ -141,7 +149,13 @@
     private IReadOnlyList<Rol> todosLosRoles = Array.Empty<Rol>();
     private IReadOnlyList<UsuarioRol> rolesAsignados = Array.Empty<UsuarioRol>();
     private Usuario? seleccionado;
-    private bool editando;
+    private string pestanaActiva = "lista";
+
+    private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
+        ? new[] { new PestanaItem("lista", "Lista") }
+        : pestanaActiva == "editar"
+            ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar") }
+            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle") };
 
     private string filtroUsuario = "";
     private string filtroEstado = "A";
@@ -202,7 +216,7 @@
     private async Task SeleccionarAsync(Usuario usuario)
     {
         seleccionado = usuario;
-        editando = false;
+        pestanaActiva = "detalle";
         edicionUsuario.Usuario = usuario.UsuUsuario;
         edicionUsuario.Email = usuario.UsuEmail;
         cambioPassword.Actual = "";
@@ -213,9 +227,18 @@
         rolesAsignados = roles;
     }
 
-    private async Task CancelarEdicionAsync()
+    private void IniciarEdicion()
     {
-        if (seleccionado is not null) await SeleccionarAsync(seleccionado);
+        if (seleccionado is null) return;
+        edicionUsuario.Usuario = seleccionado.UsuUsuario;
+        edicionUsuario.Email = seleccionado.UsuEmail;
+        mensaje = null;
+        pestanaActiva = "editar";
+    }
+
+    private void CancelarEdicionAsync()
+    {
+        pestanaActiva = "detalle";
     }
 
     private async Task GuardarEdicionAsync()
@@ -227,8 +250,9 @@
             await UsuarioRepository.ActualizarAsync(seleccionado.UsuId, edicionUsuario.Usuario, edicionUsuario.Email, usuId);
             mensaje = "Cambios guardados.";
             esMensajeError = false;
-            editando = false;
             await BuscarAsync();
+            seleccionado = usuarios.FirstOrDefault(u => u.UsuId == seleccionado.UsuId) ?? seleccionado;
+            pestanaActiva = "detalle";
         }
         catch (Exception ex)
         {
@@ -263,7 +287,11 @@
             await UsuarioRepository.EliminarAsync(usuario.UsuId, usuId);
             mensaje = "Usuario desactivado.";
             esMensajeError = false;
-            if (seleccionado?.UsuId == usuario.UsuId) seleccionado = null;
+            if (seleccionado?.UsuId == usuario.UsuId)
+            {
+                seleccionado = null;
+                pestanaActiva = "lista";
+            }
             await BuscarAsync();
         }
         catch (Exception ex)
