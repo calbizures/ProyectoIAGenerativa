@@ -57,6 +57,17 @@ h1:focus {
     padding: 2rem;
 }
 
+.barra-estado {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.5rem;
+    padding: 0.5rem 2rem;
+    background: #eef1f7;
+    border-top: 1px solid #dde3ec;
+    color: #667085;
+    font-size: 0.78rem;
+}
+
 .sidebar {
     width: 270px;
     flex-shrink: 0;
@@ -485,6 +496,39 @@ h1:focus {
     border: 1px solid #dde3ec;
     border-radius: 8px;
     font-size: 0.9rem;
+}
+
+.campo .valor-detalle {
+    padding: 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+.pestanas-barra {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #dde3ec;
+}
+
+.pestana-boton {
+    padding: 0.55rem 1.1rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #667085;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+}
+
+.pestana-boton:hover {
+    color: var(--si-navy-700);
+}
+
+.pestana-boton.activa {
+    color: var(--si-navy-700);
+    border-bottom-color: var(--si-navy-700);
+    font-weight: 600;
 }
 
 .mensaje-error {

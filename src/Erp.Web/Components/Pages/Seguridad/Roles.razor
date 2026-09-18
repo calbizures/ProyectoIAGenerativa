@@ -17,69 +17,62 @@
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
 }
 
-<div class="barra-filtros">
-    <BotonIcono Icono="plus" Tooltip="Nuevo rol" Etiqueta="Nuevo rol" Variante="primario" OnClick="() => mostrarNuevo = true" />
-</div>
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
 
-@if (mostrarNuevo)
+@if (pestanaActiva == "lista")
 {
-    <EditForm Model="nuevoRol" OnValidSubmit="CrearRolAsync" class="panel-formulario">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
-        <div class="campo"><label>Código</label><InputText @bind-Value="nuevoRol.Codigo" /></div>
-        <div class="campo"><label>Nombre</label><InputText @bind-Value="nuevoRol.Nombre" /></div>
-        <div class="acciones-fila">
-            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
-            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
-        </div>
-    </EditForm>
+    <div class="barra-filtros">
+        <BotonIcono Icono="plus" Tooltip="Nuevo rol" Etiqueta="Nuevo rol" Variante="primario" OnClick="() => mostrarNuevo = true" />
+    </div>
+
+    @if (mostrarNuevo)
+    {
+        <EditForm Model="nuevoRol" OnValidSubmit="CrearRolAsync" class="panel-formulario">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="campo"><label>Código</label><InputText @bind-Value="nuevoRol.Codigo" /></div>
+            <div class="campo"><label>Nombre</label><InputText @bind-Value="nuevoRol.Nombre" /></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+            </div>
+        </EditForm>
+    }
+
+    <table class="tabla-datos">
+        <thead>
+            <tr><th class="col-codigo">Código</th><th>Nombre</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var rol in roles)
+            {
+                <tr class="@(seleccionado?.RolId == rol.RolId ? "fila-seleccionada" : "")">
+                    <td class="col-codigo">@rol.RolCodigo</td>
+                    <td>@rol.RolNombre</td>
+                    <td class="col-estado">@(rol.RolEstado == "A" ? "Activo" : "Inactivo")</td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(rol)" />
+                            @if (rol.RolEstado == "A")
+                            {
+                                <BotonIcono Icono="trash-2" Tooltip="Desactivar rol" Variante="peligro" OnClick="() => DesactivarAsync(rol)" />
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 }
-
-<table class="tabla-datos">
-    <thead>
-        <tr><th class="col-codigo">Código</th><th>Nombre</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
-    </thead>
-    <tbody>
-        @foreach (var rol in roles)
-        {
-            <tr class="@(seleccionado?.RolId == rol.RolId ? "fila-seleccionada" : "")">
-                <td class="col-codigo">@rol.RolCodigo</td>
-                <td>@rol.RolNombre</td>
-                <td class="col-estado">@(rol.RolEstado == "A" ? "Activo" : "Inactivo")</td>
-                <td class="col-acciones">
-                    <div class="acciones-fila">
-                        <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(rol)" />
-                        @if (rol.RolEstado == "A")
-                        {
-                            <BotonIcono Icono="trash-2" Tooltip="Desactivar rol" Variante="peligro" OnClick="() => DesactivarAsync(rol)" />
-                        }
-                    </div>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-@if (seleccionado is not null)
+else if (pestanaActiva == "detalle" && seleccionado is not null)
 {
     <div class="panel-detalle">
         <h2>Detalle: @seleccionado.RolNombre</h2>
 
-        <EditForm Model="edicionRol" OnValidSubmit="GuardarEdicionAsync">
-            <DataAnnotationsValidator />
-            <div class="campo"><label>Nombre</label><InputText @bind-Value="edicionRol.Nombre" disabled="@(!editando)" /></div>
-            <div class="acciones-fila">
-                @if (!editando)
-                {
-                    <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="() => editando = true" />
-                }
-                else
-                {
-                    <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
-                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicionAsync" />
-                }
-            </div>
-        </EditForm>
+        <div class="campo"><label>Nombre</label><span class="valor-detalle">@seleccionado.RolNombre</span></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+        </div>
 
         <h3>Permisos asignados</h3>
         <table class="tabla-datos">
@@ -101,6 +94,20 @@
         </table>
     </div>
 }
+else if (pestanaActiva == "editar" && seleccionado is not null)
+{
+    <div class="panel-formulario">
+        <h2>Editar: @seleccionado.RolNombre</h2>
+        <EditForm Model="edicionRol" OnValidSubmit="GuardarEdicionAsync">
+            <DataAnnotationsValidator />
+            <div class="campo"><label>Nombre</label><InputText @bind-Value="edicionRol.Nombre" /></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicionAsync" />
+            </div>
+        </EditForm>
+    </div>
+}
 
 @code {
     [CascadingParameter]
@@ -110,7 +117,13 @@
     private IReadOnlyList<Permiso> todosLosPermisos = Array.Empty<Permiso>();
     private IReadOnlyList<int> permisosAsignadosId = Array.Empty<int>();
     private Rol? seleccionado;
-    private bool editando;
+    private string pestanaActiva = "lista";
+
+    private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
+        ? new[] { new PestanaItem("lista", "Lista") }
+        : pestanaActiva == "editar"
+            ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar") }
+            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle") };
 
     private bool mostrarNuevo;
     private string? mensaje;
@@ -158,15 +171,23 @@
     private async Task SeleccionarAsync(Rol rol)
     {
         seleccionado = rol;
-        editando = false;
+        pestanaActiva = "detalle";
         edicionRol.Nombre = rol.RolNombre;
         mensaje = null;
         permisosAsignadosId = await RolRepository.ConsultarPermisosAsignadosAsync(rol.RolId);
     }
 
-    private async Task CancelarEdicionAsync()
+    private void IniciarEdicion()
     {
-        if (seleccionado is not null) await SeleccionarAsync(seleccionado);
+        if (seleccionado is null) return;
+        edicionRol.Nombre = seleccionado.RolNombre;
+        mensaje = null;
+        pestanaActiva = "editar";
+    }
+
+    private void CancelarEdicionAsync()
+    {
+        pestanaActiva = "detalle";
     }
 
     private async Task GuardarEdicionAsync()
@@ -178,8 +199,9 @@
             await RolRepository.ActualizarAsync(seleccionado.RolId, edicionRol.Nombre, usuId);
             mensaje = "Cambios guardados.";
             esMensajeError = false;
-            editando = false;
             await BuscarAsync();
+            seleccionado = roles.FirstOrDefault(r => r.RolId == seleccionado.RolId) ?? seleccionado;
+            pestanaActiva = "detalle";
         }
         catch (Exception ex)
         {
@@ -196,7 +218,11 @@
             await RolRepository.EliminarAsync(rol.RolId, usuId);
             mensaje = "Rol desactivado.";
             esMensajeError = false;
-            if (seleccionado?.RolId == rol.RolId) seleccionado = null;
+            if (seleccionado?.RolId == rol.RolId)
+            {
+                seleccionado = null;
+                pestanaActiva = "lista";
+            }
             await BuscarAsync();
         }
         catch (Exception ex)

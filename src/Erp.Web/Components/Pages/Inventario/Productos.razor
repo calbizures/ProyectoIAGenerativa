@@ -19,109 +19,38 @@
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
 }
 
-<div class="barra-filtros">
-    <input placeholder="Buscar por código" @bind="filtroCodigo" />
-    <input placeholder="Buscar por descripción" @bind="filtroDescripcion" />
-    <select @bind="filtroEstado">
-        <option value="A">Activos</option>
-        <option value="I">Inactivos</option>
-        <option value="">Todos</option>
-    </select>
-    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
 
-    <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR">
-        <Authorized>
-            <BotonIcono Icono="plus" Tooltip="Nuevo producto" Etiqueta="Nuevo producto" Variante="primario" OnClick="MostrarFormularioNuevo" />
-        </Authorized>
-    </AuthorizeView>
-</div>
-
-@if (mostrarNuevo)
+@if (pestanaActiva == "lista")
 {
-    <EditForm Model="nuevoProducto" OnValidSubmit="CrearProductoAsync" class="panel-formulario">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
-        <div class="campo"><label>Código</label><InputText @bind-Value="nuevoProducto.Codigo" /></div>
-        <div class="campo"><label>Descripción</label><InputText @bind-Value="nuevoProducto.Descripcion" /></div>
-        <div class="campo">
-            <label>Tipo de producto</label>
-            <select @bind="nuevoProducto.PrtId">
-                <option value="0">Seleccione...</option>
-                @foreach (var tipo in tiposProducto)
-                {
-                    <option value="@tipo.PrtId">@tipo.PrtDescripcion</option>
-                }
-            </select>
-        </div>
-        <div class="campo">
-            <label>Clasificación</label>
-            <select @bind="nuevoProducto.TipoItem">
-                <option value="B">Bien</option>
-                <option value="S">Servicio</option>
-            </select>
-        </div>
-        <div class="campo campo-checkbox">
-            <label><input type="checkbox" @bind="nuevoProducto.ManejaExistencia" /> Maneja existencia</label>
-        </div>
-        <div class="acciones-fila">
-            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
-            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
-        </div>
-    </EditForm>
-}
+    <div class="barra-filtros">
+        <input placeholder="Buscar por código" @bind="filtroCodigo" />
+        <input placeholder="Buscar por descripción" @bind="filtroDescripcion" />
+        <select @bind="filtroEstado">
+            <option value="A">Activos</option>
+            <option value="I">Inactivos</option>
+            <option value="">Todos</option>
+        </select>
+        <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
 
-<table class="tabla-datos">
-    <thead>
-        <tr>
-            <th class="col-codigo">Código</th>
-            <th>Descripción</th>
-            <th class="col-telefono">Tipo</th>
-            <th class="num col-estado">Existencia</th>
-            <th class="num col-monto">Costo unitario</th>
-            <th class="col-estado">Estado</th>
-            <th class="col-acciones">Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var p in productos)
-        {
-            <tr class="@(seleccionado?.ProId == p.ProId ? "fila-seleccionada" : "")">
-                <td class="col-codigo">@p.ProCodigo</td>
-                <td>@p.ProDescripcion</td>
-                <td class="col-telefono">@p.PrtDescripcion</td>
-                <td class="num col-estado">@(p.ProManejaExistencia ? p.ProTotalCantidad.ToString("N0") : "—")</td>
-                <td class="num col-monto">@p.ProCostoUnitario.ToString("N5")</td>
-                <td class="col-estado">@(p.ProEstado == "A" ? "Activo" : "Inactivo")</td>
-                <td class="col-acciones">
-                    <div class="acciones-fila">
-                        <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(p)" />
-                        <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_EDITAR">
-                            <Authorized>
-                                @if (p.ProEstado == "A")
-                                {
-                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar producto" Variante="peligro" OnClick="() => DesactivarAsync(p)" />
-                                }
-                            </Authorized>
-                        </AuthorizeView>
-                    </div>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+        <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR">
+            <Authorized>
+                <BotonIcono Icono="plus" Tooltip="Nuevo producto" Etiqueta="Nuevo producto" Variante="primario" OnClick="MostrarFormularioNuevo" />
+            </Authorized>
+        </AuthorizeView>
+    </div>
 
-@if (seleccionado is not null)
-{
-    <div class="panel-detalle">
-        <h2>Detalle: @seleccionado.ProDescripcion</h2>
-
-        <EditForm Model="edicionProducto" OnValidSubmit="GuardarEdicionAsync">
+    @if (mostrarNuevo)
+    {
+        <EditForm Model="nuevoProducto" OnValidSubmit="CrearProductoAsync" class="panel-formulario">
             <DataAnnotationsValidator />
-            <div class="campo"><label>Código</label><InputText @bind-Value="edicionProducto.Codigo" disabled="@(!editando)" /></div>
-            <div class="campo"><label>Descripción</label><InputText @bind-Value="edicionProducto.Descripcion" disabled="@(!editando)" /></div>
+            <ValidationSummary />
+            <div class="campo"><label>Código</label><InputText @bind-Value="nuevoProducto.Codigo" /></div>
+            <div class="campo"><label>Descripción</label><InputText @bind-Value="nuevoProducto.Descripcion" /></div>
             <div class="campo">
                 <label>Tipo de producto</label>
-                <select @bind="edicionProducto.PrtId" disabled="@(!editando)">
+                <select @bind="nuevoProducto.PrtId">
+                    <option value="0">Seleccione...</option>
                     @foreach (var tipo in tiposProducto)
                     {
                         <option value="@tipo.PrtId">@tipo.PrtDescripcion</option>
@@ -130,30 +59,112 @@
             </div>
             <div class="campo">
                 <label>Clasificación</label>
-                <select @bind="edicionProducto.TipoItem" disabled="@(!editando)">
+                <select @bind="nuevoProducto.TipoItem">
                     <option value="B">Bien</option>
                     <option value="S">Servicio</option>
                 </select>
             </div>
             <div class="campo campo-checkbox">
-                <label><input type="checkbox" @bind="edicionProducto.ManejaExistencia" disabled="@(!editando)" /> Maneja existencia</label>
+                <label><input type="checkbox" @bind="nuevoProducto.ManejaExistencia" /> Maneja existencia</label>
             </div>
-            <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_EDITAR" Context="autorizacionEdicion">
-                <Authorized Context="autorizacionEdicion">
-                    <div class="acciones-fila">
-                        @if (!editando)
-                        {
-                            <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="() => editando = true" />
-                        }
-                        else
-                        {
-                            <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
-                            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicionAsync" />
-                        }
-                    </div>
-                </Authorized>
-            </AuthorizeView>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+            </div>
         </EditForm>
+    }
+
+    <table class="tabla-datos">
+        <thead>
+            <tr>
+                <th class="col-codigo">Código</th>
+                <th>Descripción</th>
+                <th class="col-telefono">Tipo</th>
+                <th class="num col-estado">Existencia</th>
+                <th class="num col-monto">Costo unitario</th>
+                <th class="col-estado">Estado</th>
+                <th class="col-acciones">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in productos)
+            {
+                <tr class="@(seleccionado?.ProId == p.ProId ? "fila-seleccionada" : "")">
+                    <td class="col-codigo">@p.ProCodigo</td>
+                    <td>@p.ProDescripcion</td>
+                    <td class="col-telefono">@p.PrtDescripcion</td>
+                    <td class="num col-estado">@(p.ProManejaExistencia ? p.ProTotalCantidad.ToString("N0") : "—")</td>
+                    <td class="num col-monto">@p.ProCostoUnitario.ToString("N5")</td>
+                    <td class="col-estado">@(p.ProEstado == "A" ? "Activo" : "Inactivo")</td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(p)" />
+                            <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_EDITAR">
+                                <Authorized>
+                                    @if (p.ProEstado == "A")
+                                    {
+                                        <BotonIcono Icono="trash-2" Tooltip="Desactivar producto" Variante="peligro" OnClick="() => DesactivarAsync(p)" />
+                                    }
+                                </Authorized>
+                            </AuthorizeView>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (pestanaActiva == "editar" && seleccionado is not null)
+{
+    <div class="panel-formulario">
+        <h2>Editar: @seleccionado.ProDescripcion</h2>
+        <EditForm Model="edicionProducto" OnValidSubmit="GuardarEdicionAsync">
+            <DataAnnotationsValidator />
+            <div class="campo"><label>Código</label><InputText @bind-Value="edicionProducto.Codigo" /></div>
+            <div class="campo"><label>Descripción</label><InputText @bind-Value="edicionProducto.Descripcion" /></div>
+            <div class="campo">
+                <label>Tipo de producto</label>
+                <select @bind="edicionProducto.PrtId">
+                    @foreach (var tipo in tiposProducto)
+                    {
+                        <option value="@tipo.PrtId">@tipo.PrtDescripcion</option>
+                    }
+                </select>
+            </div>
+            <div class="campo">
+                <label>Clasificación</label>
+                <select @bind="edicionProducto.TipoItem">
+                    <option value="B">Bien</option>
+                    <option value="S">Servicio</option>
+                </select>
+            </div>
+            <div class="campo campo-checkbox">
+                <label><input type="checkbox" @bind="edicionProducto.ManejaExistencia" /> Maneja existencia</label>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicionAsync" />
+            </div>
+        </EditForm>
+    </div>
+}
+else if (pestanaActiva == "detalle" && seleccionado is not null)
+{
+    <div class="panel-detalle">
+        <h2>Detalle: @seleccionado.ProDescripcion</h2>
+
+        <div class="campo"><label>Código</label><span class="valor-detalle">@seleccionado.ProCodigo</span></div>
+        <div class="campo"><label>Descripción</label><span class="valor-detalle">@seleccionado.ProDescripcion</span></div>
+        <div class="campo"><label>Tipo de producto</label><span class="valor-detalle">@seleccionado.PrtDescripcion</span></div>
+        <div class="campo"><label>Clasificación</label><span class="valor-detalle">@(seleccionado.ProTipoItem == "B" ? "Bien" : "Servicio")</span></div>
+        <div class="campo campo-checkbox"><label>Maneja existencia</label><span class="valor-detalle">@(seleccionado.ProManejaExistencia ? "Sí" : "No")</span></div>
+        <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_EDITAR">
+            <Authorized>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+                </div>
+            </Authorized>
+        </AuthorizeView>
 
         <h3>Existencia por bodega</h3>
         <table class="tabla-datos">
@@ -284,14 +295,41 @@
                 @foreach (var p in preciosProducto)
                 {
                     <tr>
-                        <td>@p.BodDescripcion</td>
-                        <td>@p.MonCodigo</td>
-                        <td class="num">@p.PprPrecioUnitarioVenta.ToString("N2")</td>
-                        <td class="col-fecha">@p.PprVigenciaDesde.ToString("dd/MM/yyyy")</td>
-                        <td class="col-fecha">@(p.PprVigenciaHasta?.ToString("dd/MM/yyyy") ?? "—")</td>
-                        <td>
-                            <BotonIcono Icono="trash-2" Tooltip="Desactivar precio" Variante="peligro" OnClick="() => EliminarPrecioAsync(p)" />
-                        </td>
+                        @if (editandoPrecioId == p.PprId)
+                        {
+                            <td>
+                                <select @bind="editPrecioBodId">
+                                    @foreach (var bod in bodegasDisponibles)
+                                    {
+                                        <option value="@bod.BodId">@bod.BodDescripcion</option>
+                                    }
+                                </select>
+                            </td>
+                            <td>@p.MonCodigo</td>
+                            <td class="num"><input type="number" step="0.01" @bind="editPrecioUnitarioVenta" /></td>
+                            <td class="col-fecha"><input type="date" @bind="editPrecioVigenciaDesde" /></td>
+                            <td class="col-fecha"><input type="date" @bind="editPrecioVigenciaHasta" /></td>
+                            <td class="col-acciones">
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="GuardarEdicionPrecioAsync" />
+                                    <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => editandoPrecioId = null" />
+                                </div>
+                            </td>
+                        }
+                        else
+                        {
+                            <td>@p.BodDescripcion</td>
+                            <td>@p.MonCodigo</td>
+                            <td class="num">@p.PprPrecioUnitarioVenta.ToString("N2")</td>
+                            <td class="col-fecha">@p.PprVigenciaDesde.ToString("dd/MM/yyyy")</td>
+                            <td class="col-fecha">@(p.PprVigenciaHasta?.ToString("dd/MM/yyyy") ?? "—")</td>
+                            <td class="col-acciones">
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => EditarPrecio(p)" />
+                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar precio" Variante="peligro" OnClick="() => EliminarPrecioAsync(p)" />
+                                </div>
+                            </td>
+                        }
                     </tr>
                 }
             </tbody>
@@ -312,7 +350,13 @@
     private IReadOnlyList<MonedaInventario> monedasDisponibles = Array.Empty<MonedaInventario>();
     private IReadOnlyList<Bodega> bodegasDisponibles = Array.Empty<Bodega>();
     private Producto? seleccionado;
-    private bool editando;
+    private string pestanaActiva = "lista";
+
+    private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
+        ? new[] { new PestanaItem("lista", "Lista") }
+        : pestanaActiva == "editar"
+            ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar") }
+            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle") };
 
     private bool mostrarNuevaCaracteristica;
     private readonly CaracteristicaModelo nuevaCaracteristica = new();
@@ -322,6 +366,11 @@
 
     private bool mostrarNuevoPrecio;
     private readonly PrecioModelo nuevoPrecio = new();
+    private int? editandoPrecioId;
+    private int editPrecioBodId;
+    private decimal editPrecioUnitarioVenta;
+    private DateTime editPrecioVigenciaDesde;
+    private DateTime? editPrecioVigenciaHasta;
 
     private string filtroCodigo = "";
     private string filtroDescripcion = "";
@@ -394,12 +443,7 @@
     private async Task SeleccionarAsync(Producto producto)
     {
         seleccionado = producto;
-        editando = false;
-        edicionProducto.Codigo = producto.ProCodigo;
-        edicionProducto.Descripcion = producto.ProDescripcion;
-        edicionProducto.PrtId = producto.PrtId;
-        edicionProducto.TipoItem = producto.ProTipoItem;
-        edicionProducto.ManejaExistencia = producto.ProManejaExistencia;
+        pestanaActiva = "detalle";
         mensaje = null;
 
         var (_, existencias) = await ProductoRepository.ConsultarPorIdAsync(producto.ProId);
@@ -413,9 +457,21 @@
         preciosProducto = await PrecioRepository.ConsultarAsync(producto.ProId, bodId: null, estado: "A");
     }
 
-    private async Task CancelarEdicionAsync()
+    private void IniciarEdicion()
     {
-        if (seleccionado is not null) await SeleccionarAsync(seleccionado);
+        if (seleccionado is null) return;
+        edicionProducto.Codigo = seleccionado.ProCodigo;
+        edicionProducto.Descripcion = seleccionado.ProDescripcion;
+        edicionProducto.PrtId = seleccionado.PrtId;
+        edicionProducto.TipoItem = seleccionado.ProTipoItem;
+        edicionProducto.ManejaExistencia = seleccionado.ProManejaExistencia;
+        mensaje = null;
+        pestanaActiva = "editar";
+    }
+
+    private void CancelarEdicionAsync()
+    {
+        pestanaActiva = "detalle";
     }
 
     private void EditarCaracteristica(ProductoCaracteristica caracteristica)
@@ -542,6 +598,38 @@
         }
     }
 
+    private void EditarPrecio(ProductoPrecio precio)
+    {
+        editandoPrecioId = precio.PprId;
+        editPrecioBodId = precio.BodId;
+        editPrecioUnitarioVenta = precio.PprPrecioUnitarioVenta;
+        editPrecioVigenciaDesde = precio.PprVigenciaDesde;
+        editPrecioVigenciaHasta = precio.PprVigenciaHasta;
+        mensaje = null;
+    }
+
+    private async Task GuardarEdicionPrecioAsync()
+    {
+        if (seleccionado is null || editandoPrecioId is null) return;
+        try
+        {
+            var precio = preciosProducto.First(p => p.PprId == editandoPrecioId.Value);
+            var usuId = await ObtenerUsuIdActualAsync();
+            await PrecioRepository.ActualizarAsync(
+                editandoPrecioId.Value, editPrecioBodId, precio.MonId, editPrecioUnitarioVenta,
+                precio.PprDescripcion, editPrecioVigenciaDesde, editPrecioVigenciaHasta, usuId);
+            editandoPrecioId = null;
+            preciosProducto = await PrecioRepository.ConsultarAsync(seleccionado.ProId, bodId: null, estado: "A");
+            mensaje = "Cambios guardados.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
     private async Task GuardarEdicionAsync()
     {
         if (seleccionado is null) return;
@@ -553,8 +641,9 @@
                 edicionProducto.TipoItem, edicionProducto.ManejaExistencia, idPadre: null, porcentajeRentabilidad: null, usuId);
             mensaje = "Cambios guardados.";
             esMensajeError = false;
-            editando = false;
             await BuscarAsync();
+            seleccionado = productos.FirstOrDefault(p => p.ProId == seleccionado.ProId) ?? seleccionado;
+            pestanaActiva = "detalle";
         }
         catch (Exception ex)
         {
@@ -571,7 +660,11 @@
             await ProductoRepository.EliminarAsync(producto.ProId, usuId);
             mensaje = "Producto desactivado.";
             esMensajeError = false;
-            if (seleccionado?.ProId == producto.ProId) seleccionado = null;
+            if (seleccionado?.ProId == producto.ProId)
+            {
+                seleccionado = null;
+                pestanaActiva = "lista";
+            }
             await BuscarAsync();
         }
         catch (Exception ex)
