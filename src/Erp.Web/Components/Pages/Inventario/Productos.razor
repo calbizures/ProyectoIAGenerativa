@@ -284,14 +284,41 @@
                 @foreach (var p in preciosProducto)
                 {
                     <tr>
-                        <td>@p.BodDescripcion</td>
-                        <td>@p.MonCodigo</td>
-                        <td class="num">@p.PprPrecioUnitarioVenta.ToString("N2")</td>
-                        <td class="col-fecha">@p.PprVigenciaDesde.ToString("dd/MM/yyyy")</td>
-                        <td class="col-fecha">@(p.PprVigenciaHasta?.ToString("dd/MM/yyyy") ?? "—")</td>
-                        <td>
-                            <BotonIcono Icono="trash-2" Tooltip="Desactivar precio" Variante="peligro" OnClick="() => EliminarPrecioAsync(p)" />
-                        </td>
+                        @if (editandoPrecioId == p.PprId)
+                        {
+                            <td>
+                                <select @bind="editPrecioBodId">
+                                    @foreach (var bod in bodegasDisponibles)
+                                    {
+                                        <option value="@bod.BodId">@bod.BodDescripcion</option>
+                                    }
+                                </select>
+                            </td>
+                            <td>@p.MonCodigo</td>
+                            <td class="num"><input type="number" step="0.01" @bind="editPrecioUnitarioVenta" /></td>
+                            <td class="col-fecha"><input type="date" @bind="editPrecioVigenciaDesde" /></td>
+                            <td class="col-fecha"><input type="date" @bind="editPrecioVigenciaHasta" /></td>
+                            <td class="col-acciones">
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="GuardarEdicionPrecioAsync" />
+                                    <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => editandoPrecioId = null" />
+                                </div>
+                            </td>
+                        }
+                        else
+                        {
+                            <td>@p.BodDescripcion</td>
+                            <td>@p.MonCodigo</td>
+                            <td class="num">@p.PprPrecioUnitarioVenta.ToString("N2")</td>
+                            <td class="col-fecha">@p.PprVigenciaDesde.ToString("dd/MM/yyyy")</td>
+                            <td class="col-fecha">@(p.PprVigenciaHasta?.ToString("dd/MM/yyyy") ?? "—")</td>
+                            <td class="col-acciones">
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => EditarPrecio(p)" />
+                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar precio" Variante="peligro" OnClick="() => EliminarPrecioAsync(p)" />
+                                </div>
+                            </td>
+                        }
                     </tr>
                 }
             </tbody>
@@ -322,6 +349,11 @@
 
     private bool mostrarNuevoPrecio;
     private readonly PrecioModelo nuevoPrecio = new();
+    private int? editandoPrecioId;
+    private int editPrecioBodId;
+    private decimal editPrecioUnitarioVenta;
+    private DateTime editPrecioVigenciaDesde;
+    private DateTime? editPrecioVigenciaHasta;
 
     private string filtroCodigo = "";
     private string filtroDescripcion = "";
@@ -533,6 +565,38 @@
             await PrecioRepository.EliminarAsync(precio.PprId, usuId);
             preciosProducto = await PrecioRepository.ConsultarAsync(seleccionado.ProId, bodId: null, estado: "A");
             mensaje = "Precio desactivado.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private void EditarPrecio(ProductoPrecio precio)
+    {
+        editandoPrecioId = precio.PprId;
+        editPrecioBodId = precio.BodId;
+        editPrecioUnitarioVenta = precio.PprPrecioUnitarioVenta;
+        editPrecioVigenciaDesde = precio.PprVigenciaDesde;
+        editPrecioVigenciaHasta = precio.PprVigenciaHasta;
+        mensaje = null;
+    }
+
+    private async Task GuardarEdicionPrecioAsync()
+    {
+        if (seleccionado is null || editandoPrecioId is null) return;
+        try
+        {
+            var precio = preciosProducto.First(p => p.PprId == editandoPrecioId.Value);
+            var usuId = await ObtenerUsuIdActualAsync();
+            await PrecioRepository.ActualizarAsync(
+                editandoPrecioId.Value, editPrecioBodId, precio.MonId, editPrecioUnitarioVenta,
+                precio.PprDescripcion, editPrecioVigenciaDesde, editPrecioVigenciaHasta, usuId);
+            editandoPrecioId = null;
+            preciosProducto = await PrecioRepository.ConsultarAsync(seleccionado.ProId, bodId: null, estado: "A");
+            mensaje = "Cambios guardados.";
             esMensajeError = false;
         }
         catch (Exception ex)

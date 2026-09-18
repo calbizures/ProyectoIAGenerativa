@@ -105,19 +105,48 @@
         @foreach (var p in precios)
         {
             <tr>
-                <td>@p.ProCodigo - @p.ProDescripcion</td>
-                <td>@p.BodDescripcion</td>
-                <td>@p.MonCodigo</td>
-                <td class="num">@p.PprPrecioUnitarioVenta.ToString("N2")</td>
-                <td class="col-fecha">@p.PprVigenciaDesde.ToString("dd/MM/yyyy")</td>
-                <td class="col-fecha">@(p.PprVigenciaHasta?.ToString("dd/MM/yyyy") ?? "—")</td>
-                <td class="col-estado">@(p.PprEstado == "A" ? "Vigente" : "Desactivado")</td>
-                <td>
-                    @if (p.PprEstado == "A")
-                    {
-                        <BotonIcono Icono="trash-2" Tooltip="Desactivar precio" Variante="peligro" OnClick="() => EliminarAsync(p)" />
-                    }
-                </td>
+                @if (editandoId == p.PprId)
+                {
+                    <td>@p.ProCodigo - @p.ProDescripcion</td>
+                    <td>
+                        <select @bind="editBodId">
+                            @foreach (var bod in bodegas)
+                            {
+                                <option value="@bod.BodId">@bod.BodDescripcion</option>
+                            }
+                        </select>
+                    </td>
+                    <td>@p.MonCodigo</td>
+                    <td class="num"><InputNumber @bind-Value="editPrecioUnitarioVenta" step="0.01" /></td>
+                    <td class="col-fecha"><InputDate @bind-Value="editVigenciaDesde" /></td>
+                    <td class="col-fecha"><InputDate @bind-Value="editVigenciaHasta" /></td>
+                    <td class="col-estado">@(p.PprEstado == "A" ? "Vigente" : "Desactivado")</td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="GuardarEdicionAsync" />
+                            <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => editandoId = null" />
+                        </div>
+                    </td>
+                }
+                else
+                {
+                    <td>@p.ProCodigo - @p.ProDescripcion</td>
+                    <td>@p.BodDescripcion</td>
+                    <td>@p.MonCodigo</td>
+                    <td class="num">@p.PprPrecioUnitarioVenta.ToString("N2")</td>
+                    <td class="col-fecha">@p.PprVigenciaDesde.ToString("dd/MM/yyyy")</td>
+                    <td class="col-fecha">@(p.PprVigenciaHasta?.ToString("dd/MM/yyyy") ?? "—")</td>
+                    <td class="col-estado">@(p.PprEstado == "A" ? "Vigente" : "Desactivado")</td>
+                    <td class="col-acciones">
+                        @if (p.PprEstado == "A")
+                        {
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => Editar(p)" />
+                                <BotonIcono Icono="trash-2" Tooltip="Desactivar precio" Variante="peligro" OnClick="() => EliminarAsync(p)" />
+                            </div>
+                        }
+                    </td>
+                }
             </tr>
         }
     </tbody>
@@ -140,6 +169,12 @@
     private bool esMensajeError;
 
     private readonly PrecioModelo nuevoPrecio = new();
+
+    private int? editandoId;
+    private int editBodId;
+    private decimal editPrecioUnitarioVenta;
+    private DateTime editVigenciaDesde;
+    private DateTime? editVigenciaHasta;
 
     protected override async Task OnInitializedAsync()
     {
@@ -187,6 +222,38 @@
                 nuevoPrecio.Descripcion, nuevoPrecio.VigenciaDesde, nuevoPrecio.VigenciaHasta, usuId);
             mostrarNuevo = false;
             mensaje = "Precio creado correctamente.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private void Editar(ProductoPrecio precio)
+    {
+        editandoId = precio.PprId;
+        editBodId = precio.BodId;
+        editPrecioUnitarioVenta = precio.PprPrecioUnitarioVenta;
+        editVigenciaDesde = precio.PprVigenciaDesde;
+        editVigenciaHasta = precio.PprVigenciaHasta;
+        mensaje = null;
+    }
+
+    private async Task GuardarEdicionAsync()
+    {
+        if (editandoId is null) return;
+        try
+        {
+            var precio = precios.First(p => p.PprId == editandoId.Value);
+            var usuId = await ObtenerUsuIdActualAsync();
+            await PrecioRepository.ActualizarAsync(
+                editandoId.Value, editBodId, precio.MonId, editPrecioUnitarioVenta,
+                precio.PprDescripcion, editVigenciaDesde, editVigenciaHasta, usuId);
+            editandoId = null;
+            mensaje = "Cambios guardados.";
             esMensajeError = false;
             await BuscarAsync();
         }
