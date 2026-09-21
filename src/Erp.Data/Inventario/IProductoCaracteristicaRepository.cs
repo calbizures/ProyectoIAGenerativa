@@ -7,4 +7,8 @@ public interface IProductoCaracteristicaRepository
 	Task EliminarAsync(int pcaId);
 	Task<IReadOnlyList<ProductoCaracteristica>> ConsultarAsync(int? proId);
 	Task<IReadOnlyList<ProductoTipoCaracteristica>> ConsultarTiposAsync(string? estado);
+
+	Task<int> InsertarTipoAsync(string codigo, string descripcion, int orden, int? usuarioAccionId);
+	Task ActualizarTipoAsync(int ptcId, string codigo, string descripcion, int orden, int? usuarioAccionId);
+	Task EliminarTipoAsync(int ptcId, int? usuarioAccionId);
 }

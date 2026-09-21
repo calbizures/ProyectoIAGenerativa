@@ -33,6 +33,7 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 16_activar_usuario.sql                        -- solo si ya corriste 00-15 antes de esta fecha
 17_documento_consultar_codigo_cliente.sql     -- solo si ya corriste 00-16 antes de esta fecha
 18_procedimientos_detalle_producto.sql        -- solo si ya corriste 00-17 antes de esta fecha
+19_procedimientos_tipo_caracteristica.sql     -- solo si ya corriste 00-18 antes de esta fecha
 ```
 
 ## Estándares de nomenclatura (a partir de este punto)
@@ -281,6 +282,14 @@ Decisiones de diseño:
     `paProductoPrecioInsertar/Actualizar/Eliminar/Consultar/ConsultarPorId`
     (`10_procedimientos_crud.sql`). Quien ya haya corrido `00`-`17` debe
     correr `18_procedimientos_detalle_producto.sql` una sola vez.
+15. **CRUD de tipo de característica.** `inv_producto_tipo_caracteristica`
+    (el catálogo de tipos de característica: Marca, Modelo, Garantía,
+    Capacidad...) solo tenía consulta. Se agregan
+    `paProductoTipoCaracteristicaInsertar/Actualizar/Eliminar` (baja lógica
+    con `ptc_estado`) para poder mantenerlo desde un módulo propio en
+    Inventario (`10_procedimientos_crud.sql`). Quien ya haya corrido
+    `00`-`18` debe correr `19_procedimientos_tipo_caracteristica.sql` una
+    sola vez.
 
 ## Módulos nuevos
 
