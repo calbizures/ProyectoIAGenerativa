@@ -1323,6 +1323,24 @@ BEGIN
 END;
 GO
 
+------------------------------------------------------------
+-- pos_cliente_plan_pagos (solo consulta; se usa como detalle informativo
+-- al grabar una factura a crédito)
+------------------------------------------------------------
+CREATE OR ALTER PROCEDURE [dbo].[paClientePlanPagosConsultar]
+	@enc_id INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	SELECT cpp_id, cpp_nro_cuota, cpp_valor_cuota, cpp_saldo_cuota,
+		   cpp_fecha_maxima_pago, cpp_fecha_real_pago, cpp_estado, enc_id, cli_id
+	FROM dbo.pos_cliente_plan_pagos
+	WHERE enc_id = @enc_id
+	ORDER BY cpp_nro_cuota;
+END;
+GO
+
 -------------------------------------------------------------
 -- pos_vendedor
 -- Nota de nomenclatura: estos procedimientos usan el estándar "pa" +

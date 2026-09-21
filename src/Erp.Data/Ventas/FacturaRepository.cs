@@ -108,6 +108,14 @@ public sealed class FacturaRepository(IDbConnectionFactory connectionFactory) : 
 		return (encabezado, detalle);
 	}
 
+	public async Task<IReadOnlyList<CuotaPlanPago>> ConsultarPlanPagosAsync(int encId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var filas = await connection.QueryAsync<CuotaPlanPago>(
+			"dbo.paClientePlanPagosConsultar", new { enc_id = encId }, commandType: CommandType.StoredProcedure);
+		return filas.ToList();
+	}
+
 	// El orden de las columnas debe coincidir exactamente con CREATE TYPE
 	// dbo.factura_det_type (01_tipos_tabla.sql): SQL Server relaciona los
 	// parámetros de tabla por posición, no por nombre.

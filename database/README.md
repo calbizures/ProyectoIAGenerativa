@@ -34,6 +34,7 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 17_documento_consultar_codigo_cliente.sql     -- solo si ya corriste 00-16 antes de esta fecha
 18_procedimientos_detalle_producto.sql        -- solo si ya corriste 00-17 antes de esta fecha
 19_procedimientos_tipo_caracteristica.sql     -- solo si ya corriste 00-18 antes de esta fecha
+20_procedimiento_plan_pagos_consultar.sql     -- solo si ya corriste 00-19 antes de esta fecha
 ```
 
 ## Estándares de nomenclatura (a partir de este punto)
@@ -290,6 +291,13 @@ Decisiones de diseño:
     Inventario (`10_procedimientos_crud.sql`). Quien ya haya corrido
     `00`-`18` debe correr `19_procedimientos_tipo_caracteristica.sql` una
     sola vez.
+16. **Consulta del plan de pagos.** `pos_cliente_plan_pagos` (las cuotas
+    de una factura a crédito) se generaba al grabar pero no tenía
+    procedimiento de consulta. Se agrega `paClientePlanPagosConsultar`
+    (`10_procedimientos_crud.sql`) para poder mostrar el plan de pagos
+    como detalle informativo justo al grabar una factura a crédito. Quien
+    ya haya corrido `00`-`19` debe correr
+    `20_procedimiento_plan_pagos_consultar.sql` una sola vez.
 
 ## Módulos nuevos
 

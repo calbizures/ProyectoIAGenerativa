@@ -24,6 +24,36 @@
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
 }
 
+@if (planPagosGrabado.Count > 0)
+{
+    <div class="doc-card">
+        <div class="doc-card-header">
+            <div>
+                <h2>Plan de pagos — Factura @numeroFacturaGrabada</h2>
+                <p>Detalle informativo de las cuotas generadas para esta factura a crédito.</p>
+            </div>
+            <BotonIcono Icono="x" Tooltip="Cerrar" Variante="fantasma" OnClick="() => planPagosGrabado = Array.Empty<CuotaPlanPago>()" />
+        </div>
+        <div class="doc-card-body">
+            <table class="doc-tabla">
+                <thead>
+                    <tr><th class="num">Cuota</th><th>Fecha máxima de pago</th><th class="num">Valor</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in planPagosGrabado)
+                    {
+                        <tr>
+                            <td class="num">@c.CppNroCuota</td>
+                            <td>@c.CppFechaMaximaPago.ToString("dd/MM/yyyy")</td>
+                            <td class="num">@MonedaSimbolo @c.CppValorCuota.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
 <div class="barra-herramientas">
     <input type="date" @bind="filtroFechaDesde" title="Desde" />
     <input type="date" @bind="filtroFechaHasta" title="Hasta" />
@@ -109,7 +139,7 @@
                             <div class="doc-buscador-resultados">
                                 @foreach (var c in clientesEncontrados)
                                 {
-                                    <div class="doc-resultado-fila" @onclick="() => SeleccionarCliente(c)">
+                                    <div class="doc-resultado-fila" @onclick="() => SeleccionarClienteAsync(c)">
                                         <span class="doc-avatar">@Iniciales(c.NombreCompleto)</span>
                                         <span class="doc-resultado-texto">
                                             <strong>@c.NombreCompleto</strong>
@@ -146,10 +176,65 @@
                             <strong>@nuevaFactura.NombresCliente @nuevaFactura.ApellidosCliente</strong>
                             <span>NIT: @(nuevaFactura.Nit ?? "C/F")</span>
                         </span>
-                        <BotonIcono Icono="x" Tooltip="Cambiar cliente" Variante="fantasma" OnClick="() => nuevaFactura.CliId = null" />
+                        <BotonIcono Icono="x" Tooltip="Cambiar cliente" Variante="fantasma" OnClick="LimpiarClienteSeleccionado" />
                     </div>
                 }
             </div>
+
+            @if (nuevaFactura.CliId is not null)
+            {
+                <div class="doc-seccion">
+                    <p class="doc-seccion-titulo"><Icono Nombre="clock" Tamano="15" /> Historial del cliente</p>
+                    @if (historialCliente.Count == 0)
+                    {
+                        <div class="doc-nota">
+                            <Icono Nombre="info" Tamano="15" />
+                            <span>Este cliente no tiene compras registradas.</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <table class="doc-tabla">
+                            <thead>
+                                <tr><th>Fecha</th><th>Serie/Número</th><th class="num">Total</th><th>Estado</th><th></th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var h in historialCliente)
+                                {
+                                    <tr>
+                                        <td>@h.EncFechaDocto.ToString("dd/MM/yyyy")</td>
+                                        <td>@h.EncSerieDocto-@h.EncNumeroDocto</td>
+                                        <td class="num">@MonedaSimbolo @h.EncMontoTotal.ToString("N2")</td>
+                                        <td>@(h.EncEstado == "G" ? "Grabada" : "Anulada")</td>
+                                        <td><BotonIcono Icono="eye" Tooltip="Ver qué compró" OnClick="() => AlternarDetalleHistorialAsync(h)" /></td>
+                                    </tr>
+                                    @if (historialClienteExpandidoId == h.EncId)
+                                    {
+                                        <tr>
+                                            <td colspan="5">
+                                                <table class="doc-tabla">
+                                                    <thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Precio unit.</th></tr></thead>
+                                                    <tbody>
+                                                        @foreach (var d in historialClienteDetalleExpandido)
+                                                        {
+                                                            var precioConIva = d.DetPrecioUnitario * (1 + (d.DetPorcIva ?? 0) / 100m);
+                                                            <tr>
+                                                                <td>@d.DetDescripcion</td>
+                                                                <td class="num">@d.DetCantidad</td>
+                                                                <td class="num">@precioConIva.ToString("N2")</td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            }
 
             <div class="doc-seccion">
                 <p class="doc-seccion-titulo"><Icono Nombre="package" Tamano="15" /> Detalle de productos</p>
@@ -375,6 +460,13 @@
     private FacturaEncabezadoDetalle? encabezadoSeleccionado;
     private IReadOnlyList<FacturaDetalleLinea> detalleSeleccionado = Array.Empty<FacturaDetalleLinea>();
 
+    private IReadOnlyList<FacturaEncabezado> historialCliente = Array.Empty<FacturaEncabezado>();
+    private int? historialClienteExpandidoId;
+    private IReadOnlyList<FacturaDetalleLinea> historialClienteDetalleExpandido = Array.Empty<FacturaDetalleLinea>();
+
+    private IReadOnlyList<CuotaPlanPago> planPagosGrabado = Array.Empty<CuotaPlanPago>();
+    private string? numeroFacturaGrabada;
+
     private DateTime? filtroFechaDesde;
     private DateTime? filtroFechaHasta;
     private string filtroEstado = "";
@@ -455,6 +547,11 @@
         productosEncontrados = Array.Empty<Producto>();
         mostrarNuevoCliente = false;
         mostrarNuevaFactura = true;
+        historialCliente = Array.Empty<FacturaEncabezado>();
+        historialClienteExpandidoId = null;
+        historialClienteDetalleExpandido = Array.Empty<FacturaDetalleLinea>();
+        planPagosGrabado = Array.Empty<CuotaPlanPago>();
+        numeroFacturaGrabada = null;
         return Task.CompletedTask;
     }
 
@@ -464,13 +561,44 @@
             string.IsNullOrWhiteSpace(textoBusquedaCliente) ? null : textoBusquedaCliente, "A");
     }
 
-    private void SeleccionarCliente(Cliente cliente)
+    private async Task SeleccionarClienteAsync(Cliente cliente)
     {
         nuevaFactura.CliId = cliente.CliId;
         nuevaFactura.NombresCliente = cliente.CliNombres;
         nuevaFactura.ApellidosCliente = cliente.CliApellidos;
         nuevaFactura.Nit = cliente.CliNit;
         clientesEncontrados = Array.Empty<Cliente>();
+        await CargarHistorialClienteAsync(cliente.CliId);
+    }
+
+    private void LimpiarClienteSeleccionado()
+    {
+        nuevaFactura.CliId = null;
+        historialCliente = Array.Empty<FacturaEncabezado>();
+        historialClienteExpandidoId = null;
+        historialClienteDetalleExpandido = Array.Empty<FacturaDetalleLinea>();
+    }
+
+    private async Task CargarHistorialClienteAsync(int cliId)
+    {
+        historialCliente = await FacturaRepository.ConsultarAsync(
+            tdoIdFactura, cliId, fechaDesde: null, fechaHasta: null, estado: null, pagina: 1, tamanioPagina: 10);
+        historialClienteExpandidoId = null;
+        historialClienteDetalleExpandido = Array.Empty<FacturaDetalleLinea>();
+    }
+
+    private async Task AlternarDetalleHistorialAsync(FacturaEncabezado factura)
+    {
+        if (historialClienteExpandidoId == factura.EncId)
+        {
+            historialClienteExpandidoId = null;
+            historialClienteDetalleExpandido = Array.Empty<FacturaDetalleLinea>();
+            return;
+        }
+
+        var (_, detalle) = await FacturaRepository.ConsultarPorIdAsync(factura.EncId);
+        historialClienteExpandidoId = factura.EncId;
+        historialClienteDetalleExpandido = detalle;
     }
 
     private async Task CrearClienteRapidoAsync()
@@ -493,6 +621,7 @@
             nuevaFactura.NombresCliente = nuevoClienteRapido.Nombres;
             nuevaFactura.ApellidosCliente = nuevoClienteRapido.Apellidos;
             nuevaFactura.Nit = nuevoClienteRapido.Nit;
+            await CargarHistorialClienteAsync(cliId);
 
             clientesEncontrados = Array.Empty<Cliente>();
             mostrarNuevoCliente = false;
@@ -652,10 +781,22 @@
                 ValorDescuento = detalle.Sum(d => d.ValorDescuento)
             };
 
-            var (_, numeroUnico) = await FacturaRepository.CrearAsync(encabezado, detalle, usuId);
+            var (encId, numeroUnico) = await FacturaRepository.CrearAsync(encabezado, detalle, usuId);
             mostrarNuevaFactura = false;
             mensaje = $"Factura {numeroUnico} grabada correctamente.";
             esMensajeError = false;
+
+            if (condicionPagoFactura == "credito")
+            {
+                planPagosGrabado = await FacturaRepository.ConsultarPlanPagosAsync(encId);
+                numeroFacturaGrabada = numeroUnico;
+            }
+            else
+            {
+                planPagosGrabado = Array.Empty<CuotaPlanPago>();
+                numeroFacturaGrabada = null;
+            }
+
             await BuscarAsync();
         }
         catch (Exception ex)

@@ -113,6 +113,18 @@ public sealed class NuevaFacturaEncabezado
 	public int? MonId { get; set; }
 }
 
+public sealed class CuotaPlanPago
+{
+	public int CppId { get; set; }
+	public int CppNroCuota { get; set; }
+	public decimal CppValorCuota { get; set; }
+	public decimal CppSaldoCuota { get; set; }
+	public DateTime CppFechaMaximaPago { get; set; }
+	public DateTime? CppFechaRealPago { get; set; }
+	public string CppEstado { get; set; } = "P";
+	public int EncId { get; set; }
+}
+
 public sealed class NuevaLineaFactura
 {
 	public int ProId { get; set; }
