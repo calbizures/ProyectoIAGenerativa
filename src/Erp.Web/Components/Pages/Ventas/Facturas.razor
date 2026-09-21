@@ -24,36 +24,6 @@
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
 }
 
-@if (planPagosGrabado.Count > 0)
-{
-    <div class="doc-card">
-        <div class="doc-card-header">
-            <div>
-                <h2>Plan de pagos — Factura @numeroFacturaGrabada</h2>
-                <p>Detalle informativo de las cuotas generadas para esta factura a crédito.</p>
-            </div>
-            <BotonIcono Icono="x" Tooltip="Cerrar" Variante="fantasma" OnClick="() => planPagosGrabado = Array.Empty<CuotaPlanPago>()" />
-        </div>
-        <div class="doc-card-body">
-            <table class="doc-tabla">
-                <thead>
-                    <tr><th class="num">Cuota</th><th>Fecha máxima de pago</th><th class="num">Valor</th></tr>
-                </thead>
-                <tbody>
-                    @foreach (var c in planPagosGrabado)
-                    {
-                        <tr>
-                            <td class="num">@c.CppNroCuota</td>
-                            <td>@c.CppFechaMaximaPago.ToString("dd/MM/yyyy")</td>
-                            <td class="num">@MonedaSimbolo @c.CppValorCuota.ToString("N2")</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </div>
-}
-
 <div class="barra-herramientas">
     <input type="date" @bind="filtroFechaDesde" title="Desde" />
     <input type="date" @bind="filtroFechaHasta" title="Hasta" />
@@ -184,54 +154,75 @@
             @if (nuevaFactura.CliId is not null)
             {
                 <div class="doc-seccion">
-                    <p class="doc-seccion-titulo"><Icono Nombre="clock" Tamano="15" /> Historial del cliente</p>
-                    @if (historialCliente.Count == 0)
+                    <BarraPestanas Pestanas="PestanasNuevaFactura" @bind-PestanaActiva="pestanaNuevaFactura" />
+
+                    @if (pestanaNuevaFactura == "historial")
                     {
-                        <div class="doc-nota">
-                            <Icono Nombre="info" Tamano="15" />
-                            <span>Este cliente no tiene compras registradas.</span>
-                        </div>
-                    }
-                    else
-                    {
-                        <table class="doc-tabla">
-                            <thead>
-                                <tr><th>Fecha</th><th>Serie/Número</th><th class="num">Total</th><th>Estado</th><th></th></tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var h in historialCliente)
-                                {
-                                    <tr>
-                                        <td>@h.EncFechaDocto.ToString("dd/MM/yyyy")</td>
-                                        <td>@h.EncSerieDocto-@h.EncNumeroDocto</td>
-                                        <td class="num">@MonedaSimbolo @h.EncMontoTotal.ToString("N2")</td>
-                                        <td>@(h.EncEstado == "G" ? "Grabada" : "Anulada")</td>
-                                        <td><BotonIcono Icono="eye" Tooltip="Ver qué compró" OnClick="() => AlternarDetalleHistorialAsync(h)" /></td>
-                                    </tr>
-                                    @if (historialClienteExpandidoId == h.EncId)
+                        @if (historialCliente.Count == 0)
+                        {
+                            <div class="doc-nota">
+                                <Icono Nombre="info" Tamano="15" />
+                                <span>Este cliente no tiene compras registradas.</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <table class="doc-tabla">
+                                <thead>
+                                    <tr><th>Fecha</th><th>Serie/Número</th><th class="num">Total</th><th>Estado</th><th></th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var h in historialCliente)
                                     {
                                         <tr>
-                                            <td colspan="5">
-                                                <table class="doc-tabla">
-                                                    <thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Precio unit.</th></tr></thead>
-                                                    <tbody>
-                                                        @foreach (var d in historialClienteDetalleExpandido)
-                                                        {
-                                                            var precioConIva = d.DetPrecioUnitario * (1 + (d.DetPorcIva ?? 0) / 100m);
-                                                            <tr>
-                                                                <td>@d.DetDescripcion</td>
-                                                                <td class="num">@d.DetCantidad</td>
-                                                                <td class="num">@precioConIva.ToString("N2")</td>
-                                                            </tr>
-                                                        }
-                                                    </tbody>
-                                                </table>
-                                            </td>
+                                            <td>@h.EncFechaDocto.ToString("dd/MM/yyyy")</td>
+                                            <td>@h.EncSerieDocto-@h.EncNumeroDocto</td>
+                                            <td class="num">@MonedaSimbolo @h.EncMontoTotal.ToString("N2")</td>
+                                            <td>@(h.EncEstado == "G" ? "Grabada" : "Anulada")</td>
+                                            <td><BotonIcono Icono="eye" Tooltip="Ver qué compró" OnClick="() => AlternarDetalleHistorialAsync(h)" /></td>
                                         </tr>
+                                        @if (historialClienteExpandidoId == h.EncId)
+                                        {
+                                            <tr>
+                                                <td colspan="5">
+                                                    <table class="doc-tabla">
+                                                        <thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Precio unit.</th></tr></thead>
+                                                        <tbody>
+                                                            @foreach (var d in historialClienteDetalleExpandido)
+                                                            {
+                                                                var precioConIva = d.DetPrecioUnitario * (1 + (d.DetPorcIva ?? 0) / 100m);
+                                                                <tr>
+                                                                    <td>@d.DetDescripcion</td>
+                                                                    <td class="num">@d.DetCantidad</td>
+                                                                    <td class="num">@precioConIva.ToString("N2")</td>
+                                                                </tr>
+                                                            }
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        }
                                     }
-                                }
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        }
+                    }
+                    else if (pestanaNuevaFactura == "planpagos")
+                    {
+                        @if (condicionPagoFactura == "credito")
+                        {
+                            <div class="doc-nota">
+                                <Icono Nombre="info" Tamano="15" />
+                                <span>Plan de pagos: @nuevaFactura.NumeroCuotas cuota(s) de @MonedaSimbolo @ValorCuotaFactura.ToString("N2"), a partir del enganche de @MonedaSimbolo @nuevaFactura.MontoEnganche.ToString("N2").</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="doc-nota">
+                                <Icono Nombre="info" Tamano="15" />
+                                <span>Esta factura es de contado. Seleccione la condición "Crédito" en Forma de pago para ver el plan de cuotas.</span>
+                            </div>
+                        }
                     }
                 </div>
             }
@@ -330,13 +321,6 @@
                         <div class="campo"><label>Fecha del primer pago</label><input type="date" @bind="nuevaFactura.FechaPrimerPago" /></div>
                     }
                 </div>
-                @if (condicionPagoFactura == "credito")
-                {
-                    <div class="doc-nota">
-                        <Icono Nombre="info" Tamano="15" />
-                        <span>Plan de pagos: @nuevaFactura.NumeroCuotas cuota(s) de @MonedaSimbolo @ValorCuotaFactura.ToString("N2"), a partir del enganche de @MonedaSimbolo @nuevaFactura.MontoEnganche.ToString("N2").</span>
-                    </div>
-                }
             </div>
         </div>
 
@@ -347,53 +331,56 @@
     </div>
 }
 
-<div class="tarjeta">
-    <h2>Historial</h2>
-    <table class="tabla-datos">
-        <thead>
-            <tr><th class="col-fecha">Fecha</th><th class="col-serie">Serie/Número</th><th class="col-tipo">Tipo</th><th>Cliente</th><th class="num col-monto">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
-        </thead>
-        <tbody>
-            @if (facturas.Count == 0)
-            {
-                <tr><td colspan="7" class="doc-tabla-vacia">No hay facturas para los filtros seleccionados.</td></tr>
-            }
-            @foreach (var f in facturas)
-            {
-                <tr class="@(encabezadoSeleccionado?.EncId == f.EncId ? "fila-seleccionada" : "")">
-                    <td class="col-fecha">@f.EncFechaDocto.ToString("dd/MM/yyyy")</td>
-                    <td class="col-serie">@f.EncSerieDocto-@f.EncNumeroDocto</td>
-                    <td class="col-tipo">@f.TdoCodigo</td>
-                    <td>@f.NombreCliente</td>
-                    <td class="num col-monto">@f.EncMontoTotal.ToString("N2")</td>
-                    <td class="col-estado">
-                        @if (f.EncEstado == "G")
-                        {
-                            <span class="estado-badge estado-badge-grabada">Grabada</span>
-                        }
-                        else
-                        {
-                            <span class="estado-badge estado-badge-anulada">Anulada</span>
-                        }
-                    </td>
-                    <td class="col-acciones">
-                        <div class="acciones-fila">
-                            <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarFacturaAsync(f)" />
-                            <AuthorizeView Policy="Permiso:VENTAS_FACTURA_ANULAR">
-                                <Authorized>
-                                    @if (f.EncEstado == "G")
-                                    {
-                                        <BotonIcono Icono="ban" Tooltip="Anular factura" Variante="peligro" OnClick="() => AnularAsync(f)" />
-                                    }
-                                </Authorized>
-                            </AuthorizeView>
-                        </div>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
+@if (!mostrarNuevaFactura)
+{
+    <div class="tarjeta">
+        <h2>Historial</h2>
+        <table class="tabla-datos">
+            <thead>
+                <tr><th class="col-fecha">Fecha</th><th class="col-serie">Serie/Número</th><th class="col-tipo">Tipo</th><th>Cliente</th><th class="num col-monto">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+            </thead>
+            <tbody>
+                @if (facturas.Count == 0)
+                {
+                    <tr><td colspan="7" class="doc-tabla-vacia">No hay facturas para los filtros seleccionados.</td></tr>
+                }
+                @foreach (var f in facturas)
+                {
+                    <tr class="@(encabezadoSeleccionado?.EncId == f.EncId ? "fila-seleccionada" : "")">
+                        <td class="col-fecha">@f.EncFechaDocto.ToString("dd/MM/yyyy")</td>
+                        <td class="col-serie">@f.EncSerieDocto-@f.EncNumeroDocto</td>
+                        <td class="col-tipo">@f.TdoCodigo</td>
+                        <td>@f.NombreCliente</td>
+                        <td class="num col-monto">@f.EncMontoTotal.ToString("N2")</td>
+                        <td class="col-estado">
+                            @if (f.EncEstado == "G")
+                            {
+                                <span class="estado-badge estado-badge-grabada">Grabada</span>
+                            }
+                            else
+                            {
+                                <span class="estado-badge estado-badge-anulada">Anulada</span>
+                            }
+                        </td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarFacturaAsync(f)" />
+                                <AuthorizeView Policy="Permiso:VENTAS_FACTURA_ANULAR">
+                                    <Authorized>
+                                        @if (f.EncEstado == "G")
+                                        {
+                                            <BotonIcono Icono="ban" Tooltip="Anular factura" Variante="peligro" OnClick="() => AnularAsync(f)" />
+                                        }
+                                    </Authorized>
+                                </AuthorizeView>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
 
 @if (encabezadoSeleccionado is not null)
 {
@@ -413,32 +400,66 @@
             }
         </div>
         <div class="doc-card-body">
-            <table class="doc-tabla">
-                <thead>
-                    <tr>
-                        <th>Descripción</th>
-                        <th class="num">Cantidad</th>
-                        <th class="num">Precio unit. (IVA incl.)</th>
-                        <th class="num">Descuento</th>
-                        <th class="num">Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var d in detalleSeleccionado)
-                    {
-                        var precioConIva = d.DetPrecioUnitario * (1 + (d.DetPorcIva ?? 0) / 100m);
-                        var descuentoConIva = d.DetValorDescuento * (1 + (d.DetPorcIva ?? 0) / 100m);
-                        var subtotalConIva = d.DetSubTotal * (1 + (d.DetPorcIva ?? 0) / 100m);
+            <BarraPestanas Pestanas="PestanasDetalleFactura" @bind-PestanaActiva="pestanaDetalleFactura" />
+
+            @if (pestanaDetalleFactura == "detalle")
+            {
+                <table class="doc-tabla">
+                    <thead>
                         <tr>
-                            <td>@d.DetDescripcion</td>
-                            <td class="num">@d.DetCantidad</td>
-                            <td class="num">@precioConIva.ToString("N2")</td>
-                            <td class="num">@descuentoConIva.ToString("N2")</td>
-                            <td class="num">@subtotalConIva.ToString("N2")</td>
+                            <th>Descripción</th>
+                            <th class="num">Cantidad</th>
+                            <th class="num">Precio unit. (IVA incl.)</th>
+                            <th class="num">Descuento</th>
+                            <th class="num">Subtotal</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in detalleSeleccionado)
+                        {
+                            var precioConIva = d.DetPrecioUnitario * (1 + (d.DetPorcIva ?? 0) / 100m);
+                            var descuentoConIva = d.DetValorDescuento * (1 + (d.DetPorcIva ?? 0) / 100m);
+                            var subtotalConIva = d.DetSubTotal * (1 + (d.DetPorcIva ?? 0) / 100m);
+                            <tr>
+                                <td>@d.DetDescripcion</td>
+                                <td class="num">@d.DetCantidad</td>
+                                <td class="num">@precioConIva.ToString("N2")</td>
+                                <td class="num">@descuentoConIva.ToString("N2")</td>
+                                <td class="num">@subtotalConIva.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else if (pestanaDetalleFactura == "planpagos")
+            {
+                @if (detallePlanPagos.Count == 0)
+                {
+                    <div class="doc-nota">
+                        <Icono Nombre="info" Tamano="15" />
+                        <span>Esta factura no tiene plan de pagos (fue de contado).</span>
+                    </div>
+                }
+                else
+                {
+                    <table class="doc-tabla">
+                        <thead>
+                            <tr><th class="num">Cuota</th><th>Fecha máxima de pago</th><th class="num">Valor</th><th>Estado</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in detallePlanPagos)
+                            {
+                                <tr>
+                                    <td class="num">@c.CppNroCuota</td>
+                                    <td>@c.CppFechaMaximaPago.ToString("dd/MM/yyyy")</td>
+                                    <td class="num">@c.CppValorCuota.ToString("N2")</td>
+                                    <td>@(c.CppEstado switch { "P" => "Pendiente", "A" => "Abonado", "V" => "Vencido", _ => c.CppEstado })</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            }
         </div>
     </div>
 }
@@ -463,9 +484,20 @@
     private IReadOnlyList<FacturaEncabezado> historialCliente = Array.Empty<FacturaEncabezado>();
     private int? historialClienteExpandidoId;
     private IReadOnlyList<FacturaDetalleLinea> historialClienteDetalleExpandido = Array.Empty<FacturaDetalleLinea>();
+    private string pestanaNuevaFactura = "historial";
+    private static readonly IReadOnlyList<PestanaItem> PestanasNuevaFactura = new[]
+    {
+        new PestanaItem("historial", "Historial del cliente"),
+        new PestanaItem("planpagos", "Plan de pagos"),
+    };
 
-    private IReadOnlyList<CuotaPlanPago> planPagosGrabado = Array.Empty<CuotaPlanPago>();
-    private string? numeroFacturaGrabada;
+    private IReadOnlyList<CuotaPlanPago> detallePlanPagos = Array.Empty<CuotaPlanPago>();
+    private string pestanaDetalleFactura = "detalle";
+    private static readonly IReadOnlyList<PestanaItem> PestanasDetalleFactura = new[]
+    {
+        new PestanaItem("detalle", "Detalle"),
+        new PestanaItem("planpagos", "Plan de pagos"),
+    };
 
     private DateTime? filtroFechaDesde;
     private DateTime? filtroFechaHasta;
@@ -550,8 +582,7 @@
         historialCliente = Array.Empty<FacturaEncabezado>();
         historialClienteExpandidoId = null;
         historialClienteDetalleExpandido = Array.Empty<FacturaDetalleLinea>();
-        planPagosGrabado = Array.Empty<CuotaPlanPago>();
-        numeroFacturaGrabada = null;
+        pestanaNuevaFactura = "historial";
         return Task.CompletedTask;
     }
 
@@ -585,6 +616,7 @@
             tdoIdFactura, cliId, fechaDesde: null, fechaHasta: null, estado: null, pagina: 1, tamanioPagina: 10);
         historialClienteExpandidoId = null;
         historialClienteDetalleExpandido = Array.Empty<FacturaDetalleLinea>();
+        pestanaNuevaFactura = "historial";
     }
 
     private async Task AlternarDetalleHistorialAsync(FacturaEncabezado factura)
@@ -699,7 +731,9 @@
             BienOServicio = producto.ProTipoItem,
             Cantidad = 1,
             PrecioUnitario = Math.Round(precioVigente.PprPrecioUnitarioVenta, 2),
-            ValorDescuento = 0
+            ValorDescuento = 0,
+            CostoUnitario = producto.ProCostoUnitario,
+            PprId = precioVigente.PprId
         });
         mensaje = null;
         productosEncontrados = Array.Empty<Producto>();
@@ -759,7 +793,9 @@
                     ValorDescuento = valorDescuentoNeto,
                     SubTotal = Math.Round(precioUnitarioNeto * l.Cantidad, 2),
                     PorcentajeIva = PorcentajeIva,
-                    BodId = nuevaFactura.BodId
+                    BodId = nuevaFactura.BodId,
+                    CostoUnitario = l.CostoUnitario,
+                    PprId = l.PprId
                 };
             }).ToList();
 
@@ -786,17 +822,7 @@
             mensaje = $"Factura {numeroUnico} grabada correctamente.";
             esMensajeError = false;
 
-            if (condicionPagoFactura == "credito")
-            {
-                planPagosGrabado = await FacturaRepository.ConsultarPlanPagosAsync(encId);
-                numeroFacturaGrabada = numeroUnico;
-            }
-            else
-            {
-                planPagosGrabado = Array.Empty<CuotaPlanPago>();
-                numeroFacturaGrabada = null;
-            }
-
+            await CargarDetalleFacturaAsync(encId);
             await BuscarAsync();
         }
         catch (Exception ex)
@@ -809,9 +835,16 @@
     private async Task SeleccionarFacturaAsync(FacturaEncabezado factura)
     {
         mensaje = null;
-        var (encabezado, detalle) = await FacturaRepository.ConsultarPorIdAsync(factura.EncId);
+        await CargarDetalleFacturaAsync(factura.EncId);
+    }
+
+    private async Task CargarDetalleFacturaAsync(int encId)
+    {
+        var (encabezado, detalle) = await FacturaRepository.ConsultarPorIdAsync(encId);
         encabezadoSeleccionado = encabezado;
         detalleSeleccionado = detalle;
+        detallePlanPagos = await FacturaRepository.ConsultarPlanPagosAsync(encId);
+        pestanaDetalleFactura = "detalle";
     }
 
     private async Task AnularAsync(FacturaEncabezado factura)
@@ -822,7 +855,11 @@
             await FacturaRepository.AnularAsync(factura.EncId, usuId);
             mensaje = "Factura anulada.";
             esMensajeError = false;
-            if (encabezadoSeleccionado?.EncId == factura.EncId) encabezadoSeleccionado = null;
+            if (encabezadoSeleccionado?.EncId == factura.EncId)
+            {
+                encabezadoSeleccionado = null;
+                detallePlanPagos = Array.Empty<CuotaPlanPago>();
+            }
             await BuscarAsync();
         }
         catch (Exception ex)
@@ -879,5 +916,7 @@
         public decimal PrecioUnitario { get; set; }
         public decimal ValorDescuento { get; set; }
         public decimal SubTotal => Cantidad * PrecioUnitario;
+        public decimal CostoUnitario { get; set; }
+        public int? PprId { get; set; }
     }
 }

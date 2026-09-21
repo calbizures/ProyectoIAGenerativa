@@ -88,9 +88,11 @@ public sealed class FacturaDetalleLinea
 	public decimal DetPrecioUnitario { get; set; }
 	public decimal DetValorDescuento { get; set; }
 	public decimal DetSubTotal { get; set; }
+	public decimal? DetCostoUnitario { get; set; }
 	public decimal? DetPorcIva { get; set; }
 	public int BodId { get; set; }
 	public int? ProId { get; set; }
+	public int? PprId { get; set; }
 }
 
 public sealed class NuevaFacturaEncabezado
@@ -136,4 +138,6 @@ public sealed class NuevaLineaFactura
 	public decimal SubTotal { get; set; }
 	public decimal? PorcentajeIva { get; set; }
 	public int BodId { get; set; }
+	public decimal? CostoUnitario { get; set; }
+	public int? PprId { get; set; }
 }

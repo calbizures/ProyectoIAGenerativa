@@ -129,6 +129,7 @@ public sealed class FacturaRepository(IDbConnectionFactory connectionFactory) : 
 		tabla.Columns.Add("det_precio_unitario", typeof(decimal));
 		tabla.Columns.Add("det_valor_descuento", typeof(decimal));
 		tabla.Columns.Add("det_sub_total", typeof(decimal));
+		tabla.Columns.Add("det_costo_unitario", typeof(decimal));
 		tabla.Columns.Add("det_porc_iva", typeof(decimal));
 		tabla.Columns.Add("bod_id", typeof(int));
 		tabla.Columns.Add("pro_id", typeof(int));
@@ -145,10 +146,11 @@ public sealed class FacturaRepository(IDbConnectionFactory connectionFactory) : 
 				linea.PrecioUnitario,
 				linea.ValorDescuento,
 				linea.SubTotal,
+				(object?)linea.CostoUnitario ?? DBNull.Value,
 				(object?)linea.PorcentajeIva ?? DBNull.Value,
 				linea.BodId,
 				linea.ProId,
-				DBNull.Value);
+				(object?)linea.PprId ?? DBNull.Value);
 		}
 
 		return tabla;

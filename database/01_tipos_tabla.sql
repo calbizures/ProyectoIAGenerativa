@@ -42,10 +42,11 @@ CREATE TYPE [dbo].[factura_det_type] AS TABLE
 	[det_precio_unitario]	NUMERIC(12, 2)	NOT NULL,	-- precio unitario de venta
 	[det_valor_descuento]	NUMERIC(12, 2)	NOT NULL DEFAULT (0),
 	[det_sub_total]			NUMERIC(12, 2)	NOT NULL,
+	[det_costo_unitario]	NUMERIC(12, 5)	NULL,		-- costo unitario del producto al momento de la venta
 	[det_porc_iva]			NUMERIC(8, 2)	NULL,
 	[bod_id]				INT				NOT NULL,
 	[pro_id]				INT				NULL,
-	[ppr_id]				INT				NULL
+	[ppr_id]				INT				NULL		-- inv_producto_precio.ppr_id con el que se vendió
 );
 GO
 

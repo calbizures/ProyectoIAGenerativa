@@ -555,11 +555,11 @@ BEGIN
 
 		INSERT INTO dbo.inv_documento_det
 			(enc_id, det_item, det_bien_o_servicio, det_cantidad, det_descripcion,
-			 det_precio_unitario, det_valor_descuento, det_sub_total, det_porc_iva, bod_id, pro_id, ppr_id,
+			 det_precio_unitario, det_valor_descuento, det_sub_total, det_costo_unitario, det_porc_iva, bod_id, pro_id, ppr_id,
 			 InsUsuario, InsFechaHora)
 		SELECT
 			@enc_id, det_item, det_bien_o_servicio, det_cantidad, det_descripcion,
-			det_precio_unitario, det_valor_descuento, det_sub_total, det_porc_iva, bod_id, pro_id, ppr_id,
+			det_precio_unitario, det_valor_descuento, det_sub_total, det_costo_unitario, det_porc_iva, bod_id, pro_id, ppr_id,
 			@usu_id, SYSDATETIME()
 		FROM @detalle;
 

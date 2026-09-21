@@ -35,6 +35,7 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 18_procedimientos_detalle_producto.sql        -- solo si ya corriste 00-17 antes de esta fecha
 19_procedimientos_tipo_caracteristica.sql     -- solo si ya corriste 00-18 antes de esta fecha
 20_procedimiento_plan_pagos_consultar.sql     -- solo si ya corriste 00-19 antes de esta fecha
+21_costo_unitario_ppr_id_factura.sql          -- solo si ya corriste 00-20 antes de esta fecha
 ```
 
 ## Estándares de nomenclatura (a partir de este punto)
@@ -298,6 +299,19 @@ Decisiones de diseño:
     como detalle informativo justo al grabar una factura a crédito. Quien
     ya haya corrido `00`-`19` debe correr
     `20_procedimiento_plan_pagos_consultar.sql` una sola vez.
+17. **Costo unitario y precio de lista sin registrar en el detalle de
+    factura.** `inv_documento_det` ya tenía las columnas
+    `det_costo_unitario` y `ppr_id`, pero `sp_ventas_crear_factura` nunca
+    las llenaba (quedaban `NULL`). Ahora `det_costo_unitario` guarda el
+    costo unitario del producto al momento de la venta y `ppr_id` guarda
+    el `inv_producto_precio.ppr_id` de la lista de precios con el que se
+    vendió (`det_precio_unitario` sigue siendo el precio de venta, y
+    `det_bien_o_servicio` ya se llenaba bien desde el tipo de producto).
+    Como `dbo.factura_det_type` es un parámetro con tipo de tabla, no se
+    puede alterar in-place: el script quita temporalmente
+    `sp_ventas_crear_factura`, recrea el tipo con la columna nueva y
+    vuelve a crear el procedimiento. Quien ya haya corrido `00`-`20` debe
+    correr `21_costo_unitario_ppr_id_factura.sql` una sola vez.
 
 ## Módulos nuevos
 
