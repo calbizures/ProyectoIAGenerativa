@@ -8,6 +8,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IFacturaRepository FacturaRepository
 @inject IProductoRepository ProductoRepository
+@inject IProductoPrecioRepository PrecioRepository
 @inject IBodegaRepository BodegaRepository
 @inject IClienteRepository ClienteRepository
 
@@ -163,13 +164,12 @@
                         <div class="doc-buscador-resultados">
                             @foreach (var p in productosEncontrados)
                             {
-                                <div class="doc-resultado-fila" @onclick="() => AgregarLinea(p)">
+                                <div class="doc-resultado-fila" @onclick="() => AgregarLineaAsync(p)">
                                     <span class="doc-avatar doc-avatar-icono"><Icono Nombre="package" Tamano="15" /></span>
                                     <span class="doc-resultado-texto">
                                         <strong>@p.ProDescripcion</strong>
                                         <span>@p.ProCodigo</span>
                                     </span>
-                                    <span class="doc-resultado-precio">@MonedaSimbolo @p.ProCostoUnitario.ToString("N2")</span>
                                 </div>
                             }
                         </div>
@@ -532,17 +532,47 @@
             .ToList();
     }
 
-    private void AgregarLinea(Producto producto)
+    private async Task AgregarLineaAsync(Producto producto)
     {
+        if (nuevaFactura.BodId == 0)
+        {
+            mensaje = "Debe seleccionar la bodega antes de agregar productos.";
+            esMensajeError = true;
+            return;
+        }
+
+        if (nuevaFactura.MonId is null)
+        {
+            mensaje = "Debe seleccionar la moneda antes de agregar productos.";
+            esMensajeError = true;
+            return;
+        }
+
+        var precios = await PrecioRepository.ConsultarAsync(producto.ProId, nuevaFactura.BodId, estado: "A");
+        var precioVigente = precios.FirstOrDefault(p =>
+            p.MonId == nuevaFactura.MonId &&
+            p.PprVigenciaDesde.Date <= nuevaFactura.Fecha.Date &&
+            (p.PprVigenciaHasta is null || p.PprVigenciaHasta.Value.Date >= nuevaFactura.Fecha.Date));
+
+        if (precioVigente is null)
+        {
+            mensaje = $"El producto '{producto.ProDescripcion}' no tiene precio vigente en la lista de precios para la bodega y moneda seleccionadas en la fecha de la factura.";
+            esMensajeError = true;
+            productosEncontrados = Array.Empty<Producto>();
+            textoBusquedaProducto = "";
+            return;
+        }
+
         lineas.Add(new LineaCaptura
         {
             ProId = producto.ProId,
             Descripcion = producto.ProDescripcion,
             BienOServicio = producto.ProTipoItem,
             Cantidad = 1,
-            PrecioUnitario = Math.Round(producto.ProCostoUnitario, 2),
+            PrecioUnitario = Math.Round(precioVigente.PprPrecioUnitarioVenta, 2),
             ValorDescuento = 0
         });
+        mensaje = null;
         productosEncontrados = Array.Empty<Producto>();
         textoBusquedaProducto = "";
     }
