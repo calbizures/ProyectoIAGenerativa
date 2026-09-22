@@ -368,6 +368,20 @@ Decisiones de diseño:
     construyó una pantalla de cobro de cuotas con formas de pago (el
     procedimiento `sp_pos_registrar_pago_cuota` ya las acepta a nivel de
     base de datos, pero no hay UI todavía).
+19. **Corrección: un parámetro de tabla (TVP) no puede tener valor por
+    defecto en SQL Server.** `@formas_pago dbo.pago_forma_type READONLY
+    = NULL` en `sp_ventas_crear_factura` y `sp_pos_registrar_pago_cuota`
+    (punto 18) no es sintaxis válida — SQL Server la rechaza con "Incorrect
+    syntax near '='" al crear el procedimiento, y como el `CREATE
+    PROCEDURE` completo falla, arrastra errores de "must declare the
+    scalar variable" en el resto de parámetros. Se quitó el `= NULL` de
+    ambos procedimientos (ahora `@formas_pago` es obligatorio, como
+    `@detalle` en las demás; sigue aceptando una tabla vacía cuando no
+    aplica). `12_datos_sinteticos.sql` se ajustó para pasar una tabla
+    vacía en sus dos llamadas a estos procedimientos. Si ya corriste
+    `22`-`24` con la versión anterior, vuelve a correr `24_formas_pago_factura_cobro.sql`
+    (o `11_procedimientos_procesos.sql` si empezaste desde cero) para
+    quedar con los procedimientos corregidos.
 
 ## Módulos nuevos
 

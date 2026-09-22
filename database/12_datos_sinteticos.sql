@@ -532,12 +532,14 @@ BEGIN
 		IF EXISTS (SELECT 1 FROM @det3)
 		BEGIN
 			DECLARE @enc_venta INT, @numero_unico VARCHAR(16), @numero_docto_venta VARCHAR(32) = CONCAT('FAC-', @i);
+			DECLARE @formas_vacio_venta dbo.pago_forma_type;
 			EXEC dbo.sp_ventas_crear_factura
 				@enc_fecha_docto = @fecha_venta, @enc_numero_docto = @numero_docto_venta,
 				@cli_id = @cli_sel, @tdo_id = @tdo_fcam, @pve_id = @vend_sel,
 				@enc_fecha_primer_pago = @fecha_primer_pago, @enc_numero_cuotas = @cuotas,
 				@usu_id = @usu_vend_id,
-				@detalle = @det3, @enc_id = @enc_venta OUTPUT, @enc_numero_unico = @numero_unico OUTPUT;
+				@detalle = @det3, @formas_pago = @formas_vacio_venta,
+				@enc_id = @enc_venta OUTPUT, @enc_numero_unico = @numero_unico OUTPUT;
 		END
 	END TRY
 	BEGIN CATCH
@@ -554,6 +556,7 @@ GO
 DECLARE @pca_id INT = (SELECT TOP 1 pca_id FROM dbo.pos_caja_apertura WHERE pca_estado = 'A' ORDER BY pca_id);
 DECLARE @usu_cajero INT = (SELECT usu_id FROM dbo.gen_usuario WHERE usu_usuario = 'mgarcia');
 DECLARE @cpp_id INT, @saldo NUMERIC(12,2), @ppe_id INT;
+DECLARE @formas_vacio_cuota dbo.pago_forma_type;
 
 DECLARE cuotas_cur CURSOR LOCAL FAST_FORWARD FOR
 	SELECT TOP 15 cpp_id, cpp_saldo_cuota
@@ -566,7 +569,7 @@ FETCH NEXT FROM cuotas_cur INTO @cpp_id, @saldo;
 WHILE @@FETCH_STATUS = 0
 BEGIN
 	BEGIN TRY
-		EXEC dbo.sp_pos_registrar_pago_cuota @cpp_id = @cpp_id, @valor_pago = @saldo, @pca_id = @pca_id, @usu_id = @usu_cajero, @ppe_id = @ppe_id OUTPUT;
+		EXEC dbo.sp_pos_registrar_pago_cuota @cpp_id = @cpp_id, @valor_pago = @saldo, @pca_id = @pca_id, @usu_id = @usu_cajero, @formas_pago = @formas_vacio_cuota, @ppe_id = @ppe_id OUTPUT;
 	END TRY
 	BEGIN CATCH
 		PRINT 'Cobro de cuota ' + CAST(@cpp_id AS VARCHAR) + ' omitido: ' + ERROR_MESSAGE();

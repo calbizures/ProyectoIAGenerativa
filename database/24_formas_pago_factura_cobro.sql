@@ -66,7 +66,7 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_ventas_crear_factura]
 	@usu_id						INT = NULL,
 	@detalle					dbo.factura_det_type READONLY,
 	@pca_id						INT = NULL,				-- apertura de caja activa donde se recibe el pago inicial
-	@formas_pago				dbo.pago_forma_type READONLY = NULL,	-- pago de contado, o enganche si es a crédito
+	@formas_pago				dbo.pago_forma_type READONLY,	-- pago de contado, o enganche si es a crédito; SQL Server no permite default en un TVP, pasar tabla vacía si no aplica
 	@enc_id						INT OUTPUT,
 	@enc_numero_unico			VARCHAR(16) OUTPUT
 AS
@@ -188,7 +188,7 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_pos_registrar_pago_cuota]
 	@valor_pago		NUMERIC(12, 2),
 	@pca_id			INT,
 	@usu_id			INT = NULL,
-	@formas_pago	dbo.pago_forma_type READONLY = NULL,
+	@formas_pago	dbo.pago_forma_type READONLY,	-- SQL Server no permite default en un TVP, pasar tabla vacía si no aplica
 	@ppe_id			INT OUTPUT
 AS
 BEGIN
