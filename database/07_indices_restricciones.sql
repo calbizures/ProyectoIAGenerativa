@@ -63,6 +63,10 @@ CREATE INDEX [IX_pos_caja_apertura_usu_id_apertura] ON [dbo].[pos_caja_apertura]
 CREATE INDEX [IX_pos_caja_apertura_usu_id_cierre] ON [dbo].[pos_caja_apertura]([usu_id_cierre]);
 CREATE INDEX [IX_pos_caja_desglose_efectivo_pca_id] ON [dbo].[pos_caja_desglose_efectivo]([pca_id]);
 CREATE INDEX [IX_pos_caja_deposito_pca_id] ON [dbo].[pos_caja_deposito]([pca_id]);
+CREATE INDEX [IX_pos_caja_deposito_gef_id] ON [dbo].[pos_caja_deposito]([gef_id]);
+CREATE INDEX [IX_pos_caja_receptora_suc_id] ON [dbo].[pos_caja_receptora]([suc_id]);
+CREATE INDEX [IX_pos_caja_corte_forma_pca_id] ON [dbo].[pos_caja_corte_forma]([pca_id]);
+CREATE INDEX [IX_sec_usuario_sucursal_suc_id] ON [dbo].[sec_usuario_sucursal]([suc_id]);
 GO
 
 CREATE INDEX [IX_pos_cliente_dir_pais] ON [dbo].[pos_cliente]([cli_direccion_pais]);
@@ -85,6 +89,7 @@ CREATE INDEX [IX_pos_pago_forma_pft_id] ON [dbo].[pos_pago_forma]([pft_id]);
 CREATE INDEX [IX_pos_pago_forma_ppe_id] ON [dbo].[pos_pago_forma]([ppe_id]);
 CREATE INDEX [IX_pos_pago_det_cpp_id] ON [dbo].[pos_pago_det]([cpp_id]);
 CREATE INDEX [IX_pos_pago_det_ppe_id] ON [dbo].[pos_pago_det]([ppe_id]);
+CREATE INDEX [IX_pos_pago_det_enc_id] ON [dbo].[pos_pago_det]([enc_id]);
 GO
 
 CREATE INDEX [IX_cont_cuenta_contable_padre] ON [dbo].[cont_cuenta_contable]([cta_id_padre]);

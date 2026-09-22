@@ -68,6 +68,14 @@ h1:focus {
     font-size: 0.78rem;
 }
 
+.barra-estado-advertencia {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: #9a5b00;
+    font-weight: 600;
+}
+
 .sidebar {
     width: 270px;
     flex-shrink: 0;

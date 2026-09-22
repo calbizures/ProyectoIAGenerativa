@@ -1,3 +1,4 @@
+using Erp.Data.Caja;
 using Erp.Data.Compras;
 using Erp.Data.Inventario;
 using Erp.Data.Security;
@@ -29,6 +30,7 @@ public static class DependencyInjection
 		services.AddScoped<IProveedorRepository, ProveedorRepository>();
 		services.AddScoped<IProductoCaracteristicaRepository, ProductoCaracteristicaRepository>();
 		services.AddScoped<IProductoPrecioRepository, ProductoPrecioRepository>();
+		services.AddScoped<ICajaRepository, CajaRepository>();
 		return services;
 	}
 }

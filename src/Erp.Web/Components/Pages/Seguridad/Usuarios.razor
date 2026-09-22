@@ -7,6 +7,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IUsuarioRepository UsuarioRepository
 @inject IRolRepository RolRepository
+@inject Erp.Data.Caja.ICajaRepository CajaRepository
 
 <PageTitle>Usuarios</PageTitle>
 
@@ -123,6 +124,25 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
                 }
             </tbody>
         </table>
+
+        <h3>Sucursales asignadas</h3>
+        <p class="doc-nota"><Icono Nombre="info" Tamano="15" /> <span>Solo estas sucursales aparecerán para elegir al iniciar sesión.</span></p>
+        <table class="tabla-datos">
+            <thead><tr><th>Sucursal</th><th>Asignada</th></tr></thead>
+            <tbody>
+                @foreach (var suc in todasLasSucursales)
+                {
+                    var asignada = sucursalesAsignadas.Any(s => s.SucId == suc.SucId);
+                    <tr>
+                        <td>@suc.SucDescripcion</td>
+                        <td>
+                            <input type="checkbox" checked="@asignada"
+                                   @onchange="e => CambiarSucursalAsync(suc.SucId, (bool)(e.Value ?? false))" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
 }
 else if (pestanaActiva == "editar" && seleccionado is not null)
@@ -148,6 +168,8 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
     private IReadOnlyList<Usuario> usuarios = Array.Empty<Usuario>();
     private IReadOnlyList<Rol> todosLosRoles = Array.Empty<Rol>();
     private IReadOnlyList<UsuarioRol> rolesAsignados = Array.Empty<UsuarioRol>();
+    private IReadOnlyList<Erp.Data.Security.Sucursal> todasLasSucursales = Array.Empty<Erp.Data.Security.Sucursal>();
+    private IReadOnlyList<Erp.Data.Security.Sucursal> sucursalesAsignadas = Array.Empty<Erp.Data.Security.Sucursal>();
     private Usuario? seleccionado;
     private string pestanaActiva = "lista";
 
@@ -170,6 +192,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
     protected override async Task OnInitializedAsync()
     {
         todosLosRoles = await RolRepository.ConsultarAsync(estado: "A");
+        todasLasSucursales = await CajaRepository.ConsultarSucursalesAsync();
         await BuscarAsync();
     }
 
@@ -225,6 +248,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
 
         var (_, roles) = await UsuarioRepository.ConsultarPorIdAsync(usuario.UsuId);
         rolesAsignados = roles;
+        sucursalesAsignadas = await UsuarioRepository.ConsultarSucursalesAsignadasAsync(usuario.UsuId);
     }
 
     private void IniciarEdicion()
@@ -335,6 +359,30 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
 
             var (_, roles) = await UsuarioRepository.ConsultarPorIdAsync(seleccionado.UsuId);
             rolesAsignados = roles;
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task CambiarSucursalAsync(int sucId, bool asignar)
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            if (asignar)
+            {
+                var usuId = await ObtenerUsuIdActualAsync();
+                await UsuarioRepository.AsignarSucursalAsync(seleccionado.UsuId, sucId, usuId);
+            }
+            else
+            {
+                await UsuarioRepository.RevocarSucursalAsync(seleccionado.UsuId, sucId);
+            }
+
+            sucursalesAsignadas = await UsuarioRepository.ConsultarSucursalesAsignadasAsync(seleccionado.UsuId);
         }
         catch (Exception ex)
         {

@@ -123,6 +123,7 @@ GO
 CREATE TABLE [dbo].[pos_caja_receptora](
 	[pcr_id]			INT				IDENTITY(1,1)	NOT NULL,
 	[pcr_descripcion]	VARCHAR(64)		NOT NULL,
+	[suc_id]			INT				NOT NULL,
 	[pcr_estado]		CHAR(1)			NOT NULL DEFAULT ('A'),
 	[InsUsuario]		INT				NULL,
 	[InsFechaHora]		DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
@@ -135,18 +136,22 @@ CREATE TABLE [dbo].[pos_caja_receptora](
 GO
 
 CREATE TABLE [dbo].[pos_caja_apertura](
-	[pca_id]				INT				IDENTITY(1,1)	NOT NULL,
-	[pca_fecha_apertura]	DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
-	[pca_fecha_corte]		DATETIME2(0)	NULL,
-	[pca_fecha_cierre]		DATETIME2(0)	NULL,
-	[pcr_id]				INT				NOT NULL,
-	[usu_id_apertura]		INT				NULL,
-	[usu_id_cierre]			INT				NULL,
-	[pca_estado]			CHAR(1)			NOT NULL DEFAULT ('A'),	-- A=Abierta, C=Cerrada
-	[InsUsuario]			INT				NULL,
-	[InsFechaHora]			DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
-	[UpdUsuario]			INT				NULL,
-	[UpdFechaHora]			DATETIME2(0)	NULL,
+	[pca_id]					INT				IDENTITY(1,1)	NOT NULL,
+	[pca_fecha_apertura]		DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[pca_fecha_corte]			DATETIME2(0)	NULL,
+	[pca_fecha_cierre]			DATETIME2(0)	NULL,
+	[pcr_id]					INT				NOT NULL,
+	[usu_id_apertura]			INT				NULL,
+	[usu_id_cierre]				INT				NULL,
+	[pca_monto_inicial]			NUMERIC(12, 2)	NOT NULL DEFAULT (0),	-- fondo de caja con el que arranca el día
+	[pca_monto_teorico_total]	NUMERIC(12, 2)	NULL,	-- suma de lo cobrado según el sistema (se calcula al cerrar)
+	[pca_monto_fisico_total]	NUMERIC(12, 2)	NULL,	-- suma del conteo físico (efectivo + formas no efectivo)
+	[pca_diferencia]			NUMERIC(12, 2)	NULL,	-- físico - teórico
+	[pca_estado]				CHAR(1)			NOT NULL DEFAULT ('A'),	-- A=Abierta, C=Cerrada
+	[InsUsuario]				INT				NULL,
+	[InsFechaHora]				DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]				INT				NULL,
+	[UpdFechaHora]				DATETIME2(0)	NULL,
 	CONSTRAINT [PK_pos_caja_apertura] PRIMARY KEY CLUSTERED ([pca_id] ASC),
 	CONSTRAINT [CK_pos_caja_apertura_fechas] CHECK ([pca_fecha_cierre] IS NULL OR [pca_fecha_cierre] >= [pca_fecha_apertura]),
 	CONSTRAINT [CK_pos_caja_apertura_estado] CHECK ([pca_estado] IN ('A','C'))
@@ -178,12 +183,32 @@ CREATE TABLE [dbo].[pos_caja_deposito](
 	[pcd_observaciones]		VARCHAR(128)	NULL,
 	[pcd_fecha_registro]	DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
 	[pca_id]				INT				NOT NULL,
+	[gef_id]				INT				NULL,		-- entidad financiera (banco) donde se depositó
 	[InsUsuario]			INT				NULL,
 	[InsFechaHora]			DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
 	[UpdUsuario]			INT				NULL,
 	[UpdFechaHora]			DATETIME2(0)	NULL,
 	CONSTRAINT [PK_pos_caja_deposito] PRIMARY KEY CLUSTERED ([pcd_id] ASC),
 	CONSTRAINT [CK_pos_caja_deposito_valor] CHECK ([pcd_valor_deposito] > 0)
+);
+GO
+
+------------------------------------------------------------
+-- Corte de caja: conteo físico por forma de pago (no efectivo). El
+-- efectivo se reconcilia con pos_caja_desglose_efectivo (arriba).
+------------------------------------------------------------
+CREATE TABLE [dbo].[pos_caja_corte_forma](
+	[pcf_id]			INT				IDENTITY(1,1)	NOT NULL,
+	[pca_id]			INT				NOT NULL,
+	[pft_id]			INT				NOT NULL,
+	[pcf_monto_fisico]	NUMERIC(12, 2)	NOT NULL DEFAULT (0),
+	[InsUsuario]		INT				NULL,
+	[InsFechaHora]		DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]		INT				NULL,
+	[UpdFechaHora]		DATETIME2(0)	NULL,
+	CONSTRAINT [PK_pos_caja_corte_forma] PRIMARY KEY CLUSTERED ([pcf_id] ASC),
+	CONSTRAINT [UQ_pos_caja_corte_forma] UNIQUE ([pca_id], [pft_id]),
+	CONSTRAINT [CK_pos_caja_corte_forma_monto] CHECK ([pcf_monto_fisico] >= 0)
 );
 GO
 
@@ -314,6 +339,7 @@ CREATE TABLE [dbo].[pos_pago_forma](
 	[ppf_numero_tarjeta_ult4]			VARCHAR(4)		NULL,	-- antes guardaba el número completo (PCI-DSS)
 	[ppf_fecha_vencimiento_tarjeta]	VARCHAR(4)		NULL,
 	[ppf_numero_cheque]				VARCHAR(16)		NULL,
+	[ppf_monto]							NUMERIC(12, 2)	NOT NULL DEFAULT (0),	-- monto pagado con esta forma (un pago puede dividirse en varias)
 	[ppe_id]							INT				NOT NULL,
 	[pft_id]							INT				NOT NULL,
 	[InsUsuario]						INT				NULL,
@@ -327,14 +353,16 @@ GO
 CREATE TABLE [dbo].[pos_pago_det](
 	[ppd_id]				INT				IDENTITY(1,1)	NOT NULL,
 	[ppe_id]				INT				NOT NULL,
-	[cpp_id]				INT				NOT NULL,
+	[cpp_id]				INT				NULL,		-- cuota abonada (cobro de cuota)
+	[enc_id]				INT				NULL,		-- factura pagada de una vez (contado o enganche de crédito)
 	[ppd_valor_aplicado]	NUMERIC(12, 2)	NOT NULL,	-- antes no existía: no se podía saber cuánto se abonó a cada cuota
 	[InsUsuario]			INT				NULL,
 	[InsFechaHora]			DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
 	[UpdUsuario]			INT				NULL,
 	[UpdFechaHora]			DATETIME2(0)	NULL,
 	CONSTRAINT [PK_pos_pago_det] PRIMARY KEY CLUSTERED ([ppd_id] ASC),
-	CONSTRAINT [CK_pos_pago_det_valor] CHECK ([ppd_valor_aplicado] > 0)
+	CONSTRAINT [CK_pos_pago_det_valor] CHECK ([ppd_valor_aplicado] > 0),
+	CONSTRAINT [CK_pos_pago_det_referencia] CHECK (([cpp_id] IS NOT NULL AND [enc_id] IS NULL) OR ([cpp_id] IS NULL AND [enc_id] IS NOT NULL))
 );
 GO
 

@@ -1,0 +1,640 @@
+@page "/caja"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:BANCOS_CAJA_ADMIN")]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.Caja
+@using Erp.Data.Security
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ICajaRepository CajaRepository
+@inject NavigationManager NavigationManager
+
+<PageTitle>Caja</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Caja</h1>
+    <p>Apertura, corte, cierre y depósitos de las cajas receptoras por sucursal.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+}
+
+<div class="barra-filtros">
+    <label>Sucursal</label>
+    <select @bind="sucIdSeleccionada" @bind:after="CambiarSucursalAsync">
+        @foreach (var suc in sucursales)
+        {
+            <option value="@suc.SucId">@suc.SucDescripcion</option>
+        }
+    </select>
+</div>
+
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
+
+@if (pestanaActiva == "apertura")
+{
+    <div class="doc-seccion">
+        <p class="doc-seccion-titulo"><Icono Nombre="wallet" Tamano="15" /> Cajas abiertas</p>
+        <table class="tabla-datos">
+            <thead>
+                <tr><th>Caja receptora</th><th>Fecha apertura</th><th class="num">Monto inicial</th><th>Usuario</th><th class="col-acciones">Acciones</th></tr>
+            </thead>
+            <tbody>
+                @if (aperturasActivas.Count == 0)
+                {
+                    <tr><td colspan="5"><div class="doc-tabla-vacia">No hay cajas abiertas en esta sucursal.</div></td></tr>
+                }
+                @foreach (var a in aperturasActivas)
+                {
+                    <tr>
+                        <td>@a.PcrDescripcion</td>
+                        <td>@a.PcaFechaApertura.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td class="num">@a.PcaMontoInicial.ToString("N2")</td>
+                        <td>@(a.UsuarioApertura ?? "—")</td>
+                        <td class="col-acciones">
+                            <BotonIcono Icono="clipboard-list" Tooltip="Ir al corte de caja" Etiqueta="Corte" OnClick="() => IrACorteAsync(a.PcaId)" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="doc-seccion">
+        <p class="doc-seccion-titulo"><Icono Nombre="plus" Tamano="15" /> Abrir caja</p>
+        @if (cajasDisponiblesParaAbrir.Count == 0)
+        {
+            <div class="doc-nota">
+                <Icono Nombre="info" Tamano="15" />
+                <span>Todas las cajas receptoras de esta sucursal ya tienen una apertura activa.</span>
+            </div>
+        }
+        else
+        {
+            <div class="doc-grid">
+                <div class="campo">
+                    <label>Caja receptora</label>
+                    <select @bind="pcrIdParaAbrir">
+                        <option value="0">Seleccione...</option>
+                        @foreach (var c in cajasDisponiblesParaAbrir)
+                        {
+                            <option value="@c.PcrId">@c.PcrDescripcion</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo">
+                    <label>Monto inicial</label>
+                    <input type="number" step="0.01" min="0" @bind="montoInicialApertura" />
+                </div>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Abrir caja" Etiqueta="Abrir caja" Variante="primario" OnClick="AbrirCajaAsync" />
+            </div>
+        }
+    </div>
+}
+else if (pestanaActiva == "corte")
+{
+    <div class="doc-seccion">
+        <div class="doc-grid">
+            <div class="campo">
+                <label>Caja abierta</label>
+                <select @bind="pcaIdSeleccionada" @bind:after="CargarCorteAsync">
+                    <option value="0">Seleccione...</option>
+                    @foreach (var a in aperturasActivas)
+                    {
+                        <option value="@a.PcaId">@a.PcrDescripcion — @a.PcaFechaApertura.ToString("dd/MM/yyyy HH:mm")</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+
+    @if (pcaIdSeleccionada > 0)
+    {
+        <div class="doc-seccion">
+            <p class="doc-seccion-titulo"><Icono Nombre="banknote" Tamano="15" /> Efectivo — conteo físico</p>
+            <table class="doc-tabla">
+                <thead><tr><th>Denominación</th><th class="num">Cantidad</th><th class="num">Subtotal</th></tr></thead>
+                <tbody>
+                    @foreach (var d in desglose)
+                    {
+                        <tr>
+                            <td>@(d.TipoDenominacion == "B" ? "Billete" : "Moneda") de Q@(d.Denominacion.ToString("N2"))</td>
+                            <td class="num"><input type="number" min="0" @bind="d.Cantidad" /></td>
+                            <td class="num">Q@((d.Denominacion * d.Cantidad).ToString("N2"))</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="doc-totales-nota">Total efectivo contado: Q@(TotalEfectivoFisico.ToString("N2"))</div>
+        </div>
+
+        <div class="doc-seccion">
+            <p class="doc-seccion-titulo"><Icono Nombre="credit-card" Tamano="15" /> Otras formas — teórico vs. físico</p>
+            <table class="doc-tabla">
+                <thead><tr><th>Forma de pago</th><th class="num">Teórico</th><th class="num">Físico contado</th></tr></thead>
+                <tbody>
+                    @foreach (var f in corteFormas.Where(f => f.Descripcion != "Efectivo"))
+                    {
+                        <tr>
+                            <td>@f.Descripcion</td>
+                            <td class="num">Q@(f.MontoTeorico.ToString("N2"))</td>
+                            <td class="num"><input type="number" step="0.01" min="0" @bind="f.MontoFisico" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="doc-seccion doc-totales-envoltorio">
+            <div class="doc-totales">
+                <div class="doc-totales-fila"><span>Teórico total (efectivo incl. fondo inicial)</span><span>Q@(TeoricoTotal.ToString("N2"))</span></div>
+                <div class="doc-totales-fila"><span>Físico total contado</span><span>Q@(FisicoTotal.ToString("N2"))</span></div>
+                <div class="doc-totales-total"><span>Diferencia</span><span>Q@(Diferencia.ToString("N2"))</span></div>
+            </div>
+        </div>
+
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar conteo" Etiqueta="Guardar conteo" OnClick="GuardarConteoAsync" />
+            <BotonIcono Icono="check-check" Tooltip="Cerrar caja" Etiqueta="Cerrar caja" Variante="primario" OnClick="CerrarCajaAsync" />
+        </div>
+    }
+}
+else if (pestanaActiva == "depositos")
+{
+    <div class="doc-seccion">
+        <div class="doc-grid">
+            <div class="campo">
+                <label>Apertura de caja</label>
+                <select @bind="pcaIdParaDeposito" @bind:after="CargarDepositosAsync">
+                    <option value="0">Seleccione...</option>
+                    @foreach (var a in aperturasRecientes)
+                    {
+                        <option value="@a.PcaId">@a.PcrDescripcion — @a.PcaFechaApertura.ToString("dd/MM/yyyy")@(a.PcaEstado == "C" ? " (cerrada)" : "")</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+
+    @if (pcaIdParaDeposito > 0)
+    {
+        <div class="doc-seccion">
+            <p class="doc-seccion-titulo"><Icono Nombre="landmark" Tamano="15" /> Nuevo depósito</p>
+            <div class="doc-grid">
+                <div class="campo">
+                    <label>Entidad financiera</label>
+                    <select @bind="nuevoDeposito.GefId">
+                        <option value="0">Seleccione...</option>
+                        @foreach (var e in entidadesFinancieras)
+                        {
+                            <option value="@e.GefId">@e.GeftDescripcion — @e.GefDescripcion</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo"><label>Fecha</label><input type="date" @bind="nuevoDeposito.Fecha" /></div>
+                <div class="campo"><label>Valor</label><input type="number" step="0.01" min="0" @bind="nuevoDeposito.Valor" /></div>
+                <div class="campo"><label>Número de boleta</label><input @bind="nuevoDeposito.NumeroBoleta" /></div>
+                <div class="campo"><label>Observaciones</label><input @bind="nuevoDeposito.Observaciones" /></div>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Registrar depósito" Etiqueta="Registrar depósito" Variante="primario" OnClick="RegistrarDepositoAsync" />
+            </div>
+        </div>
+
+        <div class="doc-seccion">
+            <p class="doc-seccion-titulo"><Icono Nombre="clipboard-list" Tamano="15" /> Depósitos registrados</p>
+            <table class="tabla-datos">
+                <thead><tr><th>Fecha</th><th>Entidad</th><th class="num">Valor</th><th>Boleta</th><th>Observaciones</th></tr></thead>
+                <tbody>
+                    @if (depositos.Count == 0)
+                    {
+                        <tr><td colspan="5"><div class="doc-tabla-vacia">Sin depósitos registrados.</div></td></tr>
+                    }
+                    @foreach (var d in depositos)
+                    {
+                        <tr>
+                            <td>@d.PcdFechaDeposito.ToString("dd/MM/yyyy")</td>
+                            <td>@d.GefDescripcion</td>
+                            <td class="num">Q@(d.PcdValorDeposito.ToString("N2"))</td>
+                            <td>@(d.PcdNumeroBoleta ?? "—")</td>
+                            <td>@(d.PcdObservaciones ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+else if (pestanaActiva == "cajasreceptoras")
+{
+    <div class="barra-herramientas">
+        <BotonIcono Icono="plus" Tooltip="Nueva caja receptora" Etiqueta="Nueva caja receptora" Variante="primario" OnClick="MostrarFormularioNuevaCaja" />
+    </div>
+
+    @if (mostrarNuevaCaja)
+    {
+        <EditForm Model="modeloCajaReceptora" OnValidSubmit="GuardarCajaReceptoraAsync" class="panel-formulario">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="campo"><label>Descripción</label><InputText @bind-Value="modeloCajaReceptora.Descripcion" /></div>
+            <div class="campo">
+                <label>Sucursal</label>
+                <InputSelect @bind-Value="modeloCajaReceptora.SucId">
+                    @foreach (var suc in sucursales)
+                    {
+                        <option value="@suc.SucId">@suc.SucDescripcion</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevaCaja = false" />
+            </div>
+        </EditForm>
+    }
+
+    <table class="tabla-datos">
+        <thead><tr><th>Descripción</th><th>Sucursal</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+        <tbody>
+            @foreach (var c in todasLasCajasReceptoras)
+            {
+                @if (edicionCajaReceptoraId == c.PcrId)
+                {
+                    <tr>
+                        <td><input @bind="modeloCajaReceptora.Descripcion" /></td>
+                        <td>
+                            <select @bind="modeloCajaReceptora.SucId">
+                                @foreach (var suc in sucursales)
+                                {
+                                    <option value="@suc.SucId">@suc.SucDescripcion</option>
+                                }
+                            </select>
+                        </td>
+                        <td class="col-estado">@(c.PcrEstado == "A" ? "Activa" : "Inactiva")</td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="save" Tooltip="Guardar cambios" Variante="primario" OnClick="GuardarEdicionCajaReceptoraAsync" />
+                                <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => edicionCajaReceptoraId = null" />
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    <tr>
+                        <td>@c.PcrDescripcion</td>
+                        <td>@c.SucDescripcion</td>
+                        <td class="col-estado">@(c.PcrEstado == "A" ? "Activa" : "Inactiva")</td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => IniciarEdicionCajaReceptora(c)" />
+                                @if (c.PcrEstado == "A")
+                                {
+                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar" Variante="peligro" OnClick="() => DesactivarCajaReceptoraAsync(c)" />
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private static readonly IReadOnlyList<PestanaItem> Pestanas = new[]
+    {
+        new PestanaItem("apertura", "Apertura"),
+        new PestanaItem("corte", "Corte / Cierre"),
+        new PestanaItem("depositos", "Depósitos"),
+        new PestanaItem("cajasreceptoras", "Cajas receptoras"),
+    };
+
+    private string pestanaActiva = "apertura";
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private IReadOnlyList<Sucursal> sucursales = Array.Empty<Sucursal>();
+    private int sucIdSeleccionada;
+
+    private IReadOnlyList<CajaAperturaActiva> aperturasActivas = Array.Empty<CajaAperturaActiva>();
+    private IReadOnlyList<CajaReceptora> cajasReceptorasSucursal = Array.Empty<CajaReceptora>();
+    private IReadOnlyList<CajaReceptora> cajasDisponiblesParaAbrir =>
+        cajasReceptorasSucursal.Where(c => !aperturasActivas.Any(a => a.PcrId == c.PcrId)).ToList();
+
+    private int pcrIdParaAbrir;
+    private decimal montoInicialApertura;
+
+    private int pcaIdSeleccionada;
+    private List<DenominacionEfectivo> desglose = new();
+    private List<CorteFormaVista> corteFormas = new();
+
+    private static readonly (string Tipo, decimal Denominacion)[] DenominacionesQuetzal =
+    {
+        ("B", 200m), ("B", 100m), ("B", 50m), ("B", 20m), ("B", 10m), ("B", 5m), ("B", 1m),
+        ("M", 1m), ("M", 0.50m), ("M", 0.25m), ("M", 0.10m), ("M", 0.05m),
+    };
+
+    private decimal TotalEfectivoFisico => desglose.Sum(d => d.Denominacion * d.Cantidad);
+    private decimal TeoricoTotal => corteFormas.Sum(f => f.MontoTeorico);
+    private decimal FisicoTotal => TotalEfectivoFisico + corteFormas.Where(f => f.Descripcion != "Efectivo").Sum(f => f.MontoFisico);
+    private decimal Diferencia => FisicoTotal - TeoricoTotal;
+
+    private int pcaIdParaDeposito;
+    private IReadOnlyList<CajaApertura> aperturasRecientes = Array.Empty<CajaApertura>();
+    private IReadOnlyList<EntidadFinanciera> entidadesFinancieras = Array.Empty<EntidadFinanciera>();
+    private IReadOnlyList<DepositoCaja> depositos = Array.Empty<DepositoCaja>();
+    private readonly NuevoDepositoModelo nuevoDeposito = new();
+
+    private IReadOnlyList<CajaReceptora> todasLasCajasReceptoras = Array.Empty<CajaReceptora>();
+    private bool mostrarNuevaCaja;
+    private int? edicionCajaReceptoraId;
+    private readonly CajaReceptoraModelo modeloCajaReceptora = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        sucursales = await CajaRepository.ConsultarSucursalesAsync();
+        entidadesFinancieras = await CajaRepository.ConsultarEntidadesFinancierasAsync();
+
+        var sucClaim = 0;
+        if (AuthenticationStateTask is not null)
+        {
+            var estado = await AuthenticationStateTask;
+            sucClaim = estado.User.ObtenerSucId() ?? 0;
+        }
+
+        sucIdSeleccionada = sucursales.Any(s => s.SucId == sucClaim) ? sucClaim : sucursales.FirstOrDefault()?.SucId ?? 0;
+
+        await CargarSucursalAsync();
+        await CargarCajasReceptorasAsync();
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        var estado = await AuthenticationStateTask;
+        return estado.User.ObtenerUsuId();
+    }
+
+    private async Task CambiarSucursalAsync()
+    {
+        pcaIdSeleccionada = 0;
+        pcaIdParaDeposito = 0;
+        desglose.Clear();
+        corteFormas.Clear();
+        await CargarSucursalAsync();
+        await CargarCajasReceptorasAsync();
+    }
+
+    private async Task CargarSucursalAsync()
+    {
+        if (sucIdSeleccionada <= 0) return;
+        aperturasActivas = await CajaRepository.ConsultarAperturaActivaPorSucursalAsync(sucIdSeleccionada);
+        cajasReceptorasSucursal = await CajaRepository.ConsultarCajasReceptorasAsync(sucIdSeleccionada, "A");
+        aperturasRecientes = await CajaRepository.ConsultarAperturasAsync(sucIdSeleccionada, null, 1, 30);
+    }
+
+    private async Task CargarCajasReceptorasAsync()
+    {
+        todasLasCajasReceptoras = await CajaRepository.ConsultarCajasReceptorasAsync(null, null);
+    }
+
+    private async Task AbrirCajaAsync()
+    {
+        if (pcrIdParaAbrir <= 0)
+        {
+            mensaje = "Seleccione la caja receptora a abrir.";
+            esMensajeError = true;
+            return;
+        }
+
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await CajaRepository.AbrirCajaAsync(pcrIdParaAbrir, montoInicialApertura, usuId);
+            mensaje = "Caja abierta correctamente.";
+            esMensajeError = false;
+            pcrIdParaAbrir = 0;
+            montoInicialApertura = 0;
+            await CargarSucursalAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task IrACorteAsync(int pcaId)
+    {
+        pcaIdSeleccionada = pcaId;
+        pestanaActiva = "corte";
+        await CargarCorteAsync();
+    }
+
+    private async Task CargarCorteAsync()
+    {
+        mensaje = null;
+        if (pcaIdSeleccionada <= 0)
+        {
+            desglose.Clear();
+            corteFormas.Clear();
+            return;
+        }
+
+        desglose = DenominacionesQuetzal
+            .Select(d => new DenominacionEfectivo { TipoDenominacion = d.Tipo, Denominacion = d.Denominacion, Cantidad = 0 })
+            .ToList();
+
+        var teorico = await CajaRepository.ConsultarTeoricoAsync(pcaIdSeleccionada);
+        corteFormas = teorico.Select(t => new CorteFormaVista { PftId = t.PftId, Descripcion = t.PftDescripcion, MontoTeorico = t.MontoTeorico }).ToList();
+    }
+
+    private async Task GuardarConteoAsync()
+    {
+        if (pcaIdSeleccionada <= 0) return;
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await CajaRepository.GuardarDesgloseEfectivoAsync(pcaIdSeleccionada, desglose, usuId);
+
+            var otrasFormas = corteFormas.Where(f => f.Descripcion != "Efectivo")
+                .Select(f => new CorteFormaFisico { PftId = f.PftId, MontoFisico = f.MontoFisico }).ToList();
+            await CajaRepository.GuardarCorteFormaAsync(pcaIdSeleccionada, otrasFormas, usuId);
+
+            mensaje = "Conteo guardado.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task CerrarCajaAsync()
+    {
+        if (pcaIdSeleccionada <= 0) return;
+        try
+        {
+            await GuardarConteoAsync();
+            var usuId = await ObtenerUsuIdActualAsync();
+            await CajaRepository.CerrarCajaAsync(pcaIdSeleccionada, usuId);
+            mensaje = $"Caja cerrada. Diferencia: Q{Diferencia:N2}.";
+            esMensajeError = false;
+            pcaIdSeleccionada = 0;
+            desglose.Clear();
+            corteFormas.Clear();
+            await CargarSucursalAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task CargarDepositosAsync()
+    {
+        depositos = pcaIdParaDeposito > 0
+            ? await CajaRepository.ConsultarDepositosAsync(pcaIdParaDeposito)
+            : Array.Empty<DepositoCaja>();
+        nuevoDeposito.GefId = 0;
+        nuevoDeposito.Fecha = DateTime.Today;
+        nuevoDeposito.Valor = 0;
+        nuevoDeposito.NumeroBoleta = null;
+        nuevoDeposito.Observaciones = null;
+    }
+
+    private async Task RegistrarDepositoAsync()
+    {
+        if (pcaIdParaDeposito <= 0) return;
+        if (nuevoDeposito.GefId <= 0 || nuevoDeposito.Valor <= 0)
+        {
+            mensaje = "Seleccione la entidad financiera e indique un valor mayor a cero.";
+            esMensajeError = true;
+            return;
+        }
+
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await CajaRepository.InsertarDepositoAsync(
+                pcaIdParaDeposito, nuevoDeposito.GefId, nuevoDeposito.Fecha, nuevoDeposito.Valor,
+                nuevoDeposito.NumeroBoleta, nuevoDeposito.Observaciones, usuId);
+            mensaje = "Depósito registrado.";
+            esMensajeError = false;
+            await CargarDepositosAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private void MostrarFormularioNuevaCaja()
+    {
+        mensaje = null;
+        edicionCajaReceptoraId = null;
+        modeloCajaReceptora.Descripcion = "";
+        modeloCajaReceptora.SucId = sucIdSeleccionada;
+        mostrarNuevaCaja = true;
+    }
+
+    private async Task GuardarCajaReceptoraAsync()
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await CajaRepository.InsertarCajaReceptoraAsync(modeloCajaReceptora.Descripcion, modeloCajaReceptora.SucId, usuId);
+            mostrarNuevaCaja = false;
+            mensaje = "Caja receptora creada.";
+            esMensajeError = false;
+            await CargarCajasReceptorasAsync();
+            await CargarSucursalAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private void IniciarEdicionCajaReceptora(CajaReceptora caja)
+    {
+        mensaje = null;
+        mostrarNuevaCaja = false;
+        edicionCajaReceptoraId = caja.PcrId;
+        modeloCajaReceptora.Descripcion = caja.PcrDescripcion;
+        modeloCajaReceptora.SucId = caja.SucId;
+    }
+
+    private async Task GuardarEdicionCajaReceptoraAsync()
+    {
+        if (edicionCajaReceptoraId is null) return;
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await CajaRepository.ActualizarCajaReceptoraAsync(edicionCajaReceptoraId.Value, modeloCajaReceptora.Descripcion, modeloCajaReceptora.SucId, usuId);
+            edicionCajaReceptoraId = null;
+            mensaje = "Cambios guardados.";
+            esMensajeError = false;
+            await CargarCajasReceptorasAsync();
+            await CargarSucursalAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private async Task DesactivarCajaReceptoraAsync(CajaReceptora caja)
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await CajaRepository.EliminarCajaReceptoraAsync(caja.PcrId, usuId);
+            mensaje = "Caja receptora desactivada.";
+            esMensajeError = false;
+            await CargarCajasReceptorasAsync();
+            await CargarSucursalAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = ex.Message;
+            esMensajeError = true;
+        }
+    }
+
+    private sealed class CorteFormaVista
+    {
+        public int PftId { get; set; }
+        public string Descripcion { get; set; } = "";
+        public decimal MontoTeorico { get; set; }
+        public decimal MontoFisico { get; set; }
+    }
+
+    private sealed class NuevoDepositoModelo
+    {
+        public int GefId { get; set; }
+        public DateTime Fecha { get; set; } = DateTime.Today;
+        public decimal Valor { get; set; }
+        public string? NumeroBoleta { get; set; }
+        public string? Observaciones { get; set; }
+    }
+
+    private sealed class CajaReceptoraModelo
+    {
+        [Required] public string Descripcion { get; set; } = "";
+        public int SucId { get; set; }
+    }
+}

@@ -48,7 +48,13 @@
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <SidebarNodo Titulo="Bancos" IconoNombre="landmark" Disponible="false" />
+        <AuthorizeView Policy="Permiso:BANCOS_CAJA_ADMIN">
+            <Authorized>
+                <SidebarNodo Titulo="Bancos" IconoNombre="landmark">
+                    <NavLink href="caja" class="sidebar-hijo-link">Caja</NavLink>
+                </SidebarNodo>
+            </Authorized>
+        </AuthorizeView>
         <SidebarNodo Titulo="Contabilidad" IconoNombre="bar-chart-2" Disponible="false" />
     </nav>
 

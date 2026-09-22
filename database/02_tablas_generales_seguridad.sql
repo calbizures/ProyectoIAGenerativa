@@ -292,6 +292,19 @@ CREATE TABLE [dbo].[sec_usuario_rol](
 );
 GO
 
+-- Sucursales autorizadas por usuario: se valida contra esta tabla en el
+-- login (el usuario elige una sucursal y debe estar asignado a ella).
+CREATE TABLE [dbo].[sec_usuario_sucursal](
+	[usu_id]		INT				NOT NULL,
+	[suc_id]		INT				NOT NULL,
+	[InsUsuario]	INT				NULL,
+	[InsFechaHora]	DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]	INT				NULL,
+	[UpdFechaHora]	DATETIME2(0)	NULL,
+	CONSTRAINT [PK_sec_usuario_sucursal] PRIMARY KEY CLUSTERED ([usu_id] ASC, [suc_id] ASC)
+);
+GO
+
 ------------------------------------------------------------
 -- Auditoría de cambios (módulo nuevo)
 --

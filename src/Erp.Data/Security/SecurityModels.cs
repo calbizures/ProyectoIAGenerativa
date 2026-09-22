@@ -36,6 +36,13 @@ public sealed class Permiso
 	public string PerEstado { get; set; } = "A";
 }
 
+public sealed class Sucursal
+{
+	public int SucId { get; set; }
+	public string SucCodigo { get; set; } = "";
+	public string SucDescripcion { get; set; } = "";
+}
+
 public sealed class LoginResultado
 {
 	public string Estado { get; set; } = "";

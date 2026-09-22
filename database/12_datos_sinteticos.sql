@@ -199,6 +199,7 @@ INSERT INTO dbo.sec_permiso (per_modulo, per_codigo, per_descripcion) VALUES
 ('VENTAS', 'VENTAS_FACTURA_ANULAR', 'Anular facturas'),
 ('COMPRAS', 'COMPRAS_DOCUMENTO_CREAR', 'Grabar compras'),
 ('BANCOS', 'BANCOS_CHEQUE_EMITIR', 'Emitir cheques'),
+('BANCOS', 'BANCOS_CAJA_ADMIN', 'Administrar caja (apertura, corte, cierre, depósitos)'),
 ('CONTABILIDAD', 'CONTABILIDAD_ASIENTO_MANUAL', 'Registrar asientos manuales'),
 ('SEGURIDAD', 'SEGURIDAD_USUARIO_ADMIN', 'Administrar usuarios y roles');
 GO
@@ -217,6 +218,9 @@ SELECT @rol_vendedor, per_id FROM dbo.sec_permiso WHERE per_codigo IN ('VENTAS_F
 
 INSERT INTO dbo.sec_rol_permiso (rol_id, per_id)
 SELECT @rol_contador, per_id FROM dbo.sec_permiso WHERE per_modulo = 'CONTABILIDAD';
+
+INSERT INTO dbo.sec_rol_permiso (rol_id, per_id)
+SELECT @rol_cajero, per_id FROM dbo.sec_permiso WHERE per_codigo IN ('BANCOS_CAJA_ADMIN', 'VENTAS_FACTURA_CREAR');
 
 DECLARE @usu_admin INT, @usu_vendedor INT, @usu_cajero INT, @usu_contador INT;
 EXEC dbo.sp_usuario_insertar @usu_codigo = 'ADMIN', @usu_usuario = 'admin', @usu_password = 'Demo#2024', @usu_email = 'admin@siq.com.gt', @usu_id = @usu_admin OUTPUT;
@@ -248,7 +252,9 @@ INSERT INTO dbo.pos_vendedor (pve_codigo, pve_nombres, pve_apellidos, pve_fecha_
 ('VEN03', 'Carlos', 'Estrada Solís', '2023-06-10', 4.5);
 GO
 
-INSERT INTO dbo.pos_caja_receptora (pcr_descripcion) VALUES ('Caja 1 - Zona 10'), ('Caja 2 - Mixco');
+DECLARE @suc1_caja_id INT = (SELECT suc_id FROM dbo.gen_sucursal WHERE suc_codigo = 'SUC01');
+DECLARE @suc2_caja_id INT = (SELECT suc_id FROM dbo.gen_sucursal WHERE suc_codigo = 'SUC02');
+INSERT INTO dbo.pos_caja_receptora (pcr_descripcion, suc_id) VALUES ('Caja 1 - Zona 10', @suc1_caja_id), ('Caja 2 - Mixco', @suc2_caja_id);
 GO
 
 INSERT INTO dbo.pos_pago_forma_tipo (pft_descripcion) VALUES ('Efectivo'), ('Tarjeta'), ('Cheque'), ('Transferencia');

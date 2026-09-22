@@ -487,6 +487,8 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_ventas_crear_factura]
 	@mon_id						INT = NULL,
 	@usu_id						INT = NULL,
 	@detalle					dbo.factura_det_type READONLY,
+	@pca_id						INT = NULL,				-- apertura de caja activa donde se recibe el pago inicial
+	@formas_pago				dbo.pago_forma_type READONLY = NULL,	-- pago de contado, o enganche si es a crédito
 	@enc_id						INT OUTPUT,
 	@enc_numero_unico			VARCHAR(16) OUTPUT
 AS
@@ -562,6 +564,25 @@ BEGIN
 			det_precio_unitario, det_valor_descuento, det_sub_total, det_costo_unitario, det_porc_iva, bod_id, pro_id, ppr_id,
 			@usu_id, SYSDATETIME()
 		FROM @detalle;
+
+		IF @pca_id IS NOT NULL AND EXISTS (SELECT 1 FROM @formas_pago)
+		BEGIN
+			DECLARE @ppe_id INT;
+
+			INSERT INTO dbo.pos_pago_enc (cli_id, pca_id, usu_id, InsUsuario, InsFechaHora)
+			VALUES (@cli_id, @pca_id, @usu_id, @usu_id, SYSDATETIME());
+
+			SET @ppe_id = SCOPE_IDENTITY();
+
+			INSERT INTO dbo.pos_pago_forma
+				(gef_id, ppf_numero_tarjeta_ult4, ppf_fecha_vencimiento_tarjeta, ppf_numero_cheque, ppf_monto, ppe_id, pft_id, InsUsuario, InsFechaHora)
+			SELECT gef_id, ppf_numero_tarjeta_ult4, ppf_fecha_vencimiento_tarjeta, ppf_numero_cheque, ppf_monto, @ppe_id, pft_id, @usu_id, SYSDATETIME()
+			FROM @formas_pago;
+
+			INSERT INTO dbo.pos_pago_det (ppe_id, enc_id, ppd_valor_aplicado, InsUsuario, InsFechaHora)
+			SELECT @ppe_id, @enc_id, SUM(ppf_monto), @usu_id, SYSDATETIME()
+			FROM @formas_pago;
+		END
 
 		EXEC dbo.sp_pos_generar_plan_pagos_cliente @enc_id = @enc_id, @usu_id = @usu_id;
 
@@ -726,6 +747,7 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_pos_registrar_pago_cuota]
 	@valor_pago		NUMERIC(12, 2),
 	@pca_id			INT,
 	@usu_id			INT = NULL,
+	@formas_pago	dbo.pago_forma_type READONLY = NULL,
 	@ppe_id			INT OUTPUT
 AS
 BEGIN
@@ -755,6 +777,11 @@ BEGIN
 
 		INSERT INTO dbo.pos_pago_det (ppe_id, cpp_id, ppd_valor_aplicado, InsUsuario, InsFechaHora)
 		VALUES (@ppe_id, @cpp_id, @valor_pago, @usu_id, SYSDATETIME());
+
+		INSERT INTO dbo.pos_pago_forma
+			(gef_id, ppf_numero_tarjeta_ult4, ppf_fecha_vencimiento_tarjeta, ppf_numero_cheque, ppf_monto, ppe_id, pft_id, InsUsuario, InsFechaHora)
+		SELECT gef_id, ppf_numero_tarjeta_ult4, ppf_fecha_vencimiento_tarjeta, ppf_numero_cheque, ppf_monto, @ppe_id, pft_id, @usu_id, SYSDATETIME()
+		FROM @formas_pago;
 
 		UPDATE dbo.pos_cliente_plan_pagos
 		   SET cpp_saldo_cuota = cpp_saldo_cuota - @valor_pago,

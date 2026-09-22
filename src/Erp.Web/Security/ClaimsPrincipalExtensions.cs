@@ -9,4 +9,10 @@ public static class ClaimsPrincipalExtensions
 		var valor = usuario.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 		return int.TryParse(valor, out var usuId) ? usuId : null;
 	}
+
+	public static int? ObtenerSucId(this ClaimsPrincipal usuario)
+	{
+		var valor = usuario.FindFirst(ClaimsSucursal.TipoClaim)?.Value;
+		return int.TryParse(valor, out var sucId) ? sucId : null;
+	}
 }

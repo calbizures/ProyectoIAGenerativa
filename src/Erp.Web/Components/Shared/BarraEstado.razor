@@ -1,6 +1,8 @@
 @* Línea de estado en el pie de cada pantalla: fecha/hora, usuario, base de datos y módulo actual. *@
 @implements IDisposable
+@using Erp.Web.Security
 @inject Erp.Data.IDbConnectionFactory ConnectionFactory
+@inject Erp.Data.Caja.ICajaRepository CajaRepository
 @inject NavigationManager NavigationManager
 
 <div class="barra-estado">
@@ -8,6 +10,13 @@
     <span>Usuario: @(nombreUsuario ?? "—")</span>
     <span>Base de datos: @nombreBaseDatos</span>
     <span>Módulo: @ObtenerModulo()</span>
+    @if (mostrarAdvertenciaCaja)
+    {
+        <span class="barra-estado-advertencia">
+            <Icono Nombre="alert-triangle" Tamano="14" />
+            No hay una caja abierta en esta sucursal. Ve a Bancos &gt; Caja para abrirla.
+        </span>
+    }
 </div>
 
 @code {
@@ -35,7 +44,11 @@
         ["vendedores"] = "Ventas / POS > Vendedores",
         ["compras"] = "Compras > Compras",
         ["proveedores"] = "Compras > Proveedores",
+        ["caja"] = "Bancos > Caja",
     };
+
+    private int? sucId;
+    private bool mostrarAdvertenciaCaja;
 
     protected override async Task OnInitializedAsync()
     {
@@ -46,14 +59,41 @@
         {
             var estado = await AuthenticationStateTask;
             nombreUsuario = estado.User.Identity?.Name;
+            sucId = estado.User.ObtenerSucId();
         }
+
+        await ActualizarAdvertenciaCajaAsync();
 
         NavigationManager.LocationChanged += AlCambiarUbicacion;
         temporizador = new Timer(_ => ActualizarHora(), null, 1000, 1000);
     }
 
-    private void AlCambiarUbicacion(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
-        => InvokeAsync(StateHasChanged);
+    private async void AlCambiarUbicacion(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        await ActualizarAdvertenciaCajaAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ActualizarAdvertenciaCajaAsync()
+    {
+        if (sucId is null || sucId <= 0)
+        {
+            mostrarAdvertenciaCaja = false;
+            return;
+        }
+
+        try
+        {
+            var activas = await CajaRepository.ConsultarAperturaActivaPorSucursalAsync(sucId.Value);
+            mostrarAdvertenciaCaja = activas.Count == 0;
+        }
+        catch
+        {
+            // Si falla la consulta (p. ej. base de datos no disponible), no se
+            // muestra la advertencia: esta barra no debe romper la pantalla.
+            mostrarAdvertenciaCaja = false;
+        }
+    }
 
     private void ActualizarHora()
     {

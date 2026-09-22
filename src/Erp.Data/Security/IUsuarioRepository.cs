@@ -11,4 +11,7 @@ public interface IUsuarioRepository
 	Task<(Usuario? Usuario, IReadOnlyList<UsuarioRol> Roles)> ConsultarPorIdAsync(int usuId);
 	Task AsignarRolAsync(int usuId, int rolId, int? usuarioAccionId);
 	Task RevocarRolAsync(int usuId, int rolId);
+	Task<IReadOnlyList<Sucursal>> ConsultarSucursalesAsignadasAsync(int usuId);
+	Task AsignarSucursalAsync(int usuId, int sucId, int? usuarioAccionId);
+	Task RevocarSucursalAsync(int usuId, int sucId);
 }

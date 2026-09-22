@@ -99,4 +99,26 @@ public sealed class UsuarioRepository(IDbConnectionFactory connectionFactory) : 
 		var parametros = new { usu_id = usuId, rol_id = rolId };
 		await connection.ExecuteAsync("dbo.sp_usuario_revocar_rol", parametros, commandType: CommandType.StoredProcedure);
 	}
+
+	public async Task<IReadOnlyList<Sucursal>> ConsultarSucursalesAsignadasAsync(int usuId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var filas = await connection.QueryAsync<Sucursal>(
+			"dbo.paUsuarioSucursalConsultar", new { usu_id = usuId }, commandType: CommandType.StoredProcedure);
+		return filas.ToList();
+	}
+
+	public async Task AsignarSucursalAsync(int usuId, int sucId, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new { usu_id = usuId, suc_id = sucId, usu_id_accion = usuarioAccionId };
+		await connection.ExecuteAsync("dbo.paUsuarioSucursalAsignar", parametros, commandType: CommandType.StoredProcedure);
+	}
+
+	public async Task RevocarSucursalAsync(int usuId, int sucId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new { usu_id = usuId, suc_id = sucId };
+		await connection.ExecuteAsync("dbo.paUsuarioSucursalRevocar", parametros, commandType: CommandType.StoredProcedure);
+	}
 }

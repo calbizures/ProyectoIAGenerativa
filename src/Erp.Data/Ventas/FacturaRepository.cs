@@ -1,5 +1,6 @@
 using System.Data;
 using Dapper;
+using Erp.Data.Caja;
 
 namespace Erp.Data.Ventas;
 
@@ -40,10 +41,13 @@ public sealed class FacturaRepository(IDbConnectionFactory connectionFactory) : 
 		return filas.ToList();
 	}
 
-	public async Task<(int EncId, string NumeroUnico)> CrearAsync(NuevaFacturaEncabezado encabezado, IReadOnlyList<NuevaLineaFactura> detalle, int? usuarioAccionId)
+	public async Task<(int EncId, string NumeroUnico)> CrearAsync(
+		NuevaFacturaEncabezado encabezado, IReadOnlyList<NuevaLineaFactura> detalle, int? usuarioAccionId,
+		int? pcaId = null, IReadOnlyList<FormaPagoCaptura>? formasPago = null)
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var tablaDetalle = ConstruirTablaDetalle(detalle);
+		var tablaFormasPago = CajaRepository.ConstruirTablaFormasPago(formasPago ?? Array.Empty<FormaPagoCaptura>());
 
 		var parametros = new DynamicParameters();
 		parametros.Add("@enc_fecha_docto", encabezado.FechaDocumento);
@@ -64,6 +68,8 @@ public sealed class FacturaRepository(IDbConnectionFactory connectionFactory) : 
 		parametros.Add("@mon_id", encabezado.MonId);
 		parametros.Add("@usu_id", usuarioAccionId);
 		parametros.Add("@detalle", tablaDetalle.AsTableValuedParameter("dbo.factura_det_type"));
+		parametros.Add("@pca_id", pcaId);
+		parametros.Add("@formas_pago", tablaFormasPago.AsTableValuedParameter("dbo.pago_forma_type"));
 		parametros.Add("@enc_id", dbType: DbType.Int32, direction: ParameterDirection.Output);
 		parametros.Add("@enc_numero_unico", dbType: DbType.String, size: 16, direction: ParameterDirection.Output);
 

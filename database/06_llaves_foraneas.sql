@@ -75,11 +75,20 @@ ALTER TABLE [dbo].[bco_cheque_emitido_det]  ADD CONSTRAINT [FK_bco_cheque_det_do
 GO
 
 -- pos_* (caja)
+ALTER TABLE [dbo].[pos_caja_receptora]  ADD CONSTRAINT [FK_pos_caja_receptora_sucursal] FOREIGN KEY([suc_id]) REFERENCES [dbo].[gen_sucursal]([suc_id]);
 ALTER TABLE [dbo].[pos_caja_apertura]  ADD CONSTRAINT [FK_pos_caja_apertura_receptora] FOREIGN KEY([pcr_id]) REFERENCES [dbo].[pos_caja_receptora]([pcr_id]);
 ALTER TABLE [dbo].[pos_caja_apertura]  ADD CONSTRAINT [FK_pos_caja_apertura_usu_apertura] FOREIGN KEY([usu_id_apertura]) REFERENCES [dbo].[gen_usuario]([usu_id]);
 ALTER TABLE [dbo].[pos_caja_apertura]  ADD CONSTRAINT [FK_pos_caja_apertura_usu_cierre] FOREIGN KEY([usu_id_cierre]) REFERENCES [dbo].[gen_usuario]([usu_id]);
 ALTER TABLE [dbo].[pos_caja_desglose_efectivo]  ADD CONSTRAINT [FK_pos_desglose_caja] FOREIGN KEY([pca_id]) REFERENCES [dbo].[pos_caja_apertura]([pca_id]);
 ALTER TABLE [dbo].[pos_caja_deposito]  ADD CONSTRAINT [FK_pos_deposito_caja] FOREIGN KEY([pca_id]) REFERENCES [dbo].[pos_caja_apertura]([pca_id]);
+ALTER TABLE [dbo].[pos_caja_deposito]  ADD CONSTRAINT [FK_pos_caja_deposito_entidad] FOREIGN KEY([gef_id]) REFERENCES [dbo].[gen_entidad_financiera]([gef_id]);
+ALTER TABLE [dbo].[pos_caja_corte_forma]  ADD CONSTRAINT [FK_pos_caja_corte_forma_apertura] FOREIGN KEY([pca_id]) REFERENCES [dbo].[pos_caja_apertura]([pca_id]);
+ALTER TABLE [dbo].[pos_caja_corte_forma]  ADD CONSTRAINT [FK_pos_caja_corte_forma_tipo] FOREIGN KEY([pft_id]) REFERENCES [dbo].[pos_pago_forma_tipo]([pft_id]);
+GO
+
+-- sec_usuario_sucursal
+ALTER TABLE [dbo].[sec_usuario_sucursal]  ADD CONSTRAINT [FK_sec_usuario_sucursal_usuario] FOREIGN KEY([usu_id]) REFERENCES [dbo].[gen_usuario]([usu_id]);
+ALTER TABLE [dbo].[sec_usuario_sucursal]  ADD CONSTRAINT [FK_sec_usuario_sucursal_sucursal] FOREIGN KEY([suc_id]) REFERENCES [dbo].[gen_sucursal]([suc_id]);
 GO
 
 -- pos_cliente (geografía)
@@ -105,6 +114,7 @@ ALTER TABLE [dbo].[pos_pago_forma]  ADD CONSTRAINT [FK_pos_pago_forma_tipo] FORE
 ALTER TABLE [dbo].[pos_pago_forma]  ADD CONSTRAINT [FK_pos_pago_forma_pago_enc] FOREIGN KEY([ppe_id]) REFERENCES [dbo].[pos_pago_enc]([ppe_id]);
 ALTER TABLE [dbo].[pos_pago_det]  ADD CONSTRAINT [FK_pos_pago_det_cuota] FOREIGN KEY([cpp_id]) REFERENCES [dbo].[pos_cliente_plan_pagos]([cpp_id]);
 ALTER TABLE [dbo].[pos_pago_det]  ADD CONSTRAINT [FK_pos_pago_det_pago_enc] FOREIGN KEY([ppe_id]) REFERENCES [dbo].[pos_pago_enc]([ppe_id]);
+ALTER TABLE [dbo].[pos_pago_det]  ADD CONSTRAINT [FK_pos_pago_det_documento] FOREIGN KEY([enc_id]) REFERENCES [dbo].[inv_documento_enc]([enc_id]);
 GO
 
 -- cont_*

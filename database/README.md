@@ -36,6 +36,9 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 19_procedimientos_tipo_caracteristica.sql     -- solo si ya corriste 00-18 antes de esta fecha
 20_procedimiento_plan_pagos_consultar.sql     -- solo si ya corriste 00-19 antes de esta fecha
 21_costo_unitario_ppr_id_factura.sql          -- solo si ya corriste 00-20 antes de esta fecha
+22_sucursal_caja_formas_pago_tablas.sql       -- solo si ya corriste 00-21 antes de esta fecha
+23_procedimientos_caja_sucursal.sql           -- solo si ya corriste 00-22 antes de esta fecha
+24_formas_pago_factura_cobro.sql              -- solo si ya corriste 00-23 antes de esta fecha
 ```
 
 ## Estándares de nomenclatura (a partir de este punto)
@@ -312,6 +315,59 @@ Decisiones de diseño:
     `sp_ventas_crear_factura`, recrea el tipo con la columna nueva y
     vuelve a crear el procedimiento. Quien ya haya corrido `00`-`20` debe
     correr `21_costo_unitario_ppr_id_factura.sql` una sola vez.
+18. **Login por sucursal, apertura de caja con fondo inicial, depósitos y
+    formas de pago (efectivo/cheque/tarjeta).** A solicitud explícita se
+    agrega:
+    - `pos_caja_receptora` ahora se relaciona con `gen_sucursal` (una
+      sucursal puede tener varias cajas). Tabla nueva
+      `sec_usuario_sucursal`: qué sucursales tiene autorizadas cada
+      usuario (el login pide la sucursal y valida contra esta tabla). Se
+      apadrina a todos los usuarios activos en todas las sucursales
+      activas para no romper accesos existentes; un administrador ajusta
+      después los accesos reales desde Usuarios.
+    - `pos_caja_apertura` agrega el monto inicial (fondo de caja, libre)
+      y los totales de corte (teórico/físico/diferencia). `sp_pos_caja_abrir`
+      ya validaba que no hubiera otra apertura activa para la misma caja
+      receptora (esa es la regla de "no abrir si no se cerró el día
+      anterior"); solo se le agregó el monto inicial. `sp_pos_caja_cerrar`
+      ahora calcula el corte (teórico desde `pos_pago_forma`, físico desde
+      `pos_caja_desglose_efectivo` + la nueva `pos_caja_corte_forma`)
+      antes de cerrar.
+    - `pos_caja_deposito` ahora se relaciona con `gen_entidad_financiera`.
+    - `pos_pago_forma` agrega el monto de esa forma de pago (antes no se
+      podía saber cuánto correspondía a cada forma), y `pos_pago_det`
+      ahora puede referenciar directamente una factura además de una
+      cuota, para poder registrar el pago de contado o el enganche de
+      crédito (que antes no generaban cuota propia, así que no se podían
+      pagar). `sp_ventas_crear_factura` y `sp_pos_registrar_pago_cuota`
+      reciben las formas de pago usadas.
+    - CRUD nuevo de cajas receptoras (`paCajaReceptora*`, antes solo se
+      podían insertar a mano) y de sucursales por usuario
+      (`paUsuarioSucursal*`).
+
+    Scripts: `22_sucursal_caja_formas_pago_tablas.sql` (tablas),
+    `23_procedimientos_caja_sucursal.sql` (sucursal/caja/corte) y
+    `24_formas_pago_factura_cobro.sql` (formas de pago en factura y
+    cobro). Quien ya haya corrido `00`-`21` debe correr los tres, en
+    orden, una sola vez.
+
+    En el frontend (`Erp.Web`): el login ahora pide la sucursal en un
+    segundo paso (se salta si el usuario solo tiene una autorizada) y la
+    guarda como claim; si el usuario no tiene ninguna sucursal asignada,
+    no puede iniciar sesión. La barra de estado muestra una advertencia
+    (no bloqueante, según lo pedido) cuando la sucursal actual no tiene
+    ninguna caja abierta. El menú "Bancos > Caja" agrupa apertura,
+    corte/cierre con conteo físico por denominación, depósitos y el CRUD
+    de cajas receptoras. En "Usuarios" se agregó una sección de
+    sucursales asignadas (mismo patrón que roles asignados). En
+    "Facturas" se agregó la captura de forma(s) de pago (efectivo,
+    cheque, tarjeta, transferencia) del monto pagado al momento de
+    facturar (de contado, o el enganche si es a crédito), enlazada a la
+    caja abierta de la sucursal del usuario; si no hay caja abierta, la
+    factura se graba igual pero sin registrar el pago en caja. **No** se
+    construyó una pantalla de cobro de cuotas con formas de pago (el
+    procedimiento `sp_pos_registrar_pago_cuota` ya las acepta a nivel de
+    base de datos, pero no hay UI todavía).
 
 ## Módulos nuevos
 

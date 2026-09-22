@@ -61,3 +61,41 @@ CREATE TYPE [dbo].[cont_asiento_det_type] AS TABLE
 	[asd_descripcion]	VARCHAR(256)	NULL
 );
 GO
+
+IF TYPE_ID(N'dbo.caja_denominacion_type') IS NOT NULL
+	DROP TYPE [dbo].[caja_denominacion_type];
+GO
+CREATE TYPE [dbo].[caja_denominacion_type] AS TABLE
+(
+	[def_tipo_denominacion]	CHAR(1)			NOT NULL,	-- B=Billete, M=Moneda
+	[def_denominacion]		NUMERIC(12, 2)	NOT NULL,
+	[def_cantidad]			NUMERIC(8, 0)	NOT NULL
+);
+GO
+
+IF TYPE_ID(N'dbo.caja_corte_forma_type') IS NOT NULL
+	DROP TYPE [dbo].[caja_corte_forma_type];
+GO
+CREATE TYPE [dbo].[caja_corte_forma_type] AS TABLE
+(
+	[pft_id]			INT				NOT NULL,
+	[pcf_monto_fisico]	NUMERIC(12, 2)	NOT NULL
+);
+GO
+
+-- Forma(s) de pago del monto pagado al momento de facturar (de contado, o
+-- el enganche si es a crédito) y del cobro de una cuota. Un mismo pago
+-- puede dividirse en varias formas (p.ej. parte efectivo, parte cheque).
+IF TYPE_ID(N'dbo.pago_forma_type') IS NOT NULL
+	DROP TYPE [dbo].[pago_forma_type];
+GO
+CREATE TYPE [dbo].[pago_forma_type] AS TABLE
+(
+	[pft_id]							INT				NOT NULL,
+	[ppf_monto]							NUMERIC(12, 2)	NOT NULL,
+	[gef_id]							INT				NULL,
+	[ppf_numero_tarjeta_ult4]			VARCHAR(4)		NULL,
+	[ppf_fecha_vencimiento_tarjeta]	VARCHAR(4)		NULL,
+	[ppf_numero_cheque]					VARCHAR(16)		NULL
+);
+GO
