@@ -354,7 +354,12 @@ Decisiones de diseño:
     En el frontend (`Erp.Web`): el login ahora pide la sucursal en un
     segundo paso (se salta si el usuario solo tiene una autorizada) y la
     guarda como claim; si el usuario no tiene ninguna sucursal asignada,
-    no puede iniciar sesión. La barra de estado muestra una advertencia
+    no puede iniciar sesión — **excepto** quien tenga el permiso
+    `SEGURIDAD_USUARIO_ADMIN` (mantenimiento de usuarios), que nunca se
+    bloquea por esto (si no, nadie podría entrar a asignarle una sucursal
+    a nadie); ese usuario entra sin sucursal seleccionada y puede elegir
+    cualquiera desde "Bancos > Caja" al hacer mantenimiento. La barra de
+    estado muestra una advertencia
     (no bloqueante, según lo pedido) cuando la sucursal actual no tiene
     ninguna caja abierta. El menú "Bancos > Caja" agrupa apertura,
     corte/cierre con conteo físico por denominación, depósitos y el CRUD

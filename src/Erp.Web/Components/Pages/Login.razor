@@ -109,6 +109,18 @@
             var sucursales = await UsuarioRepository.ConsultarSucursalesAsignadasAsync(resultado.UsuId.Value);
             if (sucursales.Count == 0)
             {
+                // Un administrador (permiso de mantenimiento de usuarios) nunca se
+                // bloquea por esto: si no tiene sucursal asignada, necesita poder
+                // entrar igual para poder asignarse una (o asignárselas a los
+                // demás) desde Usuarios. Solo se bloquea a los usuarios operativos
+                // (ventas/facturación) que sí necesitan una sucursal para trabajar.
+                var claimsAdmin = await AuthRepository.ObtenerClaimsAsync(resultado.UsuId.Value);
+                if (claimsAdmin.Permisos.Contains("SEGURIDAD_USUARIO_ADMIN"))
+                {
+                    await FinalizarSesionAsync(resultado.UsuId.Value, sucId: null);
+                    return;
+                }
+
                 mensajeError = "Este usuario no tiene ninguna sucursal asignada. Contacte al administrador.";
                 return;
             }
@@ -140,14 +152,17 @@
         await FinalizarSesionAsync(modelo.UsuId.Value, modelo.SucId);
     }
 
-    private async Task FinalizarSesionAsync(int usuId, int sucId)
+    private async Task FinalizarSesionAsync(int usuId, int? sucId)
     {
         var claims = await AuthRepository.ObtenerClaimsAsync(usuId);
 
         var identidad = new ClaimsIdentity(CookieAuthenticationDefaults.AuthenticationScheme);
         identidad.AddClaim(new Claim(ClaimTypes.NameIdentifier, usuId.ToString()));
         identidad.AddClaim(new Claim(ClaimTypes.Name, modelo.Usuario));
-        identidad.AddClaim(new Claim(Erp.Web.Security.ClaimsSucursal.TipoClaim, sucId.ToString()));
+        if (sucId is > 0)
+        {
+            identidad.AddClaim(new Claim(Erp.Web.Security.ClaimsSucursal.TipoClaim, sucId.Value.ToString()));
+        }
         foreach (var rolCodigo in claims.Roles)
         {
             identidad.AddClaim(new Claim(ClaimTypes.Role, rolCodigo));
