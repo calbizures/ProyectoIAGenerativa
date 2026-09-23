@@ -107,42 +107,58 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
             <BotonIcono Icono="save" Tooltip="Cambiar contraseña" Etiqueta="Cambiar contraseña" Variante="primario" TipoBoton="submit" />
         </EditForm>
 
-        <h3>Roles asignados</h3>
+        <h3>Roles y sucursales</h3>
+        <div class="campo"><label>Roles asignados</label><span class="valor-detalle">@NombresRolesAsignados</span></div>
+        <div class="campo"><label>Sucursales asignadas</label><span class="valor-detalle">@NombresSucursalesAsignadas</span></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="pencil" Tooltip="Editar roles y sucursales" Etiqueta="Editar roles y sucursales" OnClick="IniciarEdicionAccesos" />
+        </div>
+    </div>
+}
+else if (pestanaActiva == "accesos" && seleccionado is not null)
+{
+    <div class="panel-formulario">
+        <h2>Roles y sucursales: @seleccionado.UsuUsuario</h2>
+
+        <h3>Roles</h3>
         <table class="tabla-datos">
             <thead><tr><th>Rol</th><th>Asignado</th></tr></thead>
             <tbody>
                 @foreach (var rol in todosLosRoles)
                 {
-                    var asignado = rolesAsignados.Any(r => r.RolId == rol.RolId);
                     <tr>
                         <td>@rol.RolNombre</td>
                         <td>
-                            <input type="checkbox" checked="@asignado"
-                                   @onchange="e => CambiarRolAsync(rol.RolId, (bool)(e.Value ?? false))" />
+                            <input type="checkbox" checked="@rolesDraft.Contains(rol.RolId)"
+                                   @onchange="e => AlternarRolDraft(rol.RolId, (bool)(e.Value ?? false))" />
                         </td>
                     </tr>
                 }
             </tbody>
         </table>
 
-        <h3>Sucursales asignadas</h3>
+        <h3>Sucursales</h3>
         <p class="doc-nota"><Icono Nombre="info" Tamano="15" /> <span>Solo estas sucursales aparecerán para elegir al iniciar sesión.</span></p>
         <table class="tabla-datos">
             <thead><tr><th>Sucursal</th><th>Asignada</th></tr></thead>
             <tbody>
                 @foreach (var suc in todasLasSucursales)
                 {
-                    var asignada = sucursalesAsignadas.Any(s => s.SucId == suc.SucId);
                     <tr>
                         <td>@suc.SucDescripcion</td>
                         <td>
-                            <input type="checkbox" checked="@asignada"
-                                   @onchange="e => CambiarSucursalAsync(suc.SucId, (bool)(e.Value ?? false))" />
+                            <input type="checkbox" checked="@sucursalesDraft.Contains(suc.SucId)"
+                                   @onchange="e => AlternarSucursalDraft(suc.SucId, (bool)(e.Value ?? false))" />
                         </td>
                     </tr>
                 }
             </tbody>
         </table>
+
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" OnClick="GuardarAccesosAsync" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicionAccesos" />
+        </div>
     </div>
 }
 else if (pestanaActiva == "editar" && seleccionado is not null)
@@ -175,9 +191,23 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
 
     private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
         ? new[] { new PestanaItem("lista", "Lista") }
-        : pestanaActiva == "editar"
-            ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar") }
-            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle") };
+        : pestanaActiva switch
+        {
+            "editar" => new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar") },
+            "accesos" => new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("accesos", "Roles y sucursales") },
+            _ => new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle") }
+        };
+
+    private readonly HashSet<int> rolesDraft = new();
+    private readonly HashSet<int> sucursalesDraft = new();
+
+    private string NombresRolesAsignados => rolesAsignados.Count == 0
+        ? "Ninguno"
+        : string.Join(", ", rolesAsignados.Select(r => r.RolNombre));
+
+    private string NombresSucursalesAsignadas => sucursalesAsignadas.Count == 0
+        ? "Ninguna"
+        : string.Join(", ", sucursalesAsignadas.Select(s => s.SucDescripcion));
 
     private string filtroUsuario = "";
     private string filtroEstado = "A";
@@ -342,47 +372,55 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
     }
 
-    private async Task CambiarRolAsync(int rolId, bool asignar)
+    private void IniciarEdicionAccesos()
+    {
+        if (seleccionado is null) return;
+        mensaje = null;
+        rolesDraft.Clear();
+        foreach (var r in rolesAsignados) rolesDraft.Add(r.RolId);
+        sucursalesDraft.Clear();
+        foreach (var s in sucursalesAsignadas) sucursalesDraft.Add(s.SucId);
+        pestanaActiva = "accesos";
+    }
+
+    private void CancelarEdicionAccesos() => pestanaActiva = "detalle";
+
+    private void AlternarRolDraft(int rolId, bool asignar)
+    {
+        if (asignar) rolesDraft.Add(rolId);
+        else rolesDraft.Remove(rolId);
+    }
+
+    private void AlternarSucursalDraft(int sucId, bool asignar)
+    {
+        if (asignar) sucursalesDraft.Add(sucId);
+        else sucursalesDraft.Remove(sucId);
+    }
+
+    private async Task GuardarAccesosAsync()
     {
         if (seleccionado is null) return;
         try
         {
-            if (asignar)
-            {
-                var usuId = await ObtenerUsuIdActualAsync();
+            var usuId = await ObtenerUsuIdActualAsync();
+
+            foreach (var rolId in rolesDraft.Except(rolesAsignados.Select(r => r.RolId)))
                 await UsuarioRepository.AsignarRolAsync(seleccionado.UsuId, rolId, usuId);
-            }
-            else
-            {
+            foreach (var rolId in rolesAsignados.Select(r => r.RolId).Except(rolesDraft))
                 await UsuarioRepository.RevocarRolAsync(seleccionado.UsuId, rolId);
-            }
+
+            foreach (var sucId in sucursalesDraft.Except(sucursalesAsignadas.Select(s => s.SucId)))
+                await UsuarioRepository.AsignarSucursalAsync(seleccionado.UsuId, sucId, usuId);
+            foreach (var sucId in sucursalesAsignadas.Select(s => s.SucId).Except(sucursalesDraft))
+                await UsuarioRepository.RevocarSucursalAsync(seleccionado.UsuId, sucId);
 
             var (_, roles) = await UsuarioRepository.ConsultarPorIdAsync(seleccionado.UsuId);
             rolesAsignados = roles;
-        }
-        catch (Exception ex)
-        {
-            mensaje = ex.Message;
-            esMensajeError = true;
-        }
-    }
-
-    private async Task CambiarSucursalAsync(int sucId, bool asignar)
-    {
-        if (seleccionado is null) return;
-        try
-        {
-            if (asignar)
-            {
-                var usuId = await ObtenerUsuIdActualAsync();
-                await UsuarioRepository.AsignarSucursalAsync(seleccionado.UsuId, sucId, usuId);
-            }
-            else
-            {
-                await UsuarioRepository.RevocarSucursalAsync(seleccionado.UsuId, sucId);
-            }
-
             sucursalesAsignadas = await UsuarioRepository.ConsultarSucursalesAsignadasAsync(seleccionado.UsuId);
+
+            mensaje = "Roles y sucursales actualizados.";
+            esMensajeError = false;
+            pestanaActiva = "detalle";
         }
         catch (Exception ex)
         {
