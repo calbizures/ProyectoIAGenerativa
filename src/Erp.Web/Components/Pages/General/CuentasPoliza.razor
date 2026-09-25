@@ -1,6 +1,6 @@
 @page "/general/cuentas-poliza"
 @rendermode InteractiveServer
-@attribute [Authorize(Policy = "Permiso:GENERAL_CONFIG_ADMIN")]
+@attribute [Authorize(Policy = "Permiso:GENERAL_CONFIG_ADMIN,CONTABILIDAD_NOMENCLATURA_ADMIN")]
 @using Erp.Data.General
 @using Erp.Web.Security
 @using Microsoft.AspNetCore.Components.Authorization
@@ -24,7 +24,9 @@
         <li><strong>Venta:</strong> al grabar la factura (criterio de devengo). Debe: Caja por lo cobrado al facturar y Clientes por el saldo al crédito; Haber: Ventas (sin IVA) e IVA débito fiscal. Además Costo de ventas contra Inventario.</li>
         <li><strong>Compra:</strong> al grabar la compra. Debe: Inventario o gasto e IVA crédito fiscal; Haber: Proveedores.</li>
         <li><strong>Anulación:</strong> revierte la póliza del documento original.</li>
-        <li><strong>Cobros, depósitos, cierre de caja y nómina:</strong> los conceptos ya están parametrizados y se generarán cuando se habilite el módulo de Contabilidad.</li>
+        <li><strong>Cobro de cuota y pago con cheque:</strong> al registrarlos (Caja o Clientes / Proveedores o Bancos).</li>
+        <li><strong>Depósitos, cierre de caja y nómina:</strong> los conceptos ya están parametrizados y se generarán cuando se habiliten sus pólizas en Contabilidad.</li>
+        <li><strong>Bancos:</strong> los depósitos y cheques usan por ahora una sola subcuenta de bancos (conceptos DEPOSITO_BANCOS y PAGO_BANCOS); cámbiela aquí cuando corresponda.</li>
     </ul>
 </div>
 

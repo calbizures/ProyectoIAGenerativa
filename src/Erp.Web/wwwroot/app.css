@@ -1827,3 +1827,157 @@ a.modulo-card:focus-visible {
 .doc-seccion .doc-totales-envoltorio + .mensaje-error {
     margin: 1rem 0 0;
 }
+
+/* Nomenclatura contable: árbol a la izquierda, nodo seleccionado a la derecha. */
+.nomenclatura {
+    grid-template-columns: minmax(300px, 5fr) minmax(0, 6fr);
+}
+
+.arbol-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.boton-texto {
+    border: 0;
+    background: none;
+    padding: 0.2rem 0;
+    color: var(--si-navy-700);
+    font: inherit;
+    font-size: 0.85rem;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.arbol-conteo {
+    margin-left: auto;
+    color: var(--texto-tenue);
+    font-size: 0.8rem;
+}
+
+.arbol-lista {
+    max-height: 70vh;
+    overflow: auto;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    padding: 0.25rem 0;
+}
+
+.arbol-nodo {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    padding-right: 0.5rem;
+    border-radius: 4px;
+    margin: 0 0.25rem;
+}
+
+.arbol-nodo.seleccionado {
+    background: #e3ecfb;
+}
+
+.arbol-nodo.inactivo .arbol-nombre {
+    color: var(--texto-tenue);
+    text-decoration: line-through;
+}
+
+.arbol-toggle, .arbol-toggle-vacio {
+    flex: 0 0 22px;
+    width: 22px;
+    height: 26px;
+}
+
+.arbol-toggle {
+    border: 0;
+    background: none;
+    color: var(--texto-tenue);
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.arbol-etiqueta {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: none;
+    padding: 0.3rem 0.25rem;
+    text-align: left;
+    color: var(--texto);
+    font: inherit;
+    font-size: 0.88rem;
+    cursor: pointer;
+}
+
+.arbol-etiqueta:hover .arbol-nombre {
+    text-decoration: underline;
+}
+
+.arbol-codigo {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.85em;
+    color: var(--texto-tenue);
+    font-variant-numeric: tabular-nums;
+}
+
+.arbol-nivel-1 .arbol-nombre { font-weight: 700; color: var(--si-navy-900); }
+.arbol-nivel-2 .arbol-nombre { font-weight: 600; color: var(--si-navy-700); }
+.arbol-nivel-3 .arbol-nombre { font-weight: 500; }
+
+.nodo-encabezado h2 {
+    margin: 0.35rem 0 0.25rem;
+}
+
+.nodo-tipo {
+    display: inline-block;
+    padding: 0.1rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--neutro-fondo, #eef1f7);
+    color: var(--si-navy-700);
+}
+
+.nodo-tipo-4 {
+    background: var(--exito-fondo, #e3f5ea);
+    color: var(--exito-texto, #1d6b3a);
+}
+
+.nodo-ruta {
+    margin: 0 0 1rem;
+    color: var(--texto-tenue);
+    font-size: 0.85rem;
+}
+
+.nodo-datos {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.45rem 1.25rem;
+    margin: 0 0 1rem;
+    font-size: 0.92rem;
+}
+
+.nodo-datos dt {
+    color: var(--texto-tenue);
+}
+
+.nodo-datos dd {
+    margin: 0;
+}
+
+.nodo-formulario {
+    box-shadow: none;
+    padding: 0;
+    border: 0;
+}
+
+@media (max-width: 900px) {
+    .arbol-lista {
+        max-height: 50vh;
+    }
+}

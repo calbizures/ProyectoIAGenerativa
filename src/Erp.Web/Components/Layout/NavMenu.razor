@@ -86,7 +86,17 @@
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <SidebarNodo Titulo="Contabilidad" IconoNombre="bar-chart-2" Disponible="false" />
+        <AuthorizeView Policy="Permiso:CONTABILIDAD_NOMENCLATURA_ADMIN">
+            <Authorized>
+                <SidebarNodo Titulo="Contabilidad" IconoNombre="bar-chart-2" Rutas="@(new[] { "contabilidad" })">
+                    <NavLink href="contabilidad/nomenclatura" class="sidebar-hijo-link">Nomenclatura</NavLink>
+                    <NavLink href="general/cuentas-poliza" class="sidebar-hijo-link">Cuentas de pólizas</NavLink>
+                </SidebarNodo>
+            </Authorized>
+            <NotAuthorized>
+                <SidebarNodo Titulo="Contabilidad" IconoNombre="bar-chart-2" Disponible="false" />
+            </NotAuthorized>
+        </AuthorizeView>
     </nav>
 
     <AuthorizeView>

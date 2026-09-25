@@ -77,6 +77,8 @@ FROM (VALUES
 	('COMPRA_PROVEEDORES',      'Compra: cuentas por pagar a proveedores',            'H', '2105'),
 	('COBRO_CAJA',              'Cobro de cuota: ingreso a caja',                     'D', '1105'),
 	('COBRO_CLIENTES',          'Cobro de cuota: rebaja de la cuenta del cliente',    'H', '1205'),
+	('PAGO_PROVEEDORES',        'Pago con cheque: rebaja de la cuenta del proveedor', 'D', '2105'),
+	('PAGO_BANCOS',             'Pago con cheque: salida del banco',                  'H', '1110'),
 	('DEPOSITO_BANCOS',         'Depósito: ingreso al banco',                         'D', '1110'),
 	('DEPOSITO_CAJA',           'Depósito: salida de caja',                           'H', '1105'),
 	('CAJA_FALTANTE',           'Cierre de caja: faltante',                           'D', '5220'),

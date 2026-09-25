@@ -242,9 +242,9 @@ BEGIN
 		EXEC dbo.sp_contabilidad_obtener_o_crear_periodo @fecha = NULL, @usu_id = @usu_id, @pdo_id = @pdo_id OUTPUT;
 
 		INSERT INTO @detalle (cta_id, asd_debe, asd_haber, asd_descripcion)
-		SELECT cta_id, @valor_pago, 0, 'Cobro cuota ' + CAST(@cpp_id AS VARCHAR(10)) FROM dbo.cont_cuenta_contable WHERE cta_codigo = '1105'
+		SELECT cta_id, @valor_pago, 0, 'Cobro cuota ' + CAST(@cpp_id AS VARCHAR(10)) FROM dbo.cont_cuenta_parametro WHERE ccp_codigo = 'COBRO_CAJA'
 		UNION ALL
-		SELECT cta_id, 0, @valor_pago, 'Cobro cuota ' + CAST(@cpp_id AS VARCHAR(10)) FROM dbo.cont_cuenta_contable WHERE cta_codigo = '1205';
+		SELECT cta_id, 0, @valor_pago, 'Cobro cuota ' + CAST(@cpp_id AS VARCHAR(10)) FROM dbo.cont_cuenta_parametro WHERE ccp_codigo = 'COBRO_CLIENTES';
 
 		-- EXEC no acepta una expresión directamente como valor de un
 		-- parámetro con nombre; @fecha_hoy ya se calculó arriba.

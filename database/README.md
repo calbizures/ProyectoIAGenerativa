@@ -42,13 +42,15 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 25_rrhh.sql                                   -- módulo de RRHH y nómina
 26_parametros_general_caja.sql                -- parámetros de compañía, módulo General, cuadre de caja
 27_contabilidad_cuentas_parametro.sql         -- cuentas de las pólizas automáticas
+28_nomenclatura_contable.sql                  -- nomenclatura contable definitiva y su mantenimiento
 ```
 
-`25`, `26` y `27` se corren siempre (también en una instalación nueva) y se
+`25` a `28` se corren siempre (también en una instalación nueva) y se
 pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio); si vuelves a correr cualquiera de los dos,
-vuelve a correr después `26` y `27`.
+vuelve a correr después `26` y `27`. Si vuelves a correr `12`, corre
+después `22` a `28` (el `12` vacía todas las tablas).
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -551,6 +553,59 @@ Las cuentas no están fijas en el procedimiento: la tabla
 en **General > Cuentas de pólizas**. `sp_contabilidad_generar_asiento_documento`
 rechaza el documento (error 51304) si falta la cuenta de algún concepto.
 
+### Nomenclatura contable (`28`)
+
+Se carga la nomenclatura de `tbl_Nomenclatura_Contable` (DMOSOFT) en
+`cont_cuenta_contable`, reemplazando el catálogo mínimo de prueba. La
+jerarquía la definen las posiciones del código:
+
+| Nivel | Nodo | Posiciones | Ejemplo | Acepta movimiento |
+|---|---|---|---|---|
+| 1 | Grupo | 1 | `1` Activo | No |
+| 2 | Subgrupo | 2 | `11` Circulante | No |
+| 3 | Cuenta | 3 | `111` Caja | No |
+| 4 | Subcuenta | 7 (cuenta + correlativo de 4) | `1110002` Caja chica | Sí |
+
+Quedan 162 nodos: 5 grupos, 7 subgrupos, 20 cuentas y 130 subcuentas. El
+nivel y el padre se recalcularon a partir del código, porque el archivo traía
+errores de jerarquía:
+
+- Se crearon el subgrupo `34` Capital y reservas y la cuenta `140` Diferido, que faltaban.
+- `2160002` Préstamos pasó a ser la cuenta `216`.
+- Se quitaron los niveles sobrantes `1161`, `1221` y `1222`; sus subcuentas cuelgan de `116` y `122`.
+- `1130002`, `2110014` y `5110049` se cargaron como subcuentas (tenían 7 posiciones pero venían marcadas como agrupadoras).
+- No se cargaron `521` Gastos de operación ni `529` Pago de impuestos. De sus 35
+  subcuentas, 21 ya tenían equivalente en `511` y 14 pasaron a `511` como
+  `5110057`-`5110070`.
+- Se agregaron `5110071` Faltantes de caja y `4110027` Sobrantes de caja.
+- Todas se cargaron activas. No se migraron los saldos (no cuadraban) ni los
+  campos `Tipo_Resta`, `Clasificacion_Nomenclatura`, flujo de efectivo y demás.
+
+La base de datos valida la jerarquía: restricciones `CHECK` (código numérico
+de 1, 2, 3 o 7 posiciones; nivel según la longitud; movimiento solo en
+subcuentas) y el trigger `trg_cont_cuenta_contable_jerarquia` (el código
+empieza con el del padre y el padre está en el nivel anterior).
+
+El catálogo de prueba anterior (`1105`, `1205`...) se migra solo: sus
+partidas, conceptos de póliza y tipos de movimiento de nómina pasan a la
+subcuenta equivalente. Los procedimientos de cobro de cuota y pago con cheque
+ya no usan códigos fijos: toman la cuenta de los conceptos `COBRO_*` y
+`PAGO_*` (nuevos `PAGO_PROVEEDORES` y `PAGO_BANCOS`). La tabla de conceptos
+`cont_cuenta_parametro` ahora se crea en `05`. La cuenta de bancos
+(`1120014` Banco Industrial) es provisional y se cambia en **Cuentas de pólizas**.
+
+**Mantenimiento por nodos** (**Contabilidad › Nomenclatura**, permiso nuevo
+`CONTABILIDAD_NOMENCLATURA_ADMIN`, asignado a los roles Administrador y
+Contador): árbol a la izquierda y nodo seleccionado a la derecha, con estas
+acciones (procedimientos `paCuentaContable*`):
+
+- **Agregar** grupo, subgrupo, cuenta o subcuenta; se propone el siguiente código libre.
+- **Editar** nombre y naturaleza. El código solo cambia sin hijos ni partidas.
+- **Mover** a otro padre del nivel superior; el nodo y su rama se recodifican.
+  No se permite si alguno tiene partidas.
+- **Activar o inactivar**. Una cuenta asignada a una póliza automática no se puede inactivar.
+- **Eliminar**, solo sin hijos, partidas ni asignaciones.
+
 ## Módulos nuevos
 
 - **Seguridad (`sec_*`)**: roles, permisos y las tablas de asignación
@@ -566,10 +621,9 @@ rechaza el documento (error 51304) si falta la cuenta de algún concepto.
   impide que quede grabado un asiento donde Debe ≠ Haber — por eso el detalle
   de un asiento siempre se inserta en una sola sentencia (`sp_contabilidad_insertar_asiento`),
   nunca línea por línea. `sp_contabilidad_generar_asiento_documento` genera
-  automáticamente el asiento de cada venta/compra usando el catálogo de
-  cuentas sembrado en `12_datos_sinteticos.sql` (1105 Caja, 1110 Bancos, 1150
-  IVA crédito, 1205 Clientes, 1310 Inventarios, 2105 Proveedores, 2205 IVA
-  débito, 4105 Ventas, 5105 Costo de ventas, 5205 Gastos generales). Es una
+  automáticamente el asiento de cada venta/compra con las subcuentas que
+  cada concepto tiene asignadas en `cont_cuenta_parametro` (ver
+  «Nomenclatura contable»). Es una
   contabilización **simplificada**, pensada para que el modelo sea funcional
   y fácil de adaptar; no reemplaza un motor fiscal certificado.
 

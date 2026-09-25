@@ -55,6 +55,25 @@ ALTER TABLE [dbo].[cont_cuenta_contable]
 	REFERENCES [dbo].[cont_cuenta_contable] ([cta_id]);
 GO
 
+-- Concepto contable -> cuenta que usan las pólizas automáticas (ventas,
+-- compras, cobros, cheques, nómina...). Se llena en 12 (datos de prueba) y en
+-- 27/28; se mantiene en General > Cuentas de pólizas.
+IF OBJECT_ID('dbo.cont_cuenta_parametro', 'U') IS NULL
+CREATE TABLE [dbo].[cont_cuenta_parametro](
+	[ccp_codigo]		VARCHAR(40)		NOT NULL,
+	[ccp_descripcion]	VARCHAR(150)	NOT NULL,
+	[ccp_naturaleza]	CHAR(1)			NOT NULL,	-- D = se carga (Debe), H = se abona (Haber) en la partida típica
+	[cta_id]			INT				NULL,
+	[InsUsuario]		INT				NULL,
+	[InsFechaHora]		DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
+	[UpdUsuario]		INT				NULL,
+	[UpdFechaHora]		DATETIME2(0)	NULL,
+	CONSTRAINT [PK_cont_cuenta_parametro] PRIMARY KEY CLUSTERED ([ccp_codigo]),
+	CONSTRAINT [CK_cont_cuenta_parametro_naturaleza] CHECK ([ccp_naturaleza] IN ('D','H')),
+	CONSTRAINT [FK_cont_cuenta_parametro_cuenta] FOREIGN KEY ([cta_id]) REFERENCES [dbo].[cont_cuenta_contable]([cta_id])
+);
+GO
+
 CREATE TABLE [dbo].[cont_periodo_contable](
 	[pdo_id]		INT				IDENTITY(1,1)	NOT NULL,
 	[pdo_anio]		INT				NOT NULL,

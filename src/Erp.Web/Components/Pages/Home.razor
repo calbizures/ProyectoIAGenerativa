@@ -88,11 +88,22 @@
             </Authorized>
         </AuthorizeView>
 
-        <div class="modulo-card modulo-card-proximamente" aria-disabled="true">
-            <span class="modulo-icono"><Icono Nombre="bar-chart-2" Tamano="26" /></span>
-            <span class="modulo-titulo">Contabilidad</span>
-            <span class="modulo-badge">Próximamente</span>
-        </div>
+        <AuthorizeView Policy="Permiso:CONTABILIDAD_NOMENCLATURA_ADMIN">
+            <Authorized>
+                <a href="contabilidad/nomenclatura" class="modulo-card">
+                    <span class="modulo-icono"><Icono Nombre="bar-chart-2" Tamano="26" /></span>
+                    <span class="modulo-titulo">Contabilidad</span>
+                    <span class="modulo-desc">Nomenclatura contable y cuentas de pólizas</span>
+                </a>
+            </Authorized>
+            <NotAuthorized>
+                <div class="modulo-card modulo-card-proximamente" aria-disabled="true">
+                    <span class="modulo-icono"><Icono Nombre="bar-chart-2" Tamano="26" /></span>
+                    <span class="modulo-titulo">Contabilidad</span>
+                    <span class="modulo-badge">Próximamente</span>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
     </div>
 </section>
 

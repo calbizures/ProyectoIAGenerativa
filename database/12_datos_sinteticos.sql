@@ -175,34 +175,42 @@ GO
 ------------------------------------------------------------
 -- Contabilidad: catálogo de cuentas y periodo inicial
 ------------------------------------------------------------
-INSERT INTO dbo.cont_cuenta_contable (cta_codigo, cta_nombre, cta_tipo, cta_naturaleza, cta_acepta_movimiento, cta_id_padre, cta_nivel) VALUES
-('1000', 'ACTIVO', 'A', 'D', 0, NULL, 1),
-('2000', 'PASIVO', 'P', 'H', 0, NULL, 1),
-('4000', 'INGRESOS', 'I', 'H', 0, NULL, 1),
-('5000', 'GASTOS Y COSTOS', 'G', 'D', 0, NULL, 1);
+-- Con 28_nomenclatura_contable.sql ya instalado se siembra la nomenclatura
+-- definitiva. En una instalación nueva (28 todavía no corrió) se siembra el
+-- catálogo mínimo anterior y 28 lo migra después.
+IF OBJECT_ID('dbo.paNomenclaturaBaseCargar', 'P') IS NOT NULL
+	EXEC dbo.paNomenclaturaBaseCargar;
+ELSE
+BEGIN
+	INSERT INTO dbo.cont_cuenta_contable (cta_codigo, cta_nombre, cta_tipo, cta_naturaleza, cta_acepta_movimiento, cta_id_padre, cta_nivel) VALUES
+	('1000', 'ACTIVO', 'A', 'D', 0, NULL, 1),
+	('2000', 'PASIVO', 'P', 'H', 0, NULL, 1),
+	('4000', 'INGRESOS', 'I', 'H', 0, NULL, 1),
+	('5000', 'GASTOS Y COSTOS', 'G', 'D', 0, NULL, 1);
 
-INSERT INTO dbo.cont_cuenta_contable (cta_codigo, cta_nombre, cta_tipo, cta_naturaleza, cta_acepta_movimiento, cta_id_padre, cta_nivel)
-SELECT v.codigo, v.nombre, v.tipo, v.naturaleza, 1, p.cta_id, 2
-FROM (VALUES
-	('1105', 'Caja General', 'A', 'D', '1000'),
-	('1110', 'Bancos', 'A', 'D', '1000'),
-	('1150', 'IVA Crédito Fiscal', 'A', 'D', '1000'),
-	('1205', 'Clientes', 'A', 'D', '1000'),
-	('1310', 'Inventarios', 'A', 'D', '1000'),
-	('2105', 'Proveedores', 'P', 'H', '2000'),
-	('2205', 'IVA Débito Fiscal', 'P', 'H', '2000'),
-	('4105', 'Ventas', 'I', 'H', '4000'),
-	('5105', 'Costo de Ventas', 'G', 'D', '5000'),
-	('5205', 'Gastos Generales', 'G', 'D', '5000')
-) v(codigo, nombre, tipo, naturaleza, padre)
-INNER JOIN dbo.cont_cuenta_contable p ON p.cta_codigo = v.padre;
+	INSERT INTO dbo.cont_cuenta_contable (cta_codigo, cta_nombre, cta_tipo, cta_naturaleza, cta_acepta_movimiento, cta_id_padre, cta_nivel)
+	SELECT v.codigo, v.nombre, v.tipo, v.naturaleza, 1, p.cta_id, 2
+	FROM (VALUES
+		('1105', 'Caja General', 'A', 'D', '1000'),
+		('1110', 'Bancos', 'A', 'D', '1000'),
+		('1150', 'IVA Crédito Fiscal', 'A', 'D', '1000'),
+		('1205', 'Clientes', 'A', 'D', '1000'),
+		('1310', 'Inventarios', 'A', 'D', '1000'),
+		('2105', 'Proveedores', 'P', 'H', '2000'),
+		('2205', 'IVA Débito Fiscal', 'P', 'H', '2000'),
+		('4105', 'Ventas', 'I', 'H', '4000'),
+		('5105', 'Costo de Ventas', 'G', 'D', '5000'),
+		('5205', 'Gastos Generales', 'G', 'D', '5000')
+	) v(codigo, nombre, tipo, naturaleza, padre)
+	INNER JOIN dbo.cont_cuenta_contable p ON p.cta_codigo = v.padre;
+END
 GO
 
--- Si ya se corrió 27_contabilidad_cuentas_parametro.sql, la partida
--- automática busca sus cuentas en cont_cuenta_parametro (que el DELETE de
--- arriba vació): se vuelven a asignar las que usan ventas y compras. El
--- resto de conceptos los repone 27 al volver a correrlo.
-IF OBJECT_ID('dbo.cont_cuenta_parametro', 'U') IS NOT NULL
+-- Las pólizas automáticas (venta, compra, cobro de cuota, cheque) buscan su
+-- cuenta en cont_cuenta_parametro, que el DELETE de arriba vació.
+IF OBJECT_ID('dbo.paCuentaParametroCargarBase', 'P') IS NOT NULL
+	EXEC dbo.paCuentaParametroCargarBase;
+ELSE
 	INSERT INTO dbo.cont_cuenta_parametro (ccp_codigo, ccp_descripcion, ccp_naturaleza, cta_id)
 	SELECT v.codigo, v.descripcion, v.naturaleza, cuen.cta_id
 	FROM (VALUES
@@ -214,7 +222,13 @@ IF OBJECT_ID('dbo.cont_cuenta_parametro', 'U') IS NOT NULL
 		('INVENTARIO',         'Inventario de mercadería',                           'H', '1310'),
 		('COMPRA_GASTO',       'Compra que no afecta inventario (gasto)',            'D', '5205'),
 		('COMPRA_IVA_CREDITO', 'Compra: IVA crédito fiscal',                         'D', '1150'),
-		('COMPRA_PROVEEDORES', 'Compra: cuentas por pagar a proveedores',            'H', '2105')
+		('COMPRA_PROVEEDORES', 'Compra: cuentas por pagar a proveedores',            'H', '2105'),
+		('COBRO_CAJA',         'Cobro de cuota: ingreso a caja',                     'D', '1105'),
+		('COBRO_CLIENTES',     'Cobro de cuota: rebaja de la cuenta del cliente',    'H', '1205'),
+		('PAGO_PROVEEDORES',   'Pago con cheque: rebaja de la cuenta del proveedor', 'D', '2105'),
+		('PAGO_BANCOS',        'Pago con cheque: salida del banco',                  'H', '1110'),
+		('DEPOSITO_BANCOS',    'Depósito: ingreso al banco',                         'D', '1110'),
+		('DEPOSITO_CAJA',      'Depósito: salida de caja',                           'H', '1105')
 	) v(codigo, descripcion, naturaleza, cuenta)
 	INNER JOIN dbo.cont_cuenta_contable cuen ON cuen.cta_codigo = v.cuenta;
 GO
@@ -236,7 +250,8 @@ INSERT INTO dbo.sec_permiso (per_modulo, per_codigo, per_descripcion) VALUES
 -- faltan; se incluyen aquí para que volver a correr este script no se los
 -- quite al rol ADMIN).
 ('GENERAL', 'GENERAL_CONFIG_ADMIN', 'Administrar compañía, parámetros y entidades financieras'),
-('RRHH', 'RRHH_ADMIN', 'Administrar recursos humanos y nómina');
+('RRHH', 'RRHH_ADMIN', 'Administrar recursos humanos y nómina'),
+('CONTABILIDAD', 'CONTABILIDAD_NOMENCLATURA_ADMIN', 'Mantenimiento de la nomenclatura contable');
 GO
 
 DECLARE @rol_admin INT, @rol_vendedor INT, @rol_cajero INT, @rol_contador INT;

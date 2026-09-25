@@ -1,5 +1,6 @@
 using Erp.Data.Caja;
 using Erp.Data.Compras;
+using Erp.Data.Contabilidad;
 using Erp.Data.General;
 using Erp.Data.Inventario;
 using Erp.Data.Rrhh;
@@ -35,6 +36,7 @@ public static class DependencyInjection
 		services.AddScoped<ICajaRepository, CajaRepository>();
 		services.AddScoped<IGeneralRepository, GeneralRepository>();
 		services.AddScoped<IRrhhRepository, RrhhRepository>();
+		services.AddScoped<INomenclaturaRepository, NomenclaturaRepository>();
 		return services;
 	}
 }
