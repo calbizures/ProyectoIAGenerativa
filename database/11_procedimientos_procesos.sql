@@ -370,11 +370,10 @@ GO
 
 /*
 	Genera automáticamente el asiento contable de una venta o una compra ya
-	grabada, usando un catálogo de cuentas por código (ver 12_datos_sinteticos.sql
-	para los códigos sembrados: 1105 Caja, 1110 Bancos, 1150 IVA crédito,
-	1205 Clientes, 1310 Inventarios, 2105 Proveedores, 2205 IVA débito,
-	4105 Ventas, 5105 Costo de ventas, 5205 Gastos/compras que no son
-	inventariables). Es una contabilización simplificada pensada para que el
+	grabada. Cada línea toma la cuenta del concepto correspondiente en
+	cont_cuenta_parametro (VENTA_*, COMPRA_*, INVENTARIO), así funciona con
+	cualquier nomenclatura (27 reemplaza esta versión por una que además
+	separa lo cobrado al facturar). Es una contabilización simplificada pensada para que el
 	modelo sea funcional y fácil de adaptar; no reemplaza un motor fiscal
 	certificado.
 */
@@ -419,40 +418,40 @@ BEGIN
 	BEGIN
 		INSERT INTO @detalle (cta_id, asd_debe, asd_haber, asd_descripcion)
 		SELECT cta_id, @monto_total, 0, 'Cuentas por cobrar - documento ' + CAST(@enc_id AS VARCHAR(10))
-		FROM dbo.cont_cuenta_contable WHERE cta_codigo = '1205'
+		FROM dbo.cont_cuenta_parametro WHERE ccp_codigo = 'VENTA_CLIENTES'
 		UNION ALL
 		SELECT cta_id, 0, @monto_total - @iva, 'Venta - documento ' + CAST(@enc_id AS VARCHAR(10))
-		FROM dbo.cont_cuenta_contable WHERE cta_codigo = '4105';
+		FROM dbo.cont_cuenta_parametro WHERE ccp_codigo = 'VENTA_INGRESO';
 
 		IF @iva > 0
 			INSERT INTO @detalle (cta_id, asd_debe, asd_haber, asd_descripcion)
 			SELECT cta_id, 0, @iva, 'IVA débito fiscal - documento ' + CAST(@enc_id AS VARCHAR(10))
-			FROM dbo.cont_cuenta_contable WHERE cta_codigo = '2205';
+			FROM dbo.cont_cuenta_parametro WHERE ccp_codigo = 'VENTA_IVA_DEBITO';
 
 		IF @costo_venta > 0
 			INSERT INTO @detalle (cta_id, asd_debe, asd_haber, asd_descripcion)
 			SELECT cta_id, @costo_venta, 0, 'Costo de venta - documento ' + CAST(@enc_id AS VARCHAR(10))
-			FROM dbo.cont_cuenta_contable WHERE cta_codigo = '5105'
+			FROM dbo.cont_cuenta_parametro WHERE ccp_codigo = 'VENTA_COSTO'
 			UNION ALL
 			SELECT cta_id, 0, @costo_venta, 'Salida de inventario - documento ' + CAST(@enc_id AS VARCHAR(10))
-			FROM dbo.cont_cuenta_contable WHERE cta_codigo = '1310';
+			FROM dbo.cont_cuenta_parametro WHERE ccp_codigo = 'INVENTARIO';
 	END
 	ELSE -- compra
 	BEGIN
-		DECLARE @cuenta_destino VARCHAR(20) = CASE WHEN @afecta_costo = 'S' THEN '1310' ELSE '5205' END;
+		DECLARE @cuenta_destino VARCHAR(40) = CASE WHEN @afecta_costo = 'S' THEN 'INVENTARIO' ELSE 'COMPRA_GASTO' END;
 
 		INSERT INTO @detalle (cta_id, asd_debe, asd_haber, asd_descripcion)
 		SELECT cta_id, @monto_total - @iva, 0, 'Compra - documento ' + CAST(@enc_id AS VARCHAR(10))
-		FROM dbo.cont_cuenta_contable WHERE cta_codigo = @cuenta_destino;
+		FROM dbo.cont_cuenta_parametro WHERE ccp_codigo = @cuenta_destino;
 
 		IF @iva > 0
 			INSERT INTO @detalle (cta_id, asd_debe, asd_haber, asd_descripcion)
 			SELECT cta_id, @iva, 0, 'IVA crédito fiscal - documento ' + CAST(@enc_id AS VARCHAR(10))
-			FROM dbo.cont_cuenta_contable WHERE cta_codigo = '1150';
+			FROM dbo.cont_cuenta_parametro WHERE ccp_codigo = 'COMPRA_IVA_CREDITO';
 
 		INSERT INTO @detalle (cta_id, asd_debe, asd_haber, asd_descripcion)
 		SELECT cta_id, 0, @monto_total, 'Cuentas por pagar - documento ' + CAST(@enc_id AS VARCHAR(10))
-		FROM dbo.cont_cuenta_contable WHERE cta_codigo = '2105';
+		FROM dbo.cont_cuenta_parametro WHERE ccp_codigo = 'COMPRA_PROVEEDORES';
 	END
 
 	-- EXEC no acepta una expresión (concatenación, CAST) directamente como

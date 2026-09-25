@@ -34,6 +34,7 @@ GO
 ------------------------------------------------------------
 -- Tipos y características de producto
 ------------------------------------------------------------
+IF OBJECT_ID(N'dbo.inv_producto_tipo', N'U') IS NULL
 CREATE TABLE [dbo].[inv_producto_tipo](
 	[prt_id]			INT				IDENTITY(1,1)	NOT NULL,
 	[prt_codigo]		VARCHAR(8)		NOT NULL,
@@ -49,6 +50,7 @@ CREATE TABLE [dbo].[inv_producto_tipo](
 );
 GO
 
+IF OBJECT_ID(N'dbo.inv_producto_tipo_caracteristica', N'U') IS NULL
 CREATE TABLE [dbo].[inv_producto_tipo_caracteristica](
 	[ptc_id]			INT				IDENTITY(1,1)	NOT NULL,
 	[ptc_codigo]		VARCHAR(16)		NOT NULL,
@@ -68,6 +70,7 @@ GO
 ------------------------------------------------------------
 -- Producto
 ------------------------------------------------------------
+IF OBJECT_ID(N'dbo.inv_producto', N'U') IS NULL
 CREATE TABLE [dbo].[inv_producto](
 	[pro_id]					INT				IDENTITY(1,1)	NOT NULL,
 	[pro_codigo]				VARCHAR(64)		NOT NULL,
@@ -92,6 +95,7 @@ CREATE TABLE [dbo].[inv_producto](
 );
 GO
 
+IF OBJECT_ID(N'dbo.inv_producto_caracteristica', N'U') IS NULL
 CREATE TABLE [dbo].[inv_producto_caracteristica](
 	[pca_id]			INT				IDENTITY(1,1)	NOT NULL,
 	[pca_valor]			VARCHAR(64)		NOT NULL,
@@ -107,6 +111,7 @@ CREATE TABLE [dbo].[inv_producto_caracteristica](
 );
 GO
 
+IF OBJECT_ID(N'dbo.inv_producto_precio', N'U') IS NULL
 CREATE TABLE [dbo].[inv_producto_precio](
 	[ppr_id]							INT				IDENTITY(1,1)	NOT NULL,
 	[ppr_precio_unitario_venta]			NUMERIC(12, 2)	NOT NULL,
@@ -128,6 +133,7 @@ CREATE TABLE [dbo].[inv_producto_precio](
 );
 GO
 
+IF OBJECT_ID(N'dbo.inv_producto_existencia_bodega', N'U') IS NULL
 CREATE TABLE [dbo].[inv_producto_existencia_bodega](
 	[peb_id]		INT				IDENTITY(1,1)	NOT NULL,
 	[bod_id]		INT				NOT NULL,
@@ -145,6 +151,7 @@ GO
 ------------------------------------------------------------
 -- Bodegas
 ------------------------------------------------------------
+IF OBJECT_ID(N'dbo.inv_bodega', N'U') IS NULL
 CREATE TABLE [dbo].[inv_bodega](
 	[bod_id]			INT				IDENTITY(1,1)	NOT NULL,
 	[bod_codigo]		VARCHAR(8)		NOT NULL,
@@ -164,6 +171,7 @@ GO
 ------------------------------------------------------------
 -- Proveedores
 ------------------------------------------------------------
+IF OBJECT_ID(N'dbo.inv_proveedor', N'U') IS NULL
 CREATE TABLE [dbo].[inv_proveedor](
 	[prv_id]				INT				IDENTITY(1,1)	NOT NULL,
 	[prv_codigo]			VARCHAR(16)		NOT NULL,
@@ -186,9 +194,11 @@ CREATE TABLE [dbo].[inv_proveedor](
 );
 GO
 -- NIT único solo cuando viene informado (permite varios proveedores sin NIT registrado).
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_inv_proveedor_nit' AND object_id = OBJECT_ID(N'dbo.inv_proveedor'))
 CREATE UNIQUE INDEX [UX_inv_proveedor_nit] ON [dbo].[inv_proveedor]([prv_nit]) WHERE [prv_nit] IS NOT NULL;
 GO
 
+IF OBJECT_ID(N'dbo.inv_proveedor_plan_pago', N'U') IS NULL
 CREATE TABLE [dbo].[inv_proveedor_plan_pago](
 	[ppg_id]				INT				IDENTITY(1,1)	NOT NULL,
 	[ppg_nro_pago]			INT				NOT NULL,
@@ -210,6 +220,7 @@ CREATE TABLE [dbo].[inv_proveedor_plan_pago](
 );
 GO
 
+IF OBJECT_ID(N'dbo.inv_producto_proveedor', N'U') IS NULL
 CREATE TABLE [dbo].[inv_producto_proveedor](
 	[ppp_id]			INT				IDENTITY(1,1)	NOT NULL,
 	[prv_id]			INT				NOT NULL,
@@ -228,6 +239,7 @@ GO
 ------------------------------------------------------------
 -- Documentos de inventario (compras / ventas)
 ------------------------------------------------------------
+IF OBJECT_ID(N'dbo.inv_documento_tipo', N'U') IS NULL
 CREATE TABLE [dbo].[inv_documento_tipo](
 	[tdo_id]			INT				IDENTITY(1,1)	NOT NULL,
 	[tdo_codigo]		VARCHAR(8)		NOT NULL,
@@ -247,6 +259,7 @@ CREATE TABLE [dbo].[inv_documento_tipo](
 );
 GO
 
+IF OBJECT_ID(N'dbo.inv_documento_enc', N'U') IS NULL
 CREATE TABLE [dbo].[inv_documento_enc](
 	[enc_id]						INT				IDENTITY(1,1)	NOT NULL,
 	[enc_fecha_grabado]				DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
@@ -297,11 +310,13 @@ GO
 -- primer NULL. Filtrando el índice por "IS NOT NULL" se preserva la
 -- unicidad real (dos facturas no pueden compartir número) sin limitar
 -- cuántos documentos pueden dejarlo en NULL.
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UQ_inv_documento_enc_numero_unico' AND object_id = OBJECT_ID(N'dbo.inv_documento_enc'))
 CREATE UNIQUE INDEX [UQ_inv_documento_enc_numero_unico]
 	ON [dbo].[inv_documento_enc] ([enc_numero_unico])
 	WHERE [enc_numero_unico] IS NOT NULL;
 GO
 
+IF OBJECT_ID(N'dbo.inv_documento_det', N'U') IS NULL
 CREATE TABLE [dbo].[inv_documento_det](
 	[det_id]				INT				IDENTITY(1,1)	NOT NULL,
 	[enc_id]				INT				NOT NULL,

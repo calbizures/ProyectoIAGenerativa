@@ -28,6 +28,7 @@ SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
 
+IF OBJECT_ID(N'dbo.cont_cuenta_contable', N'U') IS NULL
 CREATE TABLE [dbo].[cont_cuenta_contable](
 	[cta_id]				INT				IDENTITY(1,1)	NOT NULL,
 	[cta_codigo]			VARCHAR(20)		NOT NULL,
@@ -50,6 +51,7 @@ CREATE TABLE [dbo].[cont_cuenta_contable](
 );
 GO
 -- Autorreferencia para armar el árbol de cuentas (grupo -> subgrupo -> cuenta).
+IF OBJECT_ID(N'dbo.FK_cont_cuenta_contable_padre', N'F') IS NULL
 ALTER TABLE [dbo].[cont_cuenta_contable]
 	ADD CONSTRAINT [FK_cont_cuenta_contable_padre] FOREIGN KEY ([cta_id_padre])
 	REFERENCES [dbo].[cont_cuenta_contable] ([cta_id]);
@@ -74,6 +76,7 @@ CREATE TABLE [dbo].[cont_cuenta_parametro](
 );
 GO
 
+IF OBJECT_ID(N'dbo.cont_periodo_contable', N'U') IS NULL
 CREATE TABLE [dbo].[cont_periodo_contable](
 	[pdo_id]		INT				IDENTITY(1,1)	NOT NULL,
 	[pdo_anio]		INT				NOT NULL,
@@ -90,6 +93,7 @@ CREATE TABLE [dbo].[cont_periodo_contable](
 );
 GO
 
+IF OBJECT_ID(N'dbo.cont_asiento_enc', N'U') IS NULL
 CREATE TABLE [dbo].[cont_asiento_enc](
 	[asi_id]				INT				IDENTITY(1,1)	NOT NULL,
 	[asi_fecha]				DATE			NOT NULL DEFAULT (CAST(GETDATE() AS DATE)),
@@ -110,6 +114,7 @@ CREATE TABLE [dbo].[cont_asiento_enc](
 );
 GO
 
+IF OBJECT_ID(N'dbo.cont_asiento_det', N'U') IS NULL
 CREATE TABLE [dbo].[cont_asiento_det](
 	[asd_id]			INT				IDENTITY(1,1)	NOT NULL,
 	[asi_id]			INT				NOT NULL,
@@ -128,6 +133,7 @@ CREATE TABLE [dbo].[cont_asiento_det](
 	)
 );
 GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_cont_asiento_det_asi_id' AND object_id = OBJECT_ID(N'dbo.cont_asiento_det'))
 CREATE INDEX [IX_cont_asiento_det_asi_id] ON [dbo].[cont_asiento_det]([asi_id]);
 GO
 
@@ -135,7 +141,7 @@ SET ANSI_NULLS ON;
 GO
 SET QUOTED_IDENTIFIER ON;
 GO
-CREATE TRIGGER [dbo].[trg_cont_asiento_det_valida_balance]
+CREATE OR ALTER TRIGGER [dbo].[trg_cont_asiento_det_valida_balance]
 ON [dbo].[cont_asiento_det]
 AFTER INSERT, UPDATE, DELETE
 AS

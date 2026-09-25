@@ -31,6 +31,7 @@ GO
 ------------------------------------------------------------
 -- Bancos
 ------------------------------------------------------------
+IF OBJECT_ID(N'dbo.bco_cuenta_bancaria', N'U') IS NULL
 CREATE TABLE [dbo].[bco_cuenta_bancaria](
 	[bcb_id]				INT				IDENTITY(1,1)	NOT NULL,
 	[bcb_numero_cuenta]		VARCHAR(16)		NOT NULL,
@@ -47,6 +48,7 @@ CREATE TABLE [dbo].[bco_cuenta_bancaria](
 );
 GO
 
+IF OBJECT_ID(N'dbo.bco_cuenta_bancaria_chequera', N'U') IS NULL
 CREATE TABLE [dbo].[bco_cuenta_bancaria_chequera](
 	[cbc_id]							INT				IDENTITY(1,1)	NOT NULL,
 	[cbc_cheque_del]					INT				NOT NULL,
@@ -64,6 +66,7 @@ CREATE TABLE [dbo].[bco_cuenta_bancaria_chequera](
 );
 GO
 
+IF OBJECT_ID(N'dbo.bco_motivo_pago', N'U') IS NULL
 CREATE TABLE [dbo].[bco_motivo_pago](
 	[bmp_id]			INT				IDENTITY(1,1)	NOT NULL,
 	[bmp_descripcion]	VARCHAR(64)		NOT NULL,
@@ -78,6 +81,7 @@ CREATE TABLE [dbo].[bco_motivo_pago](
 );
 GO
 
+IF OBJECT_ID(N'dbo.bco_cheque_emitido_enc', N'U') IS NULL
 CREATE TABLE [dbo].[bco_cheque_emitido_enc](
 	[bce_id]				INT				IDENTITY(1,1)	NOT NULL,
 	[cbc_id]				INT				NOT NULL,
@@ -104,6 +108,7 @@ CREATE TABLE [dbo].[bco_cheque_emitido_enc](
 );
 GO
 
+IF OBJECT_ID(N'dbo.bco_cheque_emitido_det', N'U') IS NULL
 CREATE TABLE [dbo].[bco_cheque_emitido_det](
 	[ced_id]					INT				IDENTITY(1,1)	NOT NULL,
 	[bce_id]					INT				NOT NULL,
@@ -126,6 +131,7 @@ GO
 ------------------------------------------------------------
 -- Punto de venta: cajas
 ------------------------------------------------------------
+IF OBJECT_ID(N'dbo.pos_caja_receptora', N'U') IS NULL
 CREATE TABLE [dbo].[pos_caja_receptora](
 	[pcr_id]			INT				IDENTITY(1,1)	NOT NULL,
 	[pcr_descripcion]	VARCHAR(64)		NOT NULL,
@@ -141,6 +147,7 @@ CREATE TABLE [dbo].[pos_caja_receptora](
 );
 GO
 
+IF OBJECT_ID(N'dbo.pos_caja_apertura', N'U') IS NULL
 CREATE TABLE [dbo].[pos_caja_apertura](
 	[pca_id]					INT				IDENTITY(1,1)	NOT NULL,
 	[pca_fecha_apertura]		DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
@@ -164,6 +171,7 @@ CREATE TABLE [dbo].[pos_caja_apertura](
 );
 GO
 
+IF OBJECT_ID(N'dbo.pos_caja_desglose_efectivo', N'U') IS NULL
 CREATE TABLE [dbo].[pos_caja_desglose_efectivo](
 	[def_id]				INT				IDENTITY(1,1)	NOT NULL,
 	[def_tipo_denominacion]	CHAR(1)			NOT NULL,		-- B=Billete, M=Moneda
@@ -181,6 +189,7 @@ CREATE TABLE [dbo].[pos_caja_desglose_efectivo](
 );
 GO
 
+IF OBJECT_ID(N'dbo.pos_caja_deposito', N'U') IS NULL
 CREATE TABLE [dbo].[pos_caja_deposito](
 	[pcd_id]				INT				IDENTITY(1,1)	NOT NULL,
 	[pcd_fecha_deposito]	DATE			NOT NULL,
@@ -203,6 +212,7 @@ GO
 -- Corte de caja: conteo físico por forma de pago (no efectivo). El
 -- efectivo se reconcilia con pos_caja_desglose_efectivo (arriba).
 ------------------------------------------------------------
+IF OBJECT_ID(N'dbo.pos_caja_corte_forma', N'U') IS NULL
 CREATE TABLE [dbo].[pos_caja_corte_forma](
 	[pcf_id]			INT				IDENTITY(1,1)	NOT NULL,
 	[pca_id]			INT				NOT NULL,
@@ -221,6 +231,7 @@ GO
 ------------------------------------------------------------
 -- Clientes
 ------------------------------------------------------------
+IF OBJECT_ID(N'dbo.pos_cliente', N'U') IS NULL
 CREATE TABLE [dbo].[pos_cliente](
 	[cli_id]							INT				IDENTITY(1,1)	NOT NULL,
 	[cli_codigo]						VARCHAR(32)		NOT NULL,
@@ -265,9 +276,11 @@ CREATE TABLE [dbo].[pos_cliente](
 	CONSTRAINT [CK_pos_cliente_estado] CHECK ([cli_estado] IN ('A','I'))
 );
 GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_pos_cliente_nit' AND object_id = OBJECT_ID(N'dbo.pos_cliente'))
 CREATE UNIQUE INDEX [UX_pos_cliente_nit] ON [dbo].[pos_cliente]([cli_nit]) WHERE [cli_nit] IS NOT NULL;
 GO
 
+IF OBJECT_ID(N'dbo.pos_cliente_tipo_pago', N'U') IS NULL
 CREATE TABLE [dbo].[pos_cliente_tipo_pago](
 	[tpa_id]			INT				IDENTITY(1,1)	NOT NULL,
 	[tpa_codigo]		VARCHAR(16)		NOT NULL,
@@ -283,6 +296,7 @@ CREATE TABLE [dbo].[pos_cliente_tipo_pago](
 );
 GO
 
+IF OBJECT_ID(N'dbo.pos_cliente_plan_pagos', N'U') IS NULL
 CREATE TABLE [dbo].[pos_cliente_plan_pagos](
 	[cpp_id]				INT				IDENTITY(1,1)	NOT NULL,
 	[cpp_nro_cuota]			INT				NOT NULL,
@@ -309,6 +323,7 @@ GO
 ------------------------------------------------------------
 -- Formas y pagos
 ------------------------------------------------------------
+IF OBJECT_ID(N'dbo.pos_pago_forma_tipo', N'U') IS NULL
 CREATE TABLE [dbo].[pos_pago_forma_tipo](
 	[pft_id]			INT				IDENTITY(1,1)	NOT NULL,
 	[pft_descripcion]	VARCHAR(50)		NOT NULL,
@@ -323,6 +338,7 @@ CREATE TABLE [dbo].[pos_pago_forma_tipo](
 );
 GO
 
+IF OBJECT_ID(N'dbo.pos_pago_enc', N'U') IS NULL
 CREATE TABLE [dbo].[pos_pago_enc](
 	[ppe_id]			INT				IDENTITY(1,1)	NOT NULL,
 	[ppe_fecha_pago]	DATETIME2(0)	NOT NULL DEFAULT (SYSDATETIME()),
@@ -339,6 +355,7 @@ CREATE TABLE [dbo].[pos_pago_enc](
 );
 GO
 
+IF OBJECT_ID(N'dbo.pos_pago_forma', N'U') IS NULL
 CREATE TABLE [dbo].[pos_pago_forma](
 	[ppf_id]							INT				IDENTITY(1,1)	NOT NULL,
 	[gef_id]							INT				NULL,
@@ -356,6 +373,7 @@ CREATE TABLE [dbo].[pos_pago_forma](
 );
 GO
 
+IF OBJECT_ID(N'dbo.pos_pago_det', N'U') IS NULL
 CREATE TABLE [dbo].[pos_pago_det](
 	[ppd_id]				INT				IDENTITY(1,1)	NOT NULL,
 	[ppe_id]				INT				NOT NULL,
@@ -375,6 +393,7 @@ GO
 ------------------------------------------------------------
 -- Vendedores
 ------------------------------------------------------------
+IF OBJECT_ID(N'dbo.pos_vendedor', N'U') IS NULL
 CREATE TABLE [dbo].[pos_vendedor](
 	[pve_id]			INT				IDENTITY(1,1)	NOT NULL,
 	[pve_codigo]		VARCHAR(16)		NOT NULL,

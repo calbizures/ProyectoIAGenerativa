@@ -45,6 +45,13 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 28_nomenclatura_contable.sql                  -- nomenclatura contable definitiva y su mantenimiento
 ```
 
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `28` en
+orden funciona igual sobre una base nueva que sobre una existente: los
+scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
+los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
+borra y regenera todos los datos de prueba; si la base tiene datos reales,
+no lo incluyas.
+
 `25` a `28` se corren siempre (también en una instalación nueva) y se
 pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`

@@ -18,9 +18,7 @@ SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
 
-IF TYPE_ID(N'dbo.compra_det_type') IS NOT NULL
-	DROP TYPE [dbo].[compra_det_type];
-GO
+IF TYPE_ID(N'dbo.compra_det_type') IS NULL
 CREATE TYPE [dbo].[compra_det_type] AS TABLE
 (
 	[det_item]				INT				NOT NULL,
@@ -36,9 +34,7 @@ CREATE TYPE [dbo].[compra_det_type] AS TABLE
 );
 GO
 
-IF TYPE_ID(N'dbo.factura_det_type') IS NOT NULL
-	DROP TYPE [dbo].[factura_det_type];
-GO
+IF TYPE_ID(N'dbo.factura_det_type') IS NULL
 CREATE TYPE [dbo].[factura_det_type] AS TABLE
 (
 	[det_item]				INT				NOT NULL,
@@ -56,9 +52,7 @@ CREATE TYPE [dbo].[factura_det_type] AS TABLE
 );
 GO
 
-IF TYPE_ID(N'dbo.cont_asiento_det_type') IS NOT NULL
-	DROP TYPE [dbo].[cont_asiento_det_type];
-GO
+IF TYPE_ID(N'dbo.cont_asiento_det_type') IS NULL
 CREATE TYPE [dbo].[cont_asiento_det_type] AS TABLE
 (
 	[cta_id]			INT				NOT NULL,
@@ -68,9 +62,7 @@ CREATE TYPE [dbo].[cont_asiento_det_type] AS TABLE
 );
 GO
 
-IF TYPE_ID(N'dbo.caja_denominacion_type') IS NOT NULL
-	DROP TYPE [dbo].[caja_denominacion_type];
-GO
+IF TYPE_ID(N'dbo.caja_denominacion_type') IS NULL
 CREATE TYPE [dbo].[caja_denominacion_type] AS TABLE
 (
 	[def_tipo_denominacion]	CHAR(1)			NOT NULL,	-- B=Billete, M=Moneda
@@ -79,9 +71,7 @@ CREATE TYPE [dbo].[caja_denominacion_type] AS TABLE
 );
 GO
 
-IF TYPE_ID(N'dbo.caja_corte_forma_type') IS NOT NULL
-	DROP TYPE [dbo].[caja_corte_forma_type];
-GO
+IF TYPE_ID(N'dbo.caja_corte_forma_type') IS NULL
 CREATE TYPE [dbo].[caja_corte_forma_type] AS TABLE
 (
 	[pft_id]			INT				NOT NULL,
@@ -92,9 +82,7 @@ GO
 -- Forma(s) de pago del monto pagado al momento de facturar (de contado, o
 -- el enganche si es a crédito) y del cobro de una cuota. Un mismo pago
 -- puede dividirse en varias formas (p.ej. parte efectivo, parte cheque).
-IF TYPE_ID(N'dbo.pago_forma_type') IS NOT NULL
-	DROP TYPE [dbo].[pago_forma_type];
-GO
+IF TYPE_ID(N'dbo.pago_forma_type') IS NULL
 CREATE TYPE [dbo].[pago_forma_type] AS TABLE
 (
 	[pft_id]							INT				NOT NULL,
