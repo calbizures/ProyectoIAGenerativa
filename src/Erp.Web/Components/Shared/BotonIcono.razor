@@ -4,8 +4,7 @@
    para mostrar además un texto junto al ícono. *@
 <button type="@TipoBoton"
         class="boton-icono boton-icono-@Variante @(string.IsNullOrEmpty(Etiqueta) ? "" : "boton-icono-con-etiqueta")"
-        title="@Tooltip"
-        aria-label="@Tooltip"
+        aria-label="@(string.IsNullOrEmpty(Etiqueta) ? Tooltip : null)"
         disabled="@Deshabilitado"
         @onclick="OnClick">
     <Icono Nombre="@Icono" Tamano="@TamanoIcono" />
@@ -13,7 +12,10 @@
     {
         <span class="boton-icono-etiqueta">@Etiqueta</span>
     }
-    <span class="boton-icono-tip">@Tooltip</span>
+    @if (string.IsNullOrEmpty(Etiqueta))
+    {
+        <span class="boton-icono-tip" aria-hidden="true">@Tooltip</span>
+    }
 </button>
 
 @code {

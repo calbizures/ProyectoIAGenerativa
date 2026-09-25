@@ -11,11 +11,14 @@
 
 <PageTitle>Usuarios</PageTitle>
 
-<h1>Usuarios</h1>
+<div class="pagina-encabezado">
+    <h1>Usuarios</h1>
+    <p>Cuentas de acceso, roles asignados y sucursales permitidas.</p>
+</div>
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
 }
 
 <BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
@@ -23,8 +26,8 @@
 @if (pestanaActiva == "lista")
 {
     <div class="barra-filtros">
-        <input placeholder="Buscar por usuario" @bind="filtroUsuario" />
-        <select @bind="filtroEstado">
+        <input placeholder="Buscar por usuario" aria-label="Buscar por usuario" @bind="filtroUsuario" />
+        <select @bind="filtroEstado" aria-label="Estado">
             <option value="A">Activos</option>
             <option value="I">Inactivos</option>
             <option value="">Todos</option>
@@ -67,7 +70,7 @@
                     <td class="col-codigo">@u.UsuCodigo</td>
                     <td>@u.UsuUsuario</td>
                     <td>@u.UsuEmail</td>
-                    <td class="col-estado">@(u.UsuEstado == "A" ? "Activo" : "Inactivo")</td>
+                    <td class="col-estado"><span class="estado-badge @(u.UsuEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(u.UsuEstado == "A" ? "Activo" : "Inactivo")</span></td>
                     <td class="col-estado">@(u.UsuBloqueado ? "Sí" : "No")</td>
                     <td class="col-acciones">
                         <div class="acciones-fila">

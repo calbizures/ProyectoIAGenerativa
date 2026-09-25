@@ -18,7 +18,7 @@
 -- CREATE OR ALTER sin renombrarlos, tal como con los demás procedimientos
 -- ya desplegados.
 --
--- Seguro de correr una sola vez contra una base ya creada con 00-22.
+-- Se puede volver a correr sin error sobre una base ya creada con 00-22.
 ------------------------------------------------------------------------------
 
 USE [erp_db];
@@ -27,6 +27,13 @@ GO
 ------------------------------------------------------------
 -- Tipos de tabla nuevos (conteo físico de corte de caja)
 ------------------------------------------------------------
+-- Si el script ya se corrió antes, hay que quitar primero los
+-- procedimientos que usan estos tipos (SQL Server no permite DROP TYPE
+-- mientras siga en uso); se vuelven a crear más abajo.
+DROP PROCEDURE IF EXISTS [dbo].[paCajaDesgloseEfectivoGuardar];
+DROP PROCEDURE IF EXISTS [dbo].[paCajaCorteFormaGuardar];
+GO
+
 IF TYPE_ID(N'dbo.caja_denominacion_type') IS NOT NULL
 	DROP TYPE [dbo].[caja_denominacion_type];
 GO

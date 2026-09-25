@@ -387,6 +387,28 @@ Decisiones de diseño:
     `22`-`24` con la versión anterior, vuelve a correr `24_formas_pago_factura_cobro.sql`
     (o `11_procedimientos_procesos.sql` si empezaste desde cero) para
     quedar con los procedimientos corregidos.
+20. **Corrección: en una instalación nueva, la primera fila de cada tabla
+    recibía el id 0.** `12_datos_sinteticos.sql` reinicia los contadores
+    con `DBCC CHECKIDENT (..., RESEED, 0)`; en una tabla que nunca tuvo
+    filas, SQL Server entrega ese mismo valor (0) a la siguiente fila en
+    lugar de 0 + 1. Así quedaban con id 0 el usuario `admin`, la sucursal
+    "Casa matriz", la primera bodega, la moneda, etc. (43 tablas), y la
+    aplicación usa 0 como "Seleccione..." en los combos: por ejemplo, nadie
+    podía iniciar sesión en "Casa matriz". Ahora solo se reinician las
+    tablas que ya tuvieron filas (`last_value IS NOT NULL`), y en ambos
+    casos (instalación nueva o re-ejecución) los ids empiezan en 1.
+    **Si tu base se creó desde cero con la versión anterior**, revisa con
+    `SELECT suc_id, suc_descripcion FROM gen_sucursal;`: si ves un
+    `suc_id = 0`, vuelve a correr `12_datos_sinteticos.sql` y después
+    `22`, `23` y `24` (el 12 borra y regenera todos los datos de ejemplo).
+21. **Corrección: `22` y `23` no se podían volver a correr.** `22` fallaba
+    incluso en una instalación nueva porque `07` ya había creado el índice
+    `IX_pos_caja_receptora_suc_id`, y `23` fallaba al re-ejecutarse porque
+    intentaba borrar sus tipos de tabla mientras los procedimientos los
+    seguían usando. Ahora ambos verifican lo que ya existe antes de
+    crearlo. Se comprobó la instalación completa `00`-`24` contra SQL
+    Server 2022 sin errores, y la re-ejecución de `12` + `22`-`24` sobre
+    una base ya poblada.
 
 ## Módulos nuevos
 

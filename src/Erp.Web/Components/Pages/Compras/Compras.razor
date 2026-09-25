@@ -20,13 +20,13 @@
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
 }
 
 <div class="barra-herramientas">
-    <input type="date" @bind="filtroFechaDesde" title="Desde" />
-    <input type="date" @bind="filtroFechaHasta" title="Hasta" />
-    <select @bind="filtroEstado">
+    <label class="filtro-campo">Desde <input type="date" @bind="filtroFechaDesde" /></label>
+    <label class="filtro-campo">Hasta <input type="date" @bind="filtroFechaHasta" /></label>
+    <select @bind="filtroEstado" aria-label="Estado">
         <option value="">Todas</option>
         <option value="G">Grabadas</option>
         <option value="A">Anuladas</option>
@@ -94,7 +94,7 @@
                 {
                     <div class="doc-buscador">
                         <div class="doc-buscador-fila">
-                            <input placeholder="Buscar proveedor por código, nombre o NIT" @bind="textoBusquedaProveedor" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProveedoresAsync(); })" />
+                            <input placeholder="Buscar proveedor por código, nombre o NIT" aria-label="Buscar proveedor por código, nombre o NIT" @bind="textoBusquedaProveedor" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProveedoresAsync(); })" />
                             <BotonIcono Icono="search" Tooltip="Buscar proveedor" OnClick="BuscarProveedoresAsync" />
                             <BotonIcono Icono="plus" Tooltip="Proveedor nuevo" OnClick="() => mostrarNuevoProveedor = !mostrarNuevoProveedor" />
                         </div>
@@ -149,7 +149,7 @@
 
                 <div class="doc-buscador">
                     <div class="doc-buscador-fila">
-                        <input placeholder="Buscar producto por código o descripción" @bind="textoBusquedaProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
+                        <input placeholder="Buscar producto por código o descripción" aria-label="Buscar producto por código o descripción" @bind="textoBusquedaProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
                         <BotonIcono Icono="search" Tooltip="Buscar producto" OnClick="BuscarProductosAsync" />
                     </div>
                     @if (productosEncontrados.Count > 0)
@@ -271,7 +271,7 @@
             {
                 <tr class="@(encabezadoSeleccionado?.EncId == c.EncId ? "fila-seleccionada" : "")">
                     <td class="col-fecha">@c.EncFechaDocto.ToString("dd/MM/yyyy")</td>
-                    <td class="col-serie">@c.EncSerieDocto-@c.EncNumeroDocto</td>
+                    <td class="col-serie">@(string.IsNullOrWhiteSpace(c.EncSerieDocto) ? $"{c.EncNumeroDocto}" : $"{c.EncSerieDocto}-{c.EncNumeroDocto}")</td>
                     <td class="col-tipo">@c.TdoCodigo</td>
                     <td>@c.PrvNombreComercial</td>
                     <td class="num col-monto">@c.EncMontoTotal.ToString("N2")</td>
@@ -305,7 +305,7 @@
     <div class="doc-card">
         <div class="doc-card-header">
             <div>
-                <h2>@encabezadoSeleccionado.EncSerieDocto-@encabezadoSeleccionado.EncNumeroDocto</h2>
+                <h2>@(string.IsNullOrWhiteSpace(encabezadoSeleccionado.EncSerieDocto) ? $"{encabezadoSeleccionado.EncNumeroDocto}" : $"{encabezadoSeleccionado.EncSerieDocto}-{encabezadoSeleccionado.EncNumeroDocto}")</h2>
                 <p>@encabezadoSeleccionado.PrvEncNombresProveedor · NIT: @(encabezadoSeleccionado.PrvNit ?? "—")</p>
             </div>
             @if (encabezadoSeleccionado.EncEstado == "G")

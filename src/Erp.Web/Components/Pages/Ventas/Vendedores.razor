@@ -16,7 +16,7 @@
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
 }
 
 <BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
@@ -24,7 +24,7 @@
 @if (pestanaActiva == "lista")
 {
     <div class="barra-herramientas">
-        <select @bind="filtroEstado">
+        <select @bind="filtroEstado" aria-label="Estado">
             <option value="A">Activos</option>
             <option value="I">Inactivos</option>
             <option value="">Todos</option>
@@ -63,7 +63,7 @@
                     <td>@v.PveNombres</td>
                     <td>@v.PveApellidos</td>
                     <td class="num col-estado">@v.PvePorcComision.ToString("N2")</td>
-                    <td class="col-estado">@(v.PveEstado == "A" ? "Activo" : "Inactivo")</td>
+                    <td class="col-estado"><span class="estado-badge @(v.PveEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(v.PveEstado == "A" ? "Activo" : "Inactivo")</span></td>
                     <td class="col-acciones">
                         <div class="acciones-fila">
                             <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(v)" />

@@ -23,13 +23,13 @@
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
 }
 
 <div class="barra-herramientas">
-    <input type="date" @bind="filtroFechaDesde" title="Desde" />
-    <input type="date" @bind="filtroFechaHasta" title="Hasta" />
-    <select @bind="filtroEstado">
+    <label class="filtro-campo">Desde <input type="date" @bind="filtroFechaDesde" /></label>
+    <label class="filtro-campo">Hasta <input type="date" @bind="filtroFechaHasta" /></label>
+    <select @bind="filtroEstado" aria-label="Estado">
         <option value="">Todas</option>
         <option value="G">Grabadas</option>
         <option value="A">Anuladas</option>
@@ -102,7 +102,7 @@
                 {
                     <div class="doc-buscador">
                         <div class="doc-buscador-fila">
-                            <input placeholder="Buscar cliente por código, nombre o NIT" @bind="textoBusquedaCliente" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarClientesAsync(); })" />
+                            <input placeholder="Buscar cliente por código, nombre o NIT" aria-label="Buscar cliente por código, nombre o NIT" @bind="textoBusquedaCliente" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarClientesAsync(); })" />
                             <BotonIcono Icono="search" Tooltip="Buscar cliente" OnClick="BuscarClientesAsync" />
                             <BotonIcono Icono="plus" Tooltip="Cliente nuevo" OnClick="() => mostrarNuevoCliente = !mostrarNuevoCliente" />
                         </div>
@@ -178,7 +178,7 @@
                                     {
                                         <tr>
                                             <td>@h.EncFechaDocto.ToString("dd/MM/yyyy")</td>
-                                            <td>@h.EncSerieDocto-@h.EncNumeroDocto</td>
+                                            <td>@(string.IsNullOrWhiteSpace(h.EncSerieDocto) ? $"{h.EncNumeroDocto}" : $"{h.EncSerieDocto}-{h.EncNumeroDocto}")</td>
                                             <td class="num">@MonedaSimbolo @h.EncMontoTotal.ToString("N2")</td>
                                             <td>@(h.EncEstado == "G" ? "Grabada" : "Anulada")</td>
                                             <td><BotonIcono Icono="eye" Tooltip="Ver qué compró" OnClick="() => AlternarDetalleHistorialAsync(h)" /></td>
@@ -234,7 +234,7 @@
 
                 <div class="doc-buscador">
                     <div class="doc-buscador-fila">
-                        <input placeholder="Buscar producto por código o descripción" @bind="textoBusquedaProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
+                        <input placeholder="Buscar producto por código o descripción" aria-label="Buscar producto por código o descripción" @bind="textoBusquedaProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
                         <BotonIcono Icono="search" Tooltip="Buscar producto" OnClick="BuscarProductosAsync" />
                     </div>
                     @if (productosEncontrados.Count > 0)
@@ -376,11 +376,11 @@
                                     <td>
                                         @if (EsCheque(formaPagoNueva.PftId))
                                         {
-                                            <input placeholder="No. de cheque" @bind="formaPagoNueva.NumeroCheque" />
+                                            <input placeholder="No. de cheque" aria-label="No. de cheque" @bind="formaPagoNueva.NumeroCheque" />
                                         }
                                         else if (EsTarjeta(formaPagoNueva.PftId))
                                         {
-                                            <input placeholder="Últimos 4 dígitos" maxlength="4" @bind="formaPagoNueva.NumeroTarjetaUlt4" />
+                                            <input placeholder="Últimos 4 dígitos" aria-label="Últimos 4 dígitos" maxlength="4" @bind="formaPagoNueva.NumeroTarjetaUlt4" />
                                         }
                                         else if (RequiereEntidadFinanciera(formaPagoNueva.PftId))
                                         {
@@ -431,7 +431,7 @@
                 {
                     <tr class="@(encabezadoSeleccionado?.EncId == f.EncId ? "fila-seleccionada" : "")">
                         <td class="col-fecha">@f.EncFechaDocto.ToString("dd/MM/yyyy")</td>
-                        <td class="col-serie">@f.EncSerieDocto-@f.EncNumeroDocto</td>
+                        <td class="col-serie">@(string.IsNullOrWhiteSpace(f.EncSerieDocto) ? $"{f.EncNumeroDocto}" : $"{f.EncSerieDocto}-{f.EncNumeroDocto}")</td>
                         <td class="col-tipo">@f.TdoCodigo</td>
                         <td>@f.NombreCliente</td>
                         <td class="num col-monto">@f.EncMontoTotal.ToString("N2")</td>
@@ -470,7 +470,7 @@
     <div class="doc-card">
         <div class="doc-card-header">
             <div>
-                <h2>@encabezadoSeleccionado.EncSerieDocto-@encabezadoSeleccionado.EncNumeroUnico</h2>
+                <h2>@(string.IsNullOrWhiteSpace(encabezadoSeleccionado.EncSerieDocto) ? $"{encabezadoSeleccionado.EncNumeroUnico}" : $"{encabezadoSeleccionado.EncSerieDocto}-{encabezadoSeleccionado.EncNumeroUnico}")</h2>
                 <p>@encabezadoSeleccionado.EncNombresCliente @encabezadoSeleccionado.EncApellidosCliente · NIT: @(encabezadoSeleccionado.CliNit ?? "C/F")</p>
             </div>
             @if (encabezadoSeleccionado.EncEstado == "G")

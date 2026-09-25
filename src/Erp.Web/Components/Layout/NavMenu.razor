@@ -1,10 +1,20 @@
-<aside class="sidebar">
+@implements IDisposable
+@inject NavigationManager NavigationManager
+
+<aside class="sidebar @(menuAbierto ? "sidebar-abierta" : "")">
     <div class="sidebar-marca">
-        <img src="images/logo-si-icono.svg" alt="SI" class="sidebar-logo" />
+        <img src="images/logo-si-icono.svg" alt="" class="sidebar-logo" />
         <span class="sidebar-marca-texto">ERP · Servicios Informáticos Integrados</span>
+        <button type="button" class="sidebar-menu-boton"
+                aria-label="@(menuAbierto ? "Cerrar menú" : "Abrir menú")"
+                aria-expanded="@(menuAbierto ? "true" : "false")"
+                aria-controls="menu-principal"
+                @onclick="AlternarMenu">
+            <Icono Nombre="@(menuAbierto ? "x" : "menu")" Tamano="22" />
+        </button>
     </div>
 
-    <nav class="sidebar-nav">
+    <nav id="menu-principal" class="sidebar-nav" aria-label="Menú principal">
         <NavLink href="" Match="NavLinkMatch.All" class="sidebar-link">
             <span class="sidebar-icono"><Icono Nombre="home" Tamano="17" /></span>
             <span class="sidebar-titulo">Inicio</span>
@@ -12,7 +22,7 @@
 
         <AuthorizeView Policy="Permiso:SEGURIDAD_USUARIO_ADMIN">
             <Authorized>
-                <SidebarNodo Titulo="Seguridad" IconoNombre="lock" ExpandidoInicial="true">
+                <SidebarNodo Titulo="Seguridad" IconoNombre="lock" Rutas="@(new[] { "usuarios", "roles", "permisos" })">
                     <NavLink href="usuarios" class="sidebar-hijo-link">Usuarios</NavLink>
                     <NavLink href="roles" class="sidebar-hijo-link">Roles</NavLink>
                     <NavLink href="permisos" class="sidebar-hijo-link">Permisos</NavLink>
@@ -22,7 +32,7 @@
 
         <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR">
             <Authorized>
-                <SidebarNodo Titulo="Inventario" IconoNombre="package">
+                <SidebarNodo Titulo="Inventario" IconoNombre="package" Rutas="@(new[] { "productos", "caracteristicas", "tipos-caracteristica", "existencias", "precios" })">
                     <NavLink href="productos" class="sidebar-hijo-link">Productos</NavLink>
                     <NavLink href="caracteristicas" class="sidebar-hijo-link">Características</NavLink>
                     <NavLink href="tipos-caracteristica" class="sidebar-hijo-link">Tipos de característica</NavLink>
@@ -33,7 +43,7 @@
         </AuthorizeView>
         <AuthorizeView Policy="Permiso:VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR">
             <Authorized>
-                <SidebarNodo Titulo="Ventas / POS" IconoNombre="receipt">
+                <SidebarNodo Titulo="Ventas / POS" IconoNombre="receipt" Rutas="@(new[] { "facturas", "clientes", "vendedores" })">
                     <NavLink href="facturas" class="sidebar-hijo-link">Facturas</NavLink>
                     <NavLink href="clientes" class="sidebar-hijo-link">Clientes</NavLink>
                     <NavLink href="vendedores" class="sidebar-hijo-link">Vendedores</NavLink>
@@ -42,7 +52,7 @@
         </AuthorizeView>
         <AuthorizeView Policy="Permiso:COMPRAS_DOCUMENTO_CREAR">
             <Authorized>
-                <SidebarNodo Titulo="Compras" IconoNombre="shopping-cart">
+                <SidebarNodo Titulo="Compras" IconoNombre="shopping-cart" Rutas="@(new[] { "compras", "proveedores" })">
                     <NavLink href="compras" class="sidebar-hijo-link">Compras</NavLink>
                     <NavLink href="proveedores" class="sidebar-hijo-link">Proveedores</NavLink>
                 </SidebarNodo>
@@ -50,7 +60,7 @@
         </AuthorizeView>
         <AuthorizeView Policy="Permiso:BANCOS_CAJA_ADMIN">
             <Authorized>
-                <SidebarNodo Titulo="Bancos" IconoNombre="landmark">
+                <SidebarNodo Titulo="Bancos" IconoNombre="landmark" Rutas="@(new[] { "caja" })">
                     <NavLink href="caja" class="sidebar-hijo-link">Caja</NavLink>
                 </SidebarNodo>
             </Authorized>
@@ -69,3 +79,21 @@
         </Authorized>
     </AuthorizeView>
 </aside>
+
+@code {
+    private bool menuAbierto;
+
+    protected override void OnInitialized() => NavigationManager.LocationChanged += AlCambiarUbicacion;
+
+    private void AlternarMenu() => menuAbierto = !menuAbierto;
+
+    // En móvil el menú se cierra al elegir una pantalla, para mostrar el contenido.
+    private void AlCambiarUbicacion(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        if (!menuAbierto) return;
+        menuAbierto = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose() => NavigationManager.LocationChanged -= AlCambiarUbicacion;
+}

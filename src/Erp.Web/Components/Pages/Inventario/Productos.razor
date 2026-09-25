@@ -12,11 +12,14 @@
 
 <PageTitle>Productos</PageTitle>
 
-<h1>Productos</h1>
+<div class="pagina-encabezado">
+    <h1>Productos</h1>
+    <p>Catálogo de productos y servicios, con sus características, existencias y precios.</p>
+</div>
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
 }
 
 <BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
@@ -24,9 +27,9 @@
 @if (pestanaActiva == "lista")
 {
     <div class="barra-filtros">
-        <input placeholder="Buscar por código" @bind="filtroCodigo" />
-        <input placeholder="Buscar por descripción" @bind="filtroDescripcion" />
-        <select @bind="filtroEstado">
+        <input placeholder="Buscar por código" aria-label="Buscar por código" @bind="filtroCodigo" />
+        <input placeholder="Buscar por descripción" aria-label="Buscar por descripción" @bind="filtroDescripcion" />
+        <select @bind="filtroEstado" aria-label="Estado">
             <option value="A">Activos</option>
             <option value="I">Inactivos</option>
             <option value="">Todos</option>
@@ -94,8 +97,8 @@
                     <td>@p.ProDescripcion</td>
                     <td class="col-telefono">@p.PrtDescripcion</td>
                     <td class="num col-estado">@(p.ProManejaExistencia ? p.ProTotalCantidad.ToString("N0") : "—")</td>
-                    <td class="num col-monto">@p.ProCostoUnitario.ToString("N5")</td>
-                    <td class="col-estado">@(p.ProEstado == "A" ? "Activo" : "Inactivo")</td>
+                    <td class="num col-monto">@p.ProCostoUnitario.ToString("N2")</td>
+                    <td class="col-estado"><span class="estado-badge @(p.ProEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(p.ProEstado == "A" ? "Activo" : "Inactivo")</span></td>
                     <td class="col-acciones">
                         <div class="acciones-fila">
                             <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(p)" />

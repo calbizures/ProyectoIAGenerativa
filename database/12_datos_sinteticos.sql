@@ -47,11 +47,14 @@ FROM sys.tables t
 WHERE SCHEMA_NAME(t.schema_id) = N'dbo';
 EXEC sp_executesql @sql;
 
+-- Solo se reinician las tablas que ya tuvieron filas: en una tabla recién
+-- creada (last_value NULL), RESEED 0 hace que la primera fila reciba el id 0
+-- en lugar de 1, y la aplicación usa 0 como "Seleccione..." en los combos.
 SET @sql = N'';
 SELECT @sql = @sql + N'DBCC CHECKIDENT (''dbo.' + t.name + N''', RESEED, 0);' + CHAR(10)
 FROM sys.tables t
 WHERE SCHEMA_NAME(t.schema_id) = N'dbo'
-  AND EXISTS (SELECT 1 FROM sys.identity_columns ic WHERE ic.object_id = t.object_id);
+  AND EXISTS (SELECT 1 FROM sys.identity_columns ic WHERE ic.object_id = t.object_id AND ic.last_value IS NOT NULL);
 EXEC sp_executesql @sql;
 
 SET @sql = N'';

@@ -52,6 +52,24 @@ app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 
+// La FallbackPolicy exige sesión en todo endpoint sin metadata de
+// autorización, y el framework mapea _framework/blazor.web.js sin ella: la
+// página de login (anónima) recibía el HTML del login en lugar del script.
+// Es el script público de Blazor, así que se marca como anónimo aquí.
+app.Use((contexto, siguiente) =>
+{
+	if (contexto.GetEndpoint() is RouteEndpoint endpoint
+		&& string.Equals(endpoint.RoutePattern.RawText, "/_framework/blazor.web.js", StringComparison.OrdinalIgnoreCase)
+		&& endpoint.Metadata.GetMetadata<IAllowAnonymous>() is null)
+	{
+		contexto.SetEndpoint(new Endpoint(
+			endpoint.RequestDelegate,
+			new EndpointMetadataCollection(endpoint.Metadata.Append(new AllowAnonymousAttribute())),
+			endpoint.DisplayName));
+	}
+	return siguiente(contexto);
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 

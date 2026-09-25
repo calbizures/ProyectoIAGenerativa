@@ -16,7 +16,7 @@
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
 }
 
 <BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
@@ -24,8 +24,8 @@
 @if (pestanaActiva == "lista")
 {
     <div class="barra-herramientas">
-        <input placeholder="Buscar por código, nombre o NIT" @bind="textoBusqueda" />
-        <select @bind="filtroEstado">
+        <input placeholder="Buscar por código, nombre o NIT" aria-label="Buscar por código, nombre o NIT" @bind="textoBusqueda" />
+        <select @bind="filtroEstado" aria-label="Estado">
             <option value="A">Activos</option>
             <option value="I">Inactivos</option>
             <option value="">Todos</option>
@@ -66,7 +66,7 @@
                     <td>@p.PrvNombreComercial</td>
                     <td class="col-codigo">@p.PrvNit</td>
                     <td>@p.PrvContacto</td>
-                    <td class="col-estado">@(p.PrvEstado == "A" ? "Activo" : "Inactivo")</td>
+                    <td class="col-estado"><span class="estado-badge @(p.PrvEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(p.PrvEstado == "A" ? "Activo" : "Inactivo")</span></td>
                     <td class="col-acciones">
                         <div class="acciones-fila">
                             <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(p)" />

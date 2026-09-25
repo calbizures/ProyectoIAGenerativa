@@ -18,12 +18,12 @@
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
 }
 
 <div class="barra-filtros">
-    <label>Sucursal</label>
-    <select @bind="sucIdSeleccionada" @bind:after="CambiarSucursalAsync">
+    <label class="filtro-campo" for="caja-sucursal">Sucursal</label>
+    <select id="caja-sucursal" @bind="sucIdSeleccionada" @bind:after="CambiarSucursalAsync">
         @foreach (var suc in sucursales)
         {
             <option value="@suc.SucId">@suc.SucDescripcion</option>
@@ -35,7 +35,7 @@
 
 @if (pestanaActiva == "apertura")
 {
-    <div class="doc-seccion">
+    <div class="tarjeta doc-seccion">
         <p class="doc-seccion-titulo"><Icono Nombre="wallet" Tamano="15" /> Cajas abiertas</p>
         <table class="tabla-datos">
             <thead>
@@ -62,7 +62,7 @@
         </table>
     </div>
 
-    <div class="doc-seccion">
+    <div class="tarjeta doc-seccion">
         <p class="doc-seccion-titulo"><Icono Nombre="plus" Tamano="15" /> Abrir caja</p>
         @if (cajasDisponiblesParaAbrir.Count == 0)
         {
@@ -97,7 +97,9 @@
 }
 else if (pestanaActiva == "corte")
 {
-    <div class="doc-seccion">
+    @if (aperturasActivas.Count > 0)
+    {
+    <div class="tarjeta doc-seccion">
         <div class="doc-grid">
             <div class="campo">
                 <label>Caja abierta</label>
@@ -111,10 +113,26 @@ else if (pestanaActiva == "corte")
             </div>
         </div>
     </div>
+    }
 
-    @if (pcaIdSeleccionada > 0)
+    @if (aperturasActivas.Count == 0)
     {
-        <div class="doc-seccion">
+        <div class="estado-vacio">
+            <Icono Nombre="wallet" Tamano="28" />
+            <p><strong>No hay cajas abiertas en esta sucursal.</strong></p>
+            <p>Abra una caja en la pestaña Apertura para poder hacer su corte y cierre.</p>
+        </div>
+    }
+    else if (pcaIdSeleccionada == 0)
+    {
+        <div class="estado-vacio">
+            <Icono Nombre="clipboard-list" Tamano="28" />
+            <p>Seleccione la caja abierta para ver el teórico y capturar el conteo físico.</p>
+        </div>
+    }
+    else
+    {
+        <div class="tarjeta doc-seccion">
             <p class="doc-seccion-titulo"><Icono Nombre="banknote" Tamano="15" /> Efectivo — conteo físico</p>
             <table class="doc-tabla">
                 <thead><tr><th>Denominación</th><th class="num">Cantidad</th><th class="num">Subtotal</th></tr></thead>
@@ -132,7 +150,7 @@ else if (pestanaActiva == "corte")
             <div class="doc-totales-nota">Total efectivo contado: Q@(TotalEfectivoFisico.ToString("N2"))</div>
         </div>
 
-        <div class="doc-seccion">
+        <div class="tarjeta doc-seccion">
             <p class="doc-seccion-titulo"><Icono Nombre="credit-card" Tamano="15" /> Otras formas — teórico vs. físico</p>
             <table class="doc-tabla">
                 <thead><tr><th>Forma de pago</th><th class="num">Teórico</th><th class="num">Físico contado</th></tr></thead>
@@ -149,7 +167,7 @@ else if (pestanaActiva == "corte")
             </table>
         </div>
 
-        <div class="doc-seccion doc-totales-envoltorio">
+        <div class="tarjeta doc-seccion doc-totales-envoltorio">
             <div class="doc-totales">
                 <div class="doc-totales-fila"><span>Teórico total (efectivo incl. fondo inicial)</span><span>Q@(TeoricoTotal.ToString("N2"))</span></div>
                 <div class="doc-totales-fila"><span>Físico total contado</span><span>Q@(FisicoTotal.ToString("N2"))</span></div>
@@ -165,7 +183,7 @@ else if (pestanaActiva == "corte")
 }
 else if (pestanaActiva == "depositos")
 {
-    <div class="doc-seccion">
+    <div class="tarjeta doc-seccion">
         <div class="doc-grid">
             <div class="campo">
                 <label>Apertura de caja</label>
@@ -180,9 +198,24 @@ else if (pestanaActiva == "depositos")
         </div>
     </div>
 
-    @if (pcaIdParaDeposito > 0)
+    @if (pcaIdParaDeposito == 0)
     {
-        <div class="doc-seccion">
+        <div class="estado-vacio">
+            <Icono Nombre="landmark" Tamano="28" />
+            @if (aperturasRecientes.Count == 0)
+            {
+                <p><strong>No hay aperturas de caja recientes en esta sucursal.</strong></p>
+                <p>Los depósitos se registran contra una apertura de caja.</p>
+            }
+            else
+            {
+                <p>Seleccione una apertura de caja para registrar o consultar sus depósitos.</p>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="tarjeta doc-seccion">
             <p class="doc-seccion-titulo"><Icono Nombre="landmark" Tamano="15" /> Nuevo depósito</p>
             <div class="doc-grid">
                 <div class="campo">
@@ -205,7 +238,7 @@ else if (pestanaActiva == "depositos")
             </div>
         </div>
 
-        <div class="doc-seccion">
+        <div class="tarjeta doc-seccion">
             <p class="doc-seccion-titulo"><Icono Nombre="clipboard-list" Tamano="15" /> Depósitos registrados</p>
             <table class="tabla-datos">
                 <thead><tr><th>Fecha</th><th>Entidad</th><th class="num">Valor</th><th>Boleta</th><th>Observaciones</th></tr></thead>
@@ -274,7 +307,7 @@ else if (pestanaActiva == "cajasreceptoras")
                                 }
                             </select>
                         </td>
-                        <td class="col-estado">@(c.PcrEstado == "A" ? "Activa" : "Inactiva")</td>
+                        <td class="col-estado"><span class="estado-badge @(c.PcrEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.PcrEstado == "A" ? "Activa" : "Inactiva")</span></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
                                 <BotonIcono Icono="save" Tooltip="Guardar cambios" Variante="primario" OnClick="GuardarEdicionCajaReceptoraAsync" />
@@ -288,7 +321,7 @@ else if (pestanaActiva == "cajasreceptoras")
                     <tr>
                         <td>@c.PcrDescripcion</td>
                         <td>@c.SucDescripcion</td>
-                        <td class="col-estado">@(c.PcrEstado == "A" ? "Activa" : "Inactiva")</td>
+                        <td class="col-estado"><span class="estado-badge @(c.PcrEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.PcrEstado == "A" ? "Activa" : "Inactiva")</span></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
                                 <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => IniciarEdicionCajaReceptora(c)" />

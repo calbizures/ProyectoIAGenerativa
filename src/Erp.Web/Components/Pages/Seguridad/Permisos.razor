@@ -9,15 +9,18 @@
 
 <PageTitle>Permisos</PageTitle>
 
-<h1>Permisos</h1>
+<div class="pagina-encabezado">
+    <h1>Permisos</h1>
+    <p>Catálogo de permisos del sistema.</p>
+</div>
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
 }
 
 <div class="barra-filtros">
-    <input placeholder="Filtrar por módulo" @bind="filtroModulo" />
+    <input placeholder="Filtrar por módulo" aria-label="Filtrar por módulo" @bind="filtroModulo" />
     <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
     <BotonIcono Icono="plus" Tooltip="Nuevo permiso" Etiqueta="Nuevo permiso" Variante="primario" OnClick="() => mostrarNuevo = true" />
 </div>
@@ -48,7 +51,7 @@
                 <td>@permiso.PerModulo</td>
                 <td>@permiso.PerCodigo</td>
                 <td>@permiso.PerDescripcion</td>
-                <td>@(permiso.PerEstado == "A" ? "Activo" : "Inactivo")</td>
+                <td><span class="estado-badge @(permiso.PerEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(permiso.PerEstado == "A" ? "Activo" : "Inactivo")</span></td>
             </tr>
         }
     </tbody>

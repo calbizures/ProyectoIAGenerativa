@@ -10,11 +10,14 @@
 
 <PageTitle>Roles</PageTitle>
 
-<h1>Roles</h1>
+<div class="pagina-encabezado">
+    <h1>Roles</h1>
+    <p>Roles y los permisos que otorga cada uno.</p>
+</div>
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
 }
 
 <BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
@@ -49,7 +52,7 @@
                 <tr class="@(seleccionado?.RolId == rol.RolId ? "fila-seleccionada" : "")">
                     <td class="col-codigo">@rol.RolCodigo</td>
                     <td>@rol.RolNombre</td>
-                    <td class="col-estado">@(rol.RolEstado == "A" ? "Activo" : "Inactivo")</td>
+                    <td class="col-estado"><span class="estado-badge @(rol.RolEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(rol.RolEstado == "A" ? "Activo" : "Inactivo")</span></td>
                     <td class="col-acciones">
                         <div class="acciones-fila">
                             <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(rol)" />

@@ -30,7 +30,7 @@
 
             @if (mensajeError is not null)
             {
-                <p class="login-error">@mensajeError</p>
+                <p class="login-error" role="alert">@mensajeError</p>
             }
 
             <EditForm Model="modelo" FormName="login" OnValidSubmit="IniciarSesionAsync" method="post">
@@ -40,13 +40,13 @@
                 {
                     <div class="login-campo">
                         <label for="usuario">Usuario</label>
-                        <InputText id="usuario" @bind-Value="modelo.Usuario" autofocus placeholder="Tu usuario" />
+                        <InputText id="usuario" @bind-Value="modelo.Usuario" autofocus autocomplete="username" placeholder="Tu usuario" />
                         <ValidationMessage For="() => modelo.Usuario" />
                     </div>
 
                     <div class="login-campo">
                         <label for="password">Contraseña</label>
-                        <InputText id="password" type="password" @bind-Value="modelo.Password" placeholder="••••••••" />
+                        <InputText id="password" type="password" @bind-Value="modelo.Password" autocomplete="current-password" placeholder="Tu contraseña" />
                         <ValidationMessage For="() => modelo.Password" />
                     </div>
                 }

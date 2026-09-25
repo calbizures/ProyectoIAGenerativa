@@ -3,21 +3,30 @@
 @using Erp.Web.Security
 @inject Erp.Data.IDbConnectionFactory ConnectionFactory
 @inject Erp.Data.Caja.ICajaRepository CajaRepository
+@inject Erp.Data.Security.IUsuarioRepository UsuarioRepository
 @inject NavigationManager NavigationManager
 
-<div class="barra-estado">
-    <span>@horaActual.ToString("dd/MM/yyyy HH:mm:ss")</span>
-    <span>Usuario: @(nombreUsuario ?? "—")</span>
-    <span>Base de datos: @nombreBaseDatos</span>
-    <span>Módulo: @ObtenerModulo()</span>
+<footer class="barra-estado" aria-label="Barra de estado">
     @if (mostrarAdvertenciaCaja)
     {
-        <span class="barra-estado-advertencia">
+        <span class="barra-estado-advertencia" role="status">
             <Icono Nombre="alert-triangle" Tamano="14" />
-            No hay una caja abierta en esta sucursal. Ve a Bancos &gt; Caja para abrirla.
+            @if (puedeAbrirCaja)
+            {
+                <span>No hay una caja abierta en esta sucursal. <a href="caja">Abrir caja</a></span>
+            }
+            else
+            {
+                <span>No hay una caja abierta en esta sucursal. Pida al encargado que la abra.</span>
+            }
         </span>
     }
-</div>
+    <span class="barra-estado-sucursal"><Icono Nombre="map-pin" Tamano="13" /> @(nombreSucursal ?? "Sin sucursal")</span>
+    <span>Usuario: @(nombreUsuario ?? "—")</span>
+    <span>Módulo: @ObtenerModulo()</span>
+    <span>Base de datos: @nombreBaseDatos</span>
+    <span class="barra-estado-hora">@horaActual.ToString("dd/MM/yyyy HH:mm:ss")</span>
+</footer>
 
 @code {
     [CascadingParameter]
@@ -48,6 +57,8 @@
     };
 
     private int? sucId;
+    private string? nombreSucursal;
+    private bool puedeAbrirCaja;
     private bool mostrarAdvertenciaCaja;
 
     protected override async Task OnInitializedAsync()
@@ -60,6 +71,8 @@
             var estado = await AuthenticationStateTask;
             nombreUsuario = estado.User.Identity?.Name;
             sucId = estado.User.ObtenerSucId();
+            puedeAbrirCaja = estado.User.HasClaim(ClaimsPermiso.TipoClaim, "BANCOS_CAJA_ADMIN");
+            await CargarNombreSucursalAsync(estado.User.ObtenerUsuId());
         }
 
         await ActualizarAdvertenciaCajaAsync();
@@ -72,6 +85,20 @@
     {
         await ActualizarAdvertenciaCajaAsync();
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CargarNombreSucursalAsync(int? usuId)
+    {
+        if (usuId is null || sucId is null || sucId <= 0) return;
+        try
+        {
+            var sucursales = await UsuarioRepository.ConsultarSucursalesAsignadasAsync(usuId.Value);
+            nombreSucursal = sucursales.FirstOrDefault(s => s.SucId == sucId)?.SucDescripcion;
+        }
+        catch
+        {
+            nombreSucursal = null;
+        }
     }
 
     private async Task ActualizarAdvertenciaCajaAsync()

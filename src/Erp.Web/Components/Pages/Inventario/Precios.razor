@@ -18,7 +18,7 @@
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
 }
 
 <div class="barra-herramientas">
@@ -29,7 +29,7 @@
             <option value="@p.ProId">@p.ProCodigo - @p.ProDescripcion</option>
         }
     </select>
-    <select @bind="filtroEstado">
+    <select @bind="filtroEstado" aria-label="Estado">
         <option value="A">Vigentes</option>
         <option value="I">Desactivados</option>
         <option value="">Todos</option>
