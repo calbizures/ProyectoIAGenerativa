@@ -1,0 +1,447 @@
+@page "/rrhh/empleados"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:RRHH_ADMIN")]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.General
+@using Erp.Data.Rrhh
+@using Erp.Data.Security
+@using Erp.Data.Ventas
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IRrhhRepository RrhhRepository
+@inject IGeneralRepository GeneralRepository
+@inject IUsuarioRepository UsuarioRepository
+@inject IVendedorRepository VendedorRepository
+
+<PageTitle>Empleados</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Empleados</h1>
+    <p>Ficha del empleado, su plaza y su vínculo con el usuario del sistema y el vendedor.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
+
+@if (pestanaActiva == "lista")
+{
+    <div class="barra-herramientas">
+        <input placeholder="Buscar por código o nombre" aria-label="Buscar por código o nombre" @bind="filtro" />
+        <select @bind="filtroEstado" aria-label="Estado">
+            <option value="A">Activos</option>
+            <option value="B">De baja</option>
+            <option value="">Todos</option>
+        </select>
+        <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+        <span class="barra-herramientas-separador"></span>
+        <BotonIcono Icono="user-plus" Tooltip="Nuevo empleado" Etiqueta="Nuevo empleado" Variante="primario" OnClick="IniciarNuevo" />
+    </div>
+
+    @if (empleados.Count == 0)
+    {
+        <p class="estado-vacio">No hay empleados que coincidan con la búsqueda.</p>
+    }
+    else
+    {
+        <table class="tabla-datos">
+            <thead>
+                <tr><th class="col-codigo">Código</th><th>Nombre</th><th>Puesto</th><th>Departamento</th><th class="col-fecha">Ingreso</th><th class="num col-monto">Salario base</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var e in empleados)
+                {
+                    <tr class="@(seleccionado?.IdEmpleado == e.IdEmpleado ? "fila-seleccionada" : "")">
+                        <td class="col-codigo">@e.CodigoEmpleado</td>
+                        <td>@e.NombreCompleto</td>
+                        <td>@e.Puesto</td>
+                        <td>@e.Departamento</td>
+                        <td class="col-fecha">@e.FechaIngreso.ToString("dd/MM/yyyy")</td>
+                        <td class="num col-monto">@e.SalarioBase.ToString("N2")</td>
+                        <td class="col-estado"><span class="estado-badge @(e.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(e.Estado == "A" ? "Activo" : "De baja")</span></td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(e.IdEmpleado)" />
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+else if (pestanaActiva == "detalle" && seleccionado is not null)
+{
+    <div class="panel-detalle panel-ancho">
+        <h2>@seleccionado.CodigoEmpleado — @seleccionado.NombreCompleto</h2>
+        <div class="campo"><label>Estado</label><span class="valor-detalle">@(seleccionado.Estado == "A" ? "Activo" : $"De baja desde {seleccionado.FechaBaja:dd/MM/yyyy}")</span></div>
+        <div class="campo"><label>Compañía</label><span class="valor-detalle">@companias.FirstOrDefault(c => c.CiaId == seleccionado.CiaId)?.CiaNombreComercial</span></div>
+        <div class="campo"><label>Documento</label><span class="valor-detalle">@NombreTipoDocumento(seleccionado.IdTipoDocumentoIdentificacion) @seleccionado.NumeroDocumento</span></div>
+        <div class="campo"><label>Afiliación IGSS</label><span class="valor-detalle">@seleccionado.NumeroAfiliacionIGSS</span></div>
+        <div class="campo"><label>NIT</label><span class="valor-detalle">@seleccionado.Nit</span></div>
+        <div class="campo"><label>Correo electrónico</label><span class="valor-detalle">@seleccionado.Email</span></div>
+        <div class="campo"><label>Género</label><span class="valor-detalle">@(seleccionado.Genero switch { "M" => "Masculino", "F" => "Femenino", _ => "—" })</span></div>
+        <div class="campo"><label>Fecha de nacimiento</label><span class="valor-detalle">@(seleccionado.FechaNacimiento?.ToString("dd/MM/yyyy") ?? "—")</span></div>
+        <div class="campo"><label>Fecha de ingreso</label><span class="valor-detalle">@seleccionado.FechaIngreso.ToString("dd/MM/yyyy")</span></div>
+        <div class="campo"><label>Dirección</label><span class="valor-detalle">@seleccionado.Direccion</span></div>
+        <div class="campo"><label>Plaza</label><span class="valor-detalle">@(plazas.FirstOrDefault(p => p.IdPlaza == seleccionado.IdPlaza)?.Descripcion ?? "Sin plaza")</span></div>
+        <div class="campo"><label>Salario base</label><span class="valor-detalle">Q @seleccionado.SalarioBase.ToString("N2")</span></div>
+
+        <div class="acciones-fila">
+            <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+            @if (seleccionado.Estado == "A")
+            {
+                <label class="filtro-campo">Fecha de baja <input type="date" @bind="fechaBaja" /></label>
+                <BotonIcono Icono="ban" Tooltip="Dar de baja" Etiqueta="Dar de baja" Variante="peligro" OnClick="DarBajaAsync" />
+            }
+            else
+            {
+                <BotonIcono Icono="refresh-cw" Tooltip="Reactivar" Etiqueta="Reactivar" OnClick="ReactivarAsync" />
+            }
+        </div>
+
+        <h3>Vínculos con el sistema</h3>
+        <p class="texto-ayuda">El usuario y el vendedor son roles del empleado: al facturar, el sistema propone como vendedor el del usuario que inició sesión.</p>
+        <div class="campo">
+            <label for="emp-usuario">Usuario del sistema</label>
+            <div class="fila-edicion">
+                <select id="emp-usuario" @bind="usuIdVinculo">
+                    <option value="">(Sin usuario)</option>
+                    @foreach (var u in usuarios)
+                    {
+                        <option value="@u.UsuId">@u.UsuUsuario (@u.UsuCodigo)</option>
+                    }
+                </select>
+                <BotonIcono Icono="link" Tooltip="Guardar usuario" Etiqueta="Asignar" OnClick="AsignarUsuarioAsync" />
+            </div>
+        </div>
+        <div class="campo">
+            <label for="emp-vendedor">Vendedor</label>
+            <div class="fila-edicion">
+                <select id="emp-vendedor" @bind="pveIdVinculo">
+                    <option value="">(No es vendedor)</option>
+                    @foreach (var v in vendedores)
+                    {
+                        <option value="@v.PveId">@v.PveCodigo — @v.PveNombres @v.PveApellidos</option>
+                    }
+                </select>
+                <BotonIcono Icono="link" Tooltip="Guardar vendedor" Etiqueta="Asignar" OnClick="AsignarVendedorAsync" />
+            </div>
+        </div>
+
+        <h3>Historial de plazas y salario</h3>
+        @if (historial.Count == 0)
+        {
+            <p class="estado-vacio">Sin historial.</p>
+        }
+        else
+        {
+            <table class="tabla-datos">
+                <thead><tr><th>Plaza</th><th class="col-fecha">Desde</th><th class="col-fecha">Hasta</th><th class="num col-monto">Salario</th></tr></thead>
+                <tbody>
+                    @foreach (var h in historial)
+                    {
+                        <tr>
+                            <td>@h.Plaza</td>
+                            <td class="col-fecha">@h.FechaDel.ToString("dd/MM/yyyy")</td>
+                            <td class="col-fecha">@(h.FechaAl?.ToString("dd/MM/yyyy") ?? "Vigente")</td>
+                            <td class="num col-monto">@h.Salario.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+}
+else if (pestanaActiva == "editar")
+{
+    <div class="panel-formulario">
+        <h2>@(modelo.IdEmpleado == 0 ? "Nuevo empleado" : $"Editar: {modelo.CodigoEmpleado}")</h2>
+        <EditForm Model="modelo" OnValidSubmit="GuardarAsync">
+            <DataAnnotationsValidator />
+            <ResumenValidacion />
+            <div class="campo"><label>Código de empleado</label><InputText @bind-Value="modelo.CodigoEmpleado" /></div>
+            <div class="campo">
+                <label>Compañía</label>
+                <InputSelect @bind-Value="modelo.CiaId">
+                    @foreach (var c in companias)
+                    {
+                        <option value="@c.CiaId">@c.CiaNombreComercial</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="campo"><label>Primer nombre</label><InputText @bind-Value="modelo.PrimerNombre" /></div>
+            <div class="campo"><label>Segundo nombre</label><InputText @bind-Value="modelo.SegundoNombre" /></div>
+            <div class="campo"><label>Primer apellido</label><InputText @bind-Value="modelo.PrimerApellido" /></div>
+            <div class="campo"><label>Segundo apellido</label><InputText @bind-Value="modelo.SegundoApellido" /></div>
+            <div class="campo"><label>Apellido de casada</label><InputText @bind-Value="modelo.ApellidoCasada" /></div>
+            <div class="campo">
+                <label>Género</label>
+                <InputSelect @bind-Value="modelo.Genero">
+                    <option value="">(Sin indicar)</option>
+                    <option value="M">Masculino</option>
+                    <option value="F">Femenino</option>
+                </InputSelect>
+            </div>
+            <div class="campo"><label>Fecha de nacimiento</label><InputDate @bind-Value="modelo.FechaNacimiento" /></div>
+            <div class="campo"><label>Fecha de ingreso</label><InputDate @bind-Value="modelo.FechaIngreso" /></div>
+            <div class="campo"><label>Dirección</label><InputText @bind-Value="modelo.Direccion" /></div>
+            <div class="campo">
+                <label>Tipo de documento</label>
+                <InputSelect @bind-Value="modelo.IdTipoDocumentoIdentificacion">
+                    <option value="">(Sin indicar)</option>
+                    @foreach (var t in tiposDocumento)
+                    {
+                        <option value="@t.Id">@t.Descripcion</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="campo"><label>Número de documento</label><InputText @bind-Value="modelo.NumeroDocumento" /></div>
+            <div class="campo"><label>Afiliación IGSS</label><InputText @bind-Value="modelo.NumeroAfiliacionIGSS" /></div>
+            <div class="campo"><label>NIT</label><InputText @bind-Value="modelo.Nit" /></div>
+            <div class="campo"><label>Correo electrónico</label><InputText @bind-Value="modelo.Email" /></div>
+            <div class="campo">
+                <label>Plaza</label>
+                <InputSelect @bind-Value="modelo.IdPlaza">
+                    <option value="">(Sin plaza)</option>
+                    @foreach (var p in plazas.Where(p => p.Estado == "A" && (p.IdEmpleadoOcupante is null || p.IdEmpleadoOcupante == modelo.IdEmpleado)))
+                    {
+                        <option value="@p.IdPlaza">@p.Descripcion — @p.Puesto (@p.Departamento)</option>
+                    }
+                </InputSelect>
+            </div>
+            <div class="campo"><label>Salario base mensual</label><InputNumber @bind-Value="modelo.SalarioBase" step="0.01" /></div>
+            <p class="texto-ayuda">Cambiar la plaza o el salario cierra el registro vigente del historial y abre uno nuevo.</p>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<EmpleadoResumen> empleados = Array.Empty<EmpleadoResumen>();
+    private IReadOnlyList<Compania> companias = Array.Empty<Compania>();
+    private IReadOnlyList<Plaza> plazas = Array.Empty<Plaza>();
+    private IReadOnlyList<CatalogoRrhh> tiposDocumento = Array.Empty<CatalogoRrhh>();
+    private IReadOnlyList<Usuario> usuarios = Array.Empty<Usuario>();
+    private IReadOnlyList<Vendedor> vendedores = Array.Empty<Vendedor>();
+
+    private Empleado? seleccionado;
+    private IReadOnlyList<HistorialPlaza> historial = Array.Empty<HistorialPlaza>();
+    private EmpleadoModelo modelo = new();
+    private int? usuIdVinculo;
+    private int? pveIdVinculo;
+    private DateTime fechaBaja = DateTime.Today;
+
+    private string pestanaActiva = "lista";
+    private string filtro = "";
+    private string filtroEstado = "A";
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private IReadOnlyList<PestanaItem> Pestanas
+    {
+        get
+        {
+            var lista = new List<PestanaItem> { new("lista", "Lista") };
+            if (seleccionado is not null) lista.Add(new("detalle", "Detalle"));
+            if (pestanaActiva == "editar") lista.Add(new("editar", modelo.IdEmpleado == 0 ? "Nuevo" : "Editar"));
+            return lista;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            companias = await GeneralRepository.ConsultarCompaniasAsync(soloActivas: true);
+            tiposDocumento = await RrhhRepository.ConsultarCatalogoAsync("TipoDocumentoIdentificacion", soloActivos: true);
+            usuarios = await UsuarioRepository.ConsultarAsync(null, "A", 1, 500);
+            vendedores = await VendedorRepository.ConsultarAsync("A");
+            await CargarPlazasAsync();
+            await BuscarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task CargarPlazasAsync() => plazas = await RrhhRepository.ConsultarPlazasAsync(soloActivos: false);
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private void MostrarOk(string texto)
+    {
+        mensaje = texto;
+        esMensajeError = false;
+    }
+
+    private string? NombreTipoDocumento(int? id) => tiposDocumento.FirstOrDefault(t => t.Id == id)?.Descripcion;
+
+    private async Task BuscarAsync()
+    {
+        try
+        {
+            empleados = await RrhhRepository.ConsultarEmpleadosAsync(
+                string.IsNullOrWhiteSpace(filtro) ? null : filtro.Trim(),
+                string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task SeleccionarAsync(int idEmpleado)
+    {
+        mensaje = null;
+        try
+        {
+            var (empleado, hist) = await RrhhRepository.ConsultarEmpleadoPorIdAsync(idEmpleado);
+            seleccionado = empleado;
+            historial = hist;
+            usuIdVinculo = empleado?.UsuId;
+            pveIdVinculo = empleado?.PveId;
+            fechaBaja = DateTime.Today;
+            pestanaActiva = empleado is null ? "lista" : "detalle";
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void IniciarNuevo()
+    {
+        mensaje = null;
+        modelo = new EmpleadoModelo { CiaId = companias.FirstOrDefault()?.CiaId ?? 0 };
+        pestanaActiva = "editar";
+    }
+
+    private void IniciarEdicion()
+    {
+        if (seleccionado is null) return;
+        mensaje = null;
+        modelo = EmpleadoModelo.Desde(seleccionado);
+        pestanaActiva = "editar";
+    }
+
+    private void CancelarEdicion() => pestanaActiva = seleccionado is null ? "lista" : "detalle";
+
+    private async Task GuardarAsync()
+    {
+        try
+        {
+            var id = await RrhhRepository.GuardarEmpleadoAsync(modelo.AEmpleado(), await ObtenerUsuIdActualAsync());
+            var eraNuevo = modelo.IdEmpleado == 0;
+            await CargarPlazasAsync();
+            await BuscarAsync();
+            await SeleccionarAsync(id);
+            MostrarOk(eraNuevo ? "Empleado creado correctamente." : "Cambios guardados.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task DarBajaAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            await RrhhRepository.DarBajaEmpleadoAsync(seleccionado.IdEmpleado, fechaBaja, await ObtenerUsuIdActualAsync());
+            await CargarPlazasAsync();
+            await BuscarAsync();
+            await SeleccionarAsync(seleccionado.IdEmpleado);
+            MostrarOk("Empleado dado de baja; su plaza quedó vacante.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task ReactivarAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            await RrhhRepository.ReactivarEmpleadoAsync(seleccionado.IdEmpleado, await ObtenerUsuIdActualAsync());
+            await BuscarAsync();
+            await SeleccionarAsync(seleccionado.IdEmpleado);
+            MostrarOk("Empleado reactivado. Asígnele una plaza si corresponde.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task AsignarUsuarioAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            await RrhhRepository.AsignarUsuarioAsync(seleccionado.IdEmpleado, usuIdVinculo, await ObtenerUsuIdActualAsync());
+            MostrarOk(usuIdVinculo is null ? "Se quitó el usuario del empleado." : "Usuario asignado al empleado.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task AsignarVendedorAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            await RrhhRepository.AsignarVendedorAsync(seleccionado.IdEmpleado, pveIdVinculo, await ObtenerUsuIdActualAsync());
+            MostrarOk(pveIdVinculo is null ? "Se quitó el vendedor del empleado." : "Vendedor asignado al empleado.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private sealed class EmpleadoModelo
+    {
+        public int IdEmpleado { get; set; }
+        [Required] public string CodigoEmpleado { get; set; } = "";
+        [Range(1, int.MaxValue, ErrorMessage = "Seleccione la compañía.")] public int CiaId { get; set; }
+        [Required] public string PrimerNombre { get; set; } = "";
+        public string? SegundoNombre { get; set; }
+        [Required] public string PrimerApellido { get; set; } = "";
+        public string? SegundoApellido { get; set; }
+        public string? ApellidoCasada { get; set; }
+        public string? Genero { get; set; }
+        public DateTime? FechaNacimiento { get; set; }
+        public DateTime FechaIngreso { get; set; } = DateTime.Today;
+        public string? Direccion { get; set; }
+        public int? IdTipoDocumentoIdentificacion { get; set; }
+        public string? NumeroDocumento { get; set; }
+        public string? NumeroAfiliacionIGSS { get; set; }
+        public string? Nit { get; set; }
+        [EmailAddress] public string? Email { get; set; }
+        public int? IdPlaza { get; set; }
+        [Range(0, 9999999, ErrorMessage = "El salario base no puede ser negativo.")] public decimal SalarioBase { get; set; }
+
+        public static EmpleadoModelo Desde(Empleado e) => new()
+        {
+            IdEmpleado = e.IdEmpleado, CodigoEmpleado = e.CodigoEmpleado, CiaId = e.CiaId,
+            PrimerNombre = e.PrimerNombre, SegundoNombre = e.SegundoNombre, PrimerApellido = e.PrimerApellido,
+            SegundoApellido = e.SegundoApellido, ApellidoCasada = e.ApellidoCasada, Genero = e.Genero,
+            FechaNacimiento = e.FechaNacimiento, FechaIngreso = e.FechaIngreso, Direccion = e.Direccion,
+            IdTipoDocumentoIdentificacion = e.IdTipoDocumentoIdentificacion, NumeroDocumento = e.NumeroDocumento,
+            NumeroAfiliacionIGSS = e.NumeroAfiliacionIGSS, Nit = e.Nit, Email = e.Email, IdPlaza = e.IdPlaza,
+            SalarioBase = e.SalarioBase,
+        };
+
+        public Empleado AEmpleado() => new()
+        {
+            IdEmpleado = IdEmpleado, CodigoEmpleado = CodigoEmpleado.Trim(), CiaId = CiaId,
+            PrimerNombre = PrimerNombre.Trim(), SegundoNombre = Vacio(SegundoNombre), PrimerApellido = PrimerApellido.Trim(),
+            SegundoApellido = Vacio(SegundoApellido), ApellidoCasada = Vacio(ApellidoCasada), Genero = Vacio(Genero),
+            FechaNacimiento = FechaNacimiento, FechaIngreso = FechaIngreso, Direccion = Vacio(Direccion),
+            IdTipoDocumentoIdentificacion = IdTipoDocumentoIdentificacion, NumeroDocumento = Vacio(NumeroDocumento),
+            NumeroAfiliacionIGSS = Vacio(NumeroAfiliacionIGSS), Nit = Vacio(Nit), Email = Vacio(Email), IdPlaza = IdPlaza,
+            SalarioBase = SalarioBase,
+        };
+
+        private static string? Vacio(string? texto) => string.IsNullOrWhiteSpace(texto) ? null : texto.Trim();
+    }
+}

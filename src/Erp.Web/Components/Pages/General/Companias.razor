@@ -1,0 +1,291 @@
+@page "/general/companias"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:GENERAL_CONFIG_ADMIN")]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.General
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IGeneralRepository GeneralRepository
+
+<PageTitle>Compañías</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Compañías</h1>
+    <p>Datos de la empresa y parámetros de uso general (IVA, comisiones, cierre de caja y nómina).</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
+
+@if (pestanaActiva == "lista")
+{
+    <div class="barra-herramientas">
+        <label class="filtro-campo"><input type="checkbox" @bind="soloActivas" @bind:after="BuscarAsync" /> Solo activas</label>
+        <span class="barra-herramientas-separador"></span>
+        <BotonIcono Icono="plus" Tooltip="Nueva compañía" Etiqueta="Nueva compañía" Variante="primario" OnClick="IniciarNueva" />
+    </div>
+
+    @if (companias.Count == 0)
+    {
+        <p class="estado-vacio">No hay compañías registradas.</p>
+    }
+    else
+    {
+        <table class="tabla-datos">
+            <thead>
+                <tr><th>Nombre comercial</th><th class="col-codigo">NIT</th><th class="num col-estado">% IVA</th><th class="col-estado">Comisiones</th><th class="num col-monto">Tolerancia caja</th><th class="col-estado">Nómina</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var c in companias)
+                {
+                    <tr class="@(seleccionada?.CiaId == c.CiaId ? "fila-seleccionada" : "")">
+                        <td>@c.CiaNombreComercial</td>
+                        <td class="col-codigo">@c.CiaNit</td>
+                        <td class="num col-estado">@c.CiaPorcIva.ToString("N2")</td>
+                        <td class="col-estado">@(c.CiaPagaComision ? "Sí" : "No")</td>
+                        <td class="num col-monto">@c.CiaToleranciaCierreCaja.ToString("N2")</td>
+                        <td class="col-estado">@(c.CiaPeriodicidadNomina == "Q" ? "Quincenal" : "Mensual")</td>
+                        <td class="col-estado"><span class="estado-badge @(c.CiaEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.CiaEstado == "A" ? "Activa" : "Inactiva")</span></td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => Seleccionar(c)" />
+                                <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => { Seleccionar(c); IniciarEdicion(); }" />
+                                @if (c.CiaEstado == "A")
+                                {
+                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar compañía" Variante="peligro" OnClick="@(() => CambiarEstadoAsync(c, "I"))" />
+                                }
+                                else
+                                {
+                                    <BotonIcono Icono="refresh-cw" Tooltip="Reactivar compañía" OnClick="@(() => CambiarEstadoAsync(c, "A"))" />
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+else if (pestanaActiva == "detalle" && seleccionada is not null)
+{
+    <div class="panel-detalle">
+        <h2>Detalle: @seleccionada.CiaNombreComercial</h2>
+        <h3>Datos generales</h3>
+        <div class="campo"><label>Nombre comercial</label><span class="valor-detalle">@seleccionada.CiaNombreComercial</span></div>
+        <div class="campo"><label>NIT</label><span class="valor-detalle">@seleccionada.CiaNit</span></div>
+        <div class="campo"><label>Dirección</label><span class="valor-detalle">@seleccionada.CiaDireccion</span></div>
+        <div class="campo"><label>Teléfono</label><span class="valor-detalle">@seleccionada.CiaTelefono</span></div>
+        <div class="campo"><label>Correo electrónico</label><span class="valor-detalle">@seleccionada.CiaEmail</span></div>
+        <div class="campo"><label>Representante legal</label><span class="valor-detalle">@seleccionada.CiaRepresentanteLegal</span></div>
+        <div class="campo"><label>DPI del representante</label><span class="valor-detalle">@seleccionada.CiaDpiRepresentanteLegal</span></div>
+        <div class="campo"><label>Fecha de nacimiento del representante</label><span class="valor-detalle">@(seleccionada.CiaFechaNacimientoRepresentanteLegal?.ToString("dd/MM/yyyy") ?? "—")</span></div>
+        <h3>Parámetros de uso general</h3>
+        <div class="campo"><label>% IVA</label><span class="valor-detalle">@seleccionada.CiaPorcIva.ToString("N2") %</span></div>
+        <div class="campo"><label>Paga comisiones a vendedores</label><span class="valor-detalle">@(seleccionada.CiaPagaComision ? "Sí" : "No")</span></div>
+        <div class="campo"><label>Tolerancia de cierre de caja</label><span class="valor-detalle">Q @seleccionada.CiaToleranciaCierreCaja.ToString("N2")</span></div>
+        <div class="campo"><label>Periodicidad de nómina</label><span class="valor-detalle">@(seleccionada.CiaPeriodicidadNomina == "Q" ? "Quincenal" : "Mensual")</span></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+        </div>
+    </div>
+}
+else if (pestanaActiva == "editar")
+{
+    <div class="panel-formulario">
+        <h2>@(modelo.CiaId == 0 ? "Nueva compañía" : $"Editar: {modelo.CiaNombreComercial}")</h2>
+        <EditForm Model="modelo" OnValidSubmit="GuardarAsync">
+            <DataAnnotationsValidator />
+            <ResumenValidacion />
+            <h3>Datos generales</h3>
+            <div class="campo"><label>Nombre comercial</label><InputText @bind-Value="modelo.CiaNombreComercial" /></div>
+            <div class="campo"><label>NIT</label><InputText @bind-Value="modelo.CiaNit" /></div>
+            <div class="campo"><label>Dirección</label><InputText @bind-Value="modelo.CiaDireccion" /></div>
+            <div class="campo"><label>Teléfono</label><InputText @bind-Value="modelo.CiaTelefono" /></div>
+            <div class="campo"><label>Correo electrónico</label><InputText @bind-Value="modelo.CiaEmail" /></div>
+            <div class="campo"><label>Representante legal</label><InputText @bind-Value="modelo.CiaRepresentanteLegal" /></div>
+            <div class="campo"><label>DPI del representante</label><InputText @bind-Value="modelo.CiaDpiRepresentanteLegal" /></div>
+            <div class="campo"><label>Fecha de nacimiento del representante</label><InputDate @bind-Value="modelo.CiaFechaNacimientoRepresentanteLegal" /></div>
+
+            <h3>Parámetros de uso general</h3>
+            <div class="campo"><label>% IVA</label><InputNumber @bind-Value="modelo.CiaPorcIva" step="0.01" /></div>
+            <div class="campo campo-checkbox">
+                <label><InputCheckbox @bind-Value="modelo.CiaPagaComision" /> Paga comisiones a vendedores</label>
+            </div>
+            <div class="campo"><label>Tolerancia de cierre de caja (Q)</label><InputNumber @bind-Value="modelo.CiaToleranciaCierreCaja" step="0.01" /></div>
+            <div class="campo">
+                <label>Periodicidad de nómina</label>
+                <InputSelect @bind-Value="modelo.CiaPeriodicidadNomina">
+                    <option value="M">Mensual</option>
+                    <option value="Q">Quincenal</option>
+                </InputSelect>
+            </div>
+            <p class="texto-ayuda">
+                El % IVA se usa al facturar y comprar; la tolerancia es la diferencia máxima (en quetzales) permitida
+                entre el teórico y lo contado para cerrar una caja (0.00 = debe cuadrar exacto).
+            </p>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<Compania> companias = Array.Empty<Compania>();
+    private Compania? seleccionada;
+    private CompaniaModelo modelo = new();
+    private string pestanaActiva = "lista";
+    private bool soloActivas;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private IReadOnlyList<PestanaItem> Pestanas
+    {
+        get
+        {
+            var lista = new List<PestanaItem> { new("lista", "Lista") };
+            if (seleccionada is not null) lista.Add(new("detalle", "Detalle"));
+            if (pestanaActiva == "editar") lista.Add(new("editar", modelo.CiaId == 0 ? "Nueva" : "Editar"));
+            return lista;
+        }
+    }
+
+    protected override async Task OnInitializedAsync() => await BuscarAsync();
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        return (await AuthenticationStateTask).User.ObtenerUsuId();
+    }
+
+    private async Task BuscarAsync()
+    {
+        try
+        {
+            companias = await GeneralRepository.ConsultarCompaniasAsync(soloActivas);
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private void Seleccionar(Compania compania)
+    {
+        seleccionada = compania;
+        mensaje = null;
+        pestanaActiva = "detalle";
+    }
+
+    private void IniciarNueva()
+    {
+        mensaje = null;
+        modelo = new CompaniaModelo();
+        pestanaActiva = "editar";
+    }
+
+    private void IniciarEdicion()
+    {
+        if (seleccionada is null) return;
+        mensaje = null;
+        modelo = CompaniaModelo.Desde(seleccionada);
+        pestanaActiva = "editar";
+    }
+
+    private void CancelarEdicion() => pestanaActiva = seleccionada is null ? "lista" : "detalle";
+
+    private async Task GuardarAsync()
+    {
+        try
+        {
+            var compania = modelo.ACompania();
+            var id = await GeneralRepository.GuardarCompaniaAsync(compania, await ObtenerUsuIdActualAsync());
+            mensaje = modelo.CiaId == 0 ? "Compañía creada correctamente." : "Cambios guardados.";
+            esMensajeError = false;
+            await BuscarAsync();
+            seleccionada = companias.FirstOrDefault(c => c.CiaId == id);
+            pestanaActiva = seleccionada is null ? "lista" : "detalle";
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private async Task CambiarEstadoAsync(Compania compania, string estado)
+    {
+        try
+        {
+            await GeneralRepository.CambiarEstadoCompaniaAsync(compania.CiaId, estado, await ObtenerUsuIdActualAsync());
+            mensaje = estado == "A" ? "Compañía reactivada." : "Compañía desactivada.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private sealed class CompaniaModelo
+    {
+        public int CiaId { get; set; }
+        [Required] public string CiaNombreComercial { get; set; } = "";
+        public string? CiaDireccion { get; set; }
+        public string? CiaRepresentanteLegal { get; set; }
+        public string? CiaDpiRepresentanteLegal { get; set; }
+        public DateTime? CiaFechaNacimientoRepresentanteLegal { get; set; }
+        public string? CiaNit { get; set; }
+        public string? CiaTelefono { get; set; }
+        [EmailAddress] public string? CiaEmail { get; set; }
+        [Range(0, 100, ErrorMessage = "El % IVA debe estar entre 0 y 100.")] public decimal CiaPorcIva { get; set; } = 12m;
+        public bool CiaPagaComision { get; set; }
+        [Range(0, 999999, ErrorMessage = "La tolerancia de cierre de caja no puede ser negativa.")] public decimal CiaToleranciaCierreCaja { get; set; }
+        public string CiaPeriodicidadNomina { get; set; } = "M";
+
+        public static CompaniaModelo Desde(Compania c) => new()
+        {
+            CiaId = c.CiaId,
+            CiaNombreComercial = c.CiaNombreComercial,
+            CiaDireccion = c.CiaDireccion,
+            CiaRepresentanteLegal = c.CiaRepresentanteLegal,
+            CiaDpiRepresentanteLegal = c.CiaDpiRepresentanteLegal,
+            CiaFechaNacimientoRepresentanteLegal = c.CiaFechaNacimientoRepresentanteLegal,
+            CiaNit = c.CiaNit,
+            CiaTelefono = c.CiaTelefono,
+            CiaEmail = c.CiaEmail,
+            CiaPorcIva = c.CiaPorcIva,
+            CiaPagaComision = c.CiaPagaComision,
+            CiaToleranciaCierreCaja = c.CiaToleranciaCierreCaja,
+            CiaPeriodicidadNomina = c.CiaPeriodicidadNomina,
+        };
+
+        public Compania ACompania() => new()
+        {
+            CiaId = CiaId,
+            CiaNombreComercial = CiaNombreComercial.Trim(),
+            CiaDireccion = CiaDireccion,
+            CiaRepresentanteLegal = CiaRepresentanteLegal,
+            CiaDpiRepresentanteLegal = CiaDpiRepresentanteLegal,
+            CiaFechaNacimientoRepresentanteLegal = CiaFechaNacimientoRepresentanteLegal,
+            CiaNit = CiaNit,
+            CiaTelefono = CiaTelefono,
+            CiaEmail = CiaEmail,
+            CiaPorcIva = CiaPorcIva,
+            CiaPagaComision = CiaPagaComision,
+            CiaToleranciaCierreCaja = CiaToleranciaCierreCaja,
+            CiaPeriodicidadNomina = CiaPeriodicidadNomina,
+        };
+    }
+}

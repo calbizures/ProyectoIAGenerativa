@@ -1,0 +1,49 @@
+@implements IDisposable
+
+@* Reemplazo en español de <ResumenValidacion />: los atributos [Required] y
+   los errores de conversión de InputNumber/InputDate generan mensajes en
+   inglés; aquí se traducen y se muestra el nombre del campo legible. *@
+@if (mensajes.Count > 0)
+{
+    <ul class="validation-errors" role="alert">
+        @foreach (var texto in mensajes)
+        {
+            <li class="validation-message">@texto</li>
+        }
+    </ul>
+}
+
+@code {
+    [CascadingParameter] private EditContext? ContextoEdicion { get; set; }
+
+    private EditContext? contextoActual;
+    private List<string> mensajes = new();
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(ContextoEdicion, contextoActual)) return;
+        if (contextoActual is not null) contextoActual.OnValidationStateChanged -= AlCambiarValidacion;
+        contextoActual = ContextoEdicion;
+        if (contextoActual is not null) contextoActual.OnValidationStateChanged += AlCambiarValidacion;
+        Actualizar();
+    }
+
+    private void AlCambiarValidacion(object? sender, ValidationStateChangedEventArgs e)
+    {
+        Actualizar();
+        StateHasChanged();
+    }
+
+    private void Actualizar()
+    {
+        mensajes = contextoActual?.GetValidationMessages()
+            .Select(MensajesValidacion.Traducir)
+            .Distinct()
+            .ToList() ?? new();
+    }
+
+    public void Dispose()
+    {
+        if (contextoActual is not null) contextoActual.OnValidationStateChanged -= AlCambiarValidacion;
+    }
+}

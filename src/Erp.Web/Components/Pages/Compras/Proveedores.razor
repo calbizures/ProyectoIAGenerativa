@@ -1,0 +1,269 @@
+@page "/proveedores"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:COMPRAS_DOCUMENTO_CREAR")]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.Compras
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IProveedorRepository ProveedorRepository
+
+<PageTitle>Proveedores</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Proveedores</h1>
+    <p>Mantenimiento de proveedores.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
+
+@if (pestanaActiva == "lista")
+{
+    <div class="barra-herramientas">
+        <input placeholder="Buscar por código, nombre o NIT" aria-label="Buscar por código, nombre o NIT" @bind="textoBusqueda" />
+        <select @bind="filtroEstado" aria-label="Estado">
+            <option value="A">Activos</option>
+            <option value="I">Inactivos</option>
+            <option value="">Todos</option>
+        </select>
+        <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+        <span class="barra-herramientas-separador"></span>
+        <BotonIcono Icono="plus" Tooltip="Nuevo proveedor" Etiqueta="Nuevo proveedor" Variante="primario" OnClick="MostrarFormularioNuevo" />
+    </div>
+
+    @if (mostrarNuevo)
+    {
+        <EditForm Model="nuevoProveedor" OnValidSubmit="CrearProveedorAsync" class="panel-formulario">
+            <DataAnnotationsValidator />
+            <ResumenValidacion />
+            <div class="campo"><label>Código</label><InputText @bind-Value="nuevoProveedor.Codigo" /></div>
+            <div class="campo"><label>Nombre comercial</label><InputText @bind-Value="nuevoProveedor.NombreComercial" /></div>
+            <div class="campo"><label>NIT</label><InputText @bind-Value="nuevoProveedor.Nit" /></div>
+            <div class="campo"><label>Contacto</label><InputText @bind-Value="nuevoProveedor.Contacto" /></div>
+            <div class="campo"><label>Teléfono oficina</label><InputText @bind-Value="nuevoProveedor.TelefonoOficina" /></div>
+            <div class="campo"><label>Dirección</label><InputText @bind-Value="nuevoProveedor.Direccion" /></div>
+            <div class="campo"><label>Email empresa</label><InputText @bind-Value="nuevoProveedor.EmailEmpresa" /></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+            </div>
+        </EditForm>
+    }
+
+    <table class="tabla-datos">
+        <thead>
+            <tr><th class="col-codigo">Código</th><th>Nombre comercial</th><th class="col-codigo">NIT</th><th>Contacto</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var p in proveedores)
+            {
+                <tr class="@(seleccionado?.PrvId == p.PrvId ? "fila-seleccionada" : "")">
+                    <td class="col-codigo">@p.PrvCodigo</td>
+                    <td>@p.PrvNombreComercial</td>
+                    <td class="col-codigo">@p.PrvNit</td>
+                    <td>@p.PrvContacto</td>
+                    <td class="col-estado"><span class="estado-badge @(p.PrvEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(p.PrvEstado == "A" ? "Activo" : "Inactivo")</span></td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(p)" />
+                            @if (p.PrvEstado == "A")
+                            {
+                                <BotonIcono Icono="trash-2" Tooltip="Desactivar proveedor" Variante="peligro" OnClick="() => DesactivarAsync(p)" />
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (pestanaActiva == "detalle" && seleccionado is not null)
+{
+    <div class="panel-detalle">
+        <h2>Detalle: @seleccionado.PrvNombreComercial</h2>
+        <div class="campo"><label>Nombre comercial</label><span class="valor-detalle">@seleccionado.PrvNombreComercial</span></div>
+        <div class="campo"><label>NIT</label><span class="valor-detalle">@seleccionado.PrvNit</span></div>
+        <div class="campo"><label>Contacto</label><span class="valor-detalle">@seleccionado.PrvContacto</span></div>
+        <div class="campo"><label>Teléfono oficina</label><span class="valor-detalle">@seleccionado.PrvTelefonoOficina</span></div>
+        <div class="campo"><label>Email empresa</label><span class="valor-detalle">@seleccionado.PrvEmailEmpresa</span></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+        </div>
+    </div>
+}
+else if (pestanaActiva == "editar" && seleccionado is not null)
+{
+    <div class="panel-formulario">
+        <h2>Editar: @seleccionado.PrvNombreComercial</h2>
+        <EditForm Model="edicionProveedor" OnValidSubmit="GuardarEdicionAsync">
+            <DataAnnotationsValidator />
+            <ResumenValidacion />
+            <div class="campo"><label>Nombre comercial</label><InputText @bind-Value="edicionProveedor.NombreComercial" /></div>
+            <div class="campo"><label>NIT</label><InputText @bind-Value="edicionProveedor.Nit" /></div>
+            <div class="campo"><label>Contacto</label><InputText @bind-Value="edicionProveedor.Contacto" /></div>
+            <div class="campo"><label>Teléfono oficina</label><InputText @bind-Value="edicionProveedor.TelefonoOficina" /></div>
+            <div class="campo"><label>Dirección</label><InputText @bind-Value="edicionProveedor.Direccion" /></div>
+            <div class="campo"><label>Email empresa</label><InputText @bind-Value="edicionProveedor.EmailEmpresa" /></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<Proveedor> proveedores = Array.Empty<Proveedor>();
+    private Proveedor? seleccionado;
+    private string pestanaActiva = "lista";
+
+    private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
+        ? new[] { new PestanaItem("lista", "Lista") }
+        : pestanaActiva == "editar"
+            ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar") }
+            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle") };
+
+    private string textoBusqueda = "";
+    private string filtroEstado = "A";
+    private bool mostrarNuevo;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private readonly ProveedorModelo nuevoProveedor = new();
+    private readonly ProveedorModelo edicionProveedor = new();
+
+    protected override async Task OnInitializedAsync() => await BuscarAsync();
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        var estado = await AuthenticationStateTask;
+        return estado.User.ObtenerUsuId();
+    }
+
+    private async Task BuscarAsync()
+    {
+        proveedores = await ProveedorRepository.ConsultarAsync(
+            string.IsNullOrWhiteSpace(textoBusqueda) ? null : textoBusqueda,
+            string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado);
+    }
+
+    private void MostrarFormularioNuevo()
+    {
+        mensaje = null;
+        nuevoProveedor.Codigo = "";
+        nuevoProveedor.NombreComercial = "";
+        nuevoProveedor.Nit = null;
+        nuevoProveedor.Contacto = null;
+        nuevoProveedor.TelefonoOficina = null;
+        nuevoProveedor.Direccion = null;
+        nuevoProveedor.EmailEmpresa = null;
+        mostrarNuevo = true;
+    }
+
+    private async Task CrearProveedorAsync()
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ProveedorRepository.InsertarAsync(
+                nuevoProveedor.Codigo, nuevoProveedor.NombreComercial, nuevoProveedor.Nit, nuevoProveedor.Contacto,
+                nuevoProveedor.Direccion, nuevoProveedor.TelefonoOficina, nuevoProveedor.EmailEmpresa, usuId);
+            mostrarNuevo = false;
+            mensaje = "Proveedor creado correctamente.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private void SeleccionarAsync(Proveedor proveedor)
+    {
+        seleccionado = proveedor;
+        pestanaActiva = "detalle";
+        mensaje = null;
+    }
+
+    private void IniciarEdicion()
+    {
+        if (seleccionado is null) return;
+        edicionProveedor.NombreComercial = seleccionado.PrvNombreComercial;
+        edicionProveedor.Nit = seleccionado.PrvNit;
+        edicionProveedor.Contacto = seleccionado.PrvContacto;
+        edicionProveedor.TelefonoOficina = seleccionado.PrvTelefonoOficina;
+        edicionProveedor.EmailEmpresa = seleccionado.PrvEmailEmpresa;
+        mensaje = null;
+        pestanaActiva = "editar";
+    }
+
+    private void CancelarEdicion()
+    {
+        pestanaActiva = "detalle";
+    }
+
+    private async Task GuardarEdicionAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ProveedorRepository.ActualizarAsync(
+                seleccionado.PrvId, edicionProveedor.NombreComercial, edicionProveedor.Nit, edicionProveedor.Contacto,
+                edicionProveedor.Direccion, edicionProveedor.TelefonoOficina, edicionProveedor.EmailEmpresa, usuId);
+            mensaje = "Cambios guardados.";
+            esMensajeError = false;
+            await BuscarAsync();
+            seleccionado = proveedores.FirstOrDefault(p => p.PrvId == seleccionado.PrvId) ?? seleccionado;
+            pestanaActiva = "detalle";
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private async Task DesactivarAsync(Proveedor proveedor)
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ProveedorRepository.EliminarAsync(proveedor.PrvId, usuId);
+            mensaje = "Proveedor desactivado.";
+            esMensajeError = false;
+            if (seleccionado?.PrvId == proveedor.PrvId)
+            {
+                seleccionado = null;
+                pestanaActiva = "lista";
+            }
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private sealed class ProveedorModelo
+    {
+        [Required] public string Codigo { get; set; } = "";
+        [Required] public string NombreComercial { get; set; } = "";
+        public string? Nit { get; set; }
+        public string? Contacto { get; set; }
+        public string? TelefonoOficina { get; set; }
+        public string? Direccion { get; set; }
+        public string? EmailEmpresa { get; set; }
+    }
+}

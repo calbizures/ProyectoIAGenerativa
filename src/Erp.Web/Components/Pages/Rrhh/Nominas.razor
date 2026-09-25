@@ -1,0 +1,388 @@
+@page "/rrhh/nominas"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:RRHH_ADMIN")]
+@using Erp.Data.General
+@using Erp.Data.Rrhh
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IRrhhRepository RrhhRepository
+@inject IGeneralRepository GeneralRepository
+
+<PageTitle>Nóminas</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Nóminas</h1>
+    <p>Cree el período, calcule (sueldo proporcional, bonificación, IGSS y movimientos del período), revise y apruebe.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
+
+@if (pestanaActiva == "lista")
+{
+    <div class="barra-herramientas">
+        <select @bind="filtroCiaId" @bind:after="BuscarAsync" aria-label="Compañía">
+            <option value="">Todas las compañías</option>
+            @foreach (var c in companias)
+            {
+                <option value="@c.CiaId">@c.CiaNombreComercial</option>
+            }
+        </select>
+        <span class="barra-herramientas-separador"></span>
+        <BotonIcono Icono="plus" Tooltip="Nueva nómina" Etiqueta="Nueva nómina" Variante="primario" OnClick="IniciarNueva" />
+    </div>
+
+    @if (mostrarNueva)
+    {
+        <div class="panel-formulario">
+            <h2>Nueva nómina</h2>
+            <div class="campo">
+                <label for="nom-cia">Compañía</label>
+                <select id="nom-cia" @bind="nuevaCiaId" @bind:after="AlCambiarCompania">
+                    @foreach (var c in companias)
+                    {
+                        <option value="@c.CiaId">@c.CiaNombreComercial</option>
+                    }
+                </select>
+            </div>
+            <div class="campo">
+                <label for="nom-periodo">Período</label>
+                <select id="nom-periodo" @bind="nuevoTipoPeriodo" @bind:after="SugerirFechas">
+                    <option value="M">Mensual</option>
+                    <option value="Q">Quincenal</option>
+                </select>
+            </div>
+            @if (nuevoTipoPeriodo == "Q")
+            {
+                <div class="campo">
+                    <label for="nom-quincena">Quincena</label>
+                    <select id="nom-quincena" @bind="nuevaQuincena" @bind:after="SugerirFechas">
+                        <option value="1">Primera (1 al 15)</option>
+                        <option value="2">Segunda (16 a fin de mes)</option>
+                    </select>
+                </div>
+            }
+            <div class="campo"><label for="nom-mes">Mes</label><input id="nom-mes" type="month" @bind="nuevoMes" @bind:format="yyyy-MM" @bind:after="SugerirFechas" /></div>
+            <div class="campo"><label for="nom-del">Del</label><input id="nom-del" type="date" @bind="nuevaFechaDel" /></div>
+            <div class="campo"><label for="nom-al">Al</label><input id="nom-al" type="date" @bind="nuevaFechaAl" /></div>
+            <div class="campo"><label for="nom-pago">Fecha de pago</label><input id="nom-pago" type="date" @bind="nuevaFechaPago" /></div>
+            <div class="campo"><label for="nom-desc">Descripción</label><input id="nom-desc" @bind="nuevaDescripcion" /></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Crear nómina" Etiqueta="Crear" Variante="primario" OnClick="CrearAsync" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNueva = false" />
+            </div>
+        </div>
+    }
+
+    @if (nominas.Count == 0)
+    {
+        <p class="estado-vacio">No hay nóminas registradas.</p>
+    }
+    else
+    {
+        <table class="tabla-datos">
+            <thead>
+                <tr><th>Descripción</th><th class="col-estado">Período</th><th class="col-fecha">Del</th><th class="col-fecha">Al</th><th class="num col-estado">Empleados</th><th class="num col-monto">Ingresos</th><th class="num col-monto">Descuentos</th><th class="num col-monto">Líquido</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var n in nominas)
+                {
+                    <tr class="@(seleccionada?.IdNomina == n.IdNomina ? "fila-seleccionada" : "")">
+                        <td>@n.Descripcion</td>
+                        <td class="col-estado">@(n.TipoPeriodo == "Q" ? "Quincenal" : "Mensual")</td>
+                        <td class="col-fecha">@n.FechaDel.ToString("dd/MM/yyyy")</td>
+                        <td class="col-fecha">@n.FechaAl.ToString("dd/MM/yyyy")</td>
+                        <td class="num col-estado">@n.CantidadEmpleados</td>
+                        <td class="num col-monto">@n.TotalIngresos.ToString("N2")</td>
+                        <td class="num col-monto">@n.TotalDescuentos.ToString("N2")</td>
+                        <td class="num col-monto">@n.TotalLiquido.ToString("N2")</td>
+                        <td class="col-estado"><span class="estado-badge @(n.Estado is "A" or "C" ? "estado-badge-activo" : "estado-badge-inactivo")">@NombreEstado(n.Estado)</span></td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(n)" />
+                                @if (n.Estado is "B" or "C")
+                                {
+                                    <BotonIcono Icono="calculator" Tooltip="Calcular" OnClick="() => CalcularAsync(n)" />
+                                }
+                                @if (n.Estado == "C")
+                                {
+                                    <BotonIcono Icono="check-circle" Tooltip="Aprobar" Variante="primario" OnClick="() => AprobarAsync(n)" />
+                                }
+                                @if (n.Estado != "N")
+                                {
+                                    <BotonIcono Icono="ban" Tooltip="Anular" Variante="peligro" OnClick="() => AnularAsync(n)" />
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+else if (pestanaActiva == "detalle" && seleccionada is not null)
+{
+    <div class="panel-detalle panel-ancho">
+        <h2>@seleccionada.Descripcion</h2>
+        <div class="resumen-totales">
+            <span>Estado: <strong>@NombreEstado(seleccionada.Estado)</strong></span>
+            <span>Período: <strong>@seleccionada.FechaDel.ToString("dd/MM/yyyy") al @seleccionada.FechaAl.ToString("dd/MM/yyyy")</strong></span>
+            <span>Ingresos: <strong>Q @seleccionada.TotalIngresos.ToString("N2")</strong></span>
+            <span>Descuentos: <strong>Q @seleccionada.TotalDescuentos.ToString("N2")</strong></span>
+            <span>Líquido a pagar: <strong>Q @seleccionada.TotalLiquido.ToString("N2")</strong></span>
+        </div>
+        <div class="acciones-fila">
+            @if (seleccionada.Estado is "B" or "C")
+            {
+                <BotonIcono Icono="calculator" Tooltip="Calcular" Etiqueta="@(seleccionada.Estado == "B" ? "Calcular" : "Recalcular")" OnClick="() => CalcularAsync(seleccionada)" />
+            }
+            @if (seleccionada.Estado == "C")
+            {
+                <BotonIcono Icono="check-circle" Tooltip="Aprobar" Etiqueta="Aprobar" Variante="primario" OnClick="() => AprobarAsync(seleccionada)" />
+            }
+        </div>
+
+        @if (empleadosNomina.Count == 0)
+        {
+            <p class="estado-vacio">@(seleccionada.Estado == "B" ? "La nómina está en borrador: presione Calcular." : "La nómina no tiene empleados.")</p>
+        }
+        else
+        {
+            <table class="tabla-datos">
+                <thead>
+                    <tr><th class="col-codigo">Código</th><th>Empleado</th><th class="num col-monto">Salario base</th><th class="num col-estado">Días</th><th class="num col-monto">Ingresos</th><th class="num col-monto">Descuentos</th><th class="num col-monto">Líquido</th><th class="col-acciones">Detalle</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in empleadosNomina)
+                    {
+                        <tr class="@(expandidoId == e.IdNominaEmpleado ? "fila-seleccionada" : "")">
+                            <td class="col-codigo">@e.CodigoEmpleado</td>
+                            <td>@e.Empleado</td>
+                            <td class="num col-monto">@e.SalarioBase.ToString("N2")</td>
+                            <td class="num col-estado">@e.DiasLaborados.ToString("0.##")</td>
+                            <td class="num col-monto">@e.TotalIngresos.ToString("N2")</td>
+                            <td class="num col-monto">@e.TotalDescuentos.ToString("N2")</td>
+                            <td class="num col-monto"><strong>@e.Liquido.ToString("N2")</strong></td>
+                            <td class="col-acciones">
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="@(expandidoId == e.IdNominaEmpleado ? "x" : "list")" Tooltip="@(expandidoId == e.IdNominaEmpleado ? "Ocultar detalle" : "Ver detalle")" OnClick="() => AlternarDetalleAsync(e)" />
+                                </div>
+                            </td>
+                        </tr>
+                        @if (expandidoId == e.IdNominaEmpleado)
+                        {
+                            <tr class="fila-subdetalle">
+                                <td colspan="8">
+                                    <table class="doc-tabla">
+                                        <thead><tr><th>Concepto</th><th>Descripción</th><th class="num">Ingreso</th><th class="num">Descuento</th></tr></thead>
+                                        <tbody>
+                                            @foreach (var d in detalleEmpleado)
+                                            {
+                                                <tr>
+                                                    <td>@d.Codigo</td>
+                                                    <td>@d.Descripcion</td>
+                                                    <td class="num">@(d.Naturaleza == "I" ? d.Monto.ToString("N2") : "")</td>
+                                                    <td class="num">@(d.Naturaleza == "D" ? d.Monto.ToString("N2") : "")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<Compania> companias = Array.Empty<Compania>();
+    private IReadOnlyList<Nomina> nominas = Array.Empty<Nomina>();
+    private Nomina? seleccionada;
+    private IReadOnlyList<NominaEmpleado> empleadosNomina = Array.Empty<NominaEmpleado>();
+    private IReadOnlyList<NominaDetalle> detalleEmpleado = Array.Empty<NominaDetalle>();
+    private int? expandidoId;
+
+    private string pestanaActiva = "lista";
+    private int? filtroCiaId;
+    private bool mostrarNueva;
+    private int nuevaCiaId;
+    private string nuevoTipoPeriodo = "M";
+    private string nuevaQuincena = "1";
+    private DateTime nuevoMes = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime nuevaFechaDel;
+    private DateTime nuevaFechaAl;
+    private DateTime? nuevaFechaPago;
+    private string nuevaDescripcion = "";
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private IReadOnlyList<PestanaItem> Pestanas => seleccionada is null
+        ? new[] { new PestanaItem("lista", "Lista") }
+        : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle") };
+
+    private static readonly string[] Meses =
+        { "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            companias = await GeneralRepository.ConsultarCompaniasAsync(soloActivas: true);
+            await BuscarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private static string NombreEstado(string estado) => estado switch
+    {
+        "B" => "Borrador",
+        "C" => "Calculada",
+        "A" => "Aprobada",
+        "N" => "Anulada",
+        _ => estado
+    };
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private void MostrarOk(string texto)
+    {
+        mensaje = texto;
+        esMensajeError = false;
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private async Task BuscarAsync()
+    {
+        try
+        {
+            nominas = await RrhhRepository.ConsultarNominasAsync(filtroCiaId);
+            if (seleccionada is not null)
+                seleccionada = nominas.FirstOrDefault(n => n.IdNomina == seleccionada.IdNomina);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void IniciarNueva()
+    {
+        mensaje = null;
+        nuevaCiaId = filtroCiaId ?? companias.FirstOrDefault()?.CiaId ?? 0;
+        nuevoMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        nuevaQuincena = DateTime.Today.Day <= 15 ? "1" : "2";
+        AlCambiarCompania();
+        mostrarNueva = true;
+    }
+
+    // La periodicidad por defecto viene de la compañía (gen_compania.cia_periodicidad_nomina).
+    private void AlCambiarCompania()
+    {
+        nuevoTipoPeriodo = companias.FirstOrDefault(c => c.CiaId == nuevaCiaId)?.CiaPeriodicidadNomina ?? "M";
+        SugerirFechas();
+    }
+
+    private void SugerirFechas()
+    {
+        var inicioMes = new DateTime(nuevoMes.Year, nuevoMes.Month, 1);
+        var finMes = inicioMes.AddMonths(1).AddDays(-1);
+        var nombreMes = $"{Meses[inicioMes.Month - 1]} {inicioMes.Year}";
+        if (nuevoTipoPeriodo == "Q")
+        {
+            var primera = nuevaQuincena == "1";
+            nuevaFechaDel = primera ? inicioMes : inicioMes.AddDays(15);
+            nuevaFechaAl = primera ? inicioMes.AddDays(14) : finMes;
+            nuevaDescripcion = $"Nómina {(primera ? "primera" : "segunda")} quincena de {nombreMes}";
+        }
+        else
+        {
+            nuevaFechaDel = inicioMes;
+            nuevaFechaAl = finMes;
+            nuevaDescripcion = $"Nómina mensual de {nombreMes}";
+        }
+        nuevaFechaPago = nuevaFechaAl;
+    }
+
+    private async Task CrearAsync()
+    {
+        if (nuevaCiaId <= 0 || string.IsNullOrWhiteSpace(nuevaDescripcion))
+        {
+            mensaje = "Seleccione la compañía e indique la descripción.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            var id = await RrhhRepository.CrearNominaAsync(nuevaCiaId, nuevaDescripcion.Trim(), nuevoTipoPeriodo, nuevaFechaDel, nuevaFechaAl, nuevaFechaPago, await ObtenerUsuIdActualAsync());
+            mostrarNueva = false;
+            await BuscarAsync();
+            var nomina = nominas.FirstOrDefault(n => n.IdNomina == id);
+            MostrarOk("Nómina creada en borrador. Ahora puede calcularla.");
+            if (nomina is not null) await SeleccionarAsync(nomina);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task SeleccionarAsync(Nomina nomina)
+    {
+        seleccionada = nomina;
+        expandidoId = null;
+        pestanaActiva = "detalle";
+        try
+        {
+            empleadosNomina = await RrhhRepository.ConsultarNominaEmpleadosAsync(nomina.IdNomina);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task AlternarDetalleAsync(NominaEmpleado empleado)
+    {
+        if (expandidoId == empleado.IdNominaEmpleado)
+        {
+            expandidoId = null;
+            return;
+        }
+        try
+        {
+            detalleEmpleado = await RrhhRepository.ConsultarNominaDetalleAsync(empleado.IdNominaEmpleado);
+            expandidoId = empleado.IdNominaEmpleado;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task EjecutarAsync(Nomina nomina, Func<int, int?, Task> accion, string textoOk)
+    {
+        try
+        {
+            await accion(nomina.IdNomina, await ObtenerUsuIdActualAsync());
+            await BuscarAsync();
+            var actualizada = nominas.FirstOrDefault(n => n.IdNomina == nomina.IdNomina);
+            if (actualizada is not null && (pestanaActiva == "detalle" || accion == RrhhRepository.CalcularNominaAsync))
+                await SeleccionarAsync(actualizada);
+            MostrarOk(textoOk);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private Task CalcularAsync(Nomina nomina) =>
+        EjecutarAsync(nomina, RrhhRepository.CalcularNominaAsync, "Nómina calculada. Revise el detalle y apruébela.");
+
+    private Task AprobarAsync(Nomina nomina) =>
+        EjecutarAsync(nomina, RrhhRepository.AprobarNominaAsync, "Nómina aprobada. Los movimientos del período quedaron aplicados.");
+
+    private Task AnularAsync(Nomina nomina) =>
+        EjecutarAsync(nomina, RrhhRepository.AnularNominaAsync, "Nómina anulada; sus movimientos quedaron libres para otra nómina.");
+}

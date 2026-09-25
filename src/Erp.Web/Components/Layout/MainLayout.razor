@@ -1,0 +1,18 @@
+@inherits LayoutComponentBase
+
+<div class="app-shell">
+    <NavMenu @rendermode="InteractiveServer" />
+
+    <div class="app-contenido">
+        <main class="app-main">
+            @Body
+        </main>
+        <BarraEstado @rendermode="InteractiveServer" />
+    </div>
+</div>
+
+<div id="blazor-error-ui" role="alert">
+    Ocurrió un error inesperado.
+    <a href="" class="reload">Recargar la página</a>
+    <a class="dismiss" aria-label="Cerrar aviso">✕</a>
+</div>

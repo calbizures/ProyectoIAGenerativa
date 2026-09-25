@@ -1,0 +1,203 @@
+@page "/tipos-caracteristica"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR")]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.Inventario
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IProductoCaracteristicaRepository CaracteristicaRepository
+
+<PageTitle>Tipos de característica</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Tipos de característica</h1>
+    <p>Catálogo de tipos de característica de producto (Marca, Modelo, Garantía, Capacidad...).</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="barra-herramientas">
+    <select @bind="filtroEstado" aria-label="Estado">
+        <option value="A">Vigentes</option>
+        <option value="I">Desactivados</option>
+        <option value="">Todos</option>
+    </select>
+    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+    <span class="barra-herramientas-separador"></span>
+    <BotonIcono Icono="plus" Tooltip="Nuevo tipo" Etiqueta="Nuevo tipo" Variante="primario" OnClick="MostrarFormularioNuevo" />
+</div>
+
+@if (mostrarNuevo)
+{
+    <EditForm Model="nuevoTipo" OnValidSubmit="CrearTipoAsync" class="panel-formulario">
+        <DataAnnotationsValidator />
+        <ResumenValidacion />
+        <div class="campo"><label>Código</label><InputText @bind-Value="nuevoTipo.Codigo" /></div>
+        <div class="campo"><label>Descripción</label><InputText @bind-Value="nuevoTipo.Descripcion" /></div>
+        <div class="campo"><label>Orden</label><InputNumber @bind-Value="nuevoTipo.Orden" /></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+        </div>
+    </EditForm>
+}
+
+<table class="tabla-datos">
+    <thead>
+        <tr><th class="col-codigo">Código</th><th>Descripción</th><th class="col-estado">Orden</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+    </thead>
+    <tbody>
+        @if (tipos.Count == 0)
+        {
+            <tr><td colspan="5">Sin tipos de característica registrados.</td></tr>
+        }
+        @foreach (var t in tipos)
+        {
+            <tr>
+                @if (editandoId == t.PtcId)
+                {
+                    <td><input @bind="editCodigo" /></td>
+                    <td><input @bind="editDescripcion" /></td>
+                    <td class="col-estado"><input type="number" @bind="editOrden" /></td>
+                    <td class="col-estado">@(t.PtcEstado == "A" ? "Vigente" : "Desactivado")</td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="GuardarEdicionAsync" />
+                            <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => editandoId = null" />
+                        </div>
+                    </td>
+                }
+                else
+                {
+                    <td class="col-codigo">@t.PtcCodigo</td>
+                    <td>@t.PtcDescripcion</td>
+                    <td class="col-estado">@t.PtcOrden</td>
+                    <td class="col-estado">@(t.PtcEstado == "A" ? "Vigente" : "Desactivado")</td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => Editar(t)" />
+                            @if (t.PtcEstado == "A")
+                            {
+                                <BotonIcono Icono="trash-2" Tooltip="Desactivar" Variante="peligro" OnClick="() => DesactivarAsync(t)" />
+                            }
+                        </div>
+                    </td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<ProductoTipoCaracteristica> tipos = Array.Empty<ProductoTipoCaracteristica>();
+
+    private string filtroEstado = "A";
+    private bool mostrarNuevo;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private readonly TipoCaracteristicaModelo nuevoTipo = new();
+    private int? editandoId;
+    private string editCodigo = "";
+    private string editDescripcion = "";
+    private int editOrden;
+
+    protected override async Task OnInitializedAsync() => await BuscarAsync();
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        var estado = await AuthenticationStateTask;
+        return estado.User.ObtenerUsuId();
+    }
+
+    private async Task BuscarAsync()
+    {
+        tipos = await CaracteristicaRepository.ConsultarTiposAsync(string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado);
+    }
+
+    private void MostrarFormularioNuevo()
+    {
+        mensaje = null;
+        nuevoTipo.Codigo = "";
+        nuevoTipo.Descripcion = "";
+        nuevoTipo.Orden = 0;
+        mostrarNuevo = true;
+    }
+
+    private async Task CrearTipoAsync()
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await CaracteristicaRepository.InsertarTipoAsync(nuevoTipo.Codigo, nuevoTipo.Descripcion, nuevoTipo.Orden, usuId);
+            mostrarNuevo = false;
+            mensaje = "Tipo de característica creado correctamente.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private void Editar(ProductoTipoCaracteristica tipo)
+    {
+        editandoId = tipo.PtcId;
+        editCodigo = tipo.PtcCodigo;
+        editDescripcion = tipo.PtcDescripcion;
+        editOrden = tipo.PtcOrden;
+        mensaje = null;
+    }
+
+    private async Task GuardarEdicionAsync()
+    {
+        if (editandoId is null) return;
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await CaracteristicaRepository.ActualizarTipoAsync(editandoId.Value, editCodigo, editDescripcion, editOrden, usuId);
+            editandoId = null;
+            mensaje = "Cambios guardados.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private async Task DesactivarAsync(ProductoTipoCaracteristica tipo)
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await CaracteristicaRepository.EliminarTipoAsync(tipo.PtcId, usuId);
+            mensaje = "Tipo de característica desactivado.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private sealed class TipoCaracteristicaModelo
+    {
+        [Required] public string Codigo { get; set; } = "";
+        [Required] public string Descripcion { get; set; } = "";
+        public int Orden { get; set; }
+    }
+}

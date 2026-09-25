@@ -1,0 +1,277 @@
+@page "/caracteristicas"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR")]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.Inventario
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IProductoCaracteristicaRepository CaracteristicaRepository
+@inject IProductoRepository ProductoRepository
+
+<PageTitle>Características de productos</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Características de productos</h1>
+    <p>Mantenimiento de características (marca, modelo, garantía, etc.) por producto.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="barra-herramientas">
+    <select @bind="filtroProId">
+        <option value="0">Todos los productos</option>
+        @foreach (var p in productos)
+        {
+            <option value="@p.ProId">@p.ProCodigo - @p.ProDescripcion</option>
+        }
+    </select>
+    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+    <span class="barra-herramientas-separador"></span>
+    <BotonIcono Icono="plus" Tooltip="Nueva característica" Etiqueta="Nueva característica" Variante="primario" OnClick="MostrarFormularioNuevo" />
+    <BotonIcono Icono="upload" Tooltip="Importar desde Excel" Etiqueta="Importar Excel" OnClick="() => mostrarImportar = !mostrarImportar" />
+</div>
+
+@if (mostrarImportar)
+{
+    <ImportadorExcel Titulo="Importar características desde Excel"
+                      Columnas="@(new[] { "pro_codigo", "ptc_codigo", "pca_valor", "pca_descripcion" })"
+                      OnImportar="ImportarAsync" />
+}
+
+@if (mostrarNuevo)
+{
+    <EditForm Model="nuevaCaracteristica" OnValidSubmit="CrearCaracteristicaAsync" class="panel-formulario">
+        <DataAnnotationsValidator />
+        <ResumenValidacion />
+        <div class="campo">
+            <label>Producto</label>
+            <select @bind="nuevaCaracteristica.ProId">
+                <option value="0">Seleccione...</option>
+                @foreach (var p in productos)
+                {
+                    <option value="@p.ProId">@p.ProCodigo - @p.ProDescripcion</option>
+                }
+            </select>
+        </div>
+        <div class="campo">
+            <label>Tipo</label>
+            <select @bind="nuevaCaracteristica.PtcId">
+                <option value="0">Seleccione...</option>
+                @foreach (var tipo in tiposCaracteristica)
+                {
+                    <option value="@tipo.PtcId">@tipo.PtcDescripcion</option>
+                }
+            </select>
+        </div>
+        <div class="campo"><label>Valor</label><InputText @bind-Value="nuevaCaracteristica.Valor" /></div>
+        <div class="campo"><label>Descripción</label><InputText @bind-Value="nuevaCaracteristica.Descripcion" /></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+        </div>
+    </EditForm>
+}
+
+<table class="tabla-datos">
+    <thead>
+        <tr><th>Producto</th><th>Tipo</th><th>Valor</th><th>Descripción</th><th class="col-acciones">Acciones</th></tr>
+    </thead>
+    <tbody>
+        @if (caracteristicas.Count == 0)
+        {
+            <tr><td colspan="5">Sin características registradas.</td></tr>
+        }
+        @foreach (var c in caracteristicas)
+        {
+            <tr>
+                @if (editandoId == c.PcaId)
+                {
+                    <td>@c.ProCodigo - @c.ProDescripcion</td>
+                    <td>@c.PtcDescripcion</td>
+                    <td><input @bind="editValor" /></td>
+                    <td><input @bind="editDescripcion" /></td>
+                    <td>
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="GuardarEdicionAsync" />
+                            <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => editandoId = null" />
+                        </div>
+                    </td>
+                }
+                else
+                {
+                    <td>@c.ProCodigo - @c.ProDescripcion</td>
+                    <td>@c.PtcDescripcion</td>
+                    <td>@c.PcaValor</td>
+                    <td>@c.PcaDescripcion</td>
+                    <td>
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => Editar(c)" />
+                            <BotonIcono Icono="trash-2" Tooltip="Eliminar" Variante="peligro" OnClick="() => EliminarAsync(c)" />
+                        </div>
+                    </td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<ProductoCaracteristica> caracteristicas = Array.Empty<ProductoCaracteristica>();
+    private IReadOnlyList<Producto> productos = Array.Empty<Producto>();
+    private IReadOnlyList<ProductoTipoCaracteristica> tiposCaracteristica = Array.Empty<ProductoTipoCaracteristica>();
+
+    private int filtroProId;
+    private bool mostrarNuevo;
+    private bool mostrarImportar;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private readonly CaracteristicaModelo nuevaCaracteristica = new();
+    private int? editandoId;
+    private string editValor = "";
+    private string? editDescripcion;
+
+    protected override async Task OnInitializedAsync()
+    {
+        productos = await ProductoRepository.ConsultarAsync(null, null, prtId: null, estado: "A", pagina: 1, tamanioPagina: 500);
+        tiposCaracteristica = await CaracteristicaRepository.ConsultarTiposAsync("A");
+        await BuscarAsync();
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        var estado = await AuthenticationStateTask;
+        return estado.User.ObtenerUsuId();
+    }
+
+    private async Task BuscarAsync()
+    {
+        caracteristicas = await CaracteristicaRepository.ConsultarAsync(filtroProId == 0 ? null : filtroProId);
+    }
+
+    private void MostrarFormularioNuevo()
+    {
+        mensaje = null;
+        nuevaCaracteristica.ProId = 0;
+        nuevaCaracteristica.PtcId = 0;
+        nuevaCaracteristica.Valor = "";
+        nuevaCaracteristica.Descripcion = null;
+        mostrarNuevo = true;
+    }
+
+    private async Task CrearCaracteristicaAsync()
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await CaracteristicaRepository.InsertarAsync(nuevaCaracteristica.ProId, nuevaCaracteristica.PtcId, nuevaCaracteristica.Valor, nuevaCaracteristica.Descripcion, usuId);
+            mostrarNuevo = false;
+            mensaje = "Característica creada correctamente.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private void Editar(ProductoCaracteristica c)
+    {
+        editandoId = c.PcaId;
+        editValor = c.PcaValor;
+        editDescripcion = c.PcaDescripcion;
+        mensaje = null;
+    }
+
+    private async Task GuardarEdicionAsync()
+    {
+        if (editandoId is null) return;
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await CaracteristicaRepository.ActualizarAsync(editandoId.Value, editValor, editDescripcion, usuId);
+            editandoId = null;
+            mensaje = "Cambios guardados.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private async Task EliminarAsync(ProductoCaracteristica c)
+    {
+        try
+        {
+            await CaracteristicaRepository.EliminarAsync(c.PcaId);
+            mensaje = "Característica eliminada.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private async Task ImportarAsync(IReadOnlyList<Dictionary<string, string>> filas)
+    {
+        var usuId = await ObtenerUsuIdActualAsync();
+        var exitosas = 0;
+        var errores = new List<string>();
+
+        foreach (var fila in filas)
+        {
+            try
+            {
+                var proCodigo = fila.GetValueOrDefault("pro_codigo", "").Trim();
+                var ptcCodigo = fila.GetValueOrDefault("ptc_codigo", "").Trim();
+                var valor = fila.GetValueOrDefault("pca_valor", "").Trim();
+                var descripcion = fila.GetValueOrDefault("pca_descripcion", "").Trim();
+
+                var producto = productos.FirstOrDefault(p => p.ProCodigo.Equals(proCodigo, StringComparison.OrdinalIgnoreCase));
+                if (producto is null)
+                    throw new InvalidOperationException($"No existe el producto '{proCodigo}'.");
+
+                var tipo = tiposCaracteristica.FirstOrDefault(t => t.PtcCodigo.Equals(ptcCodigo, StringComparison.OrdinalIgnoreCase));
+                if (tipo is null)
+                    throw new InvalidOperationException($"No existe el tipo de característica '{ptcCodigo}'.");
+
+                await CaracteristicaRepository.InsertarAsync(producto.ProId, tipo.PtcId, valor, string.IsNullOrWhiteSpace(descripcion) ? null : descripcion, usuId);
+                exitosas++;
+            }
+            catch (Exception ex)
+            {
+                errores.Add(MensajesError.Traducir(ex));
+            }
+        }
+
+        mensaje = errores.Count == 0
+            ? $"Se importaron {exitosas} características correctamente."
+            : $"Se importaron {exitosas} de {filas.Count}. Errores: {string.Join(" | ", errores.Take(5))}";
+        esMensajeError = errores.Count > 0;
+        mostrarImportar = false;
+        await BuscarAsync();
+    }
+
+    private sealed class CaracteristicaModelo
+    {
+        [Range(1, int.MaxValue, ErrorMessage = "Seleccione un producto")] public int ProId { get; set; }
+        [Range(1, int.MaxValue, ErrorMessage = "Seleccione un tipo")] public int PtcId { get; set; }
+        [Required] public string Valor { get; set; } = "";
+        public string? Descripcion { get; set; }
+    }
+}

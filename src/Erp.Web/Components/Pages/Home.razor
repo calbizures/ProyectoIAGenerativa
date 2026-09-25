@@ -1,0 +1,122 @@
+@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
+
+<PageTitle>Inicio</PageTitle>
+
+<section class="inicio-hero">
+    <div class="inicio-hero-texto">
+        <p class="inicio-hero-etiqueta">SISTEMA ERP</p>
+        <h1>Bienvenido, @nombreUsuario</h1>
+        <p class="inicio-hero-descripcion">
+            Plataforma integral para inventario, ventas, compras, bancos y contabilidad
+            de Servicios Informáticos Integrados.
+        </p>
+    </div>
+    <img src="images/hero-erp.svg" alt="" class="inicio-hero-ilustracion" />
+</section>
+
+<section class="inicio-modulos">
+    <h2>Módulos</h2>
+    <div class="modulos-grid">
+        <AuthorizeView Policy="Permiso:SEGURIDAD_USUARIO_ADMIN">
+            <Authorized>
+                <a href="usuarios" class="modulo-card">
+                    <span class="modulo-icono"><Icono Nombre="lock" Tamano="26" /></span>
+                    <span class="modulo-titulo">Seguridad</span>
+                    <span class="modulo-desc">Usuarios, roles y permisos</span>
+                </a>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR">
+            <Authorized>
+                <a href="productos" class="modulo-card">
+                    <span class="modulo-icono"><Icono Nombre="package" Tamano="26" /></span>
+                    <span class="modulo-titulo">Inventario</span>
+                    <span class="modulo-desc">Productos y existencias</span>
+                </a>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Policy="Permiso:VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR">
+            <Authorized>
+                <a href="facturas" class="modulo-card">
+                    <span class="modulo-icono"><Icono Nombre="receipt" Tamano="26" /></span>
+                    <span class="modulo-titulo">Ventas / POS</span>
+                    <span class="modulo-desc">Facturación a clientes</span>
+                </a>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Policy="Permiso:COMPRAS_DOCUMENTO_CREAR">
+            <Authorized>
+                <a href="compras" class="modulo-card">
+                    <span class="modulo-icono"><Icono Nombre="shopping-cart" Tamano="26" /></span>
+                    <span class="modulo-titulo">Compras</span>
+                    <span class="modulo-desc">Compras a proveedores</span>
+                </a>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Policy="Permiso:BANCOS_CAJA_ADMIN">
+            <Authorized>
+                <a href="caja" class="modulo-card">
+                    <span class="modulo-icono"><Icono Nombre="landmark" Tamano="26" /></span>
+                    <span class="modulo-titulo">Bancos</span>
+                    <span class="modulo-desc">Caja, cortes y depósitos</span>
+                </a>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Policy="Permiso:RRHH_ADMIN">
+            <Authorized>
+                <a href="rrhh/empleados" class="modulo-card">
+                    <span class="modulo-icono"><Icono Nombre="briefcase" Tamano="26" /></span>
+                    <span class="modulo-titulo">RRHH</span>
+                    <span class="modulo-desc">Empleados y nómina</span>
+                </a>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Policy="Permiso:GENERAL_CONFIG_ADMIN">
+            <Authorized>
+                <a href="general/companias" class="modulo-card">
+                    <span class="modulo-icono"><Icono Nombre="settings" Tamano="26" /></span>
+                    <span class="modulo-titulo">General</span>
+                    <span class="modulo-desc">Compañías, parámetros y entidades financieras</span>
+                </a>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Policy="Permiso:CONTABILIDAD_NOMENCLATURA_ADMIN">
+            <Authorized>
+                <a href="contabilidad/nomenclatura" class="modulo-card">
+                    <span class="modulo-icono"><Icono Nombre="bar-chart-2" Tamano="26" /></span>
+                    <span class="modulo-titulo">Contabilidad</span>
+                    <span class="modulo-desc">Nomenclatura contable y cuentas de pólizas</span>
+                </a>
+            </Authorized>
+            <NotAuthorized>
+                <div class="modulo-card modulo-card-proximamente" aria-disabled="true">
+                    <span class="modulo-icono"><Icono Nombre="bar-chart-2" Tamano="26" /></span>
+                    <span class="modulo-titulo">Contabilidad</span>
+                    <span class="modulo-badge">Próximamente</span>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+</section>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private string nombreUsuario = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationStateTask is null) return;
+        var estado = await AuthenticationStateTask;
+        nombreUsuario = estado.User.Identity?.Name ?? "";
+    }
+}

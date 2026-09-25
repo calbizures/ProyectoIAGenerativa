@@ -1,0 +1,86 @@
+@using ClosedXML.Excel
+@using Microsoft.AspNetCore.Components.Forms
+
+<div class="panel-formulario">
+    <h3>@Titulo</h3>
+    <div class="doc-nota">
+        <Icono Nombre="info" Tamano="15" />
+        <span>Columnas esperadas en la primera fila (en cualquier orden): @string.Join(", ", Columnas)</span>
+    </div>
+
+    <div class="campo">
+        <label>Archivo Excel (.xlsx)</label>
+        <InputFile OnChange="OnArchivoSeleccionadoAsync" accept=".xlsx" />
+    </div>
+
+    @if (error is not null)
+    {
+        <p class="mensaje-error">@error</p>
+    }
+
+    @if (filas.Count > 0)
+    {
+        <p>@filas.Count fila(s) detectadas.</p>
+        <div class="acciones-fila">
+            <BotonIcono Icono="upload" Tooltip="Importar filas" Etiqueta="@($"Importar {filas.Count} filas")" Variante="primario" OnClick="ProcesarAsync" />
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Titulo { get; set; } = "Importar desde Excel";
+    [Parameter] public string[] Columnas { get; set; } = Array.Empty<string>();
+    [Parameter] public EventCallback<IReadOnlyList<Dictionary<string, string>>> OnImportar { get; set; }
+
+    private readonly List<Dictionary<string, string>> filas = new();
+    private string? error;
+
+    private async Task OnArchivoSeleccionadoAsync(InputFileChangeEventArgs e)
+    {
+        error = null;
+        filas.Clear();
+
+        try
+        {
+            using var memoria = new MemoryStream();
+            await e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(memoria);
+            memoria.Position = 0;
+
+            using var libro = new XLWorkbook(memoria);
+            var hoja = libro.Worksheets.First();
+            var filaEncabezado = hoja.Row(1);
+            var encabezados = filaEncabezado.CellsUsed()
+                .Select(c => c.GetString().Trim().ToLowerInvariant())
+                .ToList();
+
+            if (encabezados.Count == 0)
+            {
+                error = "El archivo no tiene encabezados en la primera fila.";
+                return;
+            }
+
+            foreach (var filaHoja in hoja.RowsUsed().Skip(1))
+            {
+                var registro = new Dictionary<string, string>();
+                for (var i = 0; i < encabezados.Count; i++)
+                {
+                    registro[encabezados[i]] = filaHoja.Cell(i + 1).GetString().Trim();
+                }
+                filas.Add(registro);
+            }
+
+            if (filas.Count == 0)
+                error = "El archivo no tiene filas de datos.";
+        }
+        catch (Exception)
+        {
+            error = "No se pudo leer el archivo. Verifique que sea un libro de Excel (.xlsx) válido y que no esté abierto en otro programa.";
+        }
+    }
+
+    private async Task ProcesarAsync()
+    {
+        await OnImportar.InvokeAsync(filas);
+        filas.Clear();
+    }
+}

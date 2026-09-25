@@ -1,0 +1,139 @@
+@page "/general/cuentas-poliza"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:GENERAL_CONFIG_ADMIN,CONTABILIDAD_NOMENCLATURA_ADMIN")]
+@using Erp.Data.General
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IGeneralRepository GeneralRepository
+
+<PageTitle>Cuentas de pólizas</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Cuentas de pólizas automáticas</h1>
+    <p>Cuenta contable que recibe cada concepto cuando el sistema genera una póliza automática.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="tarjeta doc-seccion">
+    <p class="doc-seccion-titulo"><Icono Nombre="info" Tamano="15" /> Cuándo se genera cada póliza</p>
+    <ul class="lista-ayuda">
+        <li><strong>Venta:</strong> al grabar la factura (criterio de devengo). Debe: Caja por lo cobrado al facturar y Clientes por el saldo al crédito; Haber: Ventas (sin IVA) e IVA débito fiscal. Además Costo de ventas contra Inventario.</li>
+        <li><strong>Compra:</strong> al grabar la compra. Debe: Inventario o gasto e IVA crédito fiscal; Haber: Proveedores.</li>
+        <li><strong>Anulación:</strong> revierte la póliza del documento original.</li>
+        <li><strong>Cobro de cuota y pago con cheque:</strong> al registrarlos (Caja o Clientes / Proveedores o Bancos).</li>
+        <li><strong>Depósitos, cierre de caja y nómina:</strong> los conceptos ya están parametrizados y se generarán cuando se habiliten sus pólizas en Contabilidad.</li>
+        <li><strong>Bancos:</strong> los depósitos y cheques usan por ahora una sola subcuenta de bancos (conceptos DEPOSITO_BANCOS y PAGO_BANCOS); cámbiela aquí cuando corresponda.</li>
+    </ul>
+</div>
+
+@if (conceptos.Count == 0)
+{
+    <p class="estado-vacio">No hay conceptos configurados. Ejecute el script 27_contabilidad_cuentas_parametro.sql.</p>
+}
+else
+{
+    <table class="tabla-datos">
+        <thead>
+            <tr><th class="col-codigo">Concepto</th><th>Descripción</th><th class="col-estado">Naturaleza</th><th>Cuenta contable</th><th class="col-acciones">Acciones</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var c in conceptos)
+            {
+                <tr>
+                    <td class="col-codigo">@c.CcpCodigo</td>
+                    <td>@c.CcpDescripcion</td>
+                    <td class="col-estado">@(c.CcpNaturaleza == "D" ? "Debe" : "Haber")</td>
+                    @if (editandoCodigo == c.CcpCodigo)
+                    {
+                        <td>
+                            <select @bind="ctaIdEdicion" aria-label="Cuenta contable">
+                                <option value="0">Seleccione...</option>
+                                @foreach (var cta in cuentas)
+                                {
+                                    <option value="@cta.CtaId">@cta.CtaCodigo — @cta.CtaNombre</option>
+                                }
+                            </select>
+                        </td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="() => GuardarAsync(c)" />
+                                <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => editandoCodigo = null" />
+                            </div>
+                        </td>
+                    }
+                    else
+                    {
+                        <td>@(c.CtaId is null ? "Sin cuenta asignada" : $"{c.CtaCodigo} — {c.CtaNombre}")</td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="pencil" Tooltip="Cambiar cuenta" OnClick="() => Editar(c)" />
+                            </div>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<CuentaParametro> conceptos = Array.Empty<CuentaParametro>();
+    private IReadOnlyList<CuentaContable> cuentas = Array.Empty<CuentaContable>();
+    private string? editandoCodigo;
+    private int ctaIdEdicion;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            cuentas = (await GeneralRepository.ConsultarCuentasContablesAsync())
+                .Where(c => c.CtaAceptaMovimiento).OrderBy(c => c.CtaCodigo).ToList();
+            conceptos = await GeneralRepository.ConsultarCuentasParametroAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private void Editar(CuentaParametro concepto)
+    {
+        mensaje = null;
+        editandoCodigo = concepto.CcpCodigo;
+        ctaIdEdicion = concepto.CtaId ?? 0;
+    }
+
+    private async Task GuardarAsync(CuentaParametro concepto)
+    {
+        if (ctaIdEdicion <= 0)
+        {
+            mensaje = "Seleccione la cuenta contable.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            int? usuId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+            await GeneralRepository.GuardarCuentaParametroAsync(concepto.CcpCodigo, ctaIdEdicion, usuId);
+            conceptos = await GeneralRepository.ConsultarCuentasParametroAsync();
+            editandoCodigo = null;
+            mensaje = $"Cuenta del concepto {concepto.CcpCodigo} actualizada.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+}

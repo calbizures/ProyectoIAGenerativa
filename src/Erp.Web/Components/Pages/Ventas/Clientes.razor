@@ -1,0 +1,348 @@
+@page "/clientes"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR")]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.Ventas
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IClienteRepository ClienteRepository
+
+<PageTitle>Clientes</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Clientes</h1>
+    <p>Mantenimiento de clientes.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
+
+@if (pestanaActiva == "lista")
+{
+    <div class="barra-herramientas">
+        <input placeholder="Buscar por código, nombre o NIT" aria-label="Buscar por código, nombre o NIT" @bind="textoBusqueda" />
+        <select @bind="filtroEstado" aria-label="Estado">
+            <option value="A">Activos</option>
+            <option value="I">Inactivos</option>
+            <option value="">Todos</option>
+        </select>
+        <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+        <span class="barra-herramientas-separador"></span>
+        <BotonIcono Icono="plus" Tooltip="Nuevo cliente" Etiqueta="Nuevo cliente" Variante="primario" OnClick="MostrarFormularioNuevo" />
+    </div>
+
+    @if (mostrarNuevo)
+    {
+        <EditForm Model="nuevoCliente" OnValidSubmit="CrearClienteAsync" class="panel-formulario">
+            <DataAnnotationsValidator />
+            <ResumenValidacion />
+            <div class="campo"><label>Código</label><InputText @bind-Value="nuevoCliente.Codigo" /></div>
+            <div class="campo"><label>Nombres</label><InputText @bind-Value="nuevoCliente.Nombres" /></div>
+            <div class="campo"><label>Apellidos</label><InputText @bind-Value="nuevoCliente.Apellidos" /></div>
+            <div class="campo"><label>NIT</label><InputText @bind-Value="nuevoCliente.Nit" /></div>
+            <div class="campo"><label>Teléfono celular</label><InputText @bind-Value="nuevoCliente.TelefonoCelular" /></div>
+            <div class="campo"><label>Dirección</label><InputText @bind-Value="nuevoCliente.Direccion" /></div>
+            <div class="campo"><label>Email</label><InputText @bind-Value="nuevoCliente.Email" /></div>
+            <div class="campo"><label>Límite de crédito</label><InputNumber @bind-Value="nuevoCliente.LimiteCredito" step="0.01" /></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+            </div>
+        </EditForm>
+    }
+
+    <table class="tabla-datos">
+        <thead>
+            <tr><th class="col-codigo">Código</th><th>Nombre</th><th class="col-codigo">NIT</th><th class="col-telefono">Teléfono</th><th class="num col-monto">Límite crédito</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var c in clientes)
+            {
+                <tr class="@(seleccionado?.CliId == c.CliId ? "fila-seleccionada" : "")">
+                    <td class="col-codigo">@c.CliCodigo</td>
+                    <td>@c.NombreCompleto</td>
+                    <td class="col-codigo">@c.CliNit</td>
+                    <td class="col-telefono">@c.CliTelefonoCelular</td>
+                    <td class="num col-monto">@c.CliLimiteCredito.ToString("N2")</td>
+                    <td class="col-estado"><span class="estado-badge @(c.CliEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.CliEstado == "A" ? "Activo" : "Inactivo")</span></td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(c)" />
+                            @if (c.CliEstado == "A")
+                            {
+                                <BotonIcono Icono="trash-2" Tooltip="Desactivar cliente" Variante="peligro" OnClick="() => DesactivarAsync(c)" />
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (pestanaActiva == "detalle" && seleccionado is not null)
+{
+    <div class="panel-detalle">
+        <h2>Detalle: @seleccionado.NombreCompleto</h2>
+        <div class="campo"><label>Nombres</label><span class="valor-detalle">@seleccionado.CliNombres</span></div>
+        <div class="campo"><label>Apellidos</label><span class="valor-detalle">@seleccionado.CliApellidos</span></div>
+        <div class="campo"><label>NIT</label><span class="valor-detalle">@seleccionado.CliNit</span></div>
+        <div class="campo"><label>Teléfono celular</label><span class="valor-detalle">@seleccionado.CliTelefonoCelular</span></div>
+        <div class="campo"><label>Dirección</label><span class="valor-detalle">@seleccionado.CliDireccion</span></div>
+        <div class="campo"><label>Límite de crédito</label><span class="valor-detalle">@seleccionado.CliLimiteCredito.ToString("N2")</span></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+        </div>
+    </div>
+}
+else if (pestanaActiva == "facturas" && seleccionado is not null)
+{
+    <div class="panel-detalle panel-ancho">
+        <h2>Facturas de @seleccionado.NombreCompleto</h2>
+        @if (facturasCliente is null)
+        {
+            <p class="estado-vacio">Cargando facturas…</p>
+        }
+        else if (facturasCliente.Count == 0)
+        {
+            <p class="estado-vacio">Este cliente todavía no tiene facturas.</p>
+        }
+        else
+        {
+            <div class="resumen-totales">
+                <span>Facturas grabadas: <strong>@facturasCliente.Count(f => f.EncEstado == "G")</strong></span>
+                <span>Total facturado: <strong>Q @facturasCliente.Where(f => f.EncEstado == "G").Sum(f => f.EncMontoTotal).ToString("N2")</strong></span>
+                <span>Saldo pendiente: <strong>Q @facturasCliente.Where(f => f.EncEstado == "G").Sum(f => f.SaldoPendiente).ToString("N2")</strong></span>
+            </div>
+            <table class="tabla-datos">
+                <thead>
+                    <tr><th class="col-fecha">Fecha</th><th class="col-codigo">Tipo</th><th>Serie / Número</th><th>Condición</th><th>Vendedor</th><th>Grabó</th><th class="num col-monto">Total</th><th class="num col-monto">Saldo</th><th class="col-estado">Estado</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in facturasCliente)
+                    {
+                        <tr>
+                            <td class="col-fecha">@f.EncFechaDocto.ToString("dd/MM/yyyy")</td>
+                            <td class="col-codigo">@f.TdoCodigo</td>
+                            <td>@(string.IsNullOrWhiteSpace(f.EncSerieDocto) && string.IsNullOrWhiteSpace(f.EncNumeroDocto) ? "—" : $"{f.EncSerieDocto}-{f.EncNumeroDocto}".Trim('-'))</td>
+                            <td>@f.Condicion</td>
+                            <td>@f.Vendedor</td>
+                            <td>@f.UsuarioGrabo</td>
+                            <td class="num col-monto">@f.EncMontoTotal.ToString("N2")</td>
+                            <td class="num col-monto">@f.SaldoPendiente.ToString("N2")</td>
+                            <td class="col-estado"><span class="estado-badge @(f.EncEstado == "G" ? "estado-badge-activo" : "estado-badge-inactivo")">@(f.EncEstado switch { "G" => "Grabada", "A" => "Anulada", _ => "Pendiente" })</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+}
+else if (pestanaActiva == "editar" && seleccionado is not null)
+{
+    <div class="panel-formulario">
+        <h2>Editar: @seleccionado.NombreCompleto</h2>
+        <EditForm Model="edicionCliente" OnValidSubmit="GuardarEdicionAsync">
+            <DataAnnotationsValidator />
+            <ResumenValidacion />
+            <div class="campo"><label>Nombres</label><InputText @bind-Value="edicionCliente.Nombres" /></div>
+            <div class="campo"><label>Apellidos</label><InputText @bind-Value="edicionCliente.Apellidos" /></div>
+            <div class="campo"><label>NIT</label><InputText @bind-Value="edicionCliente.Nit" /></div>
+            <div class="campo"><label>Teléfono celular</label><InputText @bind-Value="edicionCliente.TelefonoCelular" /></div>
+            <div class="campo"><label>Dirección</label><InputText @bind-Value="edicionCliente.Direccion" /></div>
+            <div class="campo"><label>Email</label><InputText @bind-Value="edicionCliente.Email" /></div>
+            <div class="campo"><label>Límite de crédito</label><InputNumber @bind-Value="edicionCliente.LimiteCredito" step="0.01" /></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<Cliente> clientes = Array.Empty<Cliente>();
+    private Cliente? seleccionado;
+    private string _pestanaActiva = "lista";
+    private IReadOnlyList<FacturaCliente>? facturasCliente;
+
+    // Las facturas se cargan al abrir su pestaña (y se refrescan cada vez).
+    private string pestanaActiva
+    {
+        get => _pestanaActiva;
+        set
+        {
+            _pestanaActiva = value;
+            if (value == "facturas") _ = CargarFacturasAsync();
+        }
+    }
+
+    private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
+        ? new[] { new PestanaItem("lista", "Lista") }
+        : pestanaActiva == "editar"
+            ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar") }
+            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("facturas", "Facturas") };
+
+    private string textoBusqueda = "";
+    private string filtroEstado = "A";
+    private bool mostrarNuevo;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private readonly ClienteModelo nuevoCliente = new();
+    private readonly ClienteModelo edicionCliente = new();
+
+    protected override async Task OnInitializedAsync() => await BuscarAsync();
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        var estado = await AuthenticationStateTask;
+        return estado.User.ObtenerUsuId();
+    }
+
+    private async Task BuscarAsync()
+    {
+        clientes = await ClienteRepository.ConsultarAsync(
+            string.IsNullOrWhiteSpace(textoBusqueda) ? null : textoBusqueda,
+            string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado);
+    }
+
+    private async Task CargarFacturasAsync()
+    {
+        if (seleccionado is null) return;
+        facturasCliente = null;
+        try
+        {
+            facturasCliente = await ClienteRepository.ConsultarFacturasAsync(seleccionado.CliId);
+        }
+        catch (Exception ex)
+        {
+            facturasCliente = Array.Empty<FacturaCliente>();
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void MostrarFormularioNuevo()
+    {
+        mensaje = null;
+        nuevoCliente.Codigo = "";
+        nuevoCliente.Nombres = "";
+        nuevoCliente.Apellidos = null;
+        nuevoCliente.Nit = null;
+        nuevoCliente.TelefonoCelular = null;
+        nuevoCliente.Direccion = null;
+        nuevoCliente.Email = null;
+        nuevoCliente.LimiteCredito = 0;
+        mostrarNuevo = true;
+    }
+
+    private async Task CrearClienteAsync()
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ClienteRepository.InsertarAsync(
+                nuevoCliente.Codigo, nuevoCliente.Nombres, nuevoCliente.Apellidos, nuevoCliente.Direccion,
+                nuevoCliente.TelefonoCelular, nuevoCliente.Nit, nuevoCliente.Email, nuevoCliente.LimiteCredito, usuId);
+            mostrarNuevo = false;
+            mensaje = "Cliente creado correctamente.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private void SeleccionarAsync(Cliente cliente)
+    {
+        seleccionado = cliente;
+        pestanaActiva = "detalle";
+        mensaje = null;
+    }
+
+    private void IniciarEdicion()
+    {
+        if (seleccionado is null) return;
+        edicionCliente.Nombres = seleccionado.CliNombres;
+        edicionCliente.Apellidos = seleccionado.CliApellidos;
+        edicionCliente.Nit = seleccionado.CliNit;
+        edicionCliente.TelefonoCelular = seleccionado.CliTelefonoCelular;
+        edicionCliente.Direccion = seleccionado.CliDireccion;
+        edicionCliente.LimiteCredito = seleccionado.CliLimiteCredito;
+        mensaje = null;
+        pestanaActiva = "editar";
+    }
+
+    private void CancelarEdicion()
+    {
+        pestanaActiva = "detalle";
+    }
+
+    private async Task GuardarEdicionAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ClienteRepository.ActualizarAsync(
+                seleccionado.CliId, edicionCliente.Nombres, edicionCliente.Apellidos, edicionCliente.Direccion,
+                edicionCliente.TelefonoCelular, edicionCliente.Nit, edicionCliente.Email, edicionCliente.LimiteCredito, usuId);
+            mensaje = "Cambios guardados.";
+            esMensajeError = false;
+            await BuscarAsync();
+            seleccionado = clientes.FirstOrDefault(c => c.CliId == seleccionado.CliId) ?? seleccionado;
+            pestanaActiva = "detalle";
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private async Task DesactivarAsync(Cliente cliente)
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ClienteRepository.EliminarAsync(cliente.CliId, usuId);
+            mensaje = "Cliente desactivado.";
+            esMensajeError = false;
+            if (seleccionado?.CliId == cliente.CliId)
+            {
+                seleccionado = null;
+                pestanaActiva = "lista";
+            }
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private sealed class ClienteModelo
+    {
+        [Required] public string Codigo { get; set; } = "";
+        [Required] public string Nombres { get; set; } = "";
+        public string? Apellidos { get; set; }
+        public string? Nit { get; set; }
+        public string? TelefonoCelular { get; set; }
+        public string? Direccion { get; set; }
+        public string? Email { get; set; }
+        public decimal LimiteCredito { get; set; }
+    }
+}

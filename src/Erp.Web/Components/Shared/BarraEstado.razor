@@ -1,0 +1,152 @@
+@* Línea de estado en el pie de cada pantalla: fecha/hora, usuario, base de datos y módulo actual. *@
+@implements IDisposable
+@using Erp.Web.Security
+@inject Erp.Data.IDbConnectionFactory ConnectionFactory
+@inject Erp.Data.Caja.ICajaRepository CajaRepository
+@inject Erp.Data.Security.IUsuarioRepository UsuarioRepository
+@inject NavigationManager NavigationManager
+
+<footer class="barra-estado" aria-label="Barra de estado">
+    @if (mostrarAdvertenciaCaja)
+    {
+        <span class="barra-estado-advertencia" role="status">
+            <Icono Nombre="alert-triangle" Tamano="14" />
+            @if (puedeAbrirCaja)
+            {
+                <span>No hay una caja abierta en esta sucursal. <a href="caja">Abrir caja</a></span>
+            }
+            else
+            {
+                <span>No hay una caja abierta en esta sucursal. Pida al encargado que la abra.</span>
+            }
+        </span>
+    }
+    <span class="barra-estado-sucursal" title="Sucursal"><Icono Nombre="map-pin" Tamano="13" /> @(nombreSucursal ?? "Sin sucursal")</span>
+    <span title="Usuario"><Icono Nombre="user" Tamano="13" /> @(nombreUsuario ?? "—")</span>
+    <span title="Módulo"><Icono Nombre="layout-grid" Tamano="13" /> @ObtenerModulo()</span>
+    <span title="Base de datos"><Icono Nombre="database" Tamano="13" /> @nombreBaseDatos</span>
+    <span class="barra-estado-hora" title="Fecha y hora"><Icono Nombre="calendar" Tamano="13" /> @horaActual.ToString("dd/MM/yyyy HH:mm:ss")</span>
+</footer>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private DateTime horaActual = DateTime.Now;
+    private string? nombreUsuario;
+    private string nombreBaseDatos = "";
+    private Timer? temporizador;
+
+    private static readonly IReadOnlyDictionary<string, string> ModulosPorRuta = new Dictionary<string, string>
+    {
+        [""] = "Inicio",
+        ["usuarios"] = "Seguridad > Usuarios",
+        ["roles"] = "Seguridad > Roles",
+        ["permisos"] = "Seguridad > Permisos",
+        ["productos"] = "Inventario > Productos",
+        ["caracteristicas"] = "Inventario > Características",
+        ["tipos-caracteristica"] = "Inventario > Tipos de característica",
+        ["existencias"] = "Inventario > Existencias",
+        ["precios"] = "Inventario > Precios",
+        ["facturas"] = "Ventas / POS > Facturas",
+        ["clientes"] = "Ventas / POS > Clientes",
+        ["vendedores"] = "Ventas / POS > Vendedores",
+        ["compras"] = "Compras > Compras",
+        ["proveedores"] = "Compras > Proveedores",
+        ["caja"] = "Bancos > Caja",
+        ["general/companias"] = "General > Compañías",
+        ["general/entidades-financieras"] = "General > Entidades financieras",
+        ["general/cuentas-poliza"] = "General > Cuentas de pólizas",
+        ["contabilidad/nomenclatura"] = "Contabilidad > Nomenclatura",
+        ["rrhh/empleados"] = "RRHH > Empleados",
+        ["rrhh/estructura"] = "RRHH > Estructura organizativa",
+        ["rrhh/catalogos"] = "RRHH > Catálogos",
+        ["rrhh/tipos-movimiento"] = "RRHH > Tipos de movimiento",
+        ["rrhh/movimientos"] = "RRHH > Movimientos de nómina",
+        ["rrhh/nominas"] = "RRHH > Nóminas",
+    };
+
+    private int? sucId;
+    private string? nombreSucursal;
+    private bool puedeAbrirCaja;
+    private bool mostrarAdvertenciaCaja;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var conexion = ConnectionFactory.CreateConnection();
+        nombreBaseDatos = conexion.Database;
+
+        if (AuthenticationStateTask is not null)
+        {
+            var estado = await AuthenticationStateTask;
+            nombreUsuario = estado.User.Identity?.Name;
+            sucId = estado.User.ObtenerSucId();
+            puedeAbrirCaja = estado.User.HasClaim(ClaimsPermiso.TipoClaim, "BANCOS_CAJA_ADMIN");
+            await CargarNombreSucursalAsync(estado.User.ObtenerUsuId());
+        }
+
+        await ActualizarAdvertenciaCajaAsync();
+
+        NavigationManager.LocationChanged += AlCambiarUbicacion;
+        temporizador = new Timer(_ => ActualizarHora(), null, 1000, 1000);
+    }
+
+    private async void AlCambiarUbicacion(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        await ActualizarAdvertenciaCajaAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CargarNombreSucursalAsync(int? usuId)
+    {
+        if (usuId is null || sucId is null || sucId <= 0) return;
+        try
+        {
+            var sucursales = await UsuarioRepository.ConsultarSucursalesAsignadasAsync(usuId.Value);
+            nombreSucursal = sucursales.FirstOrDefault(s => s.SucId == sucId)?.SucDescripcion;
+        }
+        catch
+        {
+            nombreSucursal = null;
+        }
+    }
+
+    private async Task ActualizarAdvertenciaCajaAsync()
+    {
+        if (sucId is null || sucId <= 0)
+        {
+            mostrarAdvertenciaCaja = false;
+            return;
+        }
+
+        try
+        {
+            var activas = await CajaRepository.ConsultarAperturaActivaPorSucursalAsync(sucId.Value);
+            mostrarAdvertenciaCaja = activas.Count == 0;
+        }
+        catch
+        {
+            // Si falla la consulta (p. ej. base de datos no disponible), no se
+            // muestra la advertencia: esta barra no debe romper la pantalla.
+            mostrarAdvertenciaCaja = false;
+        }
+    }
+
+    private void ActualizarHora()
+    {
+        horaActual = DateTime.Now;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string ObtenerModulo()
+    {
+        var ruta = new Uri(NavigationManager.Uri).AbsolutePath.Trim('/').ToLowerInvariant();
+        return ModulosPorRuta.TryGetValue(ruta, out var modulo) ? modulo : ruta;
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= AlCambiarUbicacion;
+        temporizador?.Dispose();
+    }
+}

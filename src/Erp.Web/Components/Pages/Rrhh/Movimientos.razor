@@ -1,0 +1,214 @@
+@page "/rrhh/movimientos"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:RRHH_ADMIN")]
+@using Erp.Data.Rrhh
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IRrhhRepository RrhhRepository
+
+<PageTitle>Movimientos de nómina</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Movimientos de nómina</h1>
+    <p>Ingresos y descuentos manuales por empleado (horas extra, comisiones, ISR, anticipos, préstamos). Se aplican en la nómina cuyo período incluye su fecha.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="barra-herramientas">
+    <select @bind="filtroEmpleado" aria-label="Empleado">
+        <option value="">Todos los empleados</option>
+        @foreach (var e in empleados)
+        {
+            <option value="@e.IdEmpleado">@e.CodigoEmpleado — @e.NombreCompleto</option>
+        }
+    </select>
+    <label class="filtro-campo">Desde <input type="date" @bind="filtroDel" /></label>
+    <label class="filtro-campo">Hasta <input type="date" @bind="filtroAl" /></label>
+    <label class="filtro-campo"><input type="checkbox" @bind="soloPendientes" /> Solo pendientes</label>
+    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+    <span class="barra-herramientas-separador"></span>
+    <BotonIcono Icono="plus" Tooltip="Nuevo movimiento" Etiqueta="Nuevo movimiento" Variante="primario" OnClick="Nuevo" />
+</div>
+
+@if (edicion is not null)
+{
+    <div class="panel-formulario">
+        <h2>@(edicion.IdMovimientoNomina == 0 ? "Nuevo movimiento" : "Editar movimiento")</h2>
+        <div class="campo">
+            <label for="mov-emp">Empleado</label>
+            <select id="mov-emp" @bind="edicion.IdEmpleado">
+                <option value="0">Seleccione...</option>
+                @foreach (var e in empleados)
+                {
+                    <option value="@e.IdEmpleado">@e.CodigoEmpleado — @e.NombreCompleto</option>
+                }
+            </select>
+        </div>
+        <div class="campo">
+            <label for="mov-tipo">Tipo de movimiento</label>
+            <select id="mov-tipo" @bind="edicion.IdTipoMovimientoNomina">
+                <option value="0">Seleccione...</option>
+                <optgroup label="Ingresos (suman)">
+                    @foreach (var t in tiposManuales.Where(t => t.Naturaleza == "I"))
+                    {
+                        <option value="@t.IdTipoMovimientoNomina">@t.Descripcion</option>
+                    }
+                </optgroup>
+                <optgroup label="Descuentos (restan)">
+                    @foreach (var t in tiposManuales.Where(t => t.Naturaleza == "D"))
+                    {
+                        <option value="@t.IdTipoMovimientoNomina">@t.Descripcion</option>
+                    }
+                </optgroup>
+            </select>
+        </div>
+        <div class="campo"><label for="mov-monto">Monto (Q)</label><input id="mov-monto" type="number" step="0.01" @bind="edicion.Monto" /></div>
+        <div class="campo"><label for="mov-fecha">Fecha de aplicación</label><input id="mov-fecha" type="date" @bind="edicion.FechaAplicacion" /></div>
+        <div class="campo"><label for="mov-desc">Descripción</label><input id="mov-desc" @bind="edicion.Descripcion" /></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarAsync" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => edicion = null" />
+        </div>
+    </div>
+}
+
+@if (movimientos.Count == 0)
+{
+    <p class="estado-vacio">No hay movimientos con esos filtros.</p>
+}
+else
+{
+    <div class="resumen-totales">
+        <span>Ingresos: <strong>Q @movimientos.Where(m => m.Estado == "A" && m.Naturaleza == "I").Sum(m => m.Monto).ToString("N2")</strong></span>
+        <span>Descuentos: <strong>Q @movimientos.Where(m => m.Estado == "A" && m.Naturaleza == "D").Sum(m => m.Monto).ToString("N2")</strong></span>
+    </div>
+    <table class="tabla-datos">
+        <thead>
+            <tr><th class="col-fecha">Fecha</th><th>Empleado</th><th>Tipo</th><th>Descripción</th><th class="num col-monto">Monto</th><th>Nómina</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var m in movimientos)
+            {
+                <tr>
+                    <td class="col-fecha">@m.FechaAplicacion.ToString("dd/MM/yyyy")</td>
+                    <td>@m.CodigoEmpleado — @m.Empleado</td>
+                    <td>@m.TipoMovimiento</td>
+                    <td>@m.Descripcion</td>
+                    <td class="num col-monto">@(m.Naturaleza == "D" ? "−" : "+")@m.Monto.ToString("N2")</td>
+                    <td>@(m.Nomina ?? "Pendiente")</td>
+                    <td class="col-estado"><span class="estado-badge @(m.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(m.Estado == "A" ? "Activo" : "Anulado")</span></td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            @if (m.Estado == "A" && m.IdNomina is null)
+                            {
+                                <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => Editar(m)" />
+                                <BotonIcono Icono="ban" Tooltip="Anular" Variante="peligro" OnClick="() => AnularAsync(m)" />
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<EmpleadoResumen> empleados = Array.Empty<EmpleadoResumen>();
+    private IReadOnlyList<TipoMovimientoNomina> tiposManuales = Array.Empty<TipoMovimientoNomina>();
+    private IReadOnlyList<MovimientoNomina> movimientos = Array.Empty<MovimientoNomina>();
+    private MovimientoNomina? edicion;
+
+    private int? filtroEmpleado;
+    private DateTime? filtroDel = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime? filtroAl = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(1).AddDays(-1);
+    private bool soloPendientes;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            empleados = await RrhhRepository.ConsultarEmpleadosAsync(null, "A");
+            tiposManuales = (await RrhhRepository.ConsultarTiposMovimientoAsync(soloActivos: true)).Where(t => t.FormaCalculo == "M").ToList();
+            await BuscarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private async Task BuscarAsync()
+    {
+        try
+        {
+            movimientos = await RrhhRepository.ConsultarMovimientosAsync(filtroEmpleado, filtroDel, filtroAl, soloPendientes);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void Nuevo()
+    {
+        mensaje = null;
+        edicion = new MovimientoNomina { IdEmpleado = filtroEmpleado ?? 0, FechaAplicacion = DateTime.Today };
+    }
+
+    private void Editar(MovimientoNomina m)
+    {
+        mensaje = null;
+        edicion = new MovimientoNomina
+        {
+            IdMovimientoNomina = m.IdMovimientoNomina, IdEmpleado = m.IdEmpleado, IdTipoMovimientoNomina = m.IdTipoMovimientoNomina,
+            Descripcion = m.Descripcion, Monto = m.Monto, FechaAplicacion = m.FechaAplicacion
+        };
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private async Task GuardarAsync()
+    {
+        if (edicion is null) return;
+        if (edicion.IdEmpleado <= 0 || edicion.IdTipoMovimientoNomina <= 0)
+        {
+            mensaje = "Seleccione el empleado y el tipo de movimiento.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            await RrhhRepository.GuardarMovimientoAsync(
+                edicion.IdMovimientoNomina == 0 ? null : edicion.IdMovimientoNomina, edicion.IdEmpleado, edicion.IdTipoMovimientoNomina,
+                string.IsNullOrWhiteSpace(edicion.Descripcion) ? null : edicion.Descripcion.Trim(), edicion.Monto, edicion.FechaAplicacion,
+                await ObtenerUsuIdActualAsync());
+            mensaje = "Movimiento guardado.";
+            esMensajeError = false;
+            edicion = null;
+            await BuscarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task AnularAsync(MovimientoNomina m)
+    {
+        try
+        {
+            await RrhhRepository.AnularMovimientoAsync(m.IdMovimientoNomina, await ObtenerUsuIdActualAsync());
+            mensaje = "Movimiento anulado.";
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

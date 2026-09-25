@@ -1,0 +1,75 @@
+@page "/existencias"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR")]
+@using Erp.Data.Inventario
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IProductoRepository ProductoRepository
+@inject IBodegaRepository BodegaRepository
+
+<PageTitle>Existencias por bodega</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Existencias por bodega</h1>
+    <p>Consulta de existencias. Este dato lo mantienen automáticamente las compras, ventas y anulaciones — no se edita a mano.</p>
+</div>
+
+<div class="barra-herramientas">
+    <select @bind="filtroProId">
+        <option value="0">Todos los productos</option>
+        @foreach (var p in productos)
+        {
+            <option value="@p.ProId">@p.ProCodigo - @p.ProDescripcion</option>
+        }
+    </select>
+    <select @bind="filtroBodId">
+        <option value="0">Todas las bodegas</option>
+        @foreach (var bod in bodegas)
+        {
+            <option value="@bod.BodId">@bod.BodDescripcion</option>
+        }
+    </select>
+    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+</div>
+
+<table class="tabla-datos">
+    <thead>
+        <tr><th>Producto</th><th>Bodega</th><th class="num">Existencia</th></tr>
+    </thead>
+    <tbody>
+        @if (existencias.Count == 0)
+        {
+            <tr><td colspan="3">Sin existencias para los filtros seleccionados.</td></tr>
+        }
+        @foreach (var e in existencias)
+        {
+            <tr>
+                <td>@e.ProCodigo - @e.ProDescripcion</td>
+                <td>@e.BodDescripcion</td>
+                <td class="num">@e.Existencia.ToString("N0")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private IReadOnlyList<ProductoExistenciaBodega> existencias = Array.Empty<ProductoExistenciaBodega>();
+    private IReadOnlyList<Producto> productos = Array.Empty<Producto>();
+    private IReadOnlyList<Bodega> bodegas = Array.Empty<Bodega>();
+
+    private int filtroProId;
+    private int filtroBodId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        productos = await ProductoRepository.ConsultarAsync(null, null, prtId: null, estado: "A", pagina: 1, tamanioPagina: 500);
+        bodegas = await BodegaRepository.ConsultarAsync(sucId: null, estado: "A");
+        await BuscarAsync();
+    }
+
+    private async Task BuscarAsync()
+    {
+        existencias = await ProductoRepository.ConsultarExistenciasAsync(
+            filtroProId == 0 ? null : filtroProId,
+            filtroBodId == 0 ? null : filtroBodId);
+    }
+}

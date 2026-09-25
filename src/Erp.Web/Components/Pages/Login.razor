@@ -1,0 +1,193 @@
+@page "/login"
+@layout Layout.LoginLayout
+@* Deliberadamente sin @rendermode: esta página se queda en SSR estático para
+   poder llamar HttpContext.SignInAsync durante el POST del formulario. Un
+   componente interactivo (circuito Blazor Server) ya tiene la respuesta en
+   streaming y no admite escribir la cookie de autenticación. *@
+@attribute [AllowAnonymous]
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using Erp.Data.Security
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@inject IAuthRepository AuthRepository
+@inject IUsuarioRepository UsuarioRepository
+
+<PageTitle>Iniciar sesión</PageTitle>
+
+<div class="login-pagina">
+    <div class="login-marca">
+        <div class="login-logo-placa">
+            <img src="images/logo-si.svg" alt="Servicios Informáticos Integrados" class="login-logo" />
+        </div>
+        <p class="login-eslogan">Plataforma ERP para inventario, ventas, bancos y contabilidad.</p>
+    </div>
+
+    <div class="login-panel-formulario">
+        <div class="login-card">
+            <h1>Iniciar sesión</h1>
+            <p class="login-subtitulo">Ingresa tus credenciales para continuar</p>
+
+            @if (mensajeError is not null)
+            {
+                <p class="login-error" role="alert">@mensajeError</p>
+            }
+
+            <EditForm Model="modelo" FormName="login" OnValidSubmit="IniciarSesionAsync" method="post">
+                <DataAnnotationsValidator />
+
+                @if (!modelo.UsuId.HasValue)
+                {
+                    <div class="login-campo">
+                        <label for="usuario">Usuario</label>
+                        <InputText id="usuario" @bind-Value="modelo.Usuario" autofocus autocomplete="username" placeholder="Tu usuario" />
+                        <ValidationMessage For="() => modelo.Usuario" />
+                    </div>
+
+                    <div class="login-campo">
+                        <label for="password">Contraseña</label>
+                        <InputText id="password" type="password" @bind-Value="modelo.Password" autocomplete="current-password" placeholder="Tu contraseña" />
+                        <ValidationMessage For="() => modelo.Password" />
+                    </div>
+                }
+                else
+                {
+                    <p class="login-subtitulo">Hola, @modelo.Usuario. Elige la sucursal donde vas a trabajar hoy.</p>
+                    <InputNumber @bind-Value="modelo.UsuId" style="display:none" />
+                    <InputText @bind-Value="modelo.Usuario" style="display:none" />
+
+                    <div class="login-campo">
+                        <label for="sucursal">Sucursal</label>
+                        <InputSelect id="sucursal" @bind-Value="modelo.SucId">
+                            <option value="0">Seleccione...</option>
+                            @foreach (var suc in sucursalesDisponibles)
+                            {
+                                <option value="@suc.SucId">@suc.SucDescripcion</option>
+                            }
+                        </InputSelect>
+                    </div>
+                }
+
+                <button type="submit" class="login-boton">@(modelo.UsuId.HasValue ? "Continuar" : "Ingresar")</button>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private LoginModelo modelo { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = default!;
+
+    private string? mensajeError;
+    private IReadOnlyList<Sucursal> sucursalesDisponibles = Array.Empty<Sucursal>();
+
+    protected override void OnInitialized() => modelo ??= new();
+
+    private async Task IniciarSesionAsync()
+    {
+        // Paso 1: usuario y contraseña. Si son válidos, no se firma la sesión
+        // todavía: se recargan las sucursales autorizadas y se vuelve a
+        // mostrar el mismo formulario, ahora pidiendo la sucursal.
+        if (!modelo.UsuId.HasValue)
+        {
+            var resultado = await AuthRepository.LoginAsync(modelo.Usuario, modelo.Password);
+            if (!resultado.EsExitoso || resultado.UsuId is null)
+            {
+                mensajeError = resultado.Mensaje;
+                return;
+            }
+
+            var sucursales = await UsuarioRepository.ConsultarSucursalesAsignadasAsync(resultado.UsuId.Value);
+            if (sucursales.Count == 0)
+            {
+                // Un administrador (permiso de mantenimiento de usuarios) nunca se
+                // bloquea por esto: si no tiene sucursal asignada, necesita poder
+                // entrar igual para poder asignarse una (o asignárselas a los
+                // demás) desde Usuarios. Solo se bloquea a los usuarios operativos
+                // (ventas/facturación) que sí necesitan una sucursal para trabajar.
+                var claimsAdmin = await AuthRepository.ObtenerClaimsAsync(resultado.UsuId.Value);
+                if (claimsAdmin.Permisos.Contains("SEGURIDAD_USUARIO_ADMIN"))
+                {
+                    await FinalizarSesionAsync(resultado.UsuId.Value, sucId: null);
+                    return;
+                }
+
+                mensajeError = "Este usuario no tiene ninguna sucursal asignada. Contacte al administrador.";
+                return;
+            }
+
+            // Si solo tiene una sucursal autorizada, se ahorra el segundo paso.
+            if (sucursales.Count == 1)
+            {
+                await FinalizarSesionAsync(resultado.UsuId.Value, sucursales[0].SucId);
+                return;
+            }
+
+            modelo.UsuId = resultado.UsuId;
+            sucursalesDisponibles = sucursales;
+            mensajeError = null;
+            return;
+        }
+
+        // Paso 2: sucursal. Se revalida contra las sucursales autorizadas del
+        // usuario (el combo ya las limita, pero no hay que confiar solo en
+        // lo que mandó el navegador).
+        var sucursalesAutorizadas = await UsuarioRepository.ConsultarSucursalesAsignadasAsync(modelo.UsuId.Value);
+        if (modelo.SucId <= 0 || !sucursalesAutorizadas.Any(s => s.SucId == modelo.SucId))
+        {
+            mensajeError = "Seleccione una sucursal válida.";
+            sucursalesDisponibles = sucursalesAutorizadas;
+            return;
+        }
+
+        await FinalizarSesionAsync(modelo.UsuId.Value, modelo.SucId);
+    }
+
+    private async Task FinalizarSesionAsync(int usuId, int? sucId)
+    {
+        var claims = await AuthRepository.ObtenerClaimsAsync(usuId);
+
+        var identidad = new ClaimsIdentity(CookieAuthenticationDefaults.AuthenticationScheme);
+        identidad.AddClaim(new Claim(ClaimTypes.NameIdentifier, usuId.ToString()));
+        identidad.AddClaim(new Claim(ClaimTypes.Name, modelo.Usuario));
+        if (sucId is > 0)
+        {
+            identidad.AddClaim(new Claim(Erp.Web.Security.ClaimsSucursal.TipoClaim, sucId.Value.ToString()));
+        }
+        foreach (var rolCodigo in claims.Roles)
+        {
+            identidad.AddClaim(new Claim(ClaimTypes.Role, rolCodigo));
+        }
+        foreach (var permisoCodigo in claims.Permisos)
+        {
+            identidad.AddClaim(new Claim(Erp.Web.Security.ClaimsPermiso.TipoClaim, permisoCodigo));
+        }
+
+        var principal = new ClaimsPrincipal(identidad);
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+        var destino = string.IsNullOrWhiteSpace(ReturnUrl) ? "/" : ReturnUrl;
+        NavigationManager.NavigateTo(destino, forceLoad: true);
+    }
+
+    private sealed class LoginModelo
+    {
+        [Required(ErrorMessage = "El usuario es obligatorio")]
+        public string Usuario { get; set; } = "";
+
+        public string Password { get; set; } = "";
+
+        public int? UsuId { get; set; }
+
+        public int SucId { get; set; }
+    }
+}
