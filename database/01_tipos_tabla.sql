@@ -12,6 +12,12 @@
 USE [erp_db];
 GO
 
+-- Opciones requeridas por los índices filtrados (p. ej. enc_numero_unico,
+-- IdEmpleado) y guardadas con cada procedimiento: sqlcmd las apaga por defecto.
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+
 IF TYPE_ID(N'dbo.compra_det_type') IS NOT NULL
 	DROP TYPE [dbo].[compra_det_type];
 GO

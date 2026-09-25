@@ -11,6 +11,12 @@
 USE [erp_db];
 GO
 
+-- Opciones requeridas por los índices filtrados (p. ej. enc_numero_unico,
+-- IdEmpleado) y guardadas con cada procedimiento: sqlcmd las apaga por defecto.
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+
 CREATE OR ALTER VIEW [dbo].[vw_sel_producto]
 AS
 -- select * from vw_sel_producto where bod_id = 1

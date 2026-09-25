@@ -50,6 +50,27 @@ versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio); si vuelves a correr cualquiera de los dos,
 vuelve a correr después `26` y `27`.
 
+Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
+inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
+exigen y `sqlcmd` los apaga por defecto; ya no hace falta pasar `-I`.
+
+**¿No aparecen los menús General o RRHH?** Se muestran con los permisos
+`GENERAL_CONFIG_ADMIN` y `RRHH_ADMIN`, que `26` asigna al rol `ADMIN` (y
+`12` también los incluye, para que volver a correrlo no se los quite).
+Verifícalo con:
+
+```sql
+SELECT pe.per_codigo, r.rol_codigo
+FROM sec_permiso pe
+JOIN sec_rol_permiso rp ON rp.per_id = pe.per_id
+JOIN sec_rol r ON r.rol_id = rp.rol_id
+WHERE pe.per_codigo IN ('GENERAL_CONFIG_ADMIN', 'RRHH_ADMIN');
+```
+
+Si la consulta no devuelve filas, corre `26_parametros_general_caja.sql`.
+La aplicación vuelve a leer los permisos de la sesión cada minuto, así que
+el menú aparece al recargar la página sin cerrar sesión.
+
 ## Estándares de nomenclatura (a partir de este punto)
 
 A solicitud explícita, todo procedimiento almacenado **nuevo** y todo alias

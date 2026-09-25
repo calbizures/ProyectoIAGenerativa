@@ -18,6 +18,12 @@
 USE [erp_db];
 GO
 
+-- Opciones requeridas por los índices filtrados (p. ej. enc_numero_unico,
+-- IdEmpleado) y guardadas con cada procedimiento: sqlcmd las apaga por defecto.
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+
 -- Por si ya corriste una versión anterior de este mismo script: hay que
 -- quitar primero los procedimientos que usan el tipo de tabla antes de
 -- poder recrearlo (SQL Server no permite DROP TYPE si sigue en uso).

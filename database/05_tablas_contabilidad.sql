@@ -22,6 +22,12 @@
 USE [erp_db];
 GO
 
+-- Opciones requeridas por los índices filtrados (p. ej. enc_numero_unico,
+-- IdEmpleado) y guardadas con cada procedimiento: sqlcmd las apaga por defecto.
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+
 CREATE TABLE [dbo].[cont_cuenta_contable](
 	[cta_id]				INT				IDENTITY(1,1)	NOT NULL,
 	[cta_codigo]			VARCHAR(20)		NOT NULL,

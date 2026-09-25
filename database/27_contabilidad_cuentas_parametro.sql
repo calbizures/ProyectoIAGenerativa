@@ -26,6 +26,12 @@
 USE [erp_db];
 GO
 
+-- Opciones requeridas por los índices filtrados (p. ej. enc_numero_unico,
+-- IdEmpleado) y guardadas con cada procedimiento: sqlcmd las apaga por defecto.
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+
 IF OBJECT_ID('dbo.cont_cuenta_parametro', 'U') IS NULL
 CREATE TABLE [dbo].[cont_cuenta_parametro](
 	[ccp_codigo]		VARCHAR(40)		NOT NULL,

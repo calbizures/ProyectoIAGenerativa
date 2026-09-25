@@ -11,6 +11,12 @@
 USE [erp_db];
 GO
 
+-- Opciones requeridas por los índices filtrados (p. ej. enc_numero_unico,
+-- IdEmpleado) y guardadas con cada procedimiento: sqlcmd las apaga por defecto.
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+
 CREATE INDEX [IX_gen_entidad_financiera_geft_id] ON [dbo].[gen_entidad_financiera]([geft_id]);
 CREATE INDEX [IX_gen_auditoria_usu_id] ON [dbo].[gen_auditoria]([usu_id]);
 CREATE INDEX [IX_conf_correlativos_tdo_id] ON [dbo].[conf_correlativos]([tdo_id]);

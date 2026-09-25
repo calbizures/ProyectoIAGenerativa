@@ -24,7 +24,9 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 		options.AccessDeniedPath = "/acceso-denegado";
 		options.ExpireTimeSpan = TimeSpan.FromHours(8);
 		options.SlidingExpiration = true;
+		options.EventsType = typeof(RefrescoPermisosCookie);
 	});
+builder.Services.AddScoped<RefrescoPermisosCookie>();
 
 // Proveedor dinámico: cualquier [Authorize(Policy = "Permiso:<CODIGO>")] se resuelve
 // contra el catálogo sec_permiso sin tener que registrar cada política a mano.

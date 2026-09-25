@@ -13,6 +13,12 @@
 USE [erp_db];
 GO
 
+-- Opciones requeridas por los índices filtrados (p. ej. enc_numero_unico,
+-- IdEmpleado) y guardadas con cada procedimiento: sqlcmd las apaga por defecto.
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+
 -- Por si ya habías corrido una versión anterior de este script con el
 -- nombre viejo (sp_usuario_activar), antes de fijar el estándar pa+PascalCase.
 DROP PROCEDURE IF EXISTS [dbo].[sp_usuario_activar];

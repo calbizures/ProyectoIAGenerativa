@@ -10,6 +10,12 @@
 USE [erp_db];
 GO
 
+-- Opciones requeridas por los índices filtrados (p. ej. enc_numero_unico,
+-- IdEmpleado) y guardadas con cada procedimiento: sqlcmd las apaga por defecto.
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+
 -- Id de la moneda local/funcional de la compañía, usada como valor por
 -- defecto en los procedimientos de negocio cuando no se indica moneda.
 CREATE OR ALTER FUNCTION [dbo].[fn_moneda_local]()

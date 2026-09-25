@@ -10,6 +10,12 @@
 USE [erp_db];
 GO
 
+-- Opciones requeridas por los índices filtrados (p. ej. enc_numero_unico,
+-- IdEmpleado) y guardadas con cada procedimiento: sqlcmd las apaga por defecto.
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+
 -- gen_*
 ALTER TABLE [dbo].[gen_estado]  ADD CONSTRAINT [FK_gen_estado_gen_pais] FOREIGN KEY([pai_id]) REFERENCES [dbo].[gen_pais]([pai_id]);
 ALTER TABLE [dbo].[gen_provincia]  ADD CONSTRAINT [FK_gen_provincia_gen_estado] FOREIGN KEY([est_id]) REFERENCES [dbo].[gen_estado]([est_id]);

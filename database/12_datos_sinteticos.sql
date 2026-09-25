@@ -17,6 +17,12 @@
 */
 USE [erp_db];
 GO
+
+-- Opciones requeridas por los índices filtrados (p. ej. enc_numero_unico,
+-- IdEmpleado) y guardadas con cada procedimiento: sqlcmd las apaga por defecto.
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
 SET NOCOUNT ON;
 GO
 
@@ -225,7 +231,12 @@ INSERT INTO dbo.sec_permiso (per_modulo, per_codigo, per_descripcion) VALUES
 ('BANCOS', 'BANCOS_CHEQUE_EMITIR', 'Emitir cheques'),
 ('BANCOS', 'BANCOS_CAJA_ADMIN', 'Administrar caja (apertura, corte, cierre, depósitos)'),
 ('CONTABILIDAD', 'CONTABILIDAD_ASIENTO_MANUAL', 'Registrar asientos manuales'),
-('SEGURIDAD', 'SEGURIDAD_USUARIO_ADMIN', 'Administrar usuarios y roles');
+('SEGURIDAD', 'SEGURIDAD_USUARIO_ADMIN', 'Administrar usuarios y roles'),
+-- Módulos General y RRHH (26_parametros_general_caja.sql también los crea si
+-- faltan; se incluyen aquí para que volver a correr este script no se los
+-- quite al rol ADMIN).
+('GENERAL', 'GENERAL_CONFIG_ADMIN', 'Administrar compañía, parámetros y entidades financieras'),
+('RRHH', 'RRHH_ADMIN', 'Administrar recursos humanos y nómina');
 GO
 
 DECLARE @rol_admin INT, @rol_vendedor INT, @rol_cajero INT, @rol_contador INT;
