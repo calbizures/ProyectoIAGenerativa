@@ -167,17 +167,43 @@ else if (pestanaActiva == "corte")
             </table>
         </div>
 
-        <div class="tarjeta doc-seccion doc-totales-envoltorio">
+        <div class="tarjeta doc-seccion">
+            <p class="doc-seccion-titulo"><Icono Nombre="calculator" Tamano="15" /> Cuadre de caja</p>
+            <div class="doc-totales-envoltorio">
             <div class="doc-totales">
-                <div class="doc-totales-fila"><span>Teórico total (efectivo incl. fondo inicial)</span><span>Q@(TeoricoTotal.ToString("N2"))</span></div>
+                @if (cuadre is not null)
+                {
+                    <div class="doc-totales-fila"><span>Monto inicial (fondo)</span><span>Q@(cuadre.MontoInicial.ToString("N2"))</span></div>
+                    <div class="doc-totales-fila"><span>+ Ventas y cobros en efectivo</span><span>Q@(cuadre.EfectivoCobrado.ToString("N2"))</span></div>
+                    <div class="doc-totales-fila"><span>− Depósitos al banco</span><span>Q@(cuadre.Depositos.ToString("N2"))</span></div>
+                    <div class="doc-totales-fila"><span>+ Cheques</span><span>Q@(cuadre.Cheques.ToString("N2"))</span></div>
+                    <div class="doc-totales-fila"><span>+ Tarjetas</span><span>Q@(cuadre.Tarjetas.ToString("N2"))</span></div>
+                    @if (cuadre.OtrasFormas != 0)
+                    {
+                        <div class="doc-totales-fila"><span>+ Otras formas (transferencias)</span><span>Q@(cuadre.OtrasFormas.ToString("N2"))</span></div>
+                    }
+                }
+                <div class="doc-totales-fila"><span><strong>Teórico total</strong></span><span><strong>Q@(TeoricoTotal.ToString("N2"))</strong></span></div>
                 <div class="doc-totales-fila"><span>Físico total contado</span><span>Q@(FisicoTotal.ToString("N2"))</span></div>
                 <div class="doc-totales-total"><span>Diferencia</span><span>Q@(Diferencia.ToString("N2"))</span></div>
             </div>
+            </div>
+            @if (Cuadra)
+            {
+                <p class="mensaje-ok" role="status">La caja cuadra@(ToleranciaCierre > 0 ? $" (tolerancia permitida Q{ToleranciaCierre:N2})" : "").</p>
+            }
+            else
+            {
+                <p class="mensaje-error" role="alert">
+                    La caja no cuadra: hay una diferencia de Q@(Diferencia.ToString("N2")) y la tolerancia permitida es Q@(ToleranciaCierre.ToString("N2")).
+                    Revise el conteo físico y los depósitos antes de cerrar.
+                </p>
+            }
         </div>
 
         <div class="acciones-fila">
             <BotonIcono Icono="save" Tooltip="Guardar conteo" Etiqueta="Guardar conteo" OnClick="GuardarConteoAsync" />
-            <BotonIcono Icono="check-check" Tooltip="Cerrar caja" Etiqueta="Cerrar caja" Variante="primario" OnClick="CerrarCajaAsync" />
+            <BotonIcono Icono="check-check" Tooltip="Cerrar caja" Etiqueta="Cerrar caja" Variante="primario" Deshabilitado="!Cuadra" OnClick="CerrarCajaAsync" />
         </div>
     }
 }
@@ -272,7 +298,7 @@ else if (pestanaActiva == "cajasreceptoras")
     {
         <EditForm Model="modeloCajaReceptora" OnValidSubmit="GuardarCajaReceptoraAsync" class="panel-formulario">
             <DataAnnotationsValidator />
-            <ValidationSummary />
+            <ResumenValidacion />
             <div class="campo"><label>Descripción</label><InputText @bind-Value="modeloCajaReceptora.Descripcion" /></div>
             <div class="campo">
                 <label>Sucursal</label>
@@ -379,6 +405,10 @@ else if (pestanaActiva == "cajasreceptoras")
     private decimal TeoricoTotal => corteFormas.Sum(f => f.MontoTeorico);
     private decimal FisicoTotal => TotalEfectivoFisico + corteFormas.Where(f => f.Descripcion != "Efectivo").Sum(f => f.MontoFisico);
     private decimal Diferencia => FisicoTotal - TeoricoTotal;
+    private CuadreCaja? cuadre;
+    private decimal ToleranciaCierre => cuadre?.Tolerancia ?? 0m;
+    // Misma regla que valida sp_pos_caja_cerrar: |físico − teórico| <= tolerancia de la compañía.
+    private bool Cuadra => Math.Abs(Diferencia) <= ToleranciaCierre;
 
     private int pcaIdParaDeposito;
     private IReadOnlyList<CajaApertura> aperturasRecientes = Array.Empty<CajaApertura>();
@@ -460,7 +490,7 @@ else if (pestanaActiva == "cajasreceptoras")
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -479,6 +509,7 @@ else if (pestanaActiva == "cajasreceptoras")
         {
             desglose.Clear();
             corteFormas.Clear();
+            cuadre = null;
             return;
         }
 
@@ -488,6 +519,7 @@ else if (pestanaActiva == "cajasreceptoras")
 
         var teorico = await CajaRepository.ConsultarTeoricoAsync(pcaIdSeleccionada);
         corteFormas = teorico.Select(t => new CorteFormaVista { PftId = t.PftId, Descripcion = t.PftDescripcion, MontoTeorico = t.MontoTeorico }).ToList();
+        cuadre = await CajaRepository.ConsultarCuadreAsync(pcaIdSeleccionada);
     }
 
     private async Task GuardarConteoAsync()
@@ -507,7 +539,7 @@ else if (pestanaActiva == "cajasreceptoras")
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -529,7 +561,7 @@ else if (pestanaActiva == "cajasreceptoras")
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -568,7 +600,7 @@ else if (pestanaActiva == "cajasreceptoras")
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -596,7 +628,7 @@ else if (pestanaActiva == "cajasreceptoras")
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -625,7 +657,7 @@ else if (pestanaActiva == "cajasreceptoras")
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -643,7 +675,7 @@ else if (pestanaActiva == "cajasreceptoras")
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }

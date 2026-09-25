@@ -34,7 +34,7 @@
 {
     <EditForm Model="nuevoTipo" OnValidSubmit="CrearTipoAsync" class="panel-formulario">
         <DataAnnotationsValidator />
-        <ValidationSummary />
+        <ResumenValidacion />
         <div class="campo"><label>Código</label><InputText @bind-Value="nuevoTipo.Codigo" /></div>
         <div class="campo"><label>Descripción</label><InputText @bind-Value="nuevoTipo.Descripcion" /></div>
         <div class="campo"><label>Orden</label><InputNumber @bind-Value="nuevoTipo.Orden" /></div>
@@ -144,7 +144,7 @@
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -172,7 +172,7 @@
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -189,7 +189,7 @@
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }

@@ -51,7 +51,7 @@
 {
     <EditForm Model="nuevoPrecio" OnValidSubmit="CrearPrecioAsync" class="panel-formulario">
         <DataAnnotationsValidator />
-        <ValidationSummary />
+        <ResumenValidacion />
         <div class="campo">
             <label>Producto</label>
             <select @bind="nuevoPrecio.ProId">
@@ -227,7 +227,7 @@
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -259,7 +259,7 @@
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -276,7 +276,7 @@
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -316,7 +316,7 @@
             }
             catch (Exception ex)
             {
-                errores.Add(ex.Message);
+                errores.Add(MensajesError.Traducir(ex));
             }
         }
 

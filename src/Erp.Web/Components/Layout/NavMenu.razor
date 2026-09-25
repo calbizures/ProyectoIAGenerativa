@@ -65,6 +65,27 @@
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
+        <AuthorizeView Policy="Permiso:RRHH_ADMIN">
+            <Authorized>
+                <SidebarNodo Titulo="RRHH" IconoNombre="briefcase" Rutas="@(new[] { "rrhh" })">
+                    <NavLink href="rrhh/empleados" class="sidebar-hijo-link">Empleados</NavLink>
+                    <NavLink href="rrhh/nominas" class="sidebar-hijo-link">Nóminas</NavLink>
+                    <NavLink href="rrhh/movimientos" class="sidebar-hijo-link">Movimientos de nómina</NavLink>
+                    <NavLink href="rrhh/tipos-movimiento" class="sidebar-hijo-link">Tipos de movimiento</NavLink>
+                    <NavLink href="rrhh/estructura" class="sidebar-hijo-link">Estructura organizativa</NavLink>
+                    <NavLink href="rrhh/catalogos" class="sidebar-hijo-link">Catálogos</NavLink>
+                </SidebarNodo>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Policy="Permiso:GENERAL_CONFIG_ADMIN">
+            <Authorized>
+                <SidebarNodo Titulo="General" IconoNombre="settings" Rutas="@(new[] { "general" })">
+                    <NavLink href="general/companias" class="sidebar-hijo-link">Compañías</NavLink>
+                    <NavLink href="general/entidades-financieras" class="sidebar-hijo-link">Entidades financieras</NavLink>
+                    <NavLink href="general/cuentas-poliza" class="sidebar-hijo-link">Cuentas de pólizas</NavLink>
+                </SidebarNodo>
+            </Authorized>
+        </AuthorizeView>
         <SidebarNodo Titulo="Contabilidad" IconoNombre="bar-chart-2" Disponible="false" />
     </nav>
 

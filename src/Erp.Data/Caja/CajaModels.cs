@@ -58,6 +58,7 @@ public sealed class EntidadFinanciera
 	public string GefDescripcion { get; set; } = "";
 	public int GeftId { get; set; }
 	public string GeftDescripcion { get; set; } = "";
+	public string GefEstado { get; set; } = "A";
 }
 
 public sealed class DepositoCaja
@@ -98,4 +99,23 @@ public sealed class CorteFormaFisico
 {
 	public int PftId { get; set; }
 	public decimal MontoFisico { get; set; }
+}
+
+// Cuadre del corte: teórico (inicial + efectivo cobrado − depósitos + cheques
+// + tarjetas + otras formas) contra lo contado físicamente.
+public sealed class CuadreCaja
+{
+	public decimal MontoInicial { get; set; }
+	public decimal EfectivoCobrado { get; set; }
+	public decimal Depositos { get; set; }
+	public decimal Cheques { get; set; }
+	public decimal Tarjetas { get; set; }
+	public decimal OtrasFormas { get; set; }
+	public decimal TeoricoTotal { get; set; }
+	public decimal FisicoEfectivo { get; set; }
+	public decimal FisicoOtrasFormas { get; set; }
+	public decimal FisicoTotal { get; set; }
+	public decimal Diferencia { get; set; }
+	public decimal Tolerancia { get; set; }
+	public bool Cuadra { get; set; }
 }

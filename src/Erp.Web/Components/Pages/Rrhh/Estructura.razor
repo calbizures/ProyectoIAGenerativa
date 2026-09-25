@@ -1,0 +1,307 @@
+@page "/rrhh/estructura"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:RRHH_ADMIN")]
+@using Erp.Data.Caja
+@using Erp.Data.Rrhh
+@using Erp.Data.Security
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IRrhhRepository RrhhRepository
+@inject ICajaRepository CajaRepository
+
+<PageTitle>Estructura organizativa</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Estructura organizativa</h1>
+    <p>Departamentos, puestos y plazas. Una plaza es un puesto dentro de un departamento y la ocupa un empleado.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
+
+@if (pestanaActiva == "departamentos")
+{
+    <div class="barra-herramientas">
+        <BotonIcono Icono="plus" Tooltip="Nuevo departamento" Etiqueta="Nuevo departamento" Variante="primario" OnClick="() => EditarDepartamento(new Departamento())" />
+    </div>
+    @if (departamentoEdicion is not null)
+    {
+        <div class="panel-formulario">
+            <h2>@(departamentoEdicion.IdDepartamento == 0 ? "Nuevo departamento" : $"Editar: {departamentoEdicion.Descripcion}")</h2>
+            <div class="campo"><label for="dep-desc">Descripción</label><input id="dep-desc" @bind="departamentoEdicion.Descripcion" /></div>
+            <div class="campo">
+                <label for="dep-unidad">Unidad organizativa</label>
+                <select id="dep-unidad" @bind="departamentoEdicion.IdUnidadOrganizativa">
+                    <option value="">(Ninguna)</option>
+                    @foreach (var u in unidades)
+                    {
+                        <option value="@u.Id">@u.Descripcion</option>
+                    }
+                </select>
+            </div>
+            <div class="campo">
+                <label for="dep-suc">Sucursal</label>
+                <select id="dep-suc" @bind="departamentoEdicion.SucId">
+                    <option value="">(Todas / oficina central)</option>
+                    @foreach (var s in sucursales)
+                    {
+                        <option value="@s.SucId">@s.SucDescripcion</option>
+                    }
+                </select>
+            </div>
+            <div class="campo">
+                <label for="dep-estado">Estado</label>
+                <select id="dep-estado" @bind="departamentoEdicion.Estado"><option value="A">Activo</option><option value="I">Inactivo</option></select>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarDepartamentoAsync" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => departamentoEdicion = null" />
+            </div>
+        </div>
+    }
+    <table class="tabla-datos">
+        <thead><tr><th>Departamento</th><th>Unidad organizativa</th><th>Sucursal</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+        <tbody>
+            @foreach (var d in departamentos)
+            {
+                <tr>
+                    <td>@d.Descripcion</td>
+                    <td>@d.UnidadOrganizativa</td>
+                    <td>@(d.SucDescripcion ?? "—")</td>
+                    <td class="col-estado"><span class="estado-badge @(d.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(d.Estado == "A" ? "Activo" : "Inactivo")</span></td>
+                    <td class="col-acciones"><div class="acciones-fila"><BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => EditarDepartamento(d)" /></div></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (pestanaActiva == "puestos")
+{
+    <div class="barra-herramientas">
+        <BotonIcono Icono="plus" Tooltip="Nuevo puesto" Etiqueta="Nuevo puesto" Variante="primario" OnClick="() => EditarPuesto(new Puesto())" />
+    </div>
+    @if (puestoEdicion is not null)
+    {
+        <div class="panel-formulario">
+            <h2>@(puestoEdicion.IdPuesto == 0 ? "Nuevo puesto" : $"Editar: {puestoEdicion.Descripcion}")</h2>
+            <div class="campo"><label for="pue-desc">Descripción</label><input id="pue-desc" @bind="puestoEdicion.Descripcion" /></div>
+            <div class="campo"><label for="pue-min">Salario mínimo</label><input id="pue-min" type="number" step="0.01" @bind="puestoEdicion.SalarioMinimo" /></div>
+            <div class="campo"><label for="pue-max">Salario máximo</label><input id="pue-max" type="number" step="0.01" @bind="puestoEdicion.SalarioMaximo" /></div>
+            <div class="campo">
+                <label for="pue-estado">Estado</label>
+                <select id="pue-estado" @bind="puestoEdicion.Estado"><option value="A">Activo</option><option value="I">Inactivo</option></select>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarPuestoAsync" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => puestoEdicion = null" />
+            </div>
+        </div>
+    }
+    <table class="tabla-datos">
+        <thead><tr><th>Puesto</th><th class="num col-monto">Salario mínimo</th><th class="num col-monto">Salario máximo</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+        <tbody>
+            @foreach (var p in puestos)
+            {
+                <tr>
+                    <td>@p.Descripcion</td>
+                    <td class="num col-monto">@(p.SalarioMinimo?.ToString("N2") ?? "—")</td>
+                    <td class="num col-monto">@(p.SalarioMaximo?.ToString("N2") ?? "—")</td>
+                    <td class="col-estado"><span class="estado-badge @(p.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(p.Estado == "A" ? "Activo" : "Inactivo")</span></td>
+                    <td class="col-acciones"><div class="acciones-fila"><BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => EditarPuesto(p)" /></div></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (pestanaActiva == "plazas")
+{
+    <div class="barra-herramientas">
+        <BotonIcono Icono="plus" Tooltip="Nueva plaza" Etiqueta="Nueva plaza" Variante="primario" OnClick="() => EditarPlaza(new Plaza())" />
+    </div>
+    @if (plazaEdicion is not null)
+    {
+        <div class="panel-formulario">
+            <h2>@(plazaEdicion.IdPlaza == 0 ? "Nueva plaza" : $"Editar: {plazaEdicion.Descripcion}")</h2>
+            <div class="campo"><label for="pla-desc">Descripción</label><input id="pla-desc" @bind="plazaEdicion.Descripcion" /></div>
+            <div class="campo">
+                <label for="pla-dep">Departamento</label>
+                <select id="pla-dep" @bind="plazaEdicion.IdDepartamento">
+                    <option value="0">Seleccione...</option>
+                    @foreach (var d in departamentos.Where(d => d.Estado == "A"))
+                    {
+                        <option value="@d.IdDepartamento">@d.Descripcion</option>
+                    }
+                </select>
+            </div>
+            <div class="campo">
+                <label for="pla-pue">Puesto</label>
+                <select id="pla-pue" @bind="plazaEdicion.IdPuesto">
+                    <option value="0">Seleccione...</option>
+                    @foreach (var p in puestos.Where(p => p.Estado == "A"))
+                    {
+                        <option value="@p.IdPuesto">@p.Descripcion</option>
+                    }
+                </select>
+            </div>
+            <div class="campo">
+                <label for="pla-estado">Estado</label>
+                <select id="pla-estado" @bind="plazaEdicion.Estado"><option value="A">Activa</option><option value="I">Inactiva</option></select>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarPlazaAsync" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => plazaEdicion = null" />
+            </div>
+        </div>
+    }
+    <table class="tabla-datos">
+        <thead><tr><th>Plaza</th><th>Departamento</th><th>Puesto</th><th>Ocupada por</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+        <tbody>
+            @foreach (var p in plazas)
+            {
+                <tr>
+                    <td>@p.Descripcion</td>
+                    <td>@p.Departamento</td>
+                    <td>@p.Puesto</td>
+                    <td>@(p.EmpleadoOcupante ?? "Vacante")</td>
+                    <td class="col-estado"><span class="estado-badge @(p.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(p.Estado == "A" ? "Activa" : "Inactiva")</span></td>
+                    <td class="col-acciones"><div class="acciones-fila"><BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => EditarPlaza(p)" /></div></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private static readonly IReadOnlyList<PestanaItem> Pestanas = new[]
+    {
+        new PestanaItem("departamentos", "Departamentos"),
+        new PestanaItem("puestos", "Puestos"),
+        new PestanaItem("plazas", "Plazas"),
+    };
+
+    private string pestanaActiva = "departamentos";
+    private IReadOnlyList<Departamento> departamentos = Array.Empty<Departamento>();
+    private IReadOnlyList<Puesto> puestos = Array.Empty<Puesto>();
+    private IReadOnlyList<Plaza> plazas = Array.Empty<Plaza>();
+    private IReadOnlyList<CatalogoRrhh> unidades = Array.Empty<CatalogoRrhh>();
+    private IReadOnlyList<Sucursal> sucursales = Array.Empty<Sucursal>();
+
+    private Departamento? departamentoEdicion;
+    private Puesto? puestoEdicion;
+    private Plaza? plazaEdicion;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            unidades = await RrhhRepository.ConsultarCatalogoAsync("UnidadOrganizativa", soloActivos: true);
+            sucursales = await CajaRepository.ConsultarSucursalesAsync();
+            await CargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task CargarAsync()
+    {
+        departamentos = await RrhhRepository.ConsultarDepartamentosAsync(soloActivos: false);
+        puestos = await RrhhRepository.ConsultarPuestosAsync(soloActivos: false);
+        plazas = await RrhhRepository.ConsultarPlazasAsync(soloActivos: false);
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private void MostrarOk(string texto)
+    {
+        mensaje = texto;
+        esMensajeError = false;
+    }
+
+    private void EditarDepartamento(Departamento d)
+    {
+        mensaje = null;
+        departamentoEdicion = new Departamento
+        {
+            IdDepartamento = d.IdDepartamento, Descripcion = d.Descripcion, IdUnidadOrganizativa = d.IdUnidadOrganizativa,
+            SucId = d.SucId, Estado = d.Estado
+        };
+    }
+
+    private async Task GuardarDepartamentoAsync()
+    {
+        if (departamentoEdicion is null) return;
+        try
+        {
+            await RrhhRepository.GuardarDepartamentoAsync(departamentoEdicion, await ObtenerUsuIdActualAsync());
+            MostrarOk("Departamento guardado.");
+            departamentoEdicion = null;
+            await CargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void EditarPuesto(Puesto p)
+    {
+        mensaje = null;
+        puestoEdicion = new Puesto
+        {
+            IdPuesto = p.IdPuesto, Descripcion = p.Descripcion, SalarioMinimo = p.SalarioMinimo, SalarioMaximo = p.SalarioMaximo, Estado = p.Estado
+        };
+    }
+
+    private async Task GuardarPuestoAsync()
+    {
+        if (puestoEdicion is null) return;
+        try
+        {
+            await RrhhRepository.GuardarPuestoAsync(puestoEdicion, await ObtenerUsuIdActualAsync());
+            MostrarOk("Puesto guardado.");
+            puestoEdicion = null;
+            await CargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void EditarPlaza(Plaza p)
+    {
+        mensaje = null;
+        plazaEdicion = new Plaza
+        {
+            IdPlaza = p.IdPlaza, Descripcion = p.Descripcion, IdDepartamento = p.IdDepartamento, IdPuesto = p.IdPuesto, Estado = p.Estado
+        };
+    }
+
+    private async Task GuardarPlazaAsync()
+    {
+        if (plazaEdicion is null) return;
+        if (plazaEdicion.IdDepartamento <= 0 || plazaEdicion.IdPuesto <= 0)
+        {
+            mensaje = "Seleccione el departamento y el puesto de la plaza.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            await RrhhRepository.GuardarPlazaAsync(plazaEdicion, await ObtenerUsuIdActualAsync());
+            MostrarOk("Plaza guardada.");
+            plazaEdicion = null;
+            await CargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

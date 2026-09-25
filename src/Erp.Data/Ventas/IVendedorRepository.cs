@@ -7,4 +7,6 @@ public interface IVendedorRepository
 	Task EliminarAsync(int pveId, int? usuarioAccionId);
 	Task<IReadOnlyList<Vendedor>> ConsultarAsync(string? estado);
 	Task<Vendedor?> ConsultarPorIdAsync(int pveId);
+	Task<Vendedor?> ConsultarPorUsuarioAsync(int usuId);
+	Task<(IReadOnlyList<FacturaVendedor> Facturas, ComisionVendedorResumen Resumen)> ConsultarFacturasAsync(int pveId, DateTime fechaDel, DateTime fechaAl, int? sucId);
 }

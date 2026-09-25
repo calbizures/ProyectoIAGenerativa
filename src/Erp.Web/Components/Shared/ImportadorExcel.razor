@@ -72,9 +72,9 @@
             if (filas.Count == 0)
                 error = "El archivo no tiene filas de datos.";
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            error = $"No se pudo leer el archivo: {ex.Message}";
+            error = "No se pudo leer el archivo. Verifique que sea un libro de Excel (.xlsx) válido y que no esté abierto en otro programa.";
         }
     }
 

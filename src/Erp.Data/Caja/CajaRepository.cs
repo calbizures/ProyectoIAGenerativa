@@ -26,13 +26,7 @@ public sealed class CajaRepository(IDbConnectionFactory connectionFactory) : ICa
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var filas = await connection.QueryAsync<EntidadFinanciera>(
-			"""
-			SELECT enti.gef_id, enti.gef_codigo, enti.gef_descripcion, enti.geft_id, tipo.geft_descripcion
-			FROM dbo.gen_entidad_financiera enti
-			INNER JOIN dbo.gen_entidad_financiera_tipo tipo ON tipo.geft_id = enti.geft_id
-			WHERE enti.gef_estado = 'A'
-			ORDER BY tipo.geft_descripcion, enti.gef_descripcion
-			""");
+			"dbo.paEntidadFinancieraConsultar", new { GeftId = (int?)null, SoloActivas = true }, commandType: CommandType.StoredProcedure);
 		return filas.ToList();
 	}
 
@@ -115,6 +109,13 @@ public sealed class CajaRepository(IDbConnectionFactory connectionFactory) : ICa
 		var filas = await connection.QueryAsync<FormaPagoTeorico>(
 			"dbo.paCorteCajaTeoricoConsultar", new { pca_id = pcaId }, commandType: CommandType.StoredProcedure);
 		return filas.ToList();
+	}
+
+	public async Task<CuadreCaja?> ConsultarCuadreAsync(int pcaId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		return await connection.QueryFirstOrDefaultAsync<CuadreCaja>(
+			"dbo.paCorteCajaCuadreConsultar", new { pca_id = pcaId }, commandType: CommandType.StoredProcedure);
 	}
 
 	public async Task GuardarDesgloseEfectivoAsync(int pcaId, IReadOnlyList<DenominacionEfectivo> denominaciones, int? usuarioAccionId)

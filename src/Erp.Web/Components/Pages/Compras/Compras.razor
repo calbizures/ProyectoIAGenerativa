@@ -6,6 +6,7 @@
 @using Erp.Data.Inventario
 @using Erp.Web.Security
 @using Microsoft.AspNetCore.Components.Authorization
+@inject Erp.Data.General.IGeneralRepository GeneralRepository
 @inject ICompraRepository CompraRepository
 @inject IProductoRepository ProductoRepository
 @inject IBodegaRepository BodegaRepository
@@ -172,7 +173,7 @@
 
                 <div class="doc-nota">
                     <Icono Nombre="check-circle" Tamano="15" />
-                    <span>El costo unitario ya incluye IVA (12%), como lo factura el proveedor — no se suma aparte.</span>
+                    <span>El costo unitario ya incluye IVA (@PorcentajeIvaTexto%), como lo factura el proveedor — no se suma aparte.</span>
                 </div>
 
                 <table class="doc-tabla">
@@ -218,7 +219,7 @@
                     <div class="doc-totales-fila"><span>Subtotal</span><span>@MonedaSimbolo @Subtotal.ToString("N2")</span></div>
                     <div class="doc-totales-fila"><span>Descuento</span><span>@MonedaSimbolo @TotalDescuento.ToString("N2")</span></div>
                     <div class="doc-totales-total"><span>Total</span><span>@MonedaSimbolo @Total.ToString("N2")</span></div>
-                    <div class="doc-totales-nota">IVA incluido (12%): @MonedaSimbolo @IvaIncluido.ToString("N2")</div>
+                    <div class="doc-totales-nota">IVA incluido (@PorcentajeIvaTexto%): @MonedaSimbolo @IvaIncluido.ToString("N2")</div>
                 </div>
             </div>
 
@@ -378,10 +379,12 @@
     private readonly List<LineaCaptura> lineas = new();
 
     // Igual que en Facturas: el costo unitario que cotiza el proveedor ya
-    // incluye IVA (12%); no se suma aparte. Internamente se convierte a neto
+    // incluye IVA (% de la compañía); no se suma aparte. Internamente se convierte a neto
     // antes de enviarlo al procedimiento almacenado, que lo necesita separado
     // para el asiento contable.
-    private const decimal PorcentajeIva = 12m;
+    // Se toma de gen_compania.cia_porc_iva (General > Compañías) al iniciar.
+    private decimal PorcentajeIva = 12m;
+    private string PorcentajeIvaTexto => PorcentajeIva.ToString("0.##");
 
     private decimal Subtotal => lineas.Sum(l => l.SubTotal);
     private decimal TotalDescuento => lineas.Sum(l => l.ValorDescuento);
@@ -396,6 +399,10 @@
     protected override async Task OnInitializedAsync()
     {
         tiposDocumento = await CompraRepository.ConsultarTiposDocumentoAsync();
+        int? sucIdParametros = null;
+        if (AuthenticationStateTask is not null)
+            sucIdParametros = (await AuthenticationStateTask).User.ObtenerSucId();
+        PorcentajeIva = (await GeneralRepository.ConsultarParametrosAsync(sucIdParametros)).CiaPorcIva;
         monedas = await CompraRepository.ConsultarMonedasAsync();
         bodegas = await BodegaRepository.ConsultarAsync(sucId: null, estado: "A");
 
@@ -488,7 +495,7 @@
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -606,7 +613,7 @@
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -632,7 +639,7 @@
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }

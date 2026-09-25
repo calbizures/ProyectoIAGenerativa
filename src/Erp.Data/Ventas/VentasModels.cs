@@ -141,3 +141,41 @@ public sealed class NuevaLineaFactura
 	public decimal? CostoUnitario { get; set; }
 	public int? PprId { get; set; }
 }
+
+// Factura listada en la pestaña "Facturas" del detalle de un cliente.
+public sealed class FacturaCliente
+{
+	public int EncId { get; set; }
+	public DateTime EncFechaDocto { get; set; }
+	public string? EncSerieDocto { get; set; }
+	public string? EncNumeroDocto { get; set; }
+	public string? TdoCodigo { get; set; }
+	public decimal EncMontoTotal { get; set; }
+	public string EncEstado { get; set; } = "";
+	public string? Vendedor { get; set; }
+	public string? UsuarioGrabo { get; set; }
+	public string Condicion { get; set; } = "";
+	public decimal SaldoPendiente { get; set; }
+}
+
+// Factura de un vendedor en un rango de fechas, con la comisión calculada
+// sobre la venta sin IVA (sólo si la compañía paga comisiones).
+public sealed class FacturaVendedor
+{
+	public int EncId { get; set; }
+	public DateTime EncFechaDocto { get; set; }
+	public string? EncSerieDocto { get; set; }
+	public string? EncNumeroDocto { get; set; }
+	public string? TdoCodigo { get; set; }
+	public string? Cliente { get; set; }
+	public decimal EncMontoTotal { get; set; }
+	public decimal SubtotalSinIva { get; set; }
+	public string EncEstado { get; set; } = "";
+	public decimal Comision { get; set; }
+}
+
+public sealed class ComisionVendedorResumen
+{
+	public bool PagaComision { get; set; }
+	public decimal PorcComision { get; set; }
+}

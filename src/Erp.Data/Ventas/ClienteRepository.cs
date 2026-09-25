@@ -63,4 +63,12 @@ public sealed class ClienteRepository(IDbConnectionFactory connectionFactory) : 
 		return await connection.QueryFirstOrDefaultAsync<Cliente>(
 			"dbo.sp_cliente_consultar_por_id", new { cli_id = cliId }, commandType: CommandType.StoredProcedure);
 	}
+
+	public async Task<IReadOnlyList<FacturaCliente>> ConsultarFacturasAsync(int cliId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var filas = await connection.QueryAsync<FacturaCliente>(
+			"dbo.paClienteFacturasConsultar", new { CliId = cliId }, commandType: CommandType.StoredProcedure);
+		return filas.ToList();
+	}
 }

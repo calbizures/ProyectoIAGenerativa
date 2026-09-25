@@ -39,7 +39,16 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 22_sucursal_caja_formas_pago_tablas.sql       -- solo si ya corriste 00-21 antes de esta fecha
 23_procedimientos_caja_sucursal.sql           -- solo si ya corriste 00-22 antes de esta fecha
 24_formas_pago_factura_cobro.sql              -- solo si ya corriste 00-23 antes de esta fecha
+25_rrhh.sql                                   -- módulo de RRHH y nómina
+26_parametros_general_caja.sql                -- parámetros de compañía, módulo General, cuadre de caja
+27_contabilidad_cuentas_parametro.sql         -- cuentas de las pólizas automáticas
 ```
+
+`25`, `26` y `27` se corren siempre (también en una instalación nueva) y se
+pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
+versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
+(sin el cuadre obligatorio); si vuelves a correr cualquiera de los dos,
+vuelve a correr después `26` y `27`.
 
 ## Estándares de nomenclatura (a partir de este punto)
 
@@ -410,6 +419,117 @@ Decisiones de diseño:
     Server 2022 sin errores, y la re-ejecución de `12` + `22`-`24` sobre
     una base ya poblada.
 
+## Parámetros generales, RRHH y pólizas automáticas (`25`-`27`)
+
+### Parámetros de uso general en `gen_compania` (`26`)
+
+Se evaluaron los valores que hoy estaban fijos en el código o que cada
+módulo necesitaría repetir, y se dejaron en la compañía (mantenimiento en
+**General > Compañías**, solo para el rol ADMIN mediante el permiso
+`GENERAL_CONFIG_ADMIN`):
+
+| Columna | Default | Uso |
+|---|---|---|
+| `cia_porc_iva` | 12.00 | % de IVA con el que Facturas y Compras separan el neto del precio con IVA incluido (antes estaba fijo en el código). |
+| `cia_paga_comision` | 0 | Si es 1, la pestaña *Facturas y comisiones* del vendedor calcula la comisión (`pve_porc_comision` sobre la venta **sin IVA**, solo facturas grabadas). |
+| `cia_tolerancia_cierre_caja` | 0.00 | Diferencia máxima (en quetzales) permitida entre el teórico y lo contado para cerrar una caja. |
+| `cia_periodicidad_nomina` | `M` | Periodicidad sugerida al crear nóminas: mensual (`M`) o quincenal (`Q`). |
+
+Se consideraron y **no** se agregaron: la moneda base (ya la define
+`gen_moneda.mon_es_local`), las tasas de IGSS/bonificación (son tipos de
+movimiento de nómina configurables, ver abajo) y un indicador de "precios
+incluyen IVA" (en Guatemala siempre es así y el sistema ya lo asume).
+`paCompaniaParametrosConsultar(@SucId)` devuelve los parámetros de la
+compañía de una sucursal para que cualquier pantalla los use.
+
+El mismo script agrega el CRUD de compañías y el maestro-detalle de
+`gen_entidad_financiera_tipo` → `gen_entidad_financiera` (procedimientos
+`paCompania*`, `paEntidadFinancieraTipo*`, `paEntidadFinanciera*`).
+
+### Cuadre obligatorio del cierre de caja (`26`)
+
+`paCorteCajaCuadreConsultar(@pca_id)` desglosa el teórico:
+
+```
+teórico = monto inicial + ventas/cobros en efectivo − depósitos al banco
+          + cheques + tarjetas + otras formas (transferencias)
+```
+
+y lo compara con lo contado (desglose de efectivo + conteo de otras
+formas). `sp_pos_caja_cerrar` rechaza el cierre (error 51703, con el
+teórico, lo contado y la diferencia en el mensaje) cuando
+`|contado − teórico| > cia_tolerancia_cierre_caja`. La pantalla de Caja
+muestra el mismo desglose y deshabilita **Cerrar caja** mientras no cuadre.
+
+### Usuario ↔ vendedor ↔ empleado (`25`)
+
+Sí conviene relacionarlos, pero no directamente usuario con vendedor: con
+el módulo de RRHH, **usuario y vendedor son roles de una persona, el
+empleado**. Por eso se agregó `IdEmpleado` (nullable, único cuando tiene
+valor) en `gen_usuario` y en `pos_vendedor`, en lugar de una FK
+usuario→vendedor. Así:
+
+- un empleado puede ser usuario, vendedor, ambos o ninguno (un vendedor
+  por comisión sin acceso al sistema no necesita usuario);
+- al facturar, `paVendedorConsultarPorUsuario` propone como vendedor el del
+  empleado que inició sesión;
+- la baja del empleado queda en un solo lugar.
+
+La asignación se hace desde **RRHH > Empleados > Vínculos con el sistema**.
+
+### Módulo de RRHH (`25`)
+
+Tablas con el estándar `rrhh` + PascalCase, tomadas del diagrama
+`ERD_RRHH`: estructura organizativa (`rrhhUnidadOrganizativa`,
+`rrhhDepartamento`, `rrhhPuesto`, `rrhhDepartamentoPuesto`, `rrhhPlaza`,
+`rrhhRequisitoPuesto`), personas (`rrhhCandidato`, `rrhhEmpleado`,
+`rrhhHistorialPlaza`, `rrhhTelefono`, `rrhhReferencia`, `rrhhEscolaridad`),
+desarrollo (`rrhhCurso`, `rrhhHistorialCapacitacion`,
+`rrhhEvaluacionDesempenio`) y catálogos (`rrhhTipo*`).
+
+**Nómina.** `TipoIngreso` y `TipoDescuento` del diagrama se unificaron en
+`rrhhTipoMovimientoNomina`, con `Naturaleza` (`I` suma / `D` resta) y
+`FormaCalculo`:
+
+| Forma | Cálculo |
+|---|---|
+| `S` | Salario base × días laborados / 30 (quincena = 15 días; se prorratea el ingreso o la baja dentro del período). |
+| `F` | Monto fijo mensual, prorrateado a los días laborados (p. ej. bonificación incentivo Q250). |
+| `P` | Porcentaje sobre la suma de los ingresos marcados `EsBaseCalculo` (p. ej. IGSS laboral 4.83 %; la bonificación incentivo no es base). |
+| `M` | Manual: se captura por empleado en `rrhhMovimientoNomina` (horas extra, comisiones, ISR, anticipos, préstamos). |
+
+Flujo: `paRrhhNominaCrear` (borrador, valida traslapes) →
+`paRrhhNominaCalcular` (llena `rrhhNominaEmpleado` y `rrhhNominaDetalle`;
+se puede recalcular) → `paRrhhNominaAprobar` (marca los movimientos
+manuales como aplicados a esa nómina) o `paRrhhNominaAnular` (los libera).
+El ISR queda como movimiento manual porque depende de la proyección anual
+de cada empleado. Los tipos de movimiento tienen `cta_id` para la futura
+póliza de nómina.
+
+### Partida de ventas y cuentas afectadas (`27`)
+
+**Cuándo:** la póliza de venta se genera automáticamente al **grabar la
+factura** (criterio de devengo: el ingreso y el IVA débito nacen con la
+factura, se cobre o no ese día). La anulación genera la póliza inversa.
+Los cobros de cuotas, los depósitos, el cierre de caja (faltantes y
+sobrantes) y la nómina ya tienen sus conceptos parametrizados, pero su
+póliza se generará cuando se construya el módulo de Contabilidad.
+
+**Qué cuentas** (factura de Q950 de contado, IVA 12 %):
+
+| Concepto | Cuenta | Debe | Haber |
+|---|---|---:|---:|
+| `VENTA_CAJA` (lo cobrado al facturar) | 1105 Caja general | 950.00 | |
+| `VENTA_CLIENTES` (saldo al crédito) | 1205 Clientes | — | |
+| `VENTA_INGRESO` (total sin IVA) | 4105 Ventas | | 848.21 |
+| `VENTA_IVA_DEBITO` | 2205 IVA débito fiscal | | 101.79 |
+| `VENTA_COSTO` / `INVENTARIO` | 5105 Costo de ventas / 1310 Inventarios | 589.00 | 589.00 |
+
+Las cuentas no están fijas en el procedimiento: la tabla
+`cont_cuenta_parametro` relaciona cada concepto con una cuenta y se mantiene
+en **General > Cuentas de pólizas**. `sp_contabilidad_generar_asiento_documento`
+rechaza el documento (error 51304) si falta la cuenta de algún concepto.
+
 ## Módulos nuevos
 
 - **Seguridad (`sec_*`)**: roles, permisos y las tablas de asignación
@@ -472,8 +592,8 @@ prueba.
 
 ## Limitaciones conocidas / decisiones de alcance
 
-- La contabilización automática es una simplificación (un IVA único del
-  12%, sin múltiples tasas ni exenciones) pensada para demostrar el patrón
+- La contabilización automática es una simplificación (una sola tasa de
+  IVA por compañía, `cia_porc_iva`, sin múltiples tasas ni exenciones) pensada para demostrar el patrón
   de asiento balanceado, no para cumplimiento fiscal real.
 - `sp_documento_anular` no revierte automáticamente las cuotas de plan de
   pago ya generadas.

@@ -192,6 +192,27 @@ FROM (VALUES
 INNER JOIN dbo.cont_cuenta_contable p ON p.cta_codigo = v.padre;
 GO
 
+-- Si ya se corrió 27_contabilidad_cuentas_parametro.sql, la partida
+-- automática busca sus cuentas en cont_cuenta_parametro (que el DELETE de
+-- arriba vació): se vuelven a asignar las que usan ventas y compras. El
+-- resto de conceptos los repone 27 al volver a correrlo.
+IF OBJECT_ID('dbo.cont_cuenta_parametro', 'U') IS NOT NULL
+	INSERT INTO dbo.cont_cuenta_parametro (ccp_codigo, ccp_descripcion, ccp_naturaleza, cta_id)
+	SELECT v.codigo, v.descripcion, v.naturaleza, cuen.cta_id
+	FROM (VALUES
+		('VENTA_CAJA',         'Venta: lo cobrado al facturar (contado o enganche)', 'D', '1105'),
+		('VENTA_CLIENTES',     'Venta: saldo a crédito del cliente',                 'D', '1205'),
+		('VENTA_INGRESO',      'Venta: ingreso por ventas (sin IVA)',                'H', '4105'),
+		('VENTA_IVA_DEBITO',   'Venta: IVA débito fiscal',                           'H', '2205'),
+		('VENTA_COSTO',        'Venta: costo de lo vendido',                         'D', '5105'),
+		('INVENTARIO',         'Inventario de mercadería',                           'H', '1310'),
+		('COMPRA_GASTO',       'Compra que no afecta inventario (gasto)',            'D', '5205'),
+		('COMPRA_IVA_CREDITO', 'Compra: IVA crédito fiscal',                         'D', '1150'),
+		('COMPRA_PROVEEDORES', 'Compra: cuentas por pagar a proveedores',            'H', '2105')
+	) v(codigo, descripcion, naturaleza, cuenta)
+	INNER JOIN dbo.cont_cuenta_contable cuen ON cuen.cta_codigo = v.cuenta;
+GO
+
 ------------------------------------------------------------
 -- Seguridad: roles, permisos y usuarios
 ------------------------------------------------------------

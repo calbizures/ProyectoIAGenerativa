@@ -1,0 +1,183 @@
+@page "/rrhh/catalogos"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:RRHH_ADMIN")]
+@using Erp.Data.Rrhh
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IRrhhRepository RrhhRepository
+
+<PageTitle>Catálogos de RRHH</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Catálogos de RRHH</h1>
+    <p>Listas simples que usan los empleados, candidatos y puestos.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="barra-herramientas">
+    <label class="filtro-campo">
+        Catálogo
+        <select @bind="catalogo" @bind:after="CargarAsync">
+            @foreach (var c in ListaCatalogos)
+            {
+                <option value="@c.Clave">@c.Nombre</option>
+            }
+        </select>
+    </label>
+    <label class="filtro-campo"><input type="checkbox" @bind="soloActivos" @bind:after="CargarAsync" /> Solo activos</label>
+    <span class="barra-herramientas-separador"></span>
+    <BotonIcono Icono="plus" Tooltip="Nuevo registro" Etiqueta="Nuevo" Variante="primario" OnClick="Nuevo" />
+</div>
+
+@if (editandoId == 0)
+{
+    <div class="fila-edicion tarjeta tarjeta-compacta">
+        <input @bind="descripcion" placeholder="Descripción" aria-label="Descripción" />
+        <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarAsync" />
+        <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => editandoId = null" />
+    </div>
+}
+
+@if (registros.Count == 0)
+{
+    <p class="estado-vacio">No hay registros en este catálogo.</p>
+}
+else
+{
+    <table class="tabla-datos">
+        <thead><tr><th class="col-codigo">Id</th><th>Descripción</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+        <tbody>
+            @foreach (var r in registros)
+            {
+                <tr>
+                    <td class="col-codigo">@r.Id</td>
+                    @if (editandoId == r.Id)
+                    {
+                        <td><input @bind="descripcion" aria-label="Descripción" /></td>
+                        <td class="col-estado"></td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="GuardarAsync" />
+                                <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => editandoId = null" />
+                            </div>
+                        </td>
+                    }
+                    else
+                    {
+                        <td>@r.Descripcion</td>
+                        <td class="col-estado"><span class="estado-badge @(r.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(r.Estado == "A" ? "Activo" : "Inactivo")</span></td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => Editar(r)" />
+                                @if (r.Estado == "A")
+                                {
+                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar" Variante="peligro" OnClick="@(() => CambiarEstadoAsync(r, "I"))" />
+                                }
+                                else
+                                {
+                                    <BotonIcono Icono="refresh-cw" Tooltip="Reactivar" OnClick="@(() => CambiarEstadoAsync(r, "A"))" />
+                                }
+                            </div>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private sealed record CatalogoOpcion(string Clave, string Nombre);
+
+    // Claves aceptadas por paRrhhCatalogoTabla.
+    private static readonly IReadOnlyList<CatalogoOpcion> ListaCatalogos = new[]
+    {
+        new CatalogoOpcion("UnidadOrganizativa", "Unidades organizativas"),
+        new CatalogoOpcion("TipoDocumentoIdentificacion", "Tipos de documento de identificación"),
+        new CatalogoOpcion("TipoTelefono", "Tipos de teléfono"),
+        new CatalogoOpcion("TipoEscolaridad", "Tipos de escolaridad"),
+        new CatalogoOpcion("TipoRequisito", "Tipos de requisito"),
+        new CatalogoOpcion("TipoEvaluacion", "Tipos de evaluación"),
+        new CatalogoOpcion("Curso", "Cursos"),
+    };
+
+    private string catalogo = ListaCatalogos[0].Clave;
+    private bool soloActivos;
+    private IReadOnlyList<CatalogoRrhh> registros = Array.Empty<CatalogoRrhh>();
+    private int? editandoId;
+    private string descripcion = "";
+    private string? mensaje;
+    private bool esMensajeError;
+
+    protected override async Task OnInitializedAsync() => await CargarAsync();
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private async Task CargarAsync()
+    {
+        editandoId = null;
+        try
+        {
+            registros = await RrhhRepository.ConsultarCatalogoAsync(catalogo, soloActivos);
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private void Nuevo()
+    {
+        mensaje = null;
+        editandoId = 0;
+        descripcion = "";
+    }
+
+    private void Editar(CatalogoRrhh registro)
+    {
+        mensaje = null;
+        editandoId = registro.Id;
+        descripcion = registro.Descripcion;
+    }
+
+    private async Task GuardarAsync()
+    {
+        try
+        {
+            await RrhhRepository.GuardarCatalogoAsync(catalogo, editandoId == 0 ? null : editandoId, descripcion.Trim(), await ObtenerUsuIdActualAsync());
+            mensaje = editandoId == 0 ? "Registro creado." : "Registro actualizado.";
+            esMensajeError = false;
+            await CargarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private async Task CambiarEstadoAsync(CatalogoRrhh registro, string estado)
+    {
+        try
+        {
+            await RrhhRepository.CambiarEstadoCatalogoAsync(catalogo, registro.Id, estado, await ObtenerUsuIdActualAsync());
+            mensaje = estado == "A" ? "Registro reactivado." : "Registro desactivado.";
+            esMensajeError = false;
+            await CargarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+}

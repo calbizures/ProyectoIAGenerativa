@@ -21,11 +21,11 @@
             }
         </span>
     }
-    <span class="barra-estado-sucursal"><Icono Nombre="map-pin" Tamano="13" /> @(nombreSucursal ?? "Sin sucursal")</span>
-    <span>Usuario: @(nombreUsuario ?? "—")</span>
-    <span>Módulo: @ObtenerModulo()</span>
-    <span>Base de datos: @nombreBaseDatos</span>
-    <span class="barra-estado-hora">@horaActual.ToString("dd/MM/yyyy HH:mm:ss")</span>
+    <span class="barra-estado-sucursal" title="Sucursal"><Icono Nombre="map-pin" Tamano="13" /> @(nombreSucursal ?? "Sin sucursal")</span>
+    <span title="Usuario"><Icono Nombre="user" Tamano="13" /> @(nombreUsuario ?? "—")</span>
+    <span title="Módulo"><Icono Nombre="layout-grid" Tamano="13" /> @ObtenerModulo()</span>
+    <span title="Base de datos"><Icono Nombre="database" Tamano="13" /> @nombreBaseDatos</span>
+    <span class="barra-estado-hora" title="Fecha y hora"><Icono Nombre="calendar" Tamano="13" /> @horaActual.ToString("dd/MM/yyyy HH:mm:ss")</span>
 </footer>
 
 @code {
@@ -54,6 +54,15 @@
         ["compras"] = "Compras > Compras",
         ["proveedores"] = "Compras > Proveedores",
         ["caja"] = "Bancos > Caja",
+        ["general/companias"] = "General > Compañías",
+        ["general/entidades-financieras"] = "General > Entidades financieras",
+        ["general/cuentas-poliza"] = "General > Cuentas de pólizas",
+        ["rrhh/empleados"] = "RRHH > Empleados",
+        ["rrhh/estructura"] = "RRHH > Estructura organizativa",
+        ["rrhh/catalogos"] = "RRHH > Catálogos",
+        ["rrhh/tipos-movimiento"] = "RRHH > Tipos de movimiento",
+        ["rrhh/movimientos"] = "RRHH > Movimientos de nómina",
+        ["rrhh/nominas"] = "RRHH > Nóminas",
     };
 
     private int? sucId;

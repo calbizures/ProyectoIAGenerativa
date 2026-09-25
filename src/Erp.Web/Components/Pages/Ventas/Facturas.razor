@@ -7,11 +7,13 @@
 @using Erp.Data.Ventas
 @using Erp.Web.Security
 @using Microsoft.AspNetCore.Components.Authorization
+@inject Erp.Data.General.IGeneralRepository GeneralRepository
 @inject IFacturaRepository FacturaRepository
 @inject IProductoRepository ProductoRepository
 @inject IProductoPrecioRepository PrecioRepository
 @inject IBodegaRepository BodegaRepository
 @inject IClienteRepository ClienteRepository
+@inject IVendedorRepository VendedorRepository
 @inject ICajaRepository CajaRepository
 
 <PageTitle>Facturas</PageTitle>
@@ -256,7 +258,7 @@
 
                 <div class="doc-nota">
                     <Icono Nombre="check-circle" Tamano="15" />
-                    <span>El precio unitario ya incluye IVA (12%), como se factura en Guatemala — no se suma aparte.</span>
+                    <span>El precio unitario ya incluye IVA (@PorcentajeIvaTexto%), como se factura en Guatemala — no se suma aparte.</span>
                 </div>
 
                 <table class="doc-tabla">
@@ -302,7 +304,7 @@
                     <div class="doc-totales-fila"><span>Subtotal</span><span>@MonedaSimbolo @Subtotal.ToString("N2")</span></div>
                     <div class="doc-totales-fila"><span>Descuento</span><span>@MonedaSimbolo @TotalDescuento.ToString("N2")</span></div>
                     <div class="doc-totales-total"><span>Total</span><span>@MonedaSimbolo @Total.ToString("N2")</span></div>
-                    <div class="doc-totales-nota">IVA incluido (12%): @MonedaSimbolo @IvaIncluido.ToString("N2")</div>
+                    <div class="doc-totales-nota">IVA incluido (@PorcentajeIvaTexto%): @MonedaSimbolo @IvaIncluido.ToString("N2")</div>
                 </div>
             </div>
 
@@ -595,13 +597,15 @@
     private readonly NuevaFacturaModelo nuevaFactura = new();
     private readonly List<LineaCaptura> lineas = new();
 
-    // En Guatemala el IVA (12%) va incluido en el precio unitario que ve el
+    // En Guatemala el IVA (% de la compañía, 12 por defecto) va incluido en el precio unitario que ve el
     // cliente; no se suma aparte. El total es simplemente subtotal - descuento,
     // y el IVA que se muestra es solo informativo (extraído del total, no
     // sumado a él). Internamente sí se envía como precio neto + %IVA al SP,
     // porque así espera los datos sp_ventas_crear_factura para el asiento
     // contable (ver GrabarFacturaAsync).
-    private const decimal PorcentajeIva = 12m;
+    // Se toma de gen_compania.cia_porc_iva (General > Compañías) al iniciar.
+    private decimal PorcentajeIva = 12m;
+    private string PorcentajeIvaTexto => PorcentajeIva.ToString("0.##");
 
     private decimal Subtotal => lineas.Sum(l => l.SubTotal);
     private decimal TotalDescuento => lineas.Sum(l => l.ValorDescuento);
@@ -619,12 +623,17 @@
     private readonly List<FormaPagoCaptura> formasPagoCapturadas = new();
     private readonly FormaPagoCaptura formaPagoNueva = new();
     private int pcaIdFactura;
+    private int? pveIdUsuario;
 
     private decimal MontoAPagar => condicionPagoFactura == "credito" ? nuevaFactura.MontoEnganche : Total;
 
     protected override async Task OnInitializedAsync()
     {
         vendedores = await FacturaRepository.ConsultarVendedoresAsync();
+        int? sucIdParametros = null;
+        if (AuthenticationStateTask is not null)
+            sucIdParametros = (await AuthenticationStateTask).User.ObtenerSucId();
+        PorcentajeIva = (await GeneralRepository.ConsultarParametrosAsync(sucIdParametros)).CiaPorcIva;
         monedas = await FacturaRepository.ConsultarMonedasAsync();
         bodegas = await BodegaRepository.ConsultarAsync(sucId: null, estado: "A");
         formasPagoTipo = await CajaRepository.ConsultarFormasPagoTipoAsync();
@@ -642,6 +651,11 @@
             var sucId = estado.User.ObtenerSucId();
             if (sucId is > 0)
                 cajasAbiertasSucursal = await CajaRepository.ConsultarAperturaActivaPorSucursalAsync(sucId.Value);
+
+            // Si el usuario es un empleado que también es vendedor, se propone como vendedor de la factura.
+            var usuId = estado.User.ObtenerUsuId();
+            if (usuId is not null)
+                pveIdUsuario = (await VendedorRepository.ConsultarPorUsuarioAsync(usuId.Value))?.PveId;
         }
 
         await BuscarAsync();
@@ -711,6 +725,7 @@
         nuevaFactura.MontoEnganche = 0;
         nuevaFactura.NumeroCuotas = 1;
         nuevaFactura.FechaPrimerPago = null;
+        nuevaFactura.PveId = pveIdUsuario;
         condicionPagoFactura = "contado";
         formasPagoCapturadas.Clear();
         pcaIdFactura = cajasAbiertasSucursal.FirstOrDefault()?.PcaId ?? 0;
@@ -805,7 +820,7 @@
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -976,7 +991,7 @@
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -1013,7 +1028,7 @@
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }

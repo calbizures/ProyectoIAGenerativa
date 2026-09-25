@@ -47,7 +47,7 @@
     {
         <EditForm Model="nuevoProducto" OnValidSubmit="CrearProductoAsync" class="panel-formulario">
             <DataAnnotationsValidator />
-            <ValidationSummary />
+            <ResumenValidacion />
             <div class="campo"><label>Código</label><InputText @bind-Value="nuevoProducto.Codigo" /></div>
             <div class="campo"><label>Descripción</label><InputText @bind-Value="nuevoProducto.Descripcion" /></div>
             <div class="campo">
@@ -123,6 +123,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         <h2>Editar: @seleccionado.ProDescripcion</h2>
         <EditForm Model="edicionProducto" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
+            <ResumenValidacion />
             <div class="campo"><label>Código</label><InputText @bind-Value="edicionProducto.Codigo" /></div>
             <div class="campo"><label>Descripción</label><InputText @bind-Value="edicionProducto.Descripcion" /></div>
             <div class="campo">
@@ -187,10 +188,15 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
             </tbody>
         </table>
 
-        <h3>
-            Características
-            <BotonIcono Icono="plus" Tooltip="Agregar característica" OnClick="() => mostrarNuevaCaracteristica = !mostrarNuevaCaracteristica" />
-        </h3>
+    </div>
+}
+else if (pestanaActiva == "caracteristicas" && seleccionado is not null)
+{
+    <div class="panel-detalle panel-ancho">
+        <h2>Características: @seleccionado.ProDescripcion</h2>
+        <div class="barra-herramientas">
+            <BotonIcono Icono="plus" Tooltip="Agregar característica" Etiqueta="Agregar característica" Variante="primario" OnClick="() => mostrarNuevaCaracteristica = !mostrarNuevaCaracteristica" />
+        </div>
         @if (mostrarNuevaCaracteristica)
         {
             <div class="panel-formulario">
@@ -251,10 +257,15 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
             </tbody>
         </table>
 
-        <h3>
-            Precios
-            <BotonIcono Icono="plus" Tooltip="Agregar precio" OnClick="() => mostrarNuevoPrecio = !mostrarNuevoPrecio" />
-        </h3>
+    </div>
+}
+else if (pestanaActiva == "precios" && seleccionado is not null)
+{
+    <div class="panel-detalle panel-ancho">
+        <h2>Precios: @seleccionado.ProDescripcion</h2>
+        <div class="barra-herramientas">
+            <BotonIcono Icono="plus" Tooltip="Agregar precio" Etiqueta="Agregar precio" Variante="primario" OnClick="() => mostrarNuevoPrecio = !mostrarNuevoPrecio" />
+        </div>
         @if (mostrarNuevoPrecio)
         {
             <div class="panel-formulario">
@@ -358,8 +369,8 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
     private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
         ? new[] { new PestanaItem("lista", "Lista") }
         : pestanaActiva == "editar"
-            ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar") }
-            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle") };
+            ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar"), new PestanaItem("caracteristicas", "Características"), new PestanaItem("precios", "Precios") }
+            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("caracteristicas", "Características"), new PestanaItem("precios", "Precios") };
 
     private bool mostrarNuevaCaracteristica;
     private readonly CaracteristicaModelo nuevaCaracteristica = new();
@@ -438,7 +449,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -508,7 +519,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -527,7 +538,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -544,7 +555,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -578,7 +589,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -596,7 +607,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -628,7 +639,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -650,7 +661,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -672,7 +683,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }

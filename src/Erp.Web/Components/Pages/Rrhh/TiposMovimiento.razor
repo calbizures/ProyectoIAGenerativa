@@ -1,0 +1,174 @@
+@page "/rrhh/tipos-movimiento"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:RRHH_ADMIN")]
+@using Erp.Data.General
+@using Erp.Data.Rrhh
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IRrhhRepository RrhhRepository
+@inject IGeneralRepository GeneralRepository
+
+<PageTitle>Tipos de movimiento de nómina</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Tipos de movimiento de nómina</h1>
+    <p>Ingresos (suman) y descuentos (restan) que forman la nómina, con su forma de cálculo.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="barra-herramientas">
+    <select @bind="filtroNaturaleza" aria-label="Naturaleza">
+        <option value="">Ingresos y descuentos</option>
+        <option value="I">Solo ingresos</option>
+        <option value="D">Solo descuentos</option>
+    </select>
+    <span class="barra-herramientas-separador"></span>
+    <BotonIcono Icono="plus" Tooltip="Nuevo tipo de movimiento" Etiqueta="Nuevo tipo" Variante="primario" OnClick="() => Editar(new TipoMovimientoNomina())" />
+</div>
+
+@if (edicion is not null)
+{
+    <div class="panel-formulario">
+        <h2>@(edicion.IdTipoMovimientoNomina == 0 ? "Nuevo tipo de movimiento" : $"Editar: {edicion.Codigo}")</h2>
+        <div class="campo"><label for="tmn-codigo">Código</label><input id="tmn-codigo" @bind="edicion.Codigo" /></div>
+        <div class="campo"><label for="tmn-desc">Descripción</label><input id="tmn-desc" @bind="edicion.Descripcion" /></div>
+        <div class="campo">
+            <label for="tmn-nat">Naturaleza</label>
+            <select id="tmn-nat" @bind="edicion.Naturaleza">
+                <option value="I">Ingreso (suma)</option>
+                <option value="D">Descuento (resta)</option>
+            </select>
+        </div>
+        <div class="campo">
+            <label for="tmn-forma">Forma de cálculo</label>
+            <select id="tmn-forma" @bind="edicion.FormaCalculo">
+                <option value="S">Salario base proporcional a días laborados</option>
+                <option value="F">Monto fijo por período</option>
+                <option value="P">Porcentaje sobre la base de cálculo</option>
+                <option value="M">Manual (se captura por empleado)</option>
+            </select>
+        </div>
+        @if (edicion.FormaCalculo is "F" or "P")
+        {
+            <div class="campo"><label for="tmn-valor">@(edicion.FormaCalculo == "P" ? "Porcentaje (%)" : "Monto fijo mensual (Q)")</label><input id="tmn-valor" type="number" step="0.0001" @bind="edicion.Valor" /></div>
+        }
+        <div class="campo campo-checkbox"><label><input type="checkbox" @bind="edicion.EsAutomatico" disabled="@(edicion.FormaCalculo == "M")" /> Se aplica automáticamente a todos los empleados</label></div>
+        <div class="campo campo-checkbox"><label><input type="checkbox" @bind="edicion.EsBaseCalculo" disabled="@(edicion.Naturaleza == "D")" /> Forma parte de la base para porcentajes (p. ej. IGSS)</label></div>
+        <div class="campo"><label for="tmn-orden">Orden de cálculo</label><input id="tmn-orden" type="number" @bind="edicion.Orden" /></div>
+        <div class="campo">
+            <label for="tmn-cta">Cuenta contable</label>
+            <select id="tmn-cta" @bind="edicion.CtaId">
+                <option value="">(Sin cuenta)</option>
+                @foreach (var c in cuentas)
+                {
+                    <option value="@c.CtaId">@c.CtaCodigo — @c.CtaNombre</option>
+                }
+            </select>
+        </div>
+        <div class="campo">
+            <label for="tmn-estado">Estado</label>
+            <select id="tmn-estado" @bind="edicion.Estado"><option value="A">Activo</option><option value="I">Inactivo</option></select>
+        </div>
+        <p class="texto-ayuda">Los montos fijos se prorratean a los días del período (quincena = 15 de 30). Los porcentajes se aplican sobre la suma de los ingresos marcados como base.</p>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarAsync" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => edicion = null" />
+        </div>
+    </div>
+}
+
+<table class="tabla-datos">
+    <thead>
+        <tr><th class="col-codigo">Código</th><th>Descripción</th><th class="col-estado">Naturaleza</th><th>Cálculo</th><th class="col-estado">Automático</th><th class="col-estado">Base</th><th>Cuenta</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var t in tipos.Where(t => string.IsNullOrEmpty(filtroNaturaleza) || t.Naturaleza == filtroNaturaleza))
+        {
+            <tr>
+                <td class="col-codigo">@t.Codigo</td>
+                <td>@t.Descripcion</td>
+                <td class="col-estado"><span class="estado-badge @(t.Naturaleza == "I" ? "estado-badge-activo" : "estado-badge-inactivo")">@(t.Naturaleza == "I" ? "+ Ingreso" : "− Descuento")</span></td>
+                <td>@DescribirCalculo(t)</td>
+                <td class="col-estado">@(t.EsAutomatico ? "Sí" : "No")</td>
+                <td class="col-estado">@(t.EsBaseCalculo ? "Sí" : "No")</td>
+                <td>@t.CtaCodigo</td>
+                <td class="col-estado"><span class="estado-badge @(t.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(t.Estado == "A" ? "Activo" : "Inactivo")</span></td>
+                <td class="col-acciones"><div class="acciones-fila"><BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => Editar(t)" /></div></td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<TipoMovimientoNomina> tipos = Array.Empty<TipoMovimientoNomina>();
+    private IReadOnlyList<CuentaContable> cuentas = Array.Empty<CuentaContable>();
+    private TipoMovimientoNomina? edicion;
+    private string filtroNaturaleza = "";
+    private string? mensaje;
+    private bool esMensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            cuentas = (await GeneralRepository.ConsultarCuentasContablesAsync()).Where(c => c.CtaAceptaMovimiento).OrderBy(c => c.CtaCodigo).ToList();
+            await CargarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private async Task CargarAsync() => tipos = await RrhhRepository.ConsultarTiposMovimientoAsync(soloActivos: false);
+
+    private static string DescribirCalculo(TipoMovimientoNomina t) => t.FormaCalculo switch
+    {
+        "S" => "Salario base proporcional",
+        "F" => $"Fijo Q{t.Valor:N2}",
+        "P" => $"{t.Valor:0.####} % de la base",
+        _ => "Manual"
+    };
+
+    private void Editar(TipoMovimientoNomina t)
+    {
+        mensaje = null;
+        edicion = new TipoMovimientoNomina
+        {
+            IdTipoMovimientoNomina = t.IdTipoMovimientoNomina, Codigo = t.Codigo, Descripcion = t.Descripcion,
+            Naturaleza = t.Naturaleza, FormaCalculo = t.FormaCalculo, Valor = t.Valor, EsAutomatico = t.EsAutomatico,
+            EsBaseCalculo = t.EsBaseCalculo, Orden = t.Orden, CtaId = t.CtaId, Estado = t.Estado
+        };
+    }
+
+    private async Task GuardarAsync()
+    {
+        if (edicion is null) return;
+        // Reglas que también valida el procedimiento; se ajustan aquí para no rechazar combinaciones obvias.
+        if (edicion.FormaCalculo == "M") edicion.EsAutomatico = false;
+        if (edicion.Naturaleza == "D") edicion.EsBaseCalculo = false;
+        if (edicion.FormaCalculo is "S" or "M") edicion.Valor = 0;
+        try
+        {
+            int? usuId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+            await RrhhRepository.GuardarTipoMovimientoAsync(edicion, usuId);
+            mensaje = "Tipo de movimiento guardado.";
+            esMensajeError = false;
+            edicion = null;
+            await CargarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+}

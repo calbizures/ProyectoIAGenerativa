@@ -59,4 +59,23 @@ public sealed class VendedorRepository(IDbConnectionFactory connectionFactory) :
 		return await connection.QueryFirstOrDefaultAsync<Vendedor>(
 			"dbo.paVendedorConsultarPorId", new { pve_id = pveId }, commandType: CommandType.StoredProcedure);
 	}
+
+	public async Task<Vendedor?> ConsultarPorUsuarioAsync(int usuId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		return await connection.QueryFirstOrDefaultAsync<Vendedor>(
+			"dbo.paVendedorConsultarPorUsuario", new { UsuId = usuId }, commandType: CommandType.StoredProcedure);
+	}
+
+	public async Task<(IReadOnlyList<FacturaVendedor> Facturas, ComisionVendedorResumen Resumen)> ConsultarFacturasAsync(int pveId, DateTime fechaDel, DateTime fechaAl, int? sucId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		using var multi = await connection.QueryMultipleAsync(
+			"dbo.paVendedorFacturasConsultar",
+			new { PveId = pveId, FechaDel = fechaDel.Date, FechaAl = fechaAl.Date, SucId = sucId },
+			commandType: CommandType.StoredProcedure);
+		var facturas = (await multi.ReadAsync<FacturaVendedor>()).ToList();
+		var resumen = await multi.ReadFirstOrDefaultAsync<ComisionVendedorResumen>() ?? new ComisionVendedorResumen();
+		return (facturas, resumen);
+	}
 }

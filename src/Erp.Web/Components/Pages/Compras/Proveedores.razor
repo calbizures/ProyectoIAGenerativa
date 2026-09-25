@@ -39,7 +39,7 @@
     {
         <EditForm Model="nuevoProveedor" OnValidSubmit="CrearProveedorAsync" class="panel-formulario">
             <DataAnnotationsValidator />
-            <ValidationSummary />
+            <ResumenValidacion />
             <div class="campo"><label>Código</label><InputText @bind-Value="nuevoProveedor.Codigo" /></div>
             <div class="campo"><label>Nombre comercial</label><InputText @bind-Value="nuevoProveedor.NombreComercial" /></div>
             <div class="campo"><label>NIT</label><InputText @bind-Value="nuevoProveedor.Nit" /></div>
@@ -101,6 +101,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         <h2>Editar: @seleccionado.PrvNombreComercial</h2>
         <EditForm Model="edicionProveedor" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
+            <ResumenValidacion />
             <div class="campo"><label>Nombre comercial</label><InputText @bind-Value="edicionProveedor.NombreComercial" /></div>
             <div class="campo"><label>NIT</label><InputText @bind-Value="edicionProveedor.Nit" /></div>
             <div class="campo"><label>Contacto</label><InputText @bind-Value="edicionProveedor.Contacto" /></div>
@@ -182,7 +183,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -228,7 +229,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -250,7 +251,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }

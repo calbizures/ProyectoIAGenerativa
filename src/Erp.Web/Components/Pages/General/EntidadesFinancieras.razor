@@ -1,0 +1,293 @@
+@page "/general/entidades-financieras"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:GENERAL_CONFIG_ADMIN")]
+@using Erp.Data.Caja
+@using Erp.Data.General
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IGeneralRepository GeneralRepository
+
+<PageTitle>Entidades financieras</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Entidades financieras</h1>
+    <p>Tipos de entidad (maestro) y las entidades de cada tipo (detalle): bancos, emisores de tarjeta, financieras.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="maestro-detalle">
+    <section class="tarjeta maestro-detalle-maestro" aria-labelledby="titulo-tipos">
+        <div class="maestro-detalle-encabezado">
+            <h2 id="titulo-tipos">Tipos</h2>
+            <BotonIcono Icono="plus" Tooltip="Nuevo tipo" Etiqueta="Nuevo tipo" Variante="primario" OnClick="NuevoTipo" />
+        </div>
+        @if (editandoTipoId is not null)
+        {
+            <div class="fila-edicion">
+                <input @bind="tipoDescripcion" placeholder="Descripción del tipo" aria-label="Descripción del tipo" />
+                <BotonIcono Icono="save" Tooltip="Guardar tipo" Variante="primario" OnClick="GuardarTipoAsync" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => editandoTipoId = null" />
+            </div>
+        }
+        @if (tipos.Count == 0)
+        {
+            <p class="estado-vacio">No hay tipos registrados.</p>
+        }
+        else
+        {
+            <table class="tabla-datos">
+                <thead><tr><th>Descripción</th><th class="num col-estado">Entidades</th><th class="col-acciones">Acciones</th></tr></thead>
+                <tbody>
+                    @foreach (var t in tipos)
+                    {
+                        <tr class="fila-seleccionable @(tipoSeleccionado?.GeftId == t.GeftId ? "fila-seleccionada" : "")" @onclick="() => SeleccionarTipoAsync(t)">
+                            <td>@t.GeftDescripcion</td>
+                            <td class="num col-estado">@t.CantidadEntidades</td>
+                            <td class="col-acciones" @onclick:stopPropagation="true">
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="pencil" Tooltip="Editar tipo" OnClick="() => EditarTipo(t)" />
+                                    <BotonIcono Icono="trash-2" Tooltip="Eliminar tipo" Variante="peligro" Deshabilitado="t.CantidadEntidades > 0" OnClick="() => EliminarTipoAsync(t)" />
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <section class="tarjeta maestro-detalle-detalle" aria-labelledby="titulo-entidades">
+        <div class="maestro-detalle-encabezado">
+            <h2 id="titulo-entidades">@(tipoSeleccionado is null ? "Entidades" : $"Entidades: {tipoSeleccionado.GeftDescripcion}")</h2>
+            @if (tipoSeleccionado is not null)
+            {
+                <BotonIcono Icono="plus" Tooltip="Nueva entidad" Etiqueta="Nueva entidad" Variante="primario" OnClick="NuevaEntidad" />
+            }
+        </div>
+        @if (tipoSeleccionado is null)
+        {
+            <p class="estado-vacio">Seleccione un tipo para ver y mantener sus entidades.</p>
+        }
+        else
+        {
+            @if (editandoEntidadId is not null)
+            {
+                <div class="panel-formulario">
+                    <div class="campo"><label for="ent-codigo">Código</label><input id="ent-codigo" @bind="entidadCodigo" /></div>
+                    <div class="campo"><label for="ent-desc">Descripción</label><input id="ent-desc" @bind="entidadDescripcion" /></div>
+                    <div class="campo">
+                        <label for="ent-estado">Estado</label>
+                        <select id="ent-estado" @bind="entidadEstado">
+                            <option value="A">Activa</option>
+                            <option value="I">Inactiva</option>
+                        </select>
+                    </div>
+                    <div class="acciones-fila">
+                        <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarEntidadAsync" />
+                        <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => editandoEntidadId = null" />
+                    </div>
+                </div>
+            }
+            @if (entidades.Count == 0)
+            {
+                <p class="estado-vacio">Este tipo todavía no tiene entidades.</p>
+            }
+            else
+            {
+                <table class="tabla-datos">
+                    <thead><tr><th class="col-codigo">Código</th><th>Descripción</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+                    <tbody>
+                        @foreach (var e in entidades)
+                        {
+                            <tr>
+                                <td class="col-codigo">@e.GefCodigo</td>
+                                <td>@e.GefDescripcion</td>
+                                <td class="col-estado"><span class="estado-badge @(e.GefEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(e.GefEstado == "A" ? "Activa" : "Inactiva")</span></td>
+                                <td class="col-acciones">
+                                    <div class="acciones-fila">
+                                        <BotonIcono Icono="pencil" Tooltip="Editar entidad" OnClick="() => EditarEntidad(e)" />
+                                        <BotonIcono Icono="trash-2" Tooltip="Eliminar entidad" Variante="peligro" OnClick="() => EliminarEntidadAsync(e)" />
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+    </section>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<EntidadFinancieraTipo> tipos = Array.Empty<EntidadFinancieraTipo>();
+    private IReadOnlyList<EntidadFinanciera> entidades = Array.Empty<EntidadFinanciera>();
+    private EntidadFinancieraTipo? tipoSeleccionado;
+
+    // 0 = nuevo registro, null = sin edición en curso.
+    private int? editandoTipoId;
+    private string tipoDescripcion = "";
+    private int? editandoEntidadId;
+    private string entidadCodigo = "";
+    private string entidadDescripcion = "";
+    private string entidadEstado = "A";
+
+    private string? mensaje;
+    private bool esMensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarTiposAsync();
+        if (tipos.Count > 0) await SeleccionarTipoAsync(tipos[0]);
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        return (await AuthenticationStateTask).User.ObtenerUsuId();
+    }
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private void MostrarOk(string texto)
+    {
+        mensaje = texto;
+        esMensajeError = false;
+    }
+
+    private async Task CargarTiposAsync()
+    {
+        try
+        {
+            tipos = await GeneralRepository.ConsultarTiposEntidadAsync();
+            if (tipoSeleccionado is not null)
+                tipoSeleccionado = tipos.FirstOrDefault(t => t.GeftId == tipoSeleccionado.GeftId);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task SeleccionarTipoAsync(EntidadFinancieraTipo tipo)
+    {
+        tipoSeleccionado = tipo;
+        editandoEntidadId = null;
+        await CargarEntidadesAsync();
+    }
+
+    private async Task CargarEntidadesAsync()
+    {
+        if (tipoSeleccionado is null) { entidades = Array.Empty<EntidadFinanciera>(); return; }
+        try
+        {
+            entidades = await GeneralRepository.ConsultarEntidadesAsync(tipoSeleccionado.GeftId, soloActivas: false);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void NuevoTipo()
+    {
+        mensaje = null;
+        editandoTipoId = 0;
+        tipoDescripcion = "";
+    }
+
+    private void EditarTipo(EntidadFinancieraTipo tipo)
+    {
+        mensaje = null;
+        editandoTipoId = tipo.GeftId;
+        tipoDescripcion = tipo.GeftDescripcion;
+    }
+
+    private async Task GuardarTipoAsync()
+    {
+        if (string.IsNullOrWhiteSpace(tipoDescripcion))
+        {
+            mensaje = "Ingrese la descripción del tipo.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            var id = await GeneralRepository.GuardarTipoEntidadAsync(editandoTipoId == 0 ? null : editandoTipoId, tipoDescripcion.Trim(), await ObtenerUsuIdActualAsync());
+            MostrarOk(editandoTipoId == 0 ? "Tipo creado." : "Tipo actualizado.");
+            editandoTipoId = null;
+            await CargarTiposAsync();
+            var tipo = tipos.FirstOrDefault(t => t.GeftId == id);
+            if (tipo is not null) await SeleccionarTipoAsync(tipo);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task EliminarTipoAsync(EntidadFinancieraTipo tipo)
+    {
+        try
+        {
+            await GeneralRepository.EliminarTipoEntidadAsync(tipo.GeftId);
+            MostrarOk("Tipo eliminado.");
+            if (tipoSeleccionado?.GeftId == tipo.GeftId) tipoSeleccionado = null;
+            await CargarTiposAsync();
+            await CargarEntidadesAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void NuevaEntidad()
+    {
+        mensaje = null;
+        editandoEntidadId = 0;
+        entidadCodigo = "";
+        entidadDescripcion = "";
+        entidadEstado = "A";
+    }
+
+    private void EditarEntidad(EntidadFinanciera entidad)
+    {
+        mensaje = null;
+        editandoEntidadId = entidad.GefId;
+        entidadCodigo = entidad.GefCodigo;
+        entidadDescripcion = entidad.GefDescripcion;
+        entidadEstado = entidad.GefEstado;
+    }
+
+    private async Task GuardarEntidadAsync()
+    {
+        if (tipoSeleccionado is null) return;
+        if (string.IsNullOrWhiteSpace(entidadCodigo) || string.IsNullOrWhiteSpace(entidadDescripcion))
+        {
+            mensaje = "Ingrese el código y la descripción de la entidad.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            await GeneralRepository.GuardarEntidadAsync(editandoEntidadId == 0 ? null : editandoEntidadId, tipoSeleccionado.GeftId,
+                entidadCodigo.Trim(), entidadDescripcion.Trim(), entidadEstado, await ObtenerUsuIdActualAsync());
+            MostrarOk(editandoEntidadId == 0 ? "Entidad creada." : "Entidad actualizada.");
+            editandoEntidadId = null;
+            await CargarTiposAsync();
+            await CargarEntidadesAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task EliminarEntidadAsync(EntidadFinanciera entidad)
+    {
+        try
+        {
+            await GeneralRepository.EliminarEntidadAsync(entidad.GefId);
+            MostrarOk("Entidad eliminada.");
+            await CargarTiposAsync();
+            await CargarEntidadesAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

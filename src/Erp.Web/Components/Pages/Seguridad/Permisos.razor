@@ -29,7 +29,7 @@
 {
     <EditForm Model="nuevoPermiso" OnValidSubmit="CrearPermisoAsync" class="panel-formulario">
         <DataAnnotationsValidator />
-        <ValidationSummary />
+        <ResumenValidacion />
         <div class="campo"><label>Módulo</label><InputText @bind-Value="nuevoPermiso.Modulo" /></div>
         <div class="campo"><label>Código</label><InputText @bind-Value="nuevoPermiso.Codigo" /></div>
         <div class="campo"><label>Descripción</label><InputText @bind-Value="nuevoPermiso.Descripcion" /></div>
@@ -97,7 +97,7 @@
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }

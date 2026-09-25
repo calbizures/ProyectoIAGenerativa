@@ -1,6 +1,8 @@
 using Erp.Data.Caja;
 using Erp.Data.Compras;
+using Erp.Data.General;
 using Erp.Data.Inventario;
+using Erp.Data.Rrhh;
 using Erp.Data.Security;
 using Erp.Data.Ventas;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,6 +33,8 @@ public static class DependencyInjection
 		services.AddScoped<IProductoCaracteristicaRepository, ProductoCaracteristicaRepository>();
 		services.AddScoped<IProductoPrecioRepository, ProductoPrecioRepository>();
 		services.AddScoped<ICajaRepository, CajaRepository>();
+		services.AddScoped<IGeneralRepository, GeneralRepository>();
+		services.AddScoped<IRrhhRepository, RrhhRepository>();
 		return services;
 	}
 }

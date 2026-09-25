@@ -7,4 +7,5 @@ public interface IClienteRepository
 	Task EliminarAsync(int cliId, int? usuarioAccionId);
 	Task<IReadOnlyList<Cliente>> ConsultarAsync(string? texto, string? estado);
 	Task<Cliente?> ConsultarPorIdAsync(int cliId);
+	Task<IReadOnlyList<FacturaCliente>> ConsultarFacturasAsync(int cliId);
 }

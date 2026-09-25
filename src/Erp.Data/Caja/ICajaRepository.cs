@@ -23,6 +23,7 @@ public interface ICajaRepository
 
 	// Corte de caja
 	Task<IReadOnlyList<FormaPagoTeorico>> ConsultarTeoricoAsync(int pcaId);
+	Task<CuadreCaja?> ConsultarCuadreAsync(int pcaId);
 	Task GuardarDesgloseEfectivoAsync(int pcaId, IReadOnlyList<DenominacionEfectivo> denominaciones, int? usuarioAccionId);
 	Task GuardarCorteFormaAsync(int pcaId, IReadOnlyList<CorteFormaFisico> formas, int? usuarioAccionId);
 

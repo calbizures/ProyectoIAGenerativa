@@ -32,7 +32,7 @@
     {
         <EditForm Model="nuevoRol" OnValidSubmit="CrearRolAsync" class="panel-formulario">
             <DataAnnotationsValidator />
-            <ValidationSummary />
+            <ResumenValidacion />
             <div class="campo"><label>Código</label><InputText @bind-Value="nuevoRol.Codigo" /></div>
             <div class="campo"><label>Nombre</label><InputText @bind-Value="nuevoRol.Nombre" /></div>
             <div class="acciones-fila">
@@ -103,6 +103,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         <h2>Editar: @seleccionado.RolNombre</h2>
         <EditForm Model="edicionRol" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
+            <ResumenValidacion />
             <div class="campo"><label>Nombre</label><InputText @bind-Value="edicionRol.Nombre" /></div>
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
@@ -166,7 +167,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -208,7 +209,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -230,7 +231,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -254,7 +255,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }

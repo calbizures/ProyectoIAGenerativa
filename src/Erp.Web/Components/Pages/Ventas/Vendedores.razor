@@ -38,7 +38,7 @@
     {
         <EditForm Model="nuevoVendedor" OnValidSubmit="CrearVendedorAsync" class="panel-formulario">
             <DataAnnotationsValidator />
-            <ValidationSummary />
+            <ResumenValidacion />
             <div class="campo"><label>Código</label><InputText @bind-Value="nuevoVendedor.Codigo" /></div>
             <div class="campo"><label>Nombres</label><InputText @bind-Value="nuevoVendedor.Nombres" /></div>
             <div class="campo"><label>Apellidos</label><InputText @bind-Value="nuevoVendedor.Apellidos" /></div>
@@ -91,12 +91,85 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         </div>
     </div>
 }
+else if (pestanaActiva == "facturas" && seleccionado is not null)
+{
+    <div class="panel-detalle panel-ancho">
+        <h2>Facturas de @seleccionado.PveNombres @seleccionado.PveApellidos</h2>
+        <div class="barra-herramientas">
+            <span class="grupo-rango" role="group" aria-label="Rango rápido">
+                <button type="button" class="boton-icono boton-icono-neutral boton-icono-con-etiqueta @(rangoRapido == "hoy" ? "activo" : "")" @onclick="@(() => AplicarRangoAsync("hoy"))">Hoy</button>
+                <button type="button" class="boton-icono boton-icono-neutral boton-icono-con-etiqueta @(rangoRapido == "mes" ? "activo" : "")" @onclick="@(() => AplicarRangoAsync("mes"))">Este mes</button>
+            </span>
+            <label class="filtro-campo">Desde <input type="date" @bind="fechaDel" @bind:after="AlCambiarFechaManual" /></label>
+            <label class="filtro-campo">Hasta <input type="date" @bind="fechaAl" @bind:after="AlCambiarFechaManual" /></label>
+            <BotonIcono Icono="search" Tooltip="Consultar" Etiqueta="Consultar" OnClick="CargarFacturasAsync" />
+        </div>
+
+        @if (facturasVendedor is null)
+        {
+            <p class="estado-vacio">Cargando facturas…</p>
+        }
+        else
+        {
+            var grabadas = facturasVendedor.Where(f => f.EncEstado == "G").ToList();
+            <div class="resumen-totales">
+                <span>Facturas grabadas: <strong>@grabadas.Count</strong></span>
+                <span>Venta total: <strong>Q @grabadas.Sum(f => f.EncMontoTotal).ToString("N2")</strong></span>
+                <span>Venta sin IVA: <strong>Q @grabadas.Sum(f => f.SubtotalSinIva).ToString("N2")</strong></span>
+                @if (resumenComision.PagaComision)
+                {
+                    <span>Comisión (@resumenComision.PorcComision.ToString("N2") %): <strong>Q @grabadas.Sum(f => f.Comision).ToString("N2")</strong></span>
+                }
+            </div>
+            @if (!resumenComision.PagaComision)
+            {
+                <p class="texto-ayuda">La compañía no tiene activado el pago de comisiones (General &gt; Compañías), por eso no se calculan.</p>
+            }
+            @if (facturasVendedor.Count == 0)
+            {
+                <p class="estado-vacio">No hay facturas del vendedor en el rango seleccionado.</p>
+            }
+            else
+            {
+                <table class="tabla-datos">
+                    <thead>
+                        <tr><th class="col-fecha">Fecha</th><th class="col-codigo">Tipo</th><th>Serie / Número</th><th>Cliente</th><th class="num col-monto">Total</th><th class="num col-monto">Sin IVA</th>
+                            @if (resumenComision.PagaComision)
+                            {
+                                <th class="num col-monto">Comisión</th>
+                            }
+                            <th class="col-estado">Estado</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var f in facturasVendedor)
+                        {
+                            <tr>
+                                <td class="col-fecha">@f.EncFechaDocto.ToString("dd/MM/yyyy")</td>
+                                <td class="col-codigo">@f.TdoCodigo</td>
+                                <td>@(string.IsNullOrWhiteSpace(f.EncSerieDocto) && string.IsNullOrWhiteSpace(f.EncNumeroDocto) ? "—" : $"{f.EncSerieDocto}-{f.EncNumeroDocto}".Trim('-'))</td>
+                                <td>@f.Cliente</td>
+                                <td class="num col-monto">@f.EncMontoTotal.ToString("N2")</td>
+                                <td class="num col-monto">@f.SubtotalSinIva.ToString("N2")</td>
+                                @if (resumenComision.PagaComision)
+                                {
+                                    <td class="num col-monto">@f.Comision.ToString("N2")</td>
+                                }
+                                <td class="col-estado"><span class="estado-badge @(f.EncEstado == "G" ? "estado-badge-activo" : "estado-badge-inactivo")">@(f.EncEstado == "G" ? "Grabada" : "Anulada")</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+    </div>
+}
 else if (pestanaActiva == "editar" && seleccionado is not null)
 {
     <div class="panel-formulario">
         <h2>Editar: @seleccionado.PveNombres @seleccionado.PveApellidos</h2>
         <EditForm Model="edicionVendedor" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
+            <ResumenValidacion />
             <div class="campo"><label>Nombres</label><InputText @bind-Value="edicionVendedor.Nombres" /></div>
             <div class="campo"><label>Apellidos</label><InputText @bind-Value="edicionVendedor.Apellidos" /></div>
             <div class="campo"><label>Fecha de ingreso</label><InputDate @bind-Value="edicionVendedor.FechaIngreso" /></div>
@@ -115,13 +188,30 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
 
     private IReadOnlyList<Vendedor> vendedores = Array.Empty<Vendedor>();
     private Vendedor? seleccionado;
-    private string pestanaActiva = "lista";
+    private string _pestanaActiva = "lista";
+
+    // La pestaña de facturas se consulta al abrirla (por defecto: mes en curso).
+    private string pestanaActiva
+    {
+        get => _pestanaActiva;
+        set
+        {
+            _pestanaActiva = value;
+            if (value == "facturas") _ = CargarFacturasAsync();
+        }
+    }
+
+    private IReadOnlyList<FacturaVendedor>? facturasVendedor;
+    private ComisionVendedorResumen resumenComision = new();
+    private DateTime fechaDel = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime fechaAl = DateTime.Today;
+    private string? rangoRapido = "mes";
 
     private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
         ? new[] { new PestanaItem("lista", "Lista") }
         : pestanaActiva == "editar"
             ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar") }
-            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle") };
+            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("facturas", "Facturas y comisiones") };
 
     private string filtroEstado = "A";
     private bool mostrarNuevo;
@@ -132,6 +222,40 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
     private readonly VendedorModelo edicionVendedor = new();
 
     protected override async Task OnInitializedAsync() => await BuscarAsync();
+
+    private async Task AplicarRangoAsync(string rango)
+    {
+        rangoRapido = rango;
+        fechaAl = DateTime.Today;
+        fechaDel = rango == "hoy" ? DateTime.Today : new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        await CargarFacturasAsync();
+    }
+
+    private void AlCambiarFechaManual() => rangoRapido = null;
+
+    private async Task CargarFacturasAsync()
+    {
+        if (seleccionado is null) return;
+        facturasVendedor = null;
+        try
+        {
+            int? sucId = null;
+            if (AuthenticationStateTask is not null)
+            {
+                sucId = (await AuthenticationStateTask).User.ObtenerSucId();
+            }
+            var resultado = await VendedorRepository.ConsultarFacturasAsync(seleccionado.PveId, fechaDel, fechaAl, sucId);
+            facturasVendedor = resultado.Facturas;
+            resumenComision = resultado.Resumen;
+        }
+        catch (Exception ex)
+        {
+            facturasVendedor = Array.Empty<FacturaVendedor>();
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
 
     private async Task<int?> ObtenerUsuIdActualAsync()
     {
@@ -169,7 +293,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -212,7 +336,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -234,7 +358,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }

@@ -39,7 +39,7 @@
     {
         <EditForm Model="nuevoCliente" OnValidSubmit="CrearClienteAsync" class="panel-formulario">
             <DataAnnotationsValidator />
-            <ValidationSummary />
+            <ResumenValidacion />
             <div class="campo"><label>Código</label><InputText @bind-Value="nuevoCliente.Codigo" /></div>
             <div class="campo"><label>Nombres</label><InputText @bind-Value="nuevoCliente.Nombres" /></div>
             <div class="campo"><label>Apellidos</label><InputText @bind-Value="nuevoCliente.Apellidos" /></div>
@@ -98,12 +98,56 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         </div>
     </div>
 }
+else if (pestanaActiva == "facturas" && seleccionado is not null)
+{
+    <div class="panel-detalle panel-ancho">
+        <h2>Facturas de @seleccionado.NombreCompleto</h2>
+        @if (facturasCliente is null)
+        {
+            <p class="estado-vacio">Cargando facturas…</p>
+        }
+        else if (facturasCliente.Count == 0)
+        {
+            <p class="estado-vacio">Este cliente todavía no tiene facturas.</p>
+        }
+        else
+        {
+            <div class="resumen-totales">
+                <span>Facturas grabadas: <strong>@facturasCliente.Count(f => f.EncEstado == "G")</strong></span>
+                <span>Total facturado: <strong>Q @facturasCliente.Where(f => f.EncEstado == "G").Sum(f => f.EncMontoTotal).ToString("N2")</strong></span>
+                <span>Saldo pendiente: <strong>Q @facturasCliente.Where(f => f.EncEstado == "G").Sum(f => f.SaldoPendiente).ToString("N2")</strong></span>
+            </div>
+            <table class="tabla-datos">
+                <thead>
+                    <tr><th class="col-fecha">Fecha</th><th class="col-codigo">Tipo</th><th>Serie / Número</th><th>Condición</th><th>Vendedor</th><th>Grabó</th><th class="num col-monto">Total</th><th class="num col-monto">Saldo</th><th class="col-estado">Estado</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in facturasCliente)
+                    {
+                        <tr>
+                            <td class="col-fecha">@f.EncFechaDocto.ToString("dd/MM/yyyy")</td>
+                            <td class="col-codigo">@f.TdoCodigo</td>
+                            <td>@(string.IsNullOrWhiteSpace(f.EncSerieDocto) && string.IsNullOrWhiteSpace(f.EncNumeroDocto) ? "—" : $"{f.EncSerieDocto}-{f.EncNumeroDocto}".Trim('-'))</td>
+                            <td>@f.Condicion</td>
+                            <td>@f.Vendedor</td>
+                            <td>@f.UsuarioGrabo</td>
+                            <td class="num col-monto">@f.EncMontoTotal.ToString("N2")</td>
+                            <td class="num col-monto">@f.SaldoPendiente.ToString("N2")</td>
+                            <td class="col-estado"><span class="estado-badge @(f.EncEstado == "G" ? "estado-badge-activo" : "estado-badge-inactivo")">@(f.EncEstado switch { "G" => "Grabada", "A" => "Anulada", _ => "Pendiente" })</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+}
 else if (pestanaActiva == "editar" && seleccionado is not null)
 {
     <div class="panel-formulario">
         <h2>Editar: @seleccionado.NombreCompleto</h2>
         <EditForm Model="edicionCliente" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
+            <ResumenValidacion />
             <div class="campo"><label>Nombres</label><InputText @bind-Value="edicionCliente.Nombres" /></div>
             <div class="campo"><label>Apellidos</label><InputText @bind-Value="edicionCliente.Apellidos" /></div>
             <div class="campo"><label>NIT</label><InputText @bind-Value="edicionCliente.Nit" /></div>
@@ -125,13 +169,25 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
 
     private IReadOnlyList<Cliente> clientes = Array.Empty<Cliente>();
     private Cliente? seleccionado;
-    private string pestanaActiva = "lista";
+    private string _pestanaActiva = "lista";
+    private IReadOnlyList<FacturaCliente>? facturasCliente;
+
+    // Las facturas se cargan al abrir su pestaña (y se refrescan cada vez).
+    private string pestanaActiva
+    {
+        get => _pestanaActiva;
+        set
+        {
+            _pestanaActiva = value;
+            if (value == "facturas") _ = CargarFacturasAsync();
+        }
+    }
 
     private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
         ? new[] { new PestanaItem("lista", "Lista") }
         : pestanaActiva == "editar"
             ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar") }
-            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle") };
+            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("facturas", "Facturas") };
 
     private string textoBusqueda = "";
     private string filtroEstado = "A";
@@ -156,6 +212,23 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         clientes = await ClienteRepository.ConsultarAsync(
             string.IsNullOrWhiteSpace(textoBusqueda) ? null : textoBusqueda,
             string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado);
+    }
+
+    private async Task CargarFacturasAsync()
+    {
+        if (seleccionado is null) return;
+        facturasCliente = null;
+        try
+        {
+            facturasCliente = await ClienteRepository.ConsultarFacturasAsync(seleccionado.CliId);
+        }
+        catch (Exception ex)
+        {
+            facturasCliente = Array.Empty<FacturaCliente>();
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+        await InvokeAsync(StateHasChanged);
     }
 
     private void MostrarFormularioNuevo()
@@ -187,7 +260,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -234,7 +307,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -256,7 +329,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }

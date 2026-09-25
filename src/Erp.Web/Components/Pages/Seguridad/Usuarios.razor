@@ -40,7 +40,7 @@
     {
         <EditForm Model="nuevoUsuario" OnValidSubmit="CrearUsuarioAsync" class="panel-formulario">
             <DataAnnotationsValidator />
-            <ValidationSummary />
+            <ResumenValidacion />
             <div class="campo"><label>Código</label><InputText @bind-Value="nuevoUsuario.Codigo" /></div>
             <div class="campo"><label>Usuario</label><InputText @bind-Value="nuevoUsuario.Usuario" /></div>
             <div class="campo"><label>Email</label><InputText @bind-Value="nuevoUsuario.Email" /></div>
@@ -104,7 +104,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         <h3>Cambiar contraseña</h3>
         <EditForm Model="cambioPassword" OnValidSubmit="CambiarPasswordAsync">
             <DataAnnotationsValidator />
-            <ValidationSummary />
+            <ResumenValidacion />
             <div class="campo"><label>Contraseña actual</label><InputText type="password" @bind-Value="cambioPassword.Actual" /></div>
             <div class="campo"><label>Contraseña nueva</label><InputText type="password" @bind-Value="cambioPassword.Nueva" /></div>
             <BotonIcono Icono="save" Tooltip="Cambiar contraseña" Etiqueta="Cambiar contraseña" Variante="primario" TipoBoton="submit" />
@@ -170,6 +170,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         <h2>Editar: @seleccionado.UsuUsuario</h2>
         <EditForm Model="edicionUsuario" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
+            <ResumenValidacion />
             <div class="campo"><label>Usuario</label><InputText @bind-Value="edicionUsuario.Usuario" /></div>
             <div class="campo"><label>Email</label><InputText @bind-Value="edicionUsuario.Email" /></div>
             <div class="acciones-fila">
@@ -264,7 +265,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -313,7 +314,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -331,7 +332,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -353,7 +354,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -370,7 +371,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }
@@ -427,7 +428,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
         catch (Exception ex)
         {
-            mensaje = ex.Message;
+            mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
     }

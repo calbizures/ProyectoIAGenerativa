@@ -68,6 +68,26 @@
             </Authorized>
         </AuthorizeView>
 
+        <AuthorizeView Policy="Permiso:RRHH_ADMIN">
+            <Authorized>
+                <a href="rrhh/empleados" class="modulo-card">
+                    <span class="modulo-icono"><Icono Nombre="briefcase" Tamano="26" /></span>
+                    <span class="modulo-titulo">RRHH</span>
+                    <span class="modulo-desc">Empleados y nómina</span>
+                </a>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Policy="Permiso:GENERAL_CONFIG_ADMIN">
+            <Authorized>
+                <a href="general/companias" class="modulo-card">
+                    <span class="modulo-icono"><Icono Nombre="settings" Tamano="26" /></span>
+                    <span class="modulo-titulo">General</span>
+                    <span class="modulo-desc">Compañías, parámetros y entidades financieras</span>
+                </a>
+            </Authorized>
+        </AuthorizeView>
+
         <div class="modulo-card modulo-card-proximamente" aria-disabled="true">
             <span class="modulo-icono"><Icono Nombre="bar-chart-2" Tamano="26" /></span>
             <span class="modulo-titulo">Contabilidad</span>

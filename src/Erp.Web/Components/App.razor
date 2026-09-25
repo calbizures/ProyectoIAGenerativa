@@ -13,6 +13,21 @@
 
 <body>
     <Routes />
+    <div id="components-reconnect-modal" role="alertdialog" aria-live="assertive" aria-label="Conexión con el servidor">
+        <div class="reconexion-dialogo">
+            <div class="reconexion-mensaje reconexion-intentando">
+                <p>Se perdió la conexión con el servidor. Intentando reconectar…</p>
+            </div>
+            <div class="reconexion-mensaje reconexion-fallida">
+                <p>No se pudo reconectar con el servidor.</p>
+                <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="Blazor.reconnect()">Reintentar</button>
+            </div>
+            <div class="reconexion-mensaje reconexion-rechazada">
+                <p>La sesión con el servidor terminó. Recargue la página para continuar.</p>
+                <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="location.reload()">Recargar página</button>
+            </div>
+        </div>
+    </div>
     <script src="_framework/blazor.web.js"></script>
 </body>
 
