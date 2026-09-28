@@ -1,0 +1,387 @@
+@page "/fel/configuracion"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:FEL_ADMIN")]
+@using Erp.Data.Fel
+@using Erp.Data.General
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IFelRepository FelRepository
+@inject IGeneralRepository GeneralRepository
+
+<PageTitle>Configuración FEL</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Configuración de factura electrónica</h1>
+    <p>Todo lo que va en el XML del DTE sale de aquí: certificador, datos del emisor, frases, establecimientos, tipos de DTE y unidades de medida.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+@if (companias.Count > 1)
+{
+    <div class="barra-filtros">
+        <label class="filtro-campo" for="fel-cia">Compañía
+            <select id="fel-cia" value="@ciaId" @onchange="CambiarCompaniaAsync">
+                @foreach (var c in companias)
+                {
+                    <option value="@c.CiaId">@c.CiaNombreComercial</option>
+                }
+            </select>
+        </label>
+    </div>
+}
+
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestana" />
+
+@if (pestana == "general" && config is not null)
+{
+    <section class="tarjeta" aria-labelledby="t-cert">
+        <h2 id="t-cert">Certificador</h2>
+        <div class="panel-formulario panel-ancho fel-formulario">
+            <div class="campo">
+                <label for="c-cert">Certificador</label>
+                <select id="c-cert" @bind="config.Certificador">
+                    <option value="SIMULADOR">Simulador (pruebas, sin validez fiscal)</option>
+                    <option value="INFILE">INFILE</option>
+                </select>
+            </div>
+            <div class="campo">
+                <label for="c-amb">Ambiente</label>
+                <select id="c-amb" @bind="config.Ambiente"><option value="PRUEBAS">Pruebas</option><option value="PRODUCCION">Producción</option></select>
+            </div>
+            <label class="campo-checkbox"><input type="checkbox" @bind="config.Activo" /> Certificar automáticamente al grabar</label>
+            <div class="campo campo-ancho"><label for="c-url">URL de certificación</label><input id="c-url" @bind="config.UrlCertificacion" maxlength="256" /></div>
+            <div class="campo campo-ancho"><label for="c-urla">URL de anulación</label><input id="c-urla" @bind="config.UrlAnulacion" maxlength="256" /></div>
+            <div class="campo"><label for="c-uf">Usuario de firma</label><input id="c-uf" @bind="config.UsuarioFirma" maxlength="64" /></div>
+            <div class="campo"><label for="c-ua">Usuario de la API</label><input id="c-ua" @bind="config.UsuarioApi" maxlength="64" /></div>
+            <div class="campo"><label for="c-cc">Correo de copia</label><input id="c-cc" type="email" @bind="config.CorreoCopia" maxlength="128" /></div>
+            <div class="campo"><label for="c-to">Tiempo de espera (segundos)</label><input id="c-to" type="number" min="5" max="300" @bind="config.TimeoutSegundos" /></div>
+            <div class="campo campo-ancho"><label for="c-ns">Espacio de nombres del DTE</label><input id="c-ns" @bind="config.XmlnsDte" maxlength="128" /></div>
+            <div class="campo"><label for="c-ver">Versión del DTE</label><input id="c-ver" @bind="config.VersionDte" maxlength="10" /></div>
+        </div>
+        <p class="texto-ayuda">Las llaves de firma y de la API no se guardan en la base: van en la configuración de la aplicación como <code>Fel:Credenciales:@(config.Nit.Replace("-", "")):LlaveFirma</code> y <code>:LlaveApi</code> (appsettings, variables de entorno o secretos del servidor).</p>
+    </section>
+
+    <section class="tarjeta" aria-labelledby="t-emi">
+        <h2 id="t-emi">Emisor (@config.Compania, NIT @config.Nit)</h2>
+        <div class="panel-formulario panel-ancho fel-formulario">
+            <div class="campo campo-ancho"><label for="e-nom">Nombre del emisor (razón social en SAT)</label><input id="e-nom" @bind="config.NombreEmisor" maxlength="256" /></div>
+            <div class="campo">
+                <label for="e-afi">Afiliación IVA</label>
+                <select id="e-afi" @bind="config.AfiliacionIva">
+                    <option value="GEN">GEN · General</option>
+                    <option value="PEQ">PEQ · Pequeño contribuyente</option>
+                    <option value="EXE">EXE · Exento</option>
+                    <option value="AGR">AGR · Agropecuario</option>
+                    <option value="AGE">AGE · Agropecuario especial</option>
+                    <option value="ECE">ECE · Electrónico especial</option>
+                </select>
+            </div>
+            <div class="campo"><label for="e-cor">Correo del emisor</label><input id="e-cor" type="email" @bind="config.CorreoEmisor" maxlength="128" /></div>
+        </div>
+        <h3>Receptor por defecto</h3>
+        <p class="texto-ayuda">Se usa cuando el cliente no tiene dirección, código postal, municipio o departamento.</p>
+        <div class="panel-formulario panel-ancho fel-formulario">
+            <div class="campo"><label for="r-dir">Dirección</label><input id="r-dir" @bind="config.ReceptorDireccion" maxlength="128" /></div>
+            <div class="campo"><label for="r-cp">Código postal</label><input id="r-cp" @bind="config.ReceptorCodigoPostal" maxlength="10" /></div>
+            <div class="campo"><label for="r-mun">Municipio</label><input id="r-mun" @bind="config.ReceptorMunicipio" maxlength="64" /></div>
+            <div class="campo"><label for="r-dep">Departamento</label><input id="r-dep" @bind="config.ReceptorDepartamento" maxlength="64" /></div>
+            <div class="campo"><label for="r-pais">País</label><input id="r-pais" @bind="config.ReceptorPais" maxlength="2" /></div>
+        </div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar configuración" Etiqueta="Guardar" Variante="primario" OnClick="GuardarConfiguracionAsync" />
+        </div>
+    </section>
+}
+else if (pestana == "frases")
+{
+    <section class="tarjeta">
+        <p class="texto-ayuda">Frases que SAT exige según el régimen del emisor (p. ej. tipo 1, escenario 1: sujeto a pagos trimestrales ISR). Van en facturas; en notas solo las marcadas.</p>
+        <table class="tabla-datos">
+            <thead><tr><th class="num">Tipo</th><th class="num">Escenario</th><th>Descripción</th><th>En notas</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+            <tbody>
+                @foreach (var f in frases)
+                {
+                    <tr>
+                        <td class="num">@f.TipoFrase</td><td class="num">@f.CodigoEscenario</td><td>@f.Descripcion</td>
+                        <td>@(f.AplicaNotas ? "Sí" : "No")</td>
+                        <td class="col-estado"><span class="estado-badge @(f.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(f.Estado == "A" ? "Activa" : "Inactiva")</span></td>
+                        <td class="col-acciones"><div class="acciones-fila">
+                            <BotonIcono Icono="pencil" Tooltip="Editar frase" OnClick="() => frase = Copiar(f)" />
+                            <BotonIcono Icono="trash-2" Tooltip="Eliminar frase" Confirmacion="¿Eliminar la frase?" Variante="peligro" OnClick="() => EliminarFraseAsync(f)" />
+                        </div></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        @if (frase is null)
+        {
+            <div class="acciones-fila"><BotonIcono Icono="plus" Tooltip="Agregar frase" Etiqueta="Agregar frase" OnClick="() => frase = new FelFrase { CiaId = ciaId }" /></div>
+        }
+        else
+        {
+            <div class="panel-formulario panel-ancho fel-formulario">
+                <div class="campo"><label for="f-tipo">Tipo de frase</label><input id="f-tipo" type="number" min="1" @bind="frase.TipoFrase" /></div>
+                <div class="campo"><label for="f-esc">Código de escenario</label><input id="f-esc" type="number" min="1" @bind="frase.CodigoEscenario" /></div>
+                <div class="campo campo-ancho"><label for="f-desc">Descripción</label><input id="f-desc" @bind="frase.Descripcion" maxlength="256" /></div>
+                <label class="campo-checkbox"><input type="checkbox" @bind="frase.AplicaNotas" /> Incluir en notas de crédito y débito</label>
+                <div class="campo"><label for="f-est">Estado</label><select id="f-est" @bind="frase.Estado"><option value="A">Activa</option><option value="I">Inactiva</option></select></div>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Guardar frase" Etiqueta="Guardar" Variante="primario" OnClick="GuardarFraseAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => frase = null" />
+                </div>
+            </div>
+        }
+    </section>
+}
+else if (pestana == "establecimientos")
+{
+    <section class="tarjeta">
+        <p class="texto-ayuda">Cada sucursal es un establecimiento ante SAT: su código, nombre comercial y dirección van como emisor en el DTE.</p>
+        <table class="tabla-datos">
+            <thead><tr><th class="num">Código</th><th>Sucursal</th><th>Nombre comercial</th><th>Dirección</th><th>C. P.</th><th>Municipio</th><th class="col-acciones">Acciones</th></tr></thead>
+            <tbody>
+                @foreach (var e in establecimientos)
+                {
+                    @if (establecimiento?.SucId == e.SucId)
+                    {
+                        <tr class="fila-edicion-tabla">
+                            <td class="num"><input type="number" min="1" aria-label="Código de establecimiento" @bind="establecimiento.CodigoEstablecimiento" /></td>
+                            <td>@e.SucCodigo - @e.SucDescripcion</td>
+                            <td><input aria-label="Nombre comercial" maxlength="256" @bind="establecimiento.NombreComercial" /></td>
+                            <td>@e.Direccion</td>
+                            <td><input aria-label="Código postal" maxlength="10" @bind="establecimiento.CodigoPostal" /></td>
+                            <td>
+                                <select aria-label="Municipio" @bind="establecimiento.ProvId">
+                                    @foreach (var m in municipios)
+                                    {
+                                        <option value="@m.ProvId">@m.Municipio, @m.Departamento (@m.Pais)</option>
+                                    }
+                                </select>
+                            </td>
+                            <td class="col-acciones"><div class="acciones-fila">
+                                <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="GuardarEstablecimientoAsync" />
+                                <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => establecimiento = null" />
+                            </div></td>
+                        </tr>
+                    }
+                    else
+                    {
+                        <tr>
+                            <td class="num">@(e.CodigoEstablecimiento?.ToString() ?? "—")</td>
+                            <td>@e.SucCodigo - @e.SucDescripcion</td>
+                            <td>@e.NombreComercial</td>
+                            <td>@e.Direccion</td>
+                            <td>@e.CodigoPostal</td>
+                            <td>@(e.Municipio is null ? "—" : $"{e.Municipio}, {e.Departamento}")</td>
+                            <td class="col-acciones"><div class="acciones-fila"><BotonIcono Icono="pencil" Tooltip="Editar establecimiento" OnClick="() => establecimiento = CopiarEstablecimiento(e)" /></div></td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </section>
+}
+else if (pestana == "tipos")
+{
+    <section class="tarjeta">
+        <p class="texto-ayuda">Qué tipo de DTE genera cada documento. Una factura a crédito puede ser FCAM (con abonos) y de contado FACT. Las compras no se certifican (lo hace el proveedor).</p>
+        <table class="tabla-datos">
+            <thead><tr><th class="col-codigo">Código</th><th>Documento</th><th>Tipo DTE</th><th>Tipo DTE de contado</th><th>Certifica</th><th class="col-acciones">Acciones</th></tr></thead>
+            <tbody>
+                @foreach (var t in tipos)
+                {
+                    @if (tipo?.TdoId == t.TdoId)
+                    {
+                        <tr class="fila-edicion-tabla">
+                            <td class="col-codigo">@t.TdoCodigo</td><td>@t.TdoDescripcion</td>
+                            <td><select aria-label="Tipo DTE" @bind="tipo.TipoDte"><option value="">—</option>@foreach (var c in TiposDte) { <option value="@c">@c</option> }</select></td>
+                            <td><select aria-label="Tipo DTE de contado" @bind="tipo.TipoDteContado"><option value="">(el mismo)</option>@foreach (var c in TiposDte) { <option value="@c">@c</option> }</select></td>
+                            <td><input type="checkbox" aria-label="Certifica" @bind="tipo.Certifica" /></td>
+                            <td class="col-acciones"><div class="acciones-fila">
+                                <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="GuardarTipoAsync" />
+                                <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => tipo = null" />
+                            </div></td>
+                        </tr>
+                    }
+                    else
+                    {
+                        <tr>
+                            <td class="col-codigo">@t.TdoCodigo</td><td>@t.TdoDescripcion</td><td>@(t.TipoDte ?? "—")</td><td>@(t.TipoDteContado ?? "—")</td>
+                            <td><span class="estado-badge @(t.Certifica ? "estado-badge-activo" : "estado-badge-inactivo")">@(t.Certifica ? "Sí" : "No")</span></td>
+                            <td class="col-acciones"><div class="acciones-fila"><BotonIcono Icono="pencil" Tooltip="Editar tipo" OnClick="() => tipo = CopiarTipo(t)" /></div></td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </section>
+}
+else if (pestana == "unidades")
+{
+    <section class="tarjeta">
+        <p class="texto-ayuda">Código de la unidad de medida que va en cada ítem del DTE (hasta 3 caracteres).</p>
+        <table class="tabla-datos">
+            <thead><tr><th class="col-codigo">Código</th><th>Unidad</th><th>Código FEL</th><th class="col-acciones">Acciones</th></tr></thead>
+            <tbody>
+                @foreach (var u in unidades)
+                {
+                    <tr>
+                        <td class="col-codigo">@u.UmeCodigo</td><td>@u.UmeDescripcion</td>
+                        <td>
+                            @if (unidadEditando == u.UmeId)
+                            {
+                                <input aria-label="Código FEL" maxlength="3" @bind="codigoUnidad" />
+                            }
+                            else
+                            {
+                                @(u.FelCodigo ?? "—")
+                            }
+                        </td>
+                        <td class="col-acciones"><div class="acciones-fila">
+                            @if (unidadEditando == u.UmeId)
+                            {
+                                <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="() => GuardarUnidadAsync(u)" />
+                                <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => unidadEditando = null" />
+                            }
+                            else
+                            {
+                                <BotonIcono Icono="pencil" Tooltip="Editar código FEL" OnClick="() => { unidadEditando = u.UmeId; codigoUnidad = u.FelCodigo ?? string.Empty; }" />
+                            }
+                        </div></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private static readonly IReadOnlyList<PestanaItem> Pestanas = new[]
+    {
+        new PestanaItem("general", "Certificador y emisor"), new PestanaItem("frases", "Frases"),
+        new PestanaItem("establecimientos", "Establecimientos"), new PestanaItem("tipos", "Tipos de documento"),
+        new PestanaItem("unidades", "Unidades de medida"),
+    };
+    private static readonly string[] TiposDte = { "FACT", "FCAM", "FPEQ", "FCAP", "FESP", "NABN", "RDON", "RECI", "NDEB", "NCRE" };
+
+    private string pestana = "general";
+    private IReadOnlyList<Compania> companias = Array.Empty<Compania>();
+    private int ciaId;
+    private FelConfiguracion? config;
+    private IReadOnlyList<FelFrase> frases = Array.Empty<FelFrase>();
+    private FelFrase? frase;
+    private IReadOnlyList<FelEstablecimiento> establecimientos = Array.Empty<FelEstablecimiento>();
+    private FelEstablecimiento? establecimiento;
+    private IReadOnlyList<FelMunicipio> municipios = Array.Empty<FelMunicipio>();
+    private IReadOnlyList<FelTipoDocumento> tipos = Array.Empty<FelTipoDocumento>();
+    private FelTipoDocumento? tipo;
+    private IReadOnlyList<FelUnidadMedida> unidades = Array.Empty<FelUnidadMedida>();
+    private int? unidadEditando;
+    private string codigoUnidad = "";
+    private string? mensaje;
+    private bool esMensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            companias = await GeneralRepository.ConsultarCompaniasAsync(soloActivas: true);
+            int? sucId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerSucId();
+            var sucursal = (await GeneralRepository.ConsultarSucursalesAsync(null, false)).FirstOrDefault(s => s.SucId == sucId);
+            ciaId = sucursal?.CiaId ?? companias.FirstOrDefault()?.CiaId ?? 0;
+            municipios = await FelRepository.ConsultarMunicipiosAsync();
+            await CargarAsync();
+        }
+        catch (Exception ex) { Error(ex); }
+    }
+
+    private async Task<int?> UsuIdAsync() => AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+    private void Error(Exception ex) { mensaje = MensajesError.Traducir(ex); esMensajeError = true; }
+    private void Ok(string texto) { mensaje = texto; esMensajeError = false; }
+
+    private async Task CargarAsync()
+    {
+        config = await FelRepository.ConsultarConfiguracionAsync(ciaId);
+        frases = await FelRepository.ConsultarFrasesAsync(ciaId);
+        establecimientos = await FelRepository.ConsultarEstablecimientosAsync(ciaId);
+        tipos = await FelRepository.ConsultarTiposDocumentoAsync();
+        unidades = await FelRepository.ConsultarUnidadesAsync();
+    }
+
+    private async Task CambiarCompaniaAsync(ChangeEventArgs e)
+    {
+        ciaId = int.TryParse(e.Value?.ToString(), out var id) ? id : ciaId;
+        await CargarAsync();
+    }
+
+    private async Task GuardarConfiguracionAsync()
+    {
+        if (config is null) return;
+        try { await FelRepository.GuardarConfiguracionAsync(config, await UsuIdAsync()); Ok("Configuración guardada."); await CargarAsync(); }
+        catch (Exception ex) { Error(ex); }
+    }
+
+    private static FelFrase Copiar(FelFrase f) => new()
+    {
+        FfrId = f.FfrId, CiaId = f.CiaId, TipoFrase = f.TipoFrase, CodigoEscenario = f.CodigoEscenario,
+        Descripcion = f.Descripcion, AplicaNotas = f.AplicaNotas, Estado = f.Estado
+    };
+
+    private async Task GuardarFraseAsync()
+    {
+        if (frase is null) return;
+        try { await FelRepository.GuardarFraseAsync(frase, await UsuIdAsync()); frase = null; Ok("Frase guardada."); frases = await FelRepository.ConsultarFrasesAsync(ciaId); }
+        catch (Exception ex) { Error(ex); }
+    }
+
+    private async Task EliminarFraseAsync(FelFrase f)
+    {
+        try { await FelRepository.EliminarFraseAsync(f.FfrId); Ok("Frase eliminada."); frases = await FelRepository.ConsultarFrasesAsync(ciaId); }
+        catch (Exception ex) { Error(ex); }
+    }
+
+    private FelEstablecimiento CopiarEstablecimiento(FelEstablecimiento e) => new()
+    {
+        SucId = e.SucId, SucCodigo = e.SucCodigo, SucDescripcion = e.SucDescripcion, CodigoEstablecimiento = e.CodigoEstablecimiento,
+        NombreComercial = e.NombreComercial ?? e.SucDescripcion, CodigoPostal = e.CodigoPostal, ProvId = e.ProvId ?? municipios.FirstOrDefault()?.ProvId
+    };
+
+    private async Task GuardarEstablecimientoAsync()
+    {
+        if (establecimiento is null) return;
+        try
+        {
+            await FelRepository.GuardarEstablecimientoAsync(establecimiento, await UsuIdAsync());
+            establecimiento = null;
+            Ok("Establecimiento guardado.");
+            establecimientos = await FelRepository.ConsultarEstablecimientosAsync(ciaId);
+        }
+        catch (Exception ex) { Error(ex); }
+    }
+
+    private static FelTipoDocumento CopiarTipo(FelTipoDocumento t) => new()
+    {
+        TdoId = t.TdoId, TdoCodigo = t.TdoCodigo, TdoDescripcion = t.TdoDescripcion, TipoDte = t.TipoDte ?? "", TipoDteContado = t.TipoDteContado ?? "",
+        Certifica = t.Certifica
+    };
+
+    private async Task GuardarTipoAsync()
+    {
+        if (tipo is null) return;
+        try { await FelRepository.GuardarTipoDocumentoAsync(tipo, await UsuIdAsync()); tipo = null; Ok("Tipo de documento guardado."); tipos = await FelRepository.ConsultarTiposDocumentoAsync(); }
+        catch (Exception ex) { Error(ex); }
+    }
+
+    private async Task GuardarUnidadAsync(FelUnidadMedida u)
+    {
+        try { await FelRepository.GuardarUnidadAsync(u.UmeId, codigoUnidad, await UsuIdAsync()); unidadEditando = null; Ok("Unidad guardada."); unidades = await FelRepository.ConsultarUnidadesAsync(); }
+        catch (Exception ex) { Error(ex); }
+    }
+}

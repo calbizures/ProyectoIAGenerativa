@@ -49,23 +49,24 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 32_cuentas_por_cobrar_pagar.sql               -- cuentas por cobrar y por pagar, notas de crédito y débito
 33_datos_sinteticos_cxc_organigrama.sql       -- opcional: organigrama de ejemplo, factura con servicios y notas
 34_auditoria_procesos.sql                     -- recibos y cheques anulables, cobro de varias cuotas, límite de crédito
+35_costos_fel_tableros.sql                    -- costo unitario por línea, factura electrónica (FEL) parametrizada, tableros
 ```
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `34` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `35` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30` ni el `33`).
 
-`25` a `29`, `31`, `32` y `34` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` y `35` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `34`. Si vuelves a
-correr `12`, corre después `22` a `34` (el `12` vacía todas las tablas). Lo
-mismo con `31` y `32`: redefinen procedimientos que el `34` corrige, así que
-después de cualquiera de ellos corre de nuevo el `34`.
+cualquiera de los dos, vuelve a correr después `26` a `35`. Si vuelves a
+correr `12`, corre después `22` a `35` (el `12` vacía todas las tablas). Lo
+mismo con `27`, `31` y `32`: redefinen procedimientos que el `34` y el `35`
+corrigen, así que después de cualquiera de ellos corre de nuevo `34` y `35`.
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -785,6 +786,85 @@ el documento pagado.
 
 Errores `53201`-`53229`.
 
+### Costo unitario, factura electrónica y tableros (`35`)
+
+**Costo unitario.**
+- **Ventas:** cada línea con producto guarda en `det_costo_unitario` el costo
+  promedio del producto en el momento de grabar. Lo pone la base (ya no lo
+  manda la pantalla) y la póliza de la venta usa ese costo.
+- **Compras:** cada línea guarda `(subtotal - descuento) / cantidad`, sin IVA.
+  El costo promedio ponderado del producto se recalcula con ese neto (antes no
+  restaba el descuento). Si la existencia llega a cero, el producto conserva
+  su último costo.
+- Las líneas ya grabadas sin costo se completan: las de compra con su neto;
+  las de venta con el costo actual del producto, porque no hay historial.
+
+**Factura electrónica (FEL).** Todo lo que va en el XML sale de parámetros
+que se mantienen en **General › Factura electrónica**:
+
+| Dónde | Qué |
+|---|---|
+| `fel_configuracion` (por compañía) | certificador (`SIMULADOR` o `INFILE`), activo, ambiente, URLs de certificación y anulación, usuario de firma y de la API, correo de copia, tiempo de espera, espacio de nombres y versión del DTE, receptor por defecto (dirección, código postal, municipio, departamento, país) |
+| `gen_compania` | afiliación IVA (`GEN`, `PEQ`...), nombre del emisor (razón social), correo |
+| `gen_sucursal` | código de establecimiento, nombre comercial, código postal y municipio (departamento y país salen de `gen_provincia` / `gen_estado` / `gen_pais`) |
+| `inv_documento_tipo` | tipo de DTE, tipo para la venta de contado (FCAM a crédito, FACT de contado) y si se certifica |
+| `inv_unidad_medida` | código FEL de la unidad (3 caracteres) |
+| `pos_cliente` | código postal y tipo de receptor (`CUI` o `EXT`; vacío = NIT o CF) |
+| `fel_frase` | frases por compañía (tipo y escenario; opcionalmente también en notas) |
+| `fel_documento` / `fel_bitacora` | estado FEL de cada documento (P pendiente, R rechazado, C certificado, A anulado, X anulación pendiente), UUID, serie, número, XML enviado, certificado y de anulación, y cada intento |
+
+- **Llaves fuera de la base.** Las llaves de firma y de la API no se guardan
+  en la base. Van en la configuración de la aplicación como
+  `Fel:Credenciales:<NIT sin guion>:LlaveFirma` y `:LlaveApi`, en
+  appsettings, variables de entorno o secretos del servidor.
+- **Qué se certifica.** Facturas (FACT/FCAM con el complemento de abonos),
+  notas de crédito y débito a clientes (NCRE/NDEB con referencia a la factura)
+  y la anulación de un documento certificado.
+- **Cuándo.** El envío ocurre en la aplicación justo después de grabar. La
+  factura queda grabada aunque el certificador falle:
+  - Sin respuesta, queda **Pendiente** y se reintenta sola cada
+    `Fel:ReintentoMinutos` (10 por defecto).
+  - Si el certificador la rechaza, queda **Rechazada** con el motivo, para
+    corregir y reenviar desde **Ventas › Documentos electrónicos**.
+  - Una nota cuya factura no está certificada certifica primero la factura.
+- `paFelDocumentoDatosConsultar` reemplaza a `spr_sel_pos_factura_xml`: arma
+  los datos y la aplicación genera el XML. En el script original se corrigió
+  lo siguiente:
+  - Las etiquetas `cfc:NumeroAbono`, `cfc:FechaVencimiento` y `cfc:MontoAbono`
+    se cerraban como `dte:...` y el XML quedaba inválido.
+  - El texto no se escapaba: un `&` o un `<` en una descripción rompía el XML.
+  - El IVA era un 12 % fijo (`/1.12`) y todo documento salía como `FCAM`.
+  - El nombre comercial, la dirección, el municipio y el código postal del
+    emisor estaban escritos en el código.
+  - La frase era siempre la misma, el código postal del receptor era `0` y el
+    `xsi:schemaLocation` apuntaba a una ruta local del disco.
+  - Los montos ahora se calculan con el IVA de cada línea: precio unitario con
+    IVA redondeado por unidad, `Precio = Cantidad × PrecioUnitario`, y
+    `MontoGravable + MontoImpuesto = Total`. Una línea con IVA 0 va como exenta.
+- **Simulador y fechas.** El certificador **SIMULADOR** valida el XML y
+  devuelve una autorización con el formato de SAT (sin validez fiscal). Sirve
+  para probar sin credenciales. SAT solo acepta documentos con pocos días de
+  antigüedad, así que las facturas viejas de los datos de prueba solo se
+  certifican con el simulador.
+- **URLs de INFILE.** Las URLs por defecto son las del proceso unificado de
+  INFILE (firma y certificación en una llamada). Confírmelas con INFILE para
+  su ambiente.
+
+**Tableros** (menú **Tableros**, permiso `TABLERO_GERENCIAL`):
+`paTableroVentas`, `paTableroCartera` y `paTableroCompras` reciben rango de
+fechas y sucursal (la de la bodega del documento). Agrupan por día si el
+rango es de hasta 62 días y por mes si es mayor. Devuelven:
+- **Ventas:** indicadores contra el período anterior, venta y costo por
+  período, mejores clientes, productos y vendedores.
+- **Cartera:** saldo y vencido a hoy, cobrado, recuperación (de lo que vencía
+  en el período, cuánto se cobró), antigüedad, clientes con más vencido y
+  formas de pago.
+- **Compras:** compras y pagos por período, por pagar y vencido,
+  compromisos de las próximas 12 semanas y próximas cuotas.
+
+Errores `53301`-`53314`. Permisos `TABLERO_GERENCIAL` (Administrador) y
+`FEL_ADMIN` (Administrador y Contador).
+
 ## Módulos nuevos
 
 - **Seguridad (`sec_*`)**: roles, permisos y las tablas de asignación
@@ -882,8 +962,10 @@ prueba.
   no está cubierta.
 - La antigüedad de saldos usa el saldo actual de cada cuota; con una fecha
   de corte pasada no descuenta los pagos hechos después de esa fecha.
-- No se implementó el flujo de firma/certificación electrónica de facturas
-  (FEL) que insinuaba la columna `enc_xml` del script original; la columna
-  se conserva por compatibilidad pero ningún procedimiento la llena todavía.
+- La factura electrónica guarda el XML en `fel_documento`; la columna
+  `enc_xml` del script original se conserva pero no se usa (el UUID queda en
+  `enc_numero_autorizacion`). La integración con INFILE está hecha según su
+  proceso unificado pero no se probó contra INFILE (no hay credenciales en
+  este ambiente); se probó con el simulador y los casos de falla.
 - El costeo de inventario usa costo promedio ponderado (como el script
   original), no PEPS/UEPS.

@@ -16,6 +16,8 @@
 @inject IVendedorRepository VendedorRepository
 @inject ICajaRepository CajaRepository
 @inject Erp.Data.Cuentas.ICuentasRepository CuentasRepository
+@inject Erp.Web.Fel.FelService FelService
+@inject Erp.Data.Fel.IFelRepository FelRepository
 
 <PageTitle>Facturas</PageTitle>
 
@@ -27,6 +29,13 @@
 @if (mensaje is not null)
 {
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+@if (avisoFel is not null)
+{
+    <div class="doc-nota doc-nota-aviso" role="status">
+        <Icono Nombre="alert-triangle" Tamano="15" />
+        <span>Factura electrónica: @avisoFel <a href="fel/documentos">Ver documentos electrónicos</a></span>
+    </div>
 }
 
 <div class="barra-herramientas">
@@ -527,7 +536,7 @@
                                     <Authorized>
                                         @if (f.EncEstado == "G")
                                         {
-                                            <BotonIcono Icono="ban" Tooltip="Anular factura" Variante="peligro" OnClick="() => { anulandoId = f.EncId; mensaje = null; }" />
+                                            <BotonIcono Icono="ban" Tooltip="Anular factura" Variante="peligro" OnClick="() => { anulandoId = f.EncId; motivoAnulacion = string.Empty; mensaje = null; }" />
                                         }
                                     </Authorized>
                                 </AuthorizeView>
@@ -539,10 +548,12 @@
                         <tr class="fila-edicion-tabla">
                             <td colspan="7">
                                 <div class="anulacion-form">
-                                    <label>¿Anular la factura @(string.IsNullOrWhiteSpace(f.EncSerieDocto) ? f.EncNumeroDocto : $"{f.EncSerieDocto}-{f.EncNumeroDocto}") de @f.NombreCliente por @f.EncMontoTotal.ToString("N2")?</label>
-                                    <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Sí, anular factura" Variante="peligro" OnClick="() => AnularAsync(f)" />
+                                    <label for="motivo-anular-factura">¿Anular la factura @(string.IsNullOrWhiteSpace(f.EncSerieDocto) ? f.EncNumeroDocto : $"{f.EncSerieDocto}-{f.EncNumeroDocto}") de @f.NombreCliente por @f.EncMontoTotal.ToString("N2")? Indique el motivo.</label>
+                                    <input id="motivo-anular-factura" maxlength="200" placeholder="Ej.: datos del cliente equivocados" @bind="motivoAnulacion" @bind:event="oninput" />
+                                    <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Sí, anular factura" Variante="peligro"
+                                                Deshabilitado="motivoAnulacion.Trim().Length < 5" OnClick="() => AnularAsync(f)" />
                                     <BotonIcono Icono="x" Tooltip="No anular" Etiqueta="Cancelar" OnClick="() => anulandoId = null" />
-                                    <small class="texto-ayuda">Se devuelve el inventario y se anula la póliza. Si se pagó de contado y la caja sigue abierta, el pago sale del cuadre. Si tiene cobros de cuotas o notas, primero hay que anularlos.</small>
+                                    <small class="texto-ayuda">Se devuelve el inventario y se anula la póliza. Si se pagó de contado y la caja sigue abierta, el pago sale del cuadre. Si tiene cobros de cuotas o notas, primero hay que anularlos. Si está certificada, también se anula ante SAT con este motivo.</small>
                                 </div>
                             </td>
                         </tr>
@@ -572,6 +583,26 @@
             }
         </div>
         <div class="doc-card-body">
+            <div class="fel-resumen fel-estado-@(felDetalle?.Estado ?? "N")">
+                <span class="fel-resumen-titulo">Factura electrónica</span>
+                <span class="estado-badge @Erp.Web.Fel.FelVista.Clase(felDetalle?.Estado)">@Erp.Web.Fel.FelService.EstadoTexto(felDetalle?.Estado)</span>
+                @if (felDetalle?.Uuid is not null)
+                {
+                    <span>Autorización <strong>@felDetalle.Uuid</strong> · Serie @felDetalle.Serie · Número @felDetalle.Numero</span>
+                }
+                else if (felDetalle?.Mensaje is not null)
+                {
+                    <span class="texto-tenue">@felDetalle.Mensaje</span>
+                }
+                @if (encabezadoSeleccionado.EncEstado == "G" && felDetalle?.Estado is null or "P" or "R")
+                {
+                    <AuthorizeView Policy="Permiso:FEL_ADMIN,VENTAS_FACTURA_CREAR" Context="felAuth">
+                        <Authorized>
+                            <BotonIcono Icono="refresh-cw" Tooltip="Enviar al certificador" Etiqueta="@(felDetalle is null ? "Certificar" : "Reintentar")" OnClick="CertificarSeleccionadaAsync" />
+                        </Authorized>
+                    </AuthorizeView>
+                }
+            </div>
             <BarraPestanas Pestanas="PestanasDetalleFactura" @bind-PestanaActiva="pestanaDetalleFactura" />
 
             @if (pestanaDetalleFactura == "detalle")
@@ -646,6 +677,9 @@
 
     private IReadOnlyList<FacturaEncabezado> facturas = Array.Empty<FacturaEncabezado>();
     private string textoFiltro = "";
+    private string motivoAnulacion = "";
+    private string? avisoFel;
+    private Erp.Data.Fel.FelDocumentoDetalle? felDetalle;
     private int pagina = 1;
     private int? anulandoId;
     private IReadOnlyList<FacturaEncabezado> facturasFiltradas => string.IsNullOrWhiteSpace(textoFiltro)
@@ -1223,7 +1257,13 @@
             var pcaId = cajasAbiertasSucursal.Count > 0 && formasPagoCapturadas.Count > 0 ? pcaIdFactura : (int?)null;
             var (encId, numeroUnico) = await FacturaRepository.CrearAsync(encabezado, detalle, usuId, pcaId, formasPagoCapturadas);
             mostrarNuevaFactura = false;
-            mensaje = $"Factura {numeroUnico} grabada correctamente.";
+            // La factura ya está grabada; la certificación se intenta enseguida y,
+            // si falla, queda pendiente o rechazada para reintentarla.
+            var fel = await FelService.CertificarAsync(encId, usuId);
+            mensaje = fel.Aplica && fel.Exito
+                ? $"Factura {numeroUnico} grabada y certificada (autorización {fel.Uuid})."
+                : $"Factura {numeroUnico} grabada correctamente.";
+            avisoFel = fel.Aplica && !fel.Exito ? fel.Mensaje : null;
             esMensajeError = false;
 
             await CargarDetalleFacturaAsync(encId);
@@ -1234,6 +1274,16 @@
             mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
+    }
+
+    private async Task CertificarSeleccionadaAsync()
+    {
+        if (encabezadoSeleccionado is null) return;
+        var fel = await FelService.CertificarAsync(encabezadoSeleccionado.EncId, await ObtenerUsuIdActualAsync());
+        mensaje = fel.Exito ? fel.Mensaje : null;
+        esMensajeError = false;
+        avisoFel = fel.Exito ? null : fel.Mensaje;
+        felDetalle = (await FelRepository.ConsultarDetalleAsync(encabezadoSeleccionado.EncId)).Detalle;
     }
 
     private async Task SeleccionarFacturaAsync(FacturaEncabezado factura)
@@ -1248,6 +1298,7 @@
         encabezadoSeleccionado = encabezado;
         detalleSeleccionado = detalle;
         detallePlanPagos = await FacturaRepository.ConsultarPlanPagosAsync(encId);
+        felDetalle = (await FelRepository.ConsultarDetalleAsync(encId)).Detalle;
         pestanaDetalleFactura = "detalle";
     }
 
@@ -1258,7 +1309,9 @@
             var usuId = await ObtenerUsuIdActualAsync();
             await FacturaRepository.AnularAsync(factura.EncId, usuId);
             anulandoId = null;
-            mensaje = "Factura anulada.";
+            var fel = await FelService.AnularAsync(factura.EncId, motivoAnulacion, usuId);
+            mensaje = fel.Aplica && fel.Exito ? "Factura anulada, también ante SAT." : "Factura anulada.";
+            avisoFel = fel.Aplica && !fel.Exito ? fel.Mensaje : null;
             esMensajeError = false;
             if (encabezadoSeleccionado?.EncId == factura.EncId)
             {

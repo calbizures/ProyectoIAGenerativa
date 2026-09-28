@@ -4,6 +4,7 @@ using Erp.Data.Cuentas;
 using Erp.Data.General;
 using Erp.Data.Ventas;
 using Erp.Web.Components;
+using Erp.Web.Fel;
 using Erp.Web.Reportes;
 using Erp.Web.Security;
 using Microsoft.AspNetCore.Authentication;
@@ -21,6 +22,14 @@ builder.Services.AddCascadingAuthenticationState();
 var connectionString = builder.Configuration.GetConnectionString("ErpDb")
 	?? throw new InvalidOperationException("Falta la cadena de conexión 'ErpDb' en la configuración (appsettings.json).");
 builder.Services.AddErpData(connectionString);
+
+// Factura electrónica: certificadores disponibles (la compañía elige uno en su
+// configuración FEL), servicio de envío y reintento automático.
+builder.Services.AddHttpClient("Fel");
+builder.Services.AddSingleton<IFelCertificador, SimuladorCertificador>();
+builder.Services.AddSingleton<IFelCertificador, InfileCertificador>();
+builder.Services.AddScoped<FelService>();
+builder.Services.AddHostedService<FelReintentoServicio>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
 	.AddCookie(options =>
@@ -84,6 +93,17 @@ app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
 	.AddInteractiveServerRenderMode();
+
+// XML de factura electrónica (enviado, certificado o de anulación).
+app.MapGet("/fel/xml/{encId:int}/{tipo}", async (int encId, string tipo, HttpContext contexto,
+	Erp.Data.Fel.IFelRepository fel, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:FEL_ADMIN")).Succeeded) return Results.Forbid();
+	var (detalle, _) = await fel.ConsultarDetalleAsync(encId);
+	var xml = tipo switch { "enviado" => detalle?.XmlEnviado, "certificado" => detalle?.XmlCertificado, "anulacion" => detalle?.XmlAnulacion, _ => null };
+	if (string.IsNullOrEmpty(xml)) return Results.NotFound();
+	return Results.File(System.Text.Encoding.UTF8.GetBytes(xml), "application/xml", $"dte-{encId}-{tipo}.xml");
+}).RequireAuthorization();
 
 // Exportación a Excel de cuentas por cobrar y por pagar.
 const string TipoExcel = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";

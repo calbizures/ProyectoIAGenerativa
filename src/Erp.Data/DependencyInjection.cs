@@ -2,10 +2,12 @@ using Erp.Data.Caja;
 using Erp.Data.Compras;
 using Erp.Data.Contabilidad;
 using Erp.Data.Cuentas;
+using Erp.Data.Fel;
 using Erp.Data.General;
 using Erp.Data.Inventario;
 using Erp.Data.Rrhh;
 using Erp.Data.Security;
+using Erp.Data.Tableros;
 using Erp.Data.Ventas;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -39,6 +41,8 @@ public static class DependencyInjection
 		services.AddScoped<IRrhhRepository, RrhhRepository>();
 		services.AddScoped<INomenclaturaRepository, NomenclaturaRepository>();
 		services.AddScoped<ICuentasRepository, CuentasRepository>();
+		services.AddScoped<IFelRepository, FelRepository>();
+		services.AddScoped<ITableroRepository, TableroRepository>();
 		return services;
 	}
 }

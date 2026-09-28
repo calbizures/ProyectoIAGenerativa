@@ -6,6 +6,7 @@
 @using Erp.Web.Security
 @using Microsoft.AspNetCore.Components.Authorization
 @inject ICuentasRepository CuentasRepository
+@inject Erp.Web.Fel.FelService FelService
 @inject IGeneralRepository GeneralRepository
 
 <div class="pagina-encabezado">
@@ -322,9 +323,15 @@ else
         {
             var tipo = (formulario.EsCredito ? "NC" : "ND") + (EsCliente ? "C" : "P");
             var usuId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
-            var (_, numero) = await CuentasRepository.CrearNotaAsync(tipo, formulario.EncIdReferencia, formulario.Fecha, formulario.NumeroDocto,
+            var (encIdNota, numero) = await CuentasRepository.CrearNotaAsync(tipo, formulario.EncIdReferencia, formulario.Fecha, formulario.NumeroDocto,
                 formulario.Motivo.Trim(), formulario.EsCredito ? null : formulario.FechaVencimiento, lineas, usuId);
             mensaje = $"Nota de {(formulario.EsCredito ? "crédito" : "débito")} {numero} grabada por Q{TotalNota:N2}.";
+            // Las notas a clientes se certifican al grabarse (NCRE / NDEB).
+            if (EsCliente)
+            {
+                var fel = await FelService.CertificarAsync(encIdNota, usuId);
+                if (fel.Aplica) mensaje += fel.Exito ? $" Certificada: {fel.Uuid}." : $" Factura electrónica {fel.Mensaje}";
+            }
             esMensajeError = false;
             formulario = null;
             await CargarNotasAsync();

@@ -1,0 +1,36 @@
+@* Tarjeta de un gráfico con su título y la opción de ver los datos en tabla. *@
+<section class="tarjeta tarjeta-grafico @Clase" aria-label="@Titulo">
+    <div class="tarjeta-grafico-encabezado">
+        <div>
+            <h2>@Titulo</h2>
+            @if (!string.IsNullOrEmpty(Descripcion))
+            {
+                <p>@Descripcion</p>
+            }
+        </div>
+        @if (Tabla is not null)
+        {
+            <button type="button" class="boton-texto" aria-pressed="@(verTabla ? "true" : "false")" @onclick="() => verTabla = !verTabla">
+                @(verTabla ? "Ver gráfico" : "Ver tabla")
+            </button>
+        }
+    </div>
+    @if (verTabla && Tabla is not null)
+    {
+        @Tabla
+    }
+    else
+    {
+        @ChildContent
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Titulo { get; set; } = "";
+    [Parameter] public string? Descripcion { get; set; }
+    [Parameter] public string? Clase { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Tabla { get; set; }
+
+    private bool verTabla;
+}

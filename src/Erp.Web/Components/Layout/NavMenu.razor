@@ -20,6 +20,15 @@
             <span class="sidebar-titulo">Inicio</span>
         </NavLink>
 
+        <AuthorizeView Policy="Permiso:TABLERO_GERENCIAL">
+            <Authorized>
+                <NavLink href="tableros" class="sidebar-link">
+                    <span class="sidebar-icono"><Icono Nombre="trending-up" Tamano="17" /></span>
+                    <span class="sidebar-titulo">Tableros</span>
+                </NavLink>
+            </Authorized>
+        </AuthorizeView>
+
         <AuthorizeView Policy="Permiso:SEGURIDAD_USUARIO_ADMIN">
             <Authorized>
                 <SidebarNodo Titulo="Seguridad" IconoNombre="lock" Rutas="@(new[] { "usuarios", "roles", "permisos" })">
@@ -45,8 +54,13 @@
         </AuthorizeView>
         <AuthorizeView Policy="Permiso:VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR">
             <Authorized>
-                <SidebarNodo Titulo="Ventas / POS" IconoNombre="receipt" Rutas="@(new[] { "facturas", "clientes", "vendedores", "ventas" })">
+                <SidebarNodo Titulo="Ventas / POS" IconoNombre="receipt" Rutas="@(new[] { "facturas", "clientes", "vendedores", "ventas", "fel/documentos" })">
                     <NavLink href="facturas" class="sidebar-hijo-link">Facturas</NavLink>
+                    <AuthorizeView Policy="Permiso:FEL_ADMIN" Context="felContexto">
+                        <Authorized>
+                            <NavLink href="fel/documentos" class="sidebar-hijo-link">Documentos electrónicos</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
                     <NavLink href="clientes" class="sidebar-hijo-link">Clientes</NavLink>
                     <NavLink href="vendedores" class="sidebar-hijo-link">Vendedores</NavLink>
                     <NavLink href="ventas/antiguedad" class="sidebar-hijo-link">Antigüedad de saldos</NavLink>
@@ -102,11 +116,16 @@
         </AuthorizeView>
         <AuthorizeView Policy="Permiso:GENERAL_CONFIG_ADMIN">
             <Authorized>
-                <SidebarNodo Titulo="General" IconoNombre="settings" Rutas="@(new[] { "general" })">
+                <SidebarNodo Titulo="General" IconoNombre="settings" Rutas="@(new[] { "general", "fel/configuracion" })">
                     <NavLink href="general/companias" class="sidebar-hijo-link">Compañías</NavLink>
                     <NavLink href="general/sucursales" class="sidebar-hijo-link">Sucursales y bodegas</NavLink>
                     <NavLink href="general/entidades-financieras" class="sidebar-hijo-link">Entidades financieras</NavLink>
                     <NavLink href="general/cuentas-poliza" class="sidebar-hijo-link">Cuentas de pólizas</NavLink>
+                    <AuthorizeView Policy="Permiso:FEL_ADMIN" Context="felContexto">
+                        <Authorized>
+                            <NavLink href="fel/configuracion" class="sidebar-hijo-link">Factura electrónica</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>

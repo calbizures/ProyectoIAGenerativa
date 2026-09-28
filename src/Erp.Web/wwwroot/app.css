@@ -2594,3 +2594,124 @@ a.boton-icono { text-decoration: none; }
 .boton-mini-peligro { border-color: var(--error-texto); background: var(--error-texto); color: #fff; }
 .boton-mini-peligro:hover { background: #8f1d17; }
 .boton-mini:focus-visible { outline: none; box-shadow: var(--anillo-foco); }
+
+/* ===================================================================
+   Tableros: indicadores y gráficos (paleta validada en PaletaGraficos)
+   =================================================================== */
+.tablero { transition: opacity 0.15s; }
+.tablero-cargando { opacity: 0.55; pointer-events: none; }
+.tablero-filtros { gap: 0.6rem 1rem; }
+
+.kpi-grilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 45%), 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+.kpi-mosaico {
+    display: flex; flex-direction: column; gap: 0.25rem; padding: 1rem 1.1rem;
+    background: var(--superficie); border: 1px solid var(--borde-suave); border-radius: var(--radio-grande); box-shadow: var(--sombra-tarjeta);
+}
+.kpi-mosaico-etiqueta { font-size: 0.8rem; color: var(--texto-tenue); }
+.kpi-mosaico-valor { font-size: 1.65rem; font-weight: 650; color: var(--si-navy-900); line-height: 1.15; }
+.kpi-mosaico-delta { font-size: 0.8rem; color: var(--texto-tenue); }
+.kpi-mosaico-delta.delta-bueno { color: var(--exito-texto); }
+.kpi-mosaico-delta.delta-malo { color: var(--error-texto); }
+.kpi-mosaico-nota { font-size: 0.78rem; color: var(--texto-tenue); }
+
+.tablero-grilla { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.tablero-grilla > .tarjeta { margin: 0; min-width: 0; }
+.tablero-ancho { grid-column: 1 / -1; }
+.tarjeta-grafico-encabezado { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 0.75rem; }
+.tarjeta-grafico-encabezado h2 { margin: 0; font-size: 1.02rem; }
+.tarjeta-grafico-encabezado p { margin: 0.2rem 0 0; color: var(--texto-tenue); font-size: 0.82rem; }
+
+.grafico-leyenda { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; list-style: none; margin: 0 0 0.5rem; padding: 0; font-size: 0.8rem; color: var(--texto-tenue); }
+.grafico-leyenda li, .barra-partes-leyenda li { display: inline-flex; align-items: center; gap: 0.4rem; }
+.leyenda-muestra { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+.grafico-columnas { position: relative; }
+.grafico-columnas svg { display: block; max-width: 100%; overflow: visible; }
+.eje-grilla { stroke: #e8ecf2; stroke-width: 1; }
+.eje-base { stroke: #c9d2de; stroke-width: 1; }
+.eje-texto { fill: #6b7385; font-size: 11px; font-variant-numeric: tabular-nums; }
+.grafico-franjas { position: absolute; inset: 0; }
+.grafico-franja { position: absolute; border-radius: 6px; outline: none; }
+.grafico-franja:hover, .grafico-franja:focus-visible { background: rgba(20, 45, 110, 0.06); }
+.grafico-franja:focus-visible { box-shadow: var(--anillo-foco); }
+.grafico-franja.seleccionable { cursor: pointer; }
+.grafico-tooltip {
+    position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    display: none; flex-direction: column; gap: 0.2rem; min-width: 150px; padding: 0.55rem 0.7rem;
+    background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio);
+    box-shadow: 0 6px 20px rgba(13, 27, 76, 0.14); font-size: 0.78rem; color: var(--texto-tenue); white-space: nowrap; z-index: 5;
+}
+.grafico-franja.primera .grafico-tooltip { left: 0; transform: none; }
+.grafico-franja.ultima .grafico-tooltip { left: auto; right: 0; transform: none; }
+.grafico-franja:hover .grafico-tooltip, .grafico-franja:focus-visible .grafico-tooltip { display: flex; }
+.tooltip-titulo { color: var(--si-navy-900); font-size: 0.8rem; }
+.tooltip-fila { display: flex; align-items: center; gap: 0.4rem; }
+.tooltip-fila strong { color: var(--texto); font-variant-numeric: tabular-nums; }
+.tooltip-clave { width: 12px; height: 2px; border-radius: 1px; flex: none; }
+.tooltip-total { border-top: 1px solid var(--borde-suave); padding-top: 0.2rem; }
+.tooltip-pista { color: var(--si-blue-600); font-size: 0.74rem; }
+
+.ranking { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.ranking-fila {
+    display: grid; grid-template-columns: minmax(0, 38%) minmax(0, 1fr) auto; align-items: center; gap: 0.6rem;
+    width: 100%; padding: 0.35rem 0.4rem; border: 0; border-radius: 6px; background: none; font: inherit; text-align: left; color: var(--texto);
+}
+.ranking-fila.seleccionable { cursor: pointer; }
+.ranking-fila.seleccionable:hover, .ranking-fila.seleccionable:focus-visible { background: rgba(20, 45, 110, 0.06); outline: none; }
+.ranking-fila.seleccionable:focus-visible { box-shadow: var(--anillo-foco); }
+.ranking-etiqueta { font-size: 0.84rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ranking-pista { height: 14px; display: flex; align-items: center; }
+.ranking-barra { display: block; height: 14px; min-width: 2px; border-radius: 0 4px 4px 0; }
+.ranking-valor { font-size: 0.82rem; font-weight: 600; color: var(--si-navy-900); font-variant-numeric: tabular-nums; text-align: right; display: flex; flex-direction: column; }
+.ranking-valor small { font-weight: 400; color: var(--texto-tenue); font-size: 0.72rem; }
+
+.barra-partes { display: flex; gap: 2px; height: 18px; border-radius: 5px; overflow: hidden; margin: 0.4rem 0 0.8rem; }
+.barra-partes-segmento { display: block; min-width: 3px; }
+.barra-partes-leyenda { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.84rem; }
+.barra-partes-leyenda strong { margin-left: auto; font-variant-numeric: tabular-nums; }
+.barra-partes-leyenda li { gap: 0.5rem; }
+.barra-partes-leyenda .texto-tenue { min-width: 3.5rem; text-align: right; }
+
+@media (max-width: 900px) {
+    .tablero-grilla { grid-template-columns: minmax(0, 1fr); }
+    .ranking-fila { grid-template-columns: minmax(0, 45%) minmax(0, 1fr) auto; }
+    .grafico-tooltip { min-width: 130px; }
+}
+
+/* ===================================================================
+   Factura electrónica
+   =================================================================== */
+.doc-nota-aviso { border-color: #f3d19c; background: #fff8ec; color: var(--aviso-texto); }
+.doc-nota-aviso a { color: inherit; font-weight: 600; }
+.fel-resumen {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; margin-bottom: 1rem;
+    padding: 0.6rem 0.8rem; border: 1px solid var(--borde-suave); border-radius: var(--radio); background: var(--superficie-suave); font-size: 0.85rem;
+}
+.fel-resumen-titulo { font-weight: 600; color: var(--si-navy-900); }
+.fel-resumen strong { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; }
+.fel-resumen .boton-icono { margin-left: auto; }
+.fel-conteos { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1rem; }
+.fel-conteo {
+    display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.45rem 0.7rem; border: 1px solid var(--borde);
+    border-radius: var(--radio); background: var(--superficie); font: inherit; font-size: 0.82rem; cursor: pointer; color: var(--texto);
+}
+.fel-conteo:disabled { opacity: 0.5; cursor: default; }
+.fel-conteo.activo { border-color: var(--si-blue-600); box-shadow: inset 0 0 0 1px var(--si-blue-600); }
+.fel-conteo-valor { font-weight: 700; color: var(--si-navy-900); font-variant-numeric: tabular-nums; }
+.fel-celda-mensaje { max-width: 360px; }
+.fel-celda-mensaje small { display: block; }
+.fel-uuid { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.76rem; word-break: break-all; }
+.fel-detalle { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; }
+.fel-detalle dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.2rem 0.8rem; margin: 0; font-size: 0.84rem; }
+.fel-detalle dt { color: var(--texto-tenue); }
+.fel-detalle dd { margin: 0; }
+.fel-bitacora { background: var(--superficie); }
+.fel-formulario .campo-ancho { grid-column: span 2; }
+.tarjeta h3 { font-size: 0.95rem; margin: 1.1rem 0 0.2rem; color: var(--si-navy-900); }
+@media (max-width: 900px) { .fel-formulario .campo-ancho { grid-column: auto; } }
+.tarjeta .fel-formulario {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.8rem 1rem; align-items: end;
+    max-width: none; padding: 0; margin-bottom: 1rem; border: 0; box-shadow: none; background: none;
+}
+.tarjeta .fel-formulario .campo { margin: 0; }
+.tarjeta .fel-formulario .acciones-fila { grid-column: 1 / -1; margin-top: 0.25rem; }
