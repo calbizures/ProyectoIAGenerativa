@@ -480,6 +480,9 @@ GO
 DECLARE @det dbo.compra_det_type;
 DECLARE @bod1 INT = (SELECT bod_id FROM dbo.inv_bodega WHERE bod_codigo='BOD01');
 DECLARE @fecha_compra DATE = DATEADD(MONTH, -5, CAST(GETDATE() AS DATE));
+-- Sin fecha de primer pago no se genera el plan de pagos al proveedor y no
+-- habría cuotas que pagar con cheque más abajo.
+DECLARE @primer_pago_inicial DATE = DATEADD(MONTH, 1, @fecha_compra);
 
 INSERT INTO @det (det_item, det_bien_o_servicio, det_cantidad, det_descripcion, det_precio_unitario, det_sub_total, det_porc_iva, bod_id, pro_id)
 SELECT ROW_NUMBER() OVER (ORDER BY pp.pro_id), pro.pro_tipo_item, 100, pro.pro_descripcion,
@@ -495,6 +498,7 @@ EXEC dbo.sp_compras_crear_documento
 	@enc_fecha_docto = @fecha_compra, @enc_numero_docto = 'INV-INICIAL-001',
 	@prv_id = @prv1_id,
 	@tdo_id = @tdo_comp_id,
+	@enc_fecha_primer_pago = @primer_pago_inicial,
 	@enc_numero_cuotas = 1, @detalle = @det, @enc_id = @enc_compra_inicial OUTPUT;
 GO
 
@@ -509,11 +513,15 @@ WHILE @i <= 10
 BEGIN
 	BEGIN TRY
 		DECLARE @det2 dbo.compra_det_type;
+		-- Una variable de tabla declarada dentro del WHILE no se reinicia en cada
+		-- vuelta: conserva las filas anteriores y repetiría det_item. Se vacía aquí.
+		DELETE FROM @det2;
 		DECLARE @pro_sel INT, @precio_sel NUMERIC(12,2), @cant_sel INT = 10 + (ABS(CHECKSUM(NEWID())) % 30);
 		DECLARE @prv_sel INT;
 		-- EXEC no acepta una expresión directamente como valor de un
 		-- parámetro con nombre; se calculan antes en variables.
 		DECLARE @fecha_compra_i DATE = DATEADD(DAY, -1 * (ABS(CHECKSUM(NEWID())) % 120), CAST(GETDATE() AS DATE));
+		DECLARE @primer_pago_compra DATE = DATEADD(MONTH, 1, @fecha_compra_i);
 		DECLARE @numero_docto_compra VARCHAR(32) = CONCAT('REST-', @i);
 
 		SELECT TOP 1 @pro_sel = pp.pro_id, @precio_sel = pp.precio
@@ -532,7 +540,8 @@ BEGIN
 		EXEC dbo.sp_compras_crear_documento
 			@enc_fecha_docto = @fecha_compra_i,
 			@enc_numero_docto = @numero_docto_compra,
-			@prv_id = @prv_sel, @tdo_id = @tdo_comp, @enc_numero_cuotas = 1,
+			@prv_id = @prv_sel, @tdo_id = @tdo_comp,
+			@enc_fecha_primer_pago = @primer_pago_compra, @enc_numero_cuotas = 1,
 			@detalle = @det2, @enc_id = @enc_compra OUTPUT;
 	END TRY
 	BEGIN CATCH
@@ -555,6 +564,9 @@ WHILE @i <= 35
 BEGIN
 	BEGIN TRY
 		DECLARE @det3 dbo.factura_det_type;
+		-- Una variable de tabla declarada dentro del WHILE no se reinicia en cada
+		-- vuelta: conserva las filas anteriores y repetiría det_item. Se vacía aquí.
+		DELETE FROM @det3;
 		DECLARE @cli_sel INT, @vend_sel INT, @cuotas INT, @fecha_venta DATE, @fecha_primer_pago DATE;
 
 		SELECT TOP 1 @cli_sel = cli_id FROM #cliente ORDER BY NEWID();

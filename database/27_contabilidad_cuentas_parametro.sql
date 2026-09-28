@@ -9,16 +9,17 @@
 -- una cuenta en cont_cuenta_parametro y el módulo de contabilidad solo tiene
 -- que editar esa tabla.
 --
--- Cuándo se genera cada partida (ver README, punto 22):
+-- Cuándo se genera cada partida (ver README, «Partida de ventas y cuentas
+-- afectadas»):
 --   * Venta: al grabar la factura, en la misma transacción. Es el momento en
 --     que nace la obligación (devengo), no cuando se cobra. Lo cobrado al
 --     facturar (contado o enganche) va a Caja; el resto, a Clientes.
 --   * Compra: al grabar el documento de compra.
 --   * Anulación: sp_documento_anular anula la partida del documento.
---   * Cobro de cuota, depósito, diferencia de cierre de caja y nómina
---     aprobada: sus conceptos quedan configurados aquí (COBRO_*, DEPOSITO_*,
---     CAJA_*, NOMINA_*) para cuando se construya el módulo contable; todavía
---     no generan partida.
+--   * Cobro de cuota: sus conceptos COBRO_* se configuran aquí.
+--   * Depósito, diferencia de cierre de caja y nómina aprobada: sus
+--     conceptos (DEPOSITO_*, CAJA_*, NOMINA_*) se configuran aquí y las
+--     partidas las genera 29_asientos_deposito_cierre_nomina.sql.
 --
 -- Se puede volver a correr.
 ------------------------------------------------------------------------------

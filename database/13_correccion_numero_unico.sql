@@ -190,10 +190,21 @@ DECLARE @bod1 INT = (SELECT bod_id FROM dbo.inv_bodega WHERE bod_codigo = 'BOD01
 DECLARE @tdo_comp INT = (SELECT tdo_id FROM dbo.inv_documento_tipo WHERE tdo_codigo = 'COMP');
 DECLARE @compras_creadas INT = 0;
 
+-- Con el 12 ya corregido las compras de reabastecimiento sí existen; solo se
+-- reintentan en una base donde no se creó ninguna.
+IF EXISTS (SELECT 1 FROM dbo.inv_documento_enc WHERE enc_numero_docto LIKE 'REST-%')
+BEGIN
+	PRINT 'La base ya tiene compras de reabastecimiento; no se reintentan.';
+	SET @i = 11;
+END
+
 WHILE @i <= 10
 BEGIN
 	BEGIN TRY
 		DECLARE @det2 dbo.compra_det_type;
+		-- Una variable de tabla declarada dentro del WHILE no se reinicia en cada
+		-- vuelta: conserva las filas anteriores y repetiría det_item. Se vacía aquí.
+		DELETE FROM @det2;
 		DECLARE @pro_sel INT, @precio_sel NUMERIC(12, 2), @cant_sel INT = 10 + (ABS(CHECKSUM(NEWID())) % 30);
 		DECLARE @prv_sel INT;
 		DECLARE @fecha_compra_i DATE = DATEADD(DAY, -1 * (ABS(CHECKSUM(NEWID())) % 120), CAST(GETDATE() AS DATE));

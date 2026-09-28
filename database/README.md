@@ -43,21 +43,23 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 26_parametros_general_caja.sql                -- parámetros de compañía, módulo General, cuadre de caja
 27_contabilidad_cuentas_parametro.sql         -- cuentas de las pólizas automáticas
 28_nomenclatura_contable.sql                  -- nomenclatura contable definitiva y su mantenimiento
+29_asientos_deposito_cierre_nomina.sql        -- partidas de depósito, cierre de caja y nómina
+30_datos_sinteticos_procesos.sql              -- opcional: datos de prueba de caja y nómina
 ```
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `28` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `30` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
-no lo incluyas.
+no lo incluyas (ni el `30`).
 
-`25` a `28` se corren siempre (también en una instalación nueva) y se
+`25` a `29` se corren siempre (también en una instalación nueva) y se
 pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
-(sin el cuadre obligatorio); si vuelves a correr cualquiera de los dos,
-vuelve a correr después `26` y `27`. Si vuelves a correr `12`, corre
-después `22` a `28` (el `12` vacía todas las tablas).
+(sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
+cualquiera de los dos, vuelve a correr después `26` a `29`. Si vuelves a
+correr `12`, corre después `22` a `30` (el `12` vacía todas las tablas).
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -540,10 +542,11 @@ póliza de nómina.
 
 **Cuándo:** la póliza de venta se genera automáticamente al **grabar la
 factura** (criterio de devengo: el ingreso y el IVA débito nacen con la
-factura, se cobre o no ese día). La anulación genera la póliza inversa.
-Los cobros de cuotas, los depósitos, el cierre de caja (faltantes y
-sobrantes) y la nómina ya tienen sus conceptos parametrizados, pero su
-póliza se generará cuando se construya el módulo de Contabilidad.
+factura, se cobre o no ese día). Al anular la factura su póliza queda
+anulada (`asi_estado = 'N'`). Los cobros de cuotas y los pagos con cheque
+generan su póliza con los conceptos `COBRO_*` y `PAGO_*`; los depósitos, el
+cierre de caja y la nómina, desde el `29` (ver «Partidas de depósito, cierre
+de caja y nómina»).
 
 **Qué cuentas** (factura de Q950 de contado, IVA 12 %):
 
@@ -613,6 +616,46 @@ acciones (procedimientos `paCuentaContable*`):
 - **Activar o inactivar**. Una cuenta asignada a una póliza automática no se puede inactivar.
 - **Eliminar**, solo sin hijos, partidas ni asignaciones.
 
+### Partidas de depósito, cierre de caja y nómina (`29`)
+
+Hasta el `28` estos procesos tenían sus conceptos configurados pero no
+generaban póliza. Desde el `29` la generan en la misma transacción: si la
+póliza no se puede armar (por ejemplo, un concepto sin cuenta), el depósito,
+el cierre o la aprobación tampoco se graban y se muestra el motivo.
+
+| Proceso | Debe | Haber |
+|---|---|---|
+| Depósito de caja al banco | `DEPOSITO_BANCOS` 1120014 Banco | `DEPOSITO_CAJA` 1110006 Caja general |
+| Cierre con faltante | `CAJA_FALTANTE` 5110071 Faltantes de caja | `COBRO_CAJA` 1110006 Caja general |
+| Cierre con sobrante | `COBRO_CAJA` 1110006 Caja general | `CAJA_SOBRANTE` 4110027 Sobrantes de caja |
+| Nómina aprobada | cada ingreso, a la cuenta de su tipo de movimiento | cada descuento, a la cuenta de su tipo; el líquido a `NOMINA_SUELDOS_POR_PAGAR` 2110013 |
+
+- El cierre solo genera póliza si hay diferencia; como el cierre exige
+  cuadrar, la diferencia nunca pasa de la tolerancia de la compañía.
+- Cuentas de los tipos de movimiento de nómina (se cambian en **RRHH › Tipos
+  de movimiento**):
+
+  | Tipo | Cuenta |
+  |---|---|
+  | Sueldo, comisiones, otros ingresos | 5110001 Sueldos y salarios |
+  | Horas extra | 5110002 Horas extras |
+  | Bonificación incentivo | 5110003 Bonificación incentivo |
+  | IGSS laboral | 2110001 IGSS cuotas laborales |
+  | ISR | 2110004 Retenciones ISR por pagar |
+  | Anticipo, otros descuentos | 1130001 Cuentas por cobrar a empleados |
+  | Préstamo | 1130002 Descuento a empleados por préstamo |
+
+  Un ingreso sin cuenta usa `NOMINA_SUELDOS_GASTO` (o `NOMINA_BONIFICACION` /
+  `NOMINA_IGSS_POR_PAGAR` para esos dos tipos). Un descuento sin cuenta
+  detiene la aprobación (error 52502).
+- Anular una nómina aprobada anula su póliza.
+- La nómina no calcula la cuota patronal del IGSS, IRTRA, INTECAP ni las
+  provisiones de prestaciones (aguinaldo, bono 14, indemnización,
+  vacaciones), así que su póliza tampoco las incluye.
+- Cada póliza guarda en `cont_asiento_enc.asi_origen_id` el registro que la
+  originó (`pcd_id`, `pca_id` o `IdNomina`); `asi_origen` admite ahora
+  `DEPOSITO`, `CIERRE_CAJA` y `NOMINA`.
+
 ## Módulos nuevos
 
 - **Seguridad (`sec_*`)**: roles, permisos y las tablas de asignación
@@ -661,12 +704,30 @@ de datos sirva también como prueba de humo de todo el paquete:
 1. Compra inicial que abastece el inventario de todos los productos que
    controlan existencia.
 2. ~10 compras de reabastecimiento adicionales, en fechas aleatorias.
-3. ~35 facturas de venta a clientes aleatorios (algunas de contado, otras a
-   crédito con 2-6 cuotas), validando que haya existencia suficiente antes de
-   grabar.
+3. ~35 facturas de venta a clientes aleatorios, todas a crédito (1 a 6
+   cuotas), validando que haya existencia suficiente antes de grabar. La
+   factura de contado se prueba desde la pantalla de Facturas.
 4. Cobro de hasta 15 cuotas de clientes.
 5. Pago con cheque de hasta 10 cuotas de proveedores.
 6. Anulación de 1-2 facturas, para probar `sp_documento_anular`.
+
+Las compras se graban con fecha de primer pago, para que generen su plan de
+pagos al proveedor y haya cuotas que pagar con cheque.
+
+**Corrección:** hasta esta versión, el `12` (y el reintento del `13`) solo
+grababa la primera factura y la primera compra de reabastecimiento; las
+demás fallaban en silencio. Una variable de tabla declarada dentro de un
+`WHILE` no se vacía en cada vuelta, así que desde la segunda vuelta repetía
+las líneas anteriores y chocaba con la llave única de `det_item`. Los errores
+quedaban atrapados por `TRY/CATCH` y solo se imprimían. Ahora se vacía al
+inicio de cada vuelta, y el `13` ya no reintenta si las compras existen.
+
+`30_datos_sinteticos_procesos.sql` agrega lo que el `12` no puede generar
+porque sus procedimientos se crean después: tres cobros en efectivo, un
+depósito, el cierre de la caja con un faltante de Q2.00 (sube la tolerancia
+de la compañía a Q5.00 si era 0) y la apertura de una caja nueva, y la
+nómina del mes en curso calculada y aprobada. Al terminar muestra las pólizas
+por origen y cuántas no cuadran (deben ser 0).
 
 Las contraseñas de los usuarios de ejemplo (`admin`, `jperez`, `mgarcia`,
 `lrodriguez`) son todas `Demo#2024` — solo para este juego de datos de

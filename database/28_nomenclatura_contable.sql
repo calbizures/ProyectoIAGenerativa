@@ -300,12 +300,16 @@ BEGIN
 	LEFT JOIN dbo.cont_cuenta_contable actu ON actu.cta_id = para.cta_id
 	WHERE para.cta_id IS NULL OR LEN(actu.cta_codigo) <> 7;
 
-	-- Tipos de movimiento de nómina: ingresos a sueldos, bonificación e IGSS a su cuenta.
+	-- Tipos de movimiento de nómina: cada ingreso a su gasto y cada descuento
+	-- a lo que se le debe a un tercero (IGSS, ISR) o a lo que el empleado le
+	-- debía a la empresa (anticipos y préstamos). La partida de nómina (29) usa
+	-- estas cuentas; se pueden cambiar en RRHH > Tipos de movimiento.
 	IF OBJECT_ID('dbo.rrhhTipoMovimientoNomina', 'U') IS NOT NULL
 		UPDATE tipo SET cta_id = cuen.cta_id
 		FROM dbo.rrhhTipoMovimientoNomina tipo
 		INNER JOIN (VALUES ('SUELDO', '5110001'), ('HORAS_EXTRA', '5110002'), ('COMISION', '5110001'), ('OTRO_INGRESO', '5110001'),
-						   ('BONIF_INCENTIVO', '5110003'), ('IGSS_LABORAL', '2110001')) v(tipo, cuenta) ON v.tipo = tipo.Codigo
+						   ('BONIF_INCENTIVO', '5110003'), ('IGSS_LABORAL', '2110001'), ('ISR', '2110004'),
+						   ('ANTICIPO', '1130001'), ('PRESTAMO', '1130002'), ('OTRO_DESCUENTO', '1130001')) v(tipo, cuenta) ON v.tipo = tipo.Codigo
 		INNER JOIN dbo.cont_cuenta_contable cuen ON cuen.cta_codigo = v.cuenta
 		LEFT JOIN dbo.cont_cuenta_contable actu ON actu.cta_id = tipo.cta_id
 		WHERE tipo.cta_id IS NULL OR LEN(actu.cta_codigo) <> 7;
@@ -348,9 +352,18 @@ FROM dbo.cont_asiento_det deta INNER JOIN @mapa mapa ON mapa.IdAnterior = deta.c
 UPDATE para SET cta_id = mapa.IdNuevo
 FROM dbo.cont_cuenta_parametro para INNER JOIN @mapa mapa ON mapa.IdAnterior = para.cta_id;
 
+-- Los tipos de movimiento base quedan sin cuenta para que
+-- paCuentaParametroCargarBase les asigne la suya (p. ej. horas extra a
+-- 5110002; en el catálogo de prueba compartían la cuenta de sueldos). Los
+-- tipos creados por el usuario pasan a la cuenta equivalente.
 IF OBJECT_ID('dbo.rrhhTipoMovimientoNomina', 'U') IS NOT NULL
+BEGIN
+	UPDATE tipo SET cta_id = NULL
+	FROM dbo.rrhhTipoMovimientoNomina tipo INNER JOIN @mapa mapa ON mapa.IdAnterior = tipo.cta_id
+	WHERE tipo.Codigo IN ('SUELDO', 'HORAS_EXTRA', 'COMISION', 'OTRO_INGRESO', 'BONIF_INCENTIVO', 'IGSS_LABORAL');
 	UPDATE tipo SET cta_id = mapa.IdNuevo
 	FROM dbo.rrhhTipoMovimientoNomina tipo INNER JOIN @mapa mapa ON mapa.IdAnterior = tipo.cta_id;
+END
 
 -- Catálogo de prueba: todo código que no cumple las posiciones. Primero las
 -- hojas y luego sus agrupadores.
