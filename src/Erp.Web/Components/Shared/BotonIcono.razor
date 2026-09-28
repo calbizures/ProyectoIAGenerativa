@@ -1,22 +1,35 @@
 @* Botón de acción con ícono + tooltip. Uso tipico en filas de tabla:
    <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => Editar(fila)" />
    Para acciones principales (una sola vez por pantalla, ej. "Nuevo") pasar Etiqueta
-   para mostrar además un texto junto al ícono. *@
-<button type="@TipoBoton"
-        class="boton-icono boton-icono-@Variante @(string.IsNullOrEmpty(Etiqueta) ? "" : "boton-icono-con-etiqueta")"
-        aria-label="@(string.IsNullOrEmpty(Etiqueta) ? Tooltip : null)"
-        disabled="@Deshabilitado"
-        @onclick="OnClick">
-    <Icono Nombre="@Icono" Tamano="@TamanoIcono" />
-    @if (!string.IsNullOrEmpty(Etiqueta))
-    {
-        <span class="boton-icono-etiqueta">@Etiqueta</span>
-    }
-    @if (string.IsNullOrEmpty(Etiqueta))
-    {
-        <span class="boton-icono-tip" aria-hidden="true">@Tooltip</span>
-    }
-</button>
+   para mostrar además un texto junto al ícono.
+   Para acciones que no se pueden deshacer (eliminar, anular) pasar Confirmacion con
+   la pregunta: el primer clic la muestra junto al botón y la acción corre con "Sí". *@
+@if (confirmando)
+{
+    <span class="confirmacion-en-linea" role="group" aria-label="@Confirmacion">
+        <span class="confirmacion-texto">@Confirmacion</span>
+        <button type="button" class="boton-mini boton-mini-peligro" @onclick="ConfirmarAsync" @ref="botonSi">Sí</button>
+        <button type="button" class="boton-mini" @onclick="() => confirmando = false">No</button>
+    </span>
+}
+else
+{
+    <button type="@TipoBoton"
+            class="boton-icono boton-icono-@Variante @(string.IsNullOrEmpty(Etiqueta) ? "" : "boton-icono-con-etiqueta")"
+            aria-label="@(string.IsNullOrEmpty(Etiqueta) ? Tooltip : null)"
+            disabled="@Deshabilitado"
+            @onclick="ClicAsync">
+        <Icono Nombre="@Icono" Tamano="@TamanoIcono" />
+        @if (!string.IsNullOrEmpty(Etiqueta))
+        {
+            <span class="boton-icono-etiqueta">@Etiqueta</span>
+        }
+        @if (string.IsNullOrEmpty(Etiqueta))
+        {
+            <span class="boton-icono-tip" aria-hidden="true">@Tooltip</span>
+        }
+    </button>
+}
 
 @code {
     [Parameter] public string Icono { get; set; } = "";
@@ -26,5 +39,34 @@
     [Parameter] public string TipoBoton { get; set; } = "button";
     [Parameter] public int TamanoIcono { get; set; } = 17;
     [Parameter] public bool Deshabilitado { get; set; }
+    [Parameter] public string? Confirmacion { get; set; }
     [Parameter] public EventCallback OnClick { get; set; }
+
+    private bool confirmando;
+    private bool enfocarSi;
+    private ElementReference botonSi;
+
+    private async Task ClicAsync()
+    {
+        if (string.IsNullOrEmpty(Confirmacion))
+        {
+            await OnClick.InvokeAsync();
+            return;
+        }
+        confirmando = true;
+        enfocarSi = true;
+    }
+
+    private async Task ConfirmarAsync()
+    {
+        confirmando = false;
+        await OnClick.InvokeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!enfocarSi) return;
+        enfocarSi = false;
+        try { await botonSi.FocusAsync(); } catch (InvalidOperationException) { }
+    }
 }

@@ -48,21 +48,24 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 31_sucursales_unidades_organigrama.sql        -- sucursales, bodegas, unidades de medida, factura con servicios, organigrama
 32_cuentas_por_cobrar_pagar.sql               -- cuentas por cobrar y por pagar, notas de crédito y débito
 33_datos_sinteticos_cxc_organigrama.sql       -- opcional: organigrama de ejemplo, factura con servicios y notas
+34_auditoria_procesos.sql                     -- recibos y cheques anulables, cobro de varias cuotas, límite de crédito
 ```
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `33` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `34` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30` ni el `33`).
 
-`25` a `29`, `31` y `32` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32` y `34` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `33`. Si vuelves a
-correr `12`, corre después `22` a `33` (el `12` vacía todas las tablas).
+cualquiera de los dos, vuelve a correr después `26` a `34`. Si vuelves a
+correr `12`, corre después `22` a `34` (el `12` vacía todas las tablas). Lo
+mismo con `31` y `32`: redefinen procedimientos que el `34` corrige, así que
+después de cualquiera de ellos corre de nuevo el `34`.
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -704,10 +707,13 @@ Contador):
 - **Estado de cuenta**: documentos con saldo (con sus cuotas) y movimientos
   con saldo corrido (facturas o compras, pagos o cheques y notas), con
   saldo inicial según la fecha *Desde*.
-- **Cobros** (CxC): cuota por cuota, con formas de pago, en la caja abierta
-  de la sucursal. **Pagos a proveedores** (CxP): cheque de una chequera
-  activa (propone el siguiente número). Ambos aceptan abonos parciales y
-  rechazan pagar más que el saldo de la cuota.
+- **Cobros** (CxC): el monto recibido se aplica a las cuotas del cliente de
+  la más antigua a la más reciente (o a las que se marquen), en un solo
+  recibo imprimible, con formas de pago, en la caja abierta de la sucursal;
+  los recibos de la caja se pueden anular mientras siga abierta (`34`).
+  **Pagos a proveedores** (CxP): cheque de una chequera activa (propone el
+  siguiente número); los cheques emitidos se pueden anular (`34`). Ambos
+  aceptan abonos parciales y rechazan pagar más que el saldo de la cuota.
 - **Notas de crédito y débito** (`NCC`/`NDC` a clientes, `NCP`/`NDP` de
   proveedores), ligadas al documento que afectan (`enc_id_referencia`):
   - La nota de crédito rebaja el saldo desde la última cuota hacia atrás
@@ -741,6 +747,43 @@ Pólizas de las notas (conceptos configurables en **Cuentas de pólizas**):
 La subcuenta 4110028 se crea en el `32`. El cobro de cuota y el pago con
 cheque ahora guardan en `asi_origen_id` el recibo o el cheque y en `enc_id`
 el documento pagado.
+
+### Segunda auditoría de procesos (`34`)
+
+- **Recibos de cobro con estado** (`pos_pago_enc.ppe_estado` A/N, motivo,
+  fecha y usuario de anulación). Los recibos que se grabaron sin forma de
+  pago no entraban al cuadre de caja: el `30` los completa como Efectivo
+  antes de cerrar su caja y el `34` hace lo mismo con los de cajas abiertas
+  (no toca cajas ya cerradas).
+- **Cobro de varias cuotas en un recibo** (`paCxcCobroRegistrar`, TVP
+  `cobro_cuota_type`): una sola póliza por el total. El saldo de cada cuota
+  se vuelve a comprobar al rebajarlo, por si otro cajero la cobró al mismo
+  tiempo. `sp_pos_registrar_pago_cuota` queda como atajo de una cuota; sin
+  formas de pago toma el monto como Efectivo.
+- **Anulación de recibos** (`paCxcReciboAnular`): solo mientras la caja donde
+  se cobró siga abierta y con motivo de al menos 5 caracteres. Devuelve el
+  saldo a las cuotas, anula la póliza y el monto sale del cuadre de la caja.
+  El pago de contado o enganche de una factura se anula con la factura.
+- **Anulación de cheques** (`paCxpChequeAnular`): en cualquier momento, salvo
+  que el cheque ya esté cobrado. Devuelve el saldo a la cuota y anula la
+  póliza; el número de cheque queda usado. `bco_cheque_emitido_det.ppg_id`
+  guarda ahora la cuota que paga cada cheque (el `34` la completa en los ya
+  emitidos) y las pólizas de pagos anteriores al `29` se ligan a su recibo o
+  cheque.
+- **Anular una factura o compra con pagos:** la factura se bloquea si tiene
+  cobros de cuotas vigentes (se anulan antes los recibos); su pago de
+  contado o enganche se anula con ella si la caja sigue abierta y, si ya
+  cerró, se bloquea (corresponde una nota de crédito). La compra se bloquea
+  si tiene cheques vigentes.
+- **Factura:** el límite de crédito del cliente (`cli_limite_credito`, 0 =
+  sin límite) se valida contra el saldo pendiente más lo financiado; las
+  formas de pago deben sumar el total (contado) o el enganche (crédito) y
+  requieren una caja abierta. `paClienteCreditoConsultar` alimenta el
+  resumen de crédito disponible en la pantalla.
+- El corte y cuadre de caja, los saldos de documentos y los estados de
+  cuenta ignoran recibos y cheques anulados.
+
+Errores `53201`-`53229`.
 
 ## Módulos nuevos
 
@@ -830,8 +873,10 @@ prueba.
 - La contabilización automática es una simplificación (una sola tasa de
   IVA por compañía, `cia_porc_iva`, sin múltiples tasas ni exenciones) pensada para demostrar el patrón
   de asiento balanceado, no para cumplimiento fiscal real.
-- `sp_documento_anular` no revierte automáticamente las cuotas de plan de
-  pago ya generadas.
+- Anular una factura no cambia sus cuotas (quedan fuera de los saldos porque
+  todas las consultas toman solo documentos vigentes).
+- La anulación de pólizas marca la póliza como anulada (`asi_estado = 'N'`);
+  no genera una póliza de reversión con fecha de la anulación.
 - Una nota de crédito solo se aplica a un documento con saldo pendiente: la
   devolución de una factura de contado ya pagada (que implicaría reembolso)
   no está cubierta.

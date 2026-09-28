@@ -1,0 +1,91 @@
+@page "/cxc/recibos/imprimir"
+@layout Erp.Web.Components.Layout.ReporteLayout
+@attribute [Authorize(Policy = "Permiso:CXC_ADMIN")]
+@using Erp.Data.Cuentas
+@inject ICuentasRepository CuentasRepository
+
+<PageTitle>Recibo de caja @Id</PageTitle>
+
+<div class="reporte-acciones">
+    <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
+        <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir o guardar PDF</span>
+    </button>
+</div>
+
+@if (recibo is null)
+{
+    <p class="mensaje-error" role="alert">@(error ?? $"No existe el recibo {Id}.")</p>
+}
+else
+{
+    var enc = recibo.Encabezado;
+    <div class="reporte-encabezado">
+        <div>
+            <div class="reporte-compania">@enc.Compania</div>
+            <div class="texto-tenue">NIT @enc.CompaniaNit · @enc.CompaniaDireccion</div>
+            <h1>Recibo de caja No. @enc.PpeId</h1>
+        </div>
+        <div class="reporte-meta">
+            @enc.Fecha.ToString("dd/MM/yyyy HH:mm")<br />
+            @enc.Sucursal · @enc.Caja<br />
+            Cajero: @enc.Usuario
+        </div>
+    </div>
+
+    @if (enc.Estado == "N")
+    {
+        <p class="recibo-anulado">ANULADO — @enc.MotivoAnulacion</p>
+    }
+
+    <p class="recibo-cliente">
+        Recibimos de <strong>@enc.Cliente</strong> (@enc.ClienteCodigo, NIT @(enc.ClienteNit ?? "C/F"))
+        la cantidad de <strong>Q@(recibo.Aplicaciones.Sum(a => a.Monto).ToString("N2"))</strong>, aplicada así:
+    </p>
+
+    <table class="tabla-datos">
+        <thead><tr><th>Documento</th><th class="num">Cuota</th><th class="col-fecha">Vencimiento</th><th class="num">Monto aplicado</th></tr></thead>
+        <tbody>
+            @foreach (var a in recibo.Aplicaciones)
+            {
+                <tr>
+                    <td>@a.Documento</td>
+                    <td class="num">@(a.Cuota?.ToString() ?? "Pago inicial")</td>
+                    <td class="col-fecha">@(a.Vencimiento?.ToString("dd/MM/yyyy") ?? "—")</td>
+                    <td class="num">@a.Monto.ToString("N2")</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot><tr><td colspan="3">Total</td><td class="num">Q@(recibo.Aplicaciones.Sum(a => a.Monto).ToString("N2"))</td></tr></tfoot>
+    </table>
+
+    <h2>Forma de pago</h2>
+    <table class="tabla-datos">
+        <thead><tr><th>Forma</th><th>Entidad</th><th>Referencia</th><th class="num">Monto</th></tr></thead>
+        <tbody>
+            @foreach (var f in recibo.Formas)
+            {
+                <tr><td>@f.Forma</td><td>@(f.Entidad ?? "—")</td><td>@(f.Referencia ?? "—")</td><td class="num">@f.Monto.ToString("N2")</td></tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="recibo-firmas">
+        <div>Recibí conforme</div>
+        <div>Entregué conforme</div>
+    </div>
+}
+
+<p class="reporte-pie">Impreso el @DateTime.Now.ToString("dd/MM/yyyy HH:mm").</p>
+
+@code {
+    [SupplyParameterFromQuery] public int Id { get; set; }
+
+    private ReciboDetalle? recibo;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { recibo = await CuentasRepository.ConsultarReciboAsync(Id); }
+        catch (Exception ex) { error = MensajesError.Traducir(ex); }
+    }
+}

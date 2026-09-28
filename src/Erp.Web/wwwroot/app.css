@@ -2427,3 +2427,170 @@ a.boton-icono {
         break-inside: avoid;
     }
 }
+
+/* ===================================================================
+   Segunda auditoría de UI/UX
+   =================================================================== */
+
+/* Texto auxiliar y accesibilidad */
+.texto-tenue { color: var(--texto-tenue); }
+.texto-ayuda { display: block; margin-top: 0.3rem; color: var(--texto-tenue); font-size: 0.78rem; }
+.sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+/* Contenedor de posición de los textos sr-only de encabezados: sin esto quedan
+   fuera del desplazamiento horizontal de la tabla y ensanchan la página. */
+.tabla-datos, .doc-tabla { position: relative; }
+
+.estado-badge-pendiente { background: #fff4e0; color: var(--aviso-texto); }
+
+/* Filas anuladas: se leen, pero no compiten con las vigentes. */
+.tabla-datos tr.fila-anulada td { color: var(--texto-tenue); }
+.tabla-datos tr.fila-anulada td:not(.col-estado):not(.col-acciones) { text-decoration: line-through; text-decoration-color: rgba(95, 106, 127, 0.5); }
+
+/* Confirmación de una operación con su siguiente paso (p. ej. imprimir el recibo). */
+.tarjeta-exito {
+    border-color: var(--exito-borde);
+    background: linear-gradient(0deg, var(--superficie), var(--superficie)) padding-box;
+    box-shadow: inset 4px 0 0 var(--exito-texto), var(--sombra-tarjeta);
+}
+.exito-contenido { display: flex; gap: 0.8rem; align-items: flex-start; color: var(--exito-texto); }
+.exito-contenido h2 { margin: 0 0 0.2rem; color: var(--exito-texto); }
+.exito-contenido p { margin: 0; color: var(--texto); }
+.tarjeta-exito .acciones-fila { margin-top: 1rem; }
+a.boton-icono { text-decoration: none; }
+
+/* Cobro de varias cuotas */
+.cobro-aplicacion {
+    display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.6rem 0.75rem;
+    margin-bottom: 1rem;
+}
+.cobro-aplicacion .campo { margin: 0; min-width: 180px; }
+.cobro-resumen { margin-left: auto; display: flex; gap: 1.25rem; color: var(--texto-tenue); font-size: 0.85rem; }
+.cobro-resumen strong { color: var(--si-navy-900); }
+.tabla-datos th.col-check, .tabla-datos td.col-check { width: 36px; text-align: center; }
+.tabla-datos td.col-check input { width: 18px; height: 18px; accent-color: var(--si-blue-600); }
+.tabla-datos td.col-aplicar input { width: 120px; text-align: right; }
+.tabla-datos tfoot td { padding: 0.7rem 0.75rem; background: var(--superficie-suave); font-weight: 600; border-top: 1px solid var(--borde); }
+
+/* Confirmación en línea de una anulación (motivo obligatorio). */
+.tabla-datos tr.fila-edicion-tabla td { background: #fff8f7; }
+.anulacion-form { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem; }
+.anulacion-form label { font-weight: 600; font-size: 0.85rem; color: var(--error-texto); width: 100%; }
+.anulacion-form input { flex: 1 1 260px; max-width: 480px; }
+.anulacion-form .texto-ayuda { width: 100%; margin-top: 0; }
+
+/* Crédito disponible del cliente en la factura. */
+.credito-resumen {
+    display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; align-items: center;
+    padding: 0.6rem 0.8rem; margin-top: 0.75rem;
+    border: 1px solid var(--borde-suave); border-radius: var(--radio);
+    background: var(--superficie-suave); font-size: 0.85rem; color: var(--texto-tenue);
+}
+.credito-resumen strong { color: var(--si-navy-900); }
+.credito-resumen.credito-excedido { border-color: var(--error-borde); background: var(--error-fondo); color: var(--error-texto); }
+.credito-resumen.credito-excedido strong { color: var(--error-texto); }
+
+/* Lista de terceros con saldo como punto de partida del estado de cuenta. */
+.cartera-lista td.col-accion { width: 1%; white-space: nowrap; }
+.boton-enlace {
+    border: 0; background: none; padding: 0; font: inherit; color: var(--si-navy-700);
+    text-align: left; cursor: pointer;
+}
+.boton-enlace:hover { color: var(--si-blue-600); text-decoration: underline; }
+.tabla-datos .enlace-fila { color: inherit; text-decoration: none; }
+.tabla-datos .enlace-fila:hover { color: var(--si-blue-600); text-decoration: underline; }
+
+/* Recibo de caja imprimible */
+.recibo-cliente { margin: 1rem 0; line-height: 1.6; }
+.recibo-anulado {
+    margin: 0.75rem 0; padding: 0.5rem 0.8rem; border: 2px solid var(--error-texto); border-radius: var(--radio);
+    color: var(--error-texto); font-weight: 700; letter-spacing: 0.04em;
+}
+.recibo-firmas { display: flex; gap: 3rem; margin-top: 3.5rem; }
+.recibo-firmas > div { flex: 1; padding-top: 0.4rem; border-top: 1px solid var(--texto); text-align: center; font-size: 0.85rem; }
+
+/* Barra de paginación de listados largos. */
+.paginador {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem;
+    padding: 0.75rem 0.25rem 0; color: var(--texto-tenue); font-size: 0.85rem;
+}
+.paginador-botones { display: flex; align-items: center; gap: 0.35rem; }
+.paginador-botones .pagina-actual { min-width: 5.5rem; text-align: center; }
+
+/* Los tooltips del último botón de una fila o barra se alinean a la derecha
+   para no salirse de la pantalla (ni crear desplazamiento horizontal). */
+.acciones-fila > .boton-icono:last-child .boton-icono-tip,
+.col-acciones .boton-icono:last-child .boton-icono-tip,
+.barra-herramientas > .boton-icono:last-child .boton-icono-tip,
+.barra-filtros > .boton-icono:last-child .boton-icono-tip,
+.maestro-detalle-encabezado > .boton-icono:last-child .boton-icono-tip {
+    left: auto;
+    right: 0;
+    transform: translateY(4px);
+}
+.acciones-fila > .boton-icono:last-child .boton-icono-tip::after,
+.col-acciones .boton-icono:last-child .boton-icono-tip::after,
+.barra-herramientas > .boton-icono:last-child .boton-icono-tip::after,
+.barra-filtros > .boton-icono:last-child .boton-icono-tip::after,
+.maestro-detalle-encabezado > .boton-icono:last-child .boton-icono-tip::after {
+    left: auto;
+    right: 12px;
+    transform: none;
+}
+.acciones-fila > .boton-icono:last-child:hover .boton-icono-tip,
+.acciones-fila > .boton-icono:last-child:focus-visible .boton-icono-tip,
+.col-acciones .boton-icono:last-child:hover .boton-icono-tip,
+.col-acciones .boton-icono:last-child:focus-visible .boton-icono-tip,
+.barra-herramientas > .boton-icono:last-child:hover .boton-icono-tip,
+.barra-herramientas > .boton-icono:last-child:focus-visible .boton-icono-tip,
+.barra-filtros > .boton-icono:last-child:hover .boton-icono-tip,
+.barra-filtros > .boton-icono:last-child:focus-visible .boton-icono-tip,
+.maestro-detalle-encabezado > .boton-icono:last-child:hover .boton-icono-tip,
+.maestro-detalle-encabezado > .boton-icono:last-child:focus-visible .boton-icono-tip {
+    transform: translateY(0);
+}
+
+/* Etiquetas de filtros: el mismo estilo en todas las barras. */
+.barra-filtros > label, .barra-herramientas > label:not(.campo-checkbox) {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--si-navy-700);
+}
+
+/* Listas desplegables largas no ensanchan la barra. */
+.barra-filtros select, .barra-herramientas select { max-width: 100%; }
+.filtro-campo { max-width: 100%; flex-wrap: wrap; }
+.filtro-campo select { min-width: 0; }
+
+/* Las pestañas se desplazan en lugar de salirse de la pantalla. */
+.pestanas-barra {
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+.pestana-boton { white-space: nowrap; flex-shrink: 0; }
+
+@media (max-width: 900px) {
+    /* Maestro-detalle y árboles (nomenclatura, unidades) en una columna. */
+    .maestro-detalle, .maestro-detalle.nomenclatura { grid-template-columns: minmax(0, 1fr); }
+    .maestro-detalle > * { min-width: 0; }
+    .maestro-detalle-encabezado { flex-wrap: wrap; }
+    .cobro-resumen { margin-left: 0; width: 100%; }
+}
+
+/* Confirmación en línea de BotonIcono (acciones que no se pueden deshacer). */
+.confirmacion-en-linea {
+    display: inline-flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 0.3rem;
+    padding: 0.2rem 0.3rem 0.2rem 0.55rem; border: 1px solid var(--error-borde); border-radius: var(--radio);
+    background: var(--error-fondo); white-space: normal; max-width: 260px;
+}
+.confirmacion-texto { color: var(--error-texto); font-size: 0.78rem; font-weight: 600; text-align: left; }
+.boton-mini {
+    min-width: 34px; height: 26px; padding: 0 0.55rem; border: 1px solid var(--borde); border-radius: 6px;
+    background: var(--superficie); color: var(--si-navy-700); font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+}
+.boton-mini:hover { background: var(--superficie-suave); }
+.boton-mini-peligro { border-color: var(--error-texto); background: var(--error-texto); color: #fff; }
+.boton-mini-peligro:hover { background: #8f1d17; }
+.boton-mini:focus-visible { outline: none; box-shadow: var(--anillo-foco); }

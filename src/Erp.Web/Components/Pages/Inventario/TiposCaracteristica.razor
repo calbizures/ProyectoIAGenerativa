@@ -81,7 +81,7 @@
                             <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => Editar(t)" />
                             @if (t.PtcEstado == "A")
                             {
-                                <BotonIcono Icono="trash-2" Tooltip="Desactivar" Variante="peligro" OnClick="() => DesactivarAsync(t)" />
+                                <BotonIcono Icono="trash-2" Tooltip="Desactivar" Confirmacion="¿Desactivar el tipo?" Variante="peligro" OnClick="() => DesactivarAsync(t)" />
                             }
                         </div>
                     </td>

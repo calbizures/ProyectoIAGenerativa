@@ -40,6 +40,66 @@ public sealed class CuentasRepository(IDbConnectionFactory connectionFactory) : 
 		return parametros.Get<int>("@ppe_id");
 	}
 
+	public Task<IReadOnlyList<CuotaPendiente>> ConsultarCuotasPendientesClienteAsync(int cliId) =>
+		ConsultarAsync<CuotaPendiente>("dbo.paCxcCuotasPendientesConsultar", new { CliId = cliId });
+
+	public async Task<int> RegistrarCobroCuotasAsync(int cliId, int pcaId, IReadOnlyList<CuotaCobro> cuotas, IReadOnlyList<FormaPagoCaptura> formasPago, int? usuarioAccionId)
+	{
+		var tablaCuotas = new DataTable();
+		tablaCuotas.Columns.Add("cpp_id", typeof(int));
+		tablaCuotas.Columns.Add("monto", typeof(decimal));
+		foreach (var c in cuotas) tablaCuotas.Rows.Add(c.CppId, c.Monto);
+
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new DynamicParameters();
+		parametros.Add("@CliId", cliId);
+		parametros.Add("@PcaId", pcaId);
+		parametros.Add("@UsuId", usuarioAccionId);
+		parametros.Add("@Cuotas", tablaCuotas.AsTableValuedParameter("dbo.cobro_cuota_type"));
+		parametros.Add("@Formas", CajaRepository.ConstruirTablaFormasPago(formasPago).AsTableValuedParameter("dbo.pago_forma_type"));
+		parametros.Add("@PpeId", dbType: DbType.Int32, direction: ParameterDirection.Output);
+		await connection.ExecuteAsync("dbo.paCxcCobroRegistrar", parametros, commandType: CommandType.StoredProcedure);
+		return parametros.Get<int>("@PpeId");
+	}
+
+	public Task<IReadOnlyList<ReciboResumen>> ConsultarRecibosAsync(int? pcaId, int? cliId, DateTime? desde, DateTime? hasta) =>
+		ConsultarAsync<ReciboResumen>("dbo.paCxcRecibosConsultar", new { PcaId = pcaId, CliId = cliId, Desde = desde?.Date, Hasta = hasta?.Date });
+
+	public async Task<ReciboDetalle?> ConsultarReciboAsync(int ppeId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		using var lector = await connection.QueryMultipleAsync("dbo.paCxcReciboDetalleConsultar", new { PpeId = ppeId }, commandType: CommandType.StoredProcedure);
+		var encabezado = await lector.ReadSingleOrDefaultAsync<ReciboEncabezado>();
+		if (encabezado is null) return null;
+		var aplicaciones = (await lector.ReadAsync<ReciboAplicacion>()).ToList();
+		var formas = (await lector.ReadAsync<ReciboForma>()).ToList();
+		return new ReciboDetalle(encabezado, aplicaciones, formas);
+	}
+
+	public async Task AnularReciboAsync(int ppeId, string motivo, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		await connection.ExecuteAsync("dbo.paCxcReciboAnular", new { PpeId = ppeId, Motivo = motivo, UsuId = usuarioAccionId },
+			commandType: CommandType.StoredProcedure);
+	}
+
+	public async Task<CreditoCliente?> ConsultarCreditoClienteAsync(int cliId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		return await connection.QuerySingleOrDefaultAsync<CreditoCliente>("dbo.paClienteCreditoConsultar", new { CliId = cliId },
+			commandType: CommandType.StoredProcedure);
+	}
+
+	public Task<IReadOnlyList<ChequeResumen>> ConsultarChequesAsync(int? prvId, DateTime? desde, DateTime? hasta) =>
+		ConsultarAsync<ChequeResumen>("dbo.paCxpChequesConsultar", new { PrvId = prvId, Desde = desde?.Date, Hasta = hasta?.Date });
+
+	public async Task AnularChequeAsync(int bceId, string motivo, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		await connection.ExecuteAsync("dbo.paCxpChequeAnular", new { BceId = bceId, Motivo = motivo, UsuId = usuarioAccionId },
+			commandType: CommandType.StoredProcedure);
+	}
+
 	public Task<IReadOnlyList<DocumentoSaldo>> ConsultarDocumentosCxpAsync(int? prvId, bool soloPendientes) =>
 		ConsultarAsync<DocumentoSaldo>("dbo.paCxpDocumentosConsultar", new { PrvId = prvId, SoloPendientes = soloPendientes });
 

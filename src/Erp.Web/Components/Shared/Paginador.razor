@@ -1,0 +1,36 @@
+@* Paginación de una lista ya cargada: muestra el rango visible y cambia de página. *@
+
+@if (Total > TamanoPagina)
+{
+    <nav class="paginador" aria-label="Paginación">
+        <span>Mostrando @(Desde + 1)–@Math.Min(Desde + TamanoPagina, Total) de @Total</span>
+        <div class="paginador-botones">
+            <BotonIcono Icono="chevron-left" Tooltip="Página anterior" Deshabilitado="Pagina <= 1" OnClick="() => IrAAsync(Pagina - 1)" />
+            <span class="pagina-actual">Página @Pagina de @Paginas</span>
+            <BotonIcono Icono="chevron-right" Tooltip="Página siguiente" Deshabilitado="Pagina >= Paginas" OnClick="() => IrAAsync(Pagina + 1)" />
+        </div>
+    </nav>
+}
+else if (Total > 0)
+{
+    <div class="paginador"><span>@Total registro@(Total == 1 ? "" : "s")</span></div>
+}
+
+@code {
+    [Parameter] public int Total { get; set; }
+    [Parameter] public int Pagina { get; set; } = 1;
+    [Parameter] public EventCallback<int> PaginaChanged { get; set; }
+    [Parameter] public int TamanoPagina { get; set; } = 25;
+
+    private int Paginas => Math.Max(1, (int)Math.Ceiling(Total / (double)TamanoPagina));
+    private int Desde => (Math.Clamp(Pagina, 1, Paginas) - 1) * TamanoPagina;
+
+    private Task IrAAsync(int pagina) => PaginaChanged.InvokeAsync(Math.Clamp(pagina, 1, Paginas));
+
+    // Filas de la página actual (la página pasa a la última si la lista se achicó).
+    public static IEnumerable<T> Recortar<T>(IReadOnlyList<T> filas, int pagina, int tamanoPagina = 25)
+    {
+        var paginas = Math.Max(1, (int)Math.Ceiling(filas.Count / (double)tamanoPagina));
+        return filas.Skip((Math.Clamp(pagina, 1, paginas) - 1) * tamanoPagina).Take(tamanoPagina);
+    }
+}

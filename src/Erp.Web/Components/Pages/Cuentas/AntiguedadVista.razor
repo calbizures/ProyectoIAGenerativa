@@ -14,8 +14,7 @@
 }
 
 <div class="barra-filtros">
-    <label for="ant-fecha">Fecha de corte</label>
-    <input id="ant-fecha" type="date" @bind="fechaCorte" />
+    <label class="filtro-campo" for="ant-fecha">Fecha de corte <input id="ant-fecha" type="date" @bind="fechaCorte" /></label>
     <div class="filtro-tercero">
         <SelectorTercero EsCliente="EsCliente" @bind-Seleccionado="tercero" />
     </div>
@@ -39,7 +38,7 @@
     </div>
 
     <BarraPestanas Pestanas="Vistas" @bind-PestanaActiva="vista" />
-    <AntiguedadTabla Grupos="grupos" Vista="@vista" EsCliente="EsCliente" />
+    <AntiguedadTabla Grupos="grupos" Vista="@vista" EsCliente="EsCliente" Enlaces="true" />
 }
 
 @code {

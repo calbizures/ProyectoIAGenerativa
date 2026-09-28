@@ -75,7 +75,7 @@ else
                                 <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => Editar(r)" />
                                 @if (r.Estado == "A")
                                 {
-                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar" Variante="peligro" OnClick="@(() => CambiarEstadoAsync(r, "I"))" />
+                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar" Confirmacion="¿Desactivar el registro?" Variante="peligro" OnClick="@(() => CambiarEstadoAsync(r, "I"))" />
                                 }
                                 else
                                 {

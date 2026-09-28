@@ -15,6 +15,7 @@
 @inject IClienteRepository ClienteRepository
 @inject IVendedorRepository VendedorRepository
 @inject ICajaRepository CajaRepository
+@inject Erp.Data.Cuentas.ICuentasRepository CuentasRepository
 
 <PageTitle>Facturas</PageTitle>
 
@@ -37,6 +38,7 @@
         <option value="A">Anuladas</option>
     </select>
     <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+    <input type="search" placeholder="Filtrar por número o cliente" aria-label="Filtrar por número o cliente" @bind="textoFiltro" @bind:event="oninput" @bind:after="() => pagina = 1" />
 
     <span class="barra-herramientas-separador"></span>
 
@@ -295,6 +297,28 @@
                         <div class="campo"><label>Fecha del primer pago</label><input type="date" @bind="nuevaFactura.FechaPrimerPago" /></div>
                     }
                 </div>
+                @if (condicionPagoFactura == "credito" && creditoCliente is not null)
+                {
+                    var financiado = Total - nuevaFactura.MontoEnganche;
+                    var excede = creditoCliente.Disponible is not null && financiado > creditoCliente.Disponible;
+                    <div class="credito-resumen @(excede ? "credito-excedido" : "")" role="@(excede ? "alert" : null)">
+                        @if (creditoCliente.Limite == 0)
+                        {
+                            <span>Cliente sin límite de crédito</span>
+                        }
+                        else
+                        {
+                            <span>Límite <strong>@MonedaSimbolo @creditoCliente.Limite.ToString("N2")</strong></span>
+                            <span>Saldo actual <strong>@MonedaSimbolo @creditoCliente.Saldo.ToString("N2")</strong></span>
+                            <span>Disponible <strong>@MonedaSimbolo @((creditoCliente.Disponible ?? 0).ToString("N2"))</strong></span>
+                        }
+                        <span>A financiar <strong>@MonedaSimbolo @financiado.ToString("N2")</strong></span>
+                        @if (excede)
+                        {
+                            <span>Excede el crédito disponible: aumente el enganche o cobre saldos pendientes.</span>
+                        }
+                    </div>
+                }
 
                 @if (condicionPagoFactura == "contado" || nuevaFactura.MontoEnganche > 0)
                 {
@@ -302,7 +326,7 @@
                     {
                         <div class="doc-nota">
                             <Icono Nombre="alert-triangle" Tamano="15" />
-                            <span>No hay una caja abierta en esta sucursal: el pago de @(condicionPagoFactura == "credito" ? "el enganche" : "esta factura") no se registrará en caja.</span>
+                            <span>No hay una caja abierta en esta sucursal. Para grabar @(condicionPagoFactura == "credito" ? "una factura con enganche" : "una factura de contado") abra la caja en Bancos › Caja.</span>
                         </div>
                     }
                     else
@@ -373,6 +397,10 @@
                         <div class="doc-totales-nota">
                             Capturado: @MonedaSimbolo @formasPagoCapturadas.Sum(f => f.Monto).ToString("N2")
                             de @MonedaSimbolo @MontoAPagar.ToString("N2")
+                            @if (formasPagoCapturadas.Count == 0 && formaPagoNueva.PftId > 0)
+                            {
+                                <span> · si no agrega otra, todo se registra en @NombreFormaPago(formaPagoNueva.PftId)</span>
+                            }
                         </div>
                     }
                 }
@@ -470,11 +498,11 @@
                 <tr><th class="col-fecha">Fecha</th><th class="col-serie">Serie/Número</th><th class="col-tipo">Tipo</th><th>Cliente</th><th class="num col-monto">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
             </thead>
             <tbody>
-                @if (facturas.Count == 0)
+                @if (facturasFiltradas.Count == 0)
                 {
                     <tr><td colspan="7" class="doc-tabla-vacia">No hay facturas para los filtros seleccionados.</td></tr>
                 }
-                @foreach (var f in facturas)
+                @foreach (var f in Paginador.Recortar(facturasFiltradas, pagina))
                 {
                     <tr class="@(encabezadoSeleccionado?.EncId == f.EncId ? "fila-seleccionada" : "")">
                         <td class="col-fecha">@f.EncFechaDocto.ToString("dd/MM/yyyy")</td>
@@ -499,16 +527,30 @@
                                     <Authorized>
                                         @if (f.EncEstado == "G")
                                         {
-                                            <BotonIcono Icono="ban" Tooltip="Anular factura" Variante="peligro" OnClick="() => AnularAsync(f)" />
+                                            <BotonIcono Icono="ban" Tooltip="Anular factura" Variante="peligro" OnClick="() => { anulandoId = f.EncId; mensaje = null; }" />
                                         }
                                     </Authorized>
                                 </AuthorizeView>
                             </div>
                         </td>
                     </tr>
+                    @if (anulandoId == f.EncId)
+                    {
+                        <tr class="fila-edicion-tabla">
+                            <td colspan="7">
+                                <div class="anulacion-form">
+                                    <label>¿Anular la factura @(string.IsNullOrWhiteSpace(f.EncSerieDocto) ? f.EncNumeroDocto : $"{f.EncSerieDocto}-{f.EncNumeroDocto}") de @f.NombreCliente por @f.EncMontoTotal.ToString("N2")?</label>
+                                    <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Sí, anular factura" Variante="peligro" OnClick="() => AnularAsync(f)" />
+                                    <BotonIcono Icono="x" Tooltip="No anular" Etiqueta="Cancelar" OnClick="() => anulandoId = null" />
+                                    <small class="texto-ayuda">Se devuelve el inventario y se anula la póliza. Si se pagó de contado y la caja sigue abierta, el pago sale del cuadre. Si tiene cobros de cuotas o notas, primero hay que anularlos.</small>
+                                </div>
+                            </td>
+                        </tr>
+                    }
                 }
             </tbody>
         </table>
+        <Paginador Total="facturasFiltradas.Count" @bind-Pagina="pagina" />
     </div>
 }
 
@@ -603,6 +645,12 @@
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
     private IReadOnlyList<FacturaEncabezado> facturas = Array.Empty<FacturaEncabezado>();
+    private string textoFiltro = "";
+    private int pagina = 1;
+    private int? anulandoId;
+    private IReadOnlyList<FacturaEncabezado> facturasFiltradas => string.IsNullOrWhiteSpace(textoFiltro)
+        ? facturas
+        : facturas.Where(f => $"{f.EncSerieDocto}-{f.EncNumeroDocto} {f.NombreCliente}".Contains(textoFiltro.Trim(), StringComparison.CurrentCultureIgnoreCase)).ToList();
     private IReadOnlyList<Vendedor> vendedores = Array.Empty<Vendedor>();
     private IReadOnlyList<Moneda> monedas = Array.Empty<Moneda>();
     private IReadOnlyList<Bodega> bodegas = Array.Empty<Bodega>();
@@ -661,6 +709,7 @@
     private decimal TotalDescuento => lineas.Sum(l => l.ValorDescuento);
     private decimal Total => Subtotal - TotalDescuento;
     private string condicionPagoFactura = "contado";
+    private Erp.Data.Cuentas.CreditoCliente? creditoCliente;
     private decimal ValorCuotaFactura => nuevaFactura.NumeroCuotas > 0
         ? Math.Round((Total - nuevaFactura.MontoEnganche) / nuevaFactura.NumeroCuotas, 2)
         : 0;
@@ -760,7 +809,8 @@
         facturas = await FacturaRepository.ConsultarAsync(
             tdoIdFactura, cliId: null, filtroFechaDesde, filtroFechaHasta,
             string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado,
-            pagina: 1, tamanioPagina: 100);
+            pagina: 1, tamanioPagina: 500);
+        pagina = 1;
     }
 
     private Task MostrarNuevaFacturaAsync()
@@ -778,7 +828,9 @@
         nuevaFactura.FechaPrimerPago = null;
         nuevaFactura.PveId = pveIdUsuario;
         condicionPagoFactura = "contado";
+        creditoCliente = null;
         formasPagoCapturadas.Clear();
+        formaPagoNueva.PftId = formasPagoTipo.FirstOrDefault(t => t.PftDescripcion == "Efectivo")?.PftId ?? 0;
         pcaIdFactura = cajasAbiertasSucursal.FirstOrDefault()?.PcaId ?? 0;
         lineas.Clear();
         clientesEncontrados = Array.Empty<Cliente>();
@@ -806,11 +858,14 @@
         nuevaFactura.Nit = cliente.CliNit;
         clientesEncontrados = Array.Empty<Cliente>();
         await CargarHistorialClienteAsync(cliente.CliId);
+        try { creditoCliente = await CuentasRepository.ConsultarCreditoClienteAsync(cliente.CliId); }
+        catch { creditoCliente = null; }
     }
 
     private void LimpiarClienteSeleccionado()
     {
         nuevaFactura.CliId = null;
+        creditoCliente = null;
         historialCliente = Array.Empty<FacturaEncabezado>();
         historialClienteExpandidoId = null;
         historialClienteDetalleExpandido = Array.Empty<FacturaDetalleLinea>();
@@ -1081,8 +1136,36 @@
             return;
         }
 
-        if (cajasAbiertasSucursal.Count > 0 && formasPagoCapturadas.Count > 0
-            && Math.Abs(formasPagoCapturadas.Sum(f => f.Monto) - MontoAPagar) > 0.01m)
+        if (MontoAPagar > 0 && cajasAbiertasSucursal.Count == 0)
+        {
+            mensaje = condicionPagoFactura == "credito"
+                ? "No hay una caja abierta para recibir el enganche. Abra la caja en Bancos › Caja o deje el enganche en cero."
+                : "No hay una caja abierta para recibir el pago de contado. Abra la caja en Bancos › Caja.";
+            esMensajeError = true;
+            return;
+        }
+
+        if (condicionPagoFactura == "credito" && creditoCliente?.Disponible is decimal disponible && Total - nuevaFactura.MontoEnganche > disponible)
+        {
+            mensaje = $"La factura excede el crédito disponible del cliente ({MonedaSimbolo} {disponible:N2}). Aumente el enganche o cobre saldos pendientes.";
+            esMensajeError = true;
+            return;
+        }
+
+        // Sin formas agregadas, el monto a pagar se registra en la forma de la fila de captura.
+        if (MontoAPagar > 0 && formasPagoCapturadas.Count == 0 && formaPagoNueva.PftId > 0)
+        {
+            formasPagoCapturadas.Add(new FormaPagoCaptura
+            {
+                PftId = formaPagoNueva.PftId,
+                Monto = MontoAPagar,
+                GefId = formaPagoNueva.GefId > 0 ? formaPagoNueva.GefId : null,
+                NumeroTarjetaUlt4 = formaPagoNueva.NumeroTarjetaUlt4,
+                NumeroCheque = formaPagoNueva.NumeroCheque
+            });
+        }
+
+        if (MontoAPagar > 0 && Math.Abs(formasPagoCapturadas.Sum(f => f.Monto) - MontoAPagar) > 0.01m)
         {
             mensaje = $"Las formas de pago capturadas ({formasPagoCapturadas.Sum(f => f.Monto):N2}) no coinciden con el monto a pagar ({MontoAPagar:N2}).";
             esMensajeError = true;
@@ -1174,6 +1257,7 @@
         {
             var usuId = await ObtenerUsuIdActualAsync();
             await FacturaRepository.AnularAsync(factura.EncId, usuId);
+            anulandoId = null;
             mensaje = "Factura anulada.";
             esMensajeError = false;
             if (encabezadoSeleccionado?.EncId == factura.EncId)

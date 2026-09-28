@@ -25,7 +25,16 @@ else if (Vista == "tercero")
             {
                 <tr>
                     <td class="col-codigo">@g.Codigo</td>
-                    <td>@g.Nombre</td>
+                    <td>
+                        @if (Enlaces)
+                        {
+                            <a class="enlace-fila" href="@($"{(EsCliente ? "cxc" : "cxp")}/estado-cuenta?id={g.Id}")" title="Ver estado de cuenta">@g.Nombre</a>
+                        }
+                        else
+                        {
+                            @g.Nombre
+                        }
+                    </td>
                     <td class="num">@g.Documentos.Count</td>
                     @for (var i = 0; i < 5; i++)
                     {
@@ -96,6 +105,8 @@ else
     [Parameter] public IReadOnlyList<AntiguedadGrupo> Grupos { get; set; } = Array.Empty<AntiguedadGrupo>();
     [Parameter] public string Vista { get; set; } = "tercero";		// tercero | documento
     [Parameter] public bool EsCliente { get; set; } = true;
+    // En pantalla, el nombre lleva al estado de cuenta; en el reporte impreso no.
+    [Parameter] public bool Enlaces { get; set; }
 
     private string Tercero => EsCliente ? "Cliente" : "Proveedor";
     private string Documento => EsCliente ? "Factura" : "Compra";

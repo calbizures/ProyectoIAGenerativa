@@ -74,7 +74,7 @@
                             <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(c)" />
                             @if (c.CliEstado == "A")
                             {
-                                <BotonIcono Icono="trash-2" Tooltip="Desactivar cliente" Variante="peligro" OnClick="() => DesactivarAsync(c)" />
+                                <BotonIcono Icono="trash-2" Tooltip="Desactivar cliente" Confirmacion="¿Desactivar el cliente?" Variante="peligro" OnClick="() => DesactivarAsync(c)" />
                             }
                         </div>
                     </td>

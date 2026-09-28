@@ -58,7 +58,7 @@
                             <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(rol)" />
                             @if (rol.RolEstado == "A")
                             {
-                                <BotonIcono Icono="trash-2" Tooltip="Desactivar rol" Variante="peligro" OnClick="() => DesactivarAsync(rol)" />
+                                <BotonIcono Icono="trash-2" Tooltip="Desactivar rol" Confirmacion="¿Desactivar el rol?" Variante="peligro" OnClick="() => DesactivarAsync(rol)" />
                             }
                         </div>
                     </td>

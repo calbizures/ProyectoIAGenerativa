@@ -50,7 +50,7 @@
                             <td class="col-acciones" @onclick:stopPropagation="true">
                                 <div class="acciones-fila">
                                     <BotonIcono Icono="pencil" Tooltip="Editar tipo" OnClick="() => EditarTipo(t)" />
-                                    <BotonIcono Icono="trash-2" Tooltip="Eliminar tipo" Variante="peligro" Deshabilitado="t.CantidadEntidades > 0" OnClick="() => EliminarTipoAsync(t)" />
+                                    <BotonIcono Icono="trash-2" Tooltip="Eliminar tipo" Confirmacion="¿Eliminar el tipo?" Variante="peligro" Deshabilitado="t.CantidadEntidades > 0" OnClick="() => EliminarTipoAsync(t)" />
                                 </div>
                             </td>
                         </tr>
@@ -110,7 +110,7 @@
                                 <td class="col-acciones">
                                     <div class="acciones-fila">
                                         <BotonIcono Icono="pencil" Tooltip="Editar entidad" OnClick="() => EditarEntidad(e)" />
-                                        <BotonIcono Icono="trash-2" Tooltip="Eliminar entidad" Variante="peligro" OnClick="() => EliminarEntidadAsync(e)" />
+                                        <BotonIcono Icono="trash-2" Tooltip="Eliminar entidad" Confirmacion="¿Eliminar la entidad?" Variante="peligro" OnClick="() => EliminarEntidadAsync(e)" />
                                     </div>
                                 </td>
                             </tr>

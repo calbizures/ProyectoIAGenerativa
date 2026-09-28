@@ -45,6 +45,15 @@ BEGIN
 	DECLARE @gef_banco INT = (SELECT gef_id FROM dbo.gen_entidad_financiera WHERE gef_codigo = 'BI');
 	DECLARE @hoy DATE = CAST(GETDATE() AS DATE);
 
+	-- Los cobros del 12 se grabaron antes de que existieran las formas de pago
+	-- (24): se completan como Efectivo para que entren al cuadre de esta caja.
+	INSERT INTO dbo.pos_pago_forma (pft_id, ppf_monto, ppe_id, InsUsuario, InsFechaHora)
+	SELECT @pft_efectivo, apli.Monto, pago.ppe_id, pago.usu_id, SYSDATETIME()
+	FROM dbo.pos_pago_enc pago
+	CROSS APPLY (SELECT SUM(deta.ppd_valor_aplicado) AS Monto FROM dbo.pos_pago_det deta WHERE deta.ppe_id = pago.ppe_id) apli
+	WHERE pago.pca_id = @pca_id AND apli.Monto > 0
+	  AND NOT EXISTS (SELECT 1 FROM dbo.pos_pago_forma form WHERE form.ppe_id = pago.ppe_id);
+
 	-- Tres cuotas pendientes cobradas en efectivo.
 	DECLARE @cpp_id INT, @saldo NUMERIC(12, 2), @ppe_id INT;
 	DECLARE @formas dbo.pago_forma_type;

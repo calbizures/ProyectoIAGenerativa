@@ -77,7 +77,7 @@
                             <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(u)" />
                             @if (u.UsuEstado == "A")
                             {
-                                <BotonIcono Icono="trash-2" Tooltip="Desactivar usuario" Variante="peligro" OnClick="() => DesactivarAsync(u)" />
+                                <BotonIcono Icono="trash-2" Tooltip="Desactivar usuario" Confirmacion="¿Desactivar el usuario?" Variante="peligro" OnClick="() => DesactivarAsync(u)" />
                             }
                             else
                             {

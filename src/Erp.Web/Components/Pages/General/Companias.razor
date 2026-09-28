@@ -56,7 +56,7 @@
                                 <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => { Seleccionar(c); IniciarEdicion(); }" />
                                 @if (c.CiaEstado == "A")
                                 {
-                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar compañía" Variante="peligro" OnClick="@(() => CambiarEstadoAsync(c, "I"))" />
+                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar compañía" Confirmacion="¿Desactivar la compañía?" Variante="peligro" OnClick="@(() => CambiarEstadoAsync(c, "I"))" />
                                 }
                                 else
                                 {

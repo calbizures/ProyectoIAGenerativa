@@ -33,6 +33,7 @@
         <option value="A">Anuladas</option>
     </select>
     <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+    <input type="search" placeholder="Filtrar por número o proveedor" aria-label="Filtrar por número o proveedor" @bind="textoFiltro" @bind:event="oninput" @bind:after="() => pagina = 1" />
 
     <span class="barra-herramientas-separador"></span>
 
@@ -264,11 +265,11 @@
             <tr><th class="col-fecha">Fecha</th><th class="col-serie">Serie/Número</th><th class="col-tipo">Tipo</th><th>Proveedor</th><th class="num col-monto">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
         </thead>
         <tbody>
-            @if (compras.Count == 0)
+            @if (comprasFiltradas.Count == 0)
             {
                 <tr><td colspan="7" class="doc-tabla-vacia">No hay compras para los filtros seleccionados.</td></tr>
             }
-            @foreach (var c in compras)
+            @foreach (var c in Paginador.Recortar(comprasFiltradas, pagina))
             {
                 <tr class="@(encabezadoSeleccionado?.EncId == c.EncId ? "fila-seleccionada" : "")">
                     <td class="col-fecha">@c.EncFechaDocto.ToString("dd/MM/yyyy")</td>
@@ -291,14 +292,28 @@
                             <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarCompraAsync(c)" />
                             @if (c.EncEstado == "G")
                             {
-                                <BotonIcono Icono="ban" Tooltip="Anular compra" Variante="peligro" OnClick="() => AnularAsync(c)" />
+                                <BotonIcono Icono="ban" Tooltip="Anular compra" Variante="peligro" OnClick="() => { anulandoId = c.EncId; mensaje = null; }" />
                             }
                         </div>
                     </td>
                 </tr>
+                @if (anulandoId == c.EncId)
+                {
+                    <tr class="fila-edicion-tabla">
+                        <td colspan="7">
+                            <div class="anulacion-form">
+                                <label>¿Anular la compra @(string.IsNullOrWhiteSpace(c.EncSerieDocto) ? c.EncNumeroDocto : $"{c.EncSerieDocto}-{c.EncNumeroDocto}") de @c.PrvNombreComercial por @c.EncMontoTotal.ToString("N2")?</label>
+                                <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Sí, anular compra" Variante="peligro" OnClick="() => AnularAsync(c)" />
+                                <BotonIcono Icono="x" Tooltip="No anular" Etiqueta="Cancelar" OnClick="() => anulandoId = null" />
+                                <small class="texto-ayuda">Se reversa la entrada al inventario y se anula la póliza. Si tiene cheques emitidos o notas, primero hay que anularlos.</small>
+                            </div>
+                        </td>
+                    </tr>
+                }
             }
         </tbody>
     </table>
+    <Paginador Total="comprasFiltradas.Count" @bind-Pagina="pagina" />
 </div>
 
 @if (encabezadoSeleccionado is not null)
@@ -354,6 +369,12 @@
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
     private IReadOnlyList<CompraEncabezado> compras = Array.Empty<CompraEncabezado>();
+    private string textoFiltro = "";
+    private int pagina = 1;
+    private int? anulandoId;
+    private IReadOnlyList<CompraEncabezado> comprasFiltradas => string.IsNullOrWhiteSpace(textoFiltro)
+        ? compras
+        : compras.Where(c => $"{c.EncSerieDocto}-{c.EncNumeroDocto} {c.PrvNombreComercial}".Contains(textoFiltro.Trim(), StringComparison.CurrentCultureIgnoreCase)).ToList();
     private IReadOnlyList<DocumentoTipoCompra> tiposDocumento = Array.Empty<DocumentoTipoCompra>();
     private IReadOnlyList<Moneda> monedas = Array.Empty<Moneda>();
     private IReadOnlyList<Bodega> bodegas = Array.Empty<Bodega>();
@@ -428,7 +449,8 @@
         compras = await CompraRepository.ConsultarAsync(
             tiposId, prvId: null, filtroFechaDesde, filtroFechaHasta,
             string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado,
-            pagina: 1, tamanioPagina: 100);
+            pagina: 1, tamanioPagina: 500);
+        pagina = 1;
     }
 
     private Task MostrarNuevaCompraAsync()
@@ -632,6 +654,7 @@
         {
             var usuId = await ObtenerUsuIdActualAsync();
             await CompraRepository.AnularAsync(compra.EncId, usuId);
+            anulandoId = null;
             mensaje = "Compra anulada.";
             esMensajeError = false;
             if (encabezadoSeleccionado?.EncId == compra.EncId) encabezadoSeleccionado = null;

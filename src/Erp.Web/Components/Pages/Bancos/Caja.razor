@@ -353,7 +353,7 @@ else if (pestanaActiva == "cajasreceptoras")
                                 <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => IniciarEdicionCajaReceptora(c)" />
                                 @if (c.PcrEstado == "A")
                                 {
-                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar" Variante="peligro" OnClick="() => DesactivarCajaReceptoraAsync(c)" />
+                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar caja" Confirmacion="¿Desactivar la caja receptora?" Variante="peligro" OnClick="() => DesactivarCajaReceptoraAsync(c)" />
                                 }
                             </div>
                         </td>

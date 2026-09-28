@@ -17,10 +17,8 @@
     <div class="filtro-tercero">
         <SelectorTercero EsCliente="EsCliente" Seleccionado="tercero" SeleccionadoChanged="CambiarTerceroAsync" />
     </div>
-    <label for="ec-desde">Desde</label>
-    <input id="ec-desde" type="date" @bind="desde" />
-    <label for="ec-hasta">Hasta</label>
-    <input id="ec-hasta" type="date" @bind="hasta" />
+    <label class="filtro-campo" for="ec-desde">Desde <input id="ec-desde" type="date" @bind="desde" /></label>
+    <label class="filtro-campo" for="ec-hasta">Hasta <input id="ec-hasta" type="date" @bind="hasta" /></label>
     <BotonIcono Icono="search" Tooltip="Consultar" Etiqueta="Consultar" Variante="primario" Deshabilitado="tercero is null" OnClick="ConsultarAsync" />
     @if (tercero is not null)
     {
@@ -36,7 +34,43 @@
 
 @if (tercero is null)
 {
-    <p class="estado-vacio">Seleccione @(EsCliente ? "un cliente" : "un proveedor") para ver su estado de cuenta.</p>
+    @if (cartera.Count == 0)
+    {
+        <p class="estado-vacio">No hay @(EsCliente ? "clientes" : "proveedores") con saldo pendiente. Busque uno arriba para ver su historial.</p>
+    }
+    else
+    {
+        <section class="tarjeta" aria-labelledby="titulo-cartera">
+            <div class="maestro-detalle-encabezado">
+                <h2 id="titulo-cartera">@(EsCliente ? "Clientes" : "Proveedores") con saldo</h2>
+                <span class="texto-tenue">@cartera.Count · saldo Q@(cartera.Sum(g => g.Total).ToString("N2")) · vencido Q@(cartera.Sum(g => g.Total - g.Rangos[0]).ToString("N2"))</span>
+            </div>
+            <p class="texto-tenue">Elija uno para ver su estado de cuenta, o búsquelo arriba.</p>
+            <table class="tabla-datos cartera-lista">
+                <thead>
+                    <tr><th class="col-codigo">Código</th><th>@(EsCliente ? "Cliente" : "Proveedor")</th><th class="num">Documentos</th><th class="num">Vencido</th><th class="num">Saldo</th><th class="col-acciones"><span class="sr-only">Acción</span></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var g in cartera.OrderByDescending(g => g.Total - g.Rangos[0]).ThenByDescending(g => g.Total))
+                    {
+                        var vencido = g.Total - g.Rangos[0];
+                        <tr>
+                            <td class="col-codigo">@g.Codigo</td>
+                            <td><button type="button" class="boton-enlace" @onclick="() => CambiarTerceroAsync(new TerceroSeleccion(g.Id, g.Codigo, g.Nombre))">@g.Nombre</button></td>
+                            <td class="num">@g.Documentos.Count</td>
+                            <td class="num @(vencido > 0 ? "antiguedad-vencido" : "")">@(vencido > 0 ? vencido.ToString("N2") : "—")</td>
+                            <td class="num"><strong>@g.Total.ToString("N2")</strong></td>
+                            <td class="col-acciones">
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="eye" Tooltip="Ver estado de cuenta" OnClick="() => CambiarTerceroAsync(new TerceroSeleccion(g.Id, g.Codigo, g.Nombre))" />
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+    }
 }
 else if (consultado)
 {
@@ -67,6 +101,8 @@ else if (consultado)
 
 @code {
     [Parameter] public bool EsCliente { get; set; } = true;
+    // Tercero con el que abre la pantalla (p. ej. desde la antigüedad de saldos).
+    [Parameter] public int? TerceroId { get; set; }
 
     private static readonly IReadOnlyList<PestanaItem> Pestanas = new[]
     {
@@ -85,11 +121,27 @@ else if (consultado)
     private IReadOnlyList<CuotaPlanPago> cuotasCliente = Array.Empty<CuotaPlanPago>();
     private IReadOnlyList<CuotaProveedor> cuotasProveedor = Array.Empty<CuotaProveedor>();
     private string? mensaje;
+    private List<AntiguedadGrupo> cartera = new();
 
     private string Modulo => EsCliente ? "cxc" : "cxp";
     private string Filtros => $"id={tercero?.Id}{(desde is null ? "" : $"&desde={desde:yyyy-MM-dd}")}{(hasta is null ? "" : $"&hasta={hasta:yyyy-MM-dd}")}";
     private string UrlExcel => $"reportes/{Modulo}/estado-cuenta.xlsx?{Filtros}";
     private string UrlImprimir => $"{Modulo}/estado-cuenta/imprimir?{Filtros}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var filas = EsCliente
+                ? await CuentasRepository.ConsultarAntiguedadClientesAsync(DateTime.Today, null)
+                : await CuentasRepository.ConsultarAntiguedadProveedoresAsync(DateTime.Today, null);
+            cartera = AntiguedadGrupo.Agrupar(filas);
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+
+        var inicial = cartera.FirstOrDefault(g => g.Id == TerceroId);
+        if (inicial is not null) await CambiarTerceroAsync(new TerceroSeleccion(inicial.Id, inicial.Codigo, inicial.Nombre));
+    }
 
     private async Task CambiarTerceroAsync(TerceroSeleccion? nuevo)
     {

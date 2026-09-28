@@ -64,7 +64,7 @@ else
                     <td class="col-acciones">
                         <div class="acciones-fila">
                             <BotonIcono Icono="pencil" Tooltip="Editar unidad" OnClick="() => Editar(u)" />
-                            <BotonIcono Icono="trash-2" Tooltip="@(u.CantidadUsos > 0 ? "En uso: inactívela en lugar de eliminarla" : "Eliminar unidad")" Variante="peligro"
+                            <BotonIcono Icono="trash-2" Tooltip="@(u.CantidadUsos > 0 ? "En uso: inactívela en lugar de eliminarla" : "Eliminar unidad")" Confirmacion="¿Eliminar la unidad?" Variante="peligro"
                                         Deshabilitado="u.CantidadUsos > 0" OnClick="() => EliminarAsync(u)" />
                         </div>
                     </td>

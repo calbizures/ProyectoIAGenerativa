@@ -106,7 +106,7 @@ else
                             @if (m.Estado == "A" && m.IdNomina is null)
                             {
                                 <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => Editar(m)" />
-                                <BotonIcono Icono="ban" Tooltip="Anular" Variante="peligro" OnClick="() => AnularAsync(m)" />
+                                <BotonIcono Icono="ban" Tooltip="Anular movimiento" Confirmacion="¿Anular el movimiento?" Variante="peligro" OnClick="() => AnularAsync(m)" />
                             }
                         </div>
                     </td>

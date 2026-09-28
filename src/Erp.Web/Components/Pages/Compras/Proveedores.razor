@@ -72,7 +72,7 @@
                             <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(p)" />
                             @if (p.PrvEstado == "A")
                             {
-                                <BotonIcono Icono="trash-2" Tooltip="Desactivar proveedor" Variante="peligro" OnClick="() => DesactivarAsync(p)" />
+                                <BotonIcono Icono="trash-2" Tooltip="Desactivar proveedor" Confirmacion="¿Desactivar el proveedor?" Variante="peligro" OnClick="() => DesactivarAsync(p)" />
                             }
                         </div>
                     </td>

@@ -116,7 +116,7 @@
                                 <Authorized>
                                     @if (p.ProEstado == "A")
                                     {
-                                        <BotonIcono Icono="trash-2" Tooltip="Desactivar producto" Variante="peligro" OnClick="() => DesactivarAsync(p)" />
+                                        <BotonIcono Icono="trash-2" Tooltip="Desactivar producto" Confirmacion="¿Desactivar el producto?" Variante="peligro" OnClick="() => DesactivarAsync(p)" />
                                     }
                                 </Authorized>
                             </AuthorizeView>
@@ -268,7 +268,7 @@ else if (pestanaActiva == "caracteristicas" && seleccionado is not null)
                             <td>
                                 <div class="acciones-fila">
                                     <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => EditarCaracteristica(c)" />
-                                    <BotonIcono Icono="trash-2" Tooltip="Eliminar" Variante="peligro" OnClick="() => EliminarCaracteristicaAsync(c)" />
+                                    <BotonIcono Icono="trash-2" Tooltip="Eliminar" Confirmacion="¿Eliminar la característica?" Variante="peligro" OnClick="() => EliminarCaracteristicaAsync(c)" />
                                 </div>
                             </td>
                         }
@@ -360,7 +360,7 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
                             <td class="col-acciones">
                                 <div class="acciones-fila">
                                     <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => EditarPrecio(p)" />
-                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar precio" Variante="peligro" OnClick="() => EliminarPrecioAsync(p)" />
+                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar precio" Confirmacion="¿Desactivar el precio?" Variante="peligro" OnClick="() => EliminarPrecioAsync(p)" />
                                 </div>
                             </td>
                         }

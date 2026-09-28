@@ -123,3 +123,101 @@ public sealed class NuevaLineaNota
 	public int? UmeId { get; set; }
 	public int? DetIdOrigen { get; set; }			// devolución de esa línea; null = rebaja o cargo por monto
 }
+
+// Cuota con saldo de un cliente (para aplicar un cobro de la más antigua a la más reciente).
+public sealed class CuotaPendiente
+{
+	public int CppId { get; set; }
+	public int EncId { get; set; }
+	public string Documento { get; set; } = "";
+	public DateTime FechaDocumento { get; set; }
+	public int Cuota { get; set; }
+	public DateTime Vencimiento { get; set; }
+	public int Dias { get; set; }
+	public decimal ValorCuota { get; set; }
+	public decimal Saldo { get; set; }
+}
+
+public sealed record CuotaCobro(int CppId, decimal Monto);
+
+public sealed class ReciboResumen
+{
+	public int PpeId { get; set; }
+	public DateTime Fecha { get; set; }
+	public int CliId { get; set; }
+	public string Cliente { get; set; } = "";
+	public decimal Total { get; set; }
+	public string? Documentos { get; set; }
+	public string? Formas { get; set; }
+	public string Estado { get; set; } = "A";
+	public string? MotivoAnulacion { get; set; }
+	public int? PcaId { get; set; }
+	public string? Caja { get; set; }
+	public string? Usuario { get; set; }
+	public bool CajaAbierta { get; set; }
+	public bool EsPagoFactura { get; set; }
+	public bool Anulado => Estado == "N";
+	// Se anula aquí solo un cobro de cuotas vigente cuya caja siga abierta.
+	public bool SePuedeAnular => !Anulado && CajaAbierta && !EsPagoFactura;
+}
+
+public sealed class ReciboEncabezado
+{
+	public int PpeId { get; set; }
+	public DateTime Fecha { get; set; }
+	public string Estado { get; set; } = "A";
+	public string? MotivoAnulacion { get; set; }
+	public string? ClienteCodigo { get; set; }
+	public string Cliente { get; set; } = "";
+	public string? ClienteNit { get; set; }
+	public string? Compania { get; set; }
+	public string? CompaniaNit { get; set; }
+	public string? CompaniaDireccion { get; set; }
+	public string? Sucursal { get; set; }
+	public string? Caja { get; set; }
+	public string? Usuario { get; set; }
+}
+
+public sealed class ReciboAplicacion
+{
+	public string Documento { get; set; } = "";
+	public int? Cuota { get; set; }
+	public DateTime? Vencimiento { get; set; }
+	public decimal Monto { get; set; }
+	public decimal? SaldoCuota { get; set; }
+}
+
+public sealed class ReciboForma
+{
+	public string Forma { get; set; } = "";
+	public decimal Monto { get; set; }
+	public string? Entidad { get; set; }
+	public string? Referencia { get; set; }
+}
+
+public sealed record ReciboDetalle(ReciboEncabezado Encabezado, IReadOnlyList<ReciboAplicacion> Aplicaciones, IReadOnlyList<ReciboForma> Formas);
+
+public sealed class ChequeResumen
+{
+	public int BceId { get; set; }
+	public DateTime Fecha { get; set; }
+	public string Numero { get; set; } = "";
+	public string? Cuenta { get; set; }
+	public int PrvId { get; set; }
+	public string Proveedor { get; set; } = "";
+	public string Documento { get; set; } = "";
+	public decimal Valor { get; set; }
+	public string EstadoCheque { get; set; } = "E";	// E emitido, C cobrado, A anulado
+	public string? Observaciones { get; set; }
+	public string? Usuario { get; set; }
+	public string EstadoTexto => EstadoCheque switch { "A" => "Anulado", "C" => "Cobrado", _ => "Emitido" };
+}
+
+// Límite 0 = sin límite (Disponible null).
+public sealed class CreditoCliente
+{
+	public int CliId { get; set; }
+	public decimal Limite { get; set; }
+	public decimal Saldo { get; set; }
+	public decimal? Disponible { get; set; }
+}

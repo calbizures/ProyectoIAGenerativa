@@ -10,7 +10,7 @@
 
 <div class="pagina-encabezado">
     <h1>Pagos a proveedores</h1>
-    <p>Elija el proveedor, la compra y la cuota, y emita el cheque. El pago genera su póliza (Proveedores / Bancos).</p>
+    <p>Elija el proveedor, la compra y la cuota, y emita el cheque. El pago genera su póliza (Proveedores / Bancos). Un cheque mal emitido se anula abajo, en Cheques emitidos.</p>
 </div>
 
 @if (mensaje is not null)
@@ -81,6 +81,64 @@
     </section>
 }
 
+<section class="tarjeta" aria-labelledby="titulo-cheques">
+    <div class="maestro-detalle-encabezado">
+        <h2 id="titulo-cheques">Cheques emitidos@(proveedor is null ? "" : $" a {proveedor.Nombre}")</h2>
+        <span class="texto-tenue">@cheques.Count(c => c.EstadoCheque != "A") vigente(s) · Q@(cheques.Where(c => c.EstadoCheque != "A").Sum(c => c.Valor).ToString("N2"))</span>
+    </div>
+    @if (cheques.Count == 0)
+    {
+        <p class="estado-vacio">No hay cheques emitidos@(proveedor is null ? "" : " a este proveedor").</p>
+    }
+    else
+    {
+        <table class="tabla-datos">
+            <thead>
+                <tr><th class="col-fecha">Fecha</th><th class="col-codigo">Cheque</th><th>Cuenta</th><th>Proveedor</th><th>Documento</th><th class="num">Valor</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var c in cheques)
+                {
+                    <tr class="@(c.EstadoCheque == "A" ? "fila-anulada" : "")">
+                        <td class="col-fecha">@c.Fecha.ToString("dd/MM/yyyy")</td>
+                        <td class="col-codigo">@c.Numero</td>
+                        <td>@c.Cuenta</td>
+                        <td>@c.Proveedor</td>
+                        <td>@c.Documento</td>
+                        <td class="num">@c.Valor.ToString("N2")</td>
+                        <td class="col-estado">
+                            <span class="estado-badge @(c.EstadoCheque == "A" ? "estado-badge-inactivo" : "estado-badge-activo")" title="@c.Observaciones">@c.EstadoTexto</span>
+                        </td>
+                        <td class="col-acciones">
+                            @if (c.EstadoCheque == "E")
+                            {
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="ban" Tooltip="Anular cheque" Variante="peligro" OnClick="() => IniciarAnulacion(c)" />
+                                </div>
+                            }
+                        </td>
+                    </tr>
+                    @if (anulando?.BceId == c.BceId)
+                    {
+                        <tr class="fila-edicion-tabla">
+                            <td colspan="8">
+                                <div class="anulacion-form">
+                                    <label for="motivo-cheque">Motivo de la anulación del cheque @c.Numero</label>
+                                    <input id="motivo-cheque" maxlength="200" placeholder="Ej.: cheque impreso con error" @bind="motivoAnulacion" @bind:event="oninput" />
+                                    <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Anular cheque" Variante="peligro"
+                                                Deshabilitado="motivoAnulacion.Trim().Length < 5 || guardando" OnClick="AnularAsync" />
+                                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => anulando = null" />
+                                    <small class="texto-ayuda">El saldo vuelve a la cuota de la compra y la póliza del pago se anula. El número de cheque queda usado.</small>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
 @code {
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
@@ -98,6 +156,11 @@
     private decimal monto;
     private int bmpId;
 
+    private IReadOnlyList<ChequeResumen> cheques = Array.Empty<ChequeResumen>();
+    private ChequeResumen? anulando;
+    private string motivoAnulacion = "";
+    private bool guardando;
+
     private string? mensaje;
     private bool esMensajeError;
 
@@ -109,6 +172,7 @@
             motivos = await CuentasRepository.ConsultarMotivosPagoAsync();
             cbcId = chequeras.FirstOrDefault()?.CbcId ?? 0;
             bmpId = motivos.FirstOrDefault(m => m.BmpDescripcion.Contains("proveedor", StringComparison.OrdinalIgnoreCase))?.BmpId ?? 0;
+            await CargarChequesAsync();
         }
         catch (Exception ex) { MostrarError(ex); }
     }
@@ -132,6 +196,47 @@
         cuota = null;
         documentos = Array.Empty<DocumentoSaldo>();
         if (proveedor is not null) await CargarDocumentosAsync();
+        await CargarChequesAsync();
+    }
+
+    // Sin proveedor elegido, los cheques de los últimos 30 días.
+    private async Task CargarChequesAsync()
+    {
+        try
+        {
+            cheques = proveedor is null
+                ? await CuentasRepository.ConsultarChequesAsync(null, DateTime.Today.AddDays(-30), null)
+                : await CuentasRepository.ConsultarChequesAsync(proveedor.Id, null, null);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void IniciarAnulacion(ChequeResumen c)
+    {
+        anulando = c;
+        motivoAnulacion = "";
+        mensaje = null;
+    }
+
+    private async Task AnularAsync()
+    {
+        if (anulando is null) return;
+        guardando = true;
+        try
+        {
+            var numero = anulando.Numero;
+            var usuId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+            await CuentasRepository.AnularChequeAsync(anulando.BceId, motivoAnulacion.Trim(), usuId);
+            mensaje = $"Cheque {numero} anulado. El saldo volvió a la cuota de la compra.";
+            esMensajeError = false;
+            anulando = null;
+            await CargarChequesAsync();
+            if (proveedor is not null) await CargarDocumentosAsync();
+            documento = documentos.FirstOrDefault(d => d.EncId == documento?.EncId);
+            cuotas = documento is null ? Array.Empty<CuotaProveedor>() : await CuentasRepository.ConsultarCuotasProveedorAsync(documento.EncId);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
     }
 
     private async Task CargarDocumentosAsync()
@@ -177,6 +282,7 @@
             await CargarDocumentosAsync();
             documento = documentos.FirstOrDefault(d => d.EncId == documento?.EncId);
             if (documento is not null) cuotas = await CuentasRepository.ConsultarCuotasProveedorAsync(documento.EncId);
+            await CargarChequesAsync();
         }
         catch (Exception ex) { MostrarError(ex); }
     }

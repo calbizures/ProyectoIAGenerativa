@@ -4,4 +4,8 @@
 
 <PageTitle>Estado de cuenta de clientes</PageTitle>
 
-<EstadoCuentaVista EsCliente="true" />
+<EstadoCuentaVista EsCliente="true" TerceroId="Id" />
+
+@code {
+    [SupplyParameterFromQuery] public int? Id { get; set; }
+}
