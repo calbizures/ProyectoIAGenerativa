@@ -83,7 +83,7 @@ public sealed class FacturaDetalleLinea
 	public int DetId { get; set; }
 	public int DetItem { get; set; }
 	public string DetBienOServicio { get; set; } = "B";
-	public int DetCantidad { get; set; }
+	public decimal DetCantidad { get; set; }
 	public string DetDescripcion { get; set; } = "";
 	public decimal DetPrecioUnitario { get; set; }
 	public decimal DetValorDescuento { get; set; }
@@ -93,6 +93,7 @@ public sealed class FacturaDetalleLinea
 	public int BodId { get; set; }
 	public int? ProId { get; set; }
 	public int? PprId { get; set; }
+	public int? UmeId { get; set; }
 }
 
 public sealed class NuevaFacturaEncabezado
@@ -129,9 +130,9 @@ public sealed class CuotaPlanPago
 
 public sealed class NuevaLineaFactura
 {
-	public int ProId { get; set; }
+	public int? ProId { get; set; }		// obligatorio en bienes; opcional en servicios
 	public string BienOServicio { get; set; } = "B";
-	public int Cantidad { get; set; }
+	public decimal Cantidad { get; set; }
 	public string Descripcion { get; set; } = "";
 	public decimal PrecioUnitario { get; set; }
 	public decimal ValorDescuento { get; set; }
@@ -140,6 +141,7 @@ public sealed class NuevaLineaFactura
 	public int BodId { get; set; }
 	public decimal? CostoUnitario { get; set; }
 	public int? PprId { get; set; }
+	public int? UmeId { get; set; }
 }
 
 // Factura listada en la pestaña "Facturas" del detalle de un cliente.

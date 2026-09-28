@@ -175,3 +175,27 @@ public sealed class NominaDetalle
 	public string? Descripcion { get; set; }
 	public decimal Monto { get; set; }
 }
+
+public sealed class UnidadOrganizativaNodo
+{
+	public int IdUnidadOrganizativa { get; set; }
+	public int? IdUnidadPadre { get; set; }
+	public string Descripcion { get; set; } = "";
+	public string Estado { get; set; } = "A";
+	public short Orden { get; set; }
+	public int Nivel { get; set; }
+	public int CantidadHijos { get; set; }
+	public int CantidadDepartamentos { get; set; }
+}
+
+// Nodo del organigrama: U = unidad, D = departamento, P = plaza.
+public sealed class OrganigramaNodo
+{
+	public string Clave { get; set; } = "";
+	public string? ClavePadre { get; set; }
+	public string Tipo { get; set; } = "U";
+	public string Descripcion { get; set; } = "";
+	public string? Detalle { get; set; }
+	public short Orden { get; set; }
+	public string Estado { get; set; } = "A";
+}

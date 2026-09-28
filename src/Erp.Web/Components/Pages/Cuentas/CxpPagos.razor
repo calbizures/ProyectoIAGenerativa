@@ -1,0 +1,183 @@
+@page "/cxp/pagos"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CXP_ADMIN")]
+@using Erp.Data.Cuentas
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ICuentasRepository CuentasRepository
+
+<PageTitle>Pagos a proveedores</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Pagos a proveedores</h1>
+    <p>Elija el proveedor, la compra y la cuota, y emita el cheque. El pago genera su póliza (Proveedores / Bancos).</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<section class="tarjeta" aria-labelledby="titulo-proveedor">
+    <h2 id="titulo-proveedor">Proveedor</h2>
+    <SelectorTercero EsCliente="false" Seleccionado="proveedor" SeleccionadoChanged="CambiarProveedorAsync" />
+</section>
+
+@if (proveedor is not null)
+{
+    <section class="tarjeta" aria-labelledby="titulo-documentos">
+        <h2 id="titulo-documentos">Compras con saldo</h2>
+        <DocumentosSaldoTabla Documentos="documentos" EsCliente="false" SeleccionadoId="documento?.EncId" OnSeleccionar="SeleccionarDocumentoAsync" />
+    </section>
+}
+
+@if (documento is not null)
+{
+    <section class="tarjeta" aria-labelledby="titulo-cuotas">
+        <h2 id="titulo-cuotas">Cuotas de @documento.Documento</h2>
+        <CuotasTabla EsCliente="false" CuotasProveedor="cuotas" ElegidaId="cuota?.PpgId" OnElegir="ElegirCuota" />
+    </section>
+}
+
+@if (cuota is not null)
+{
+    <section class="tarjeta" aria-labelledby="titulo-pago">
+        <h2 id="titulo-pago">Pagar cuota @cuota.PpgNroPago (saldo Q@(cuota.Saldo.ToString("N2")))</h2>
+        @if (chequeras.Count == 0)
+        {
+            <p class="mensaje-error" role="alert">No hay chequeras activas. Registre una chequera para la cuenta bancaria antes de pagar.</p>
+        }
+        <div class="panel-formulario panel-ancho">
+            <div class="campo">
+                <label for="pag-chequera">Chequera</label>
+                <select id="pag-chequera" value="@cbcId" @onchange="CambiarChequera">
+                    @foreach (var c in chequeras)
+                    {
+                        <option value="@c.CbcId">@c.Descripcion</option>
+                    }
+                </select>
+            </div>
+            <div class="campo"><label for="pag-cheque">Número de cheque</label><input id="pag-cheque" @bind="numeroCheque" maxlength="16" inputmode="numeric" /></div>
+            <div class="campo">
+                <label for="pag-monto">Monto</label>
+                <input id="pag-monto" type="number" step="0.01" min="0" @bind="monto" />
+                <small class="texto-ayuda">Puede ser un abono parcial; no puede pasar del saldo de la cuota.</small>
+            </div>
+            <div class="campo">
+                <label for="pag-motivo">Motivo</label>
+                <select id="pag-motivo" @bind="bmpId">
+                    <option value="0">(Sin motivo)</option>
+                    @foreach (var m in motivos)
+                    {
+                        <option value="@m.BmpId">@m.BmpDescripcion</option>
+                    }
+                </select>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Emitir cheque" Etiqueta="Emitir cheque" Variante="primario" Deshabilitado="chequeras.Count == 0" OnClick="PagarAsync" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => cuota = null" />
+            </div>
+        </div>
+    </section>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private TerceroSeleccion? proveedor;
+    private IReadOnlyList<DocumentoSaldo> documentos = Array.Empty<DocumentoSaldo>();
+    private DocumentoSaldo? documento;
+    private IReadOnlyList<CuotaProveedor> cuotas = Array.Empty<CuotaProveedor>();
+    private CuotaProveedor? cuota;
+
+    private IReadOnlyList<Chequera> chequeras = Array.Empty<Chequera>();
+    private IReadOnlyList<MotivoPago> motivos = Array.Empty<MotivoPago>();
+    private int cbcId;
+    private string numeroCheque = "";
+    private decimal monto;
+    private int bmpId;
+
+    private string? mensaje;
+    private bool esMensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            chequeras = await CuentasRepository.ConsultarChequerasAsync();
+            motivos = await CuentasRepository.ConsultarMotivosPagoAsync();
+            cbcId = chequeras.FirstOrDefault()?.CbcId ?? 0;
+            bmpId = motivos.FirstOrDefault(m => m.BmpDescripcion.Contains("proveedor", StringComparison.OrdinalIgnoreCase))?.BmpId ?? 0;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private void CambiarChequera(ChangeEventArgs e)
+    {
+        cbcId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        numeroCheque = chequeras.FirstOrDefault(c => c.CbcId == cbcId)?.SiguienteNumero?.ToString() ?? "";
+    }
+
+    private async Task CambiarProveedorAsync(TerceroSeleccion? nuevo)
+    {
+        proveedor = nuevo;
+        documento = null;
+        cuota = null;
+        documentos = Array.Empty<DocumentoSaldo>();
+        if (proveedor is not null) await CargarDocumentosAsync();
+    }
+
+    private async Task CargarDocumentosAsync()
+    {
+        try { documentos = await CuentasRepository.ConsultarDocumentosCxpAsync(proveedor!.Id, soloPendientes: true); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task SeleccionarDocumentoAsync(DocumentoSaldo d)
+    {
+        documento = d;
+        cuota = null;
+        try { cuotas = await CuentasRepository.ConsultarCuotasProveedorAsync(d.EncId); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void ElegirCuota(int ppgId)
+    {
+        cuota = cuotas.FirstOrDefault(c => c.PpgId == ppgId);
+        if (cuota is null) return;
+        monto = cuota.Saldo;
+        numeroCheque = chequeras.FirstOrDefault(c => c.CbcId == cbcId)?.SiguienteNumero?.ToString() ?? "";
+        mensaje = null;
+    }
+
+    private async Task PagarAsync()
+    {
+        if (cuota is null) return;
+        if (string.IsNullOrWhiteSpace(numeroCheque) || monto <= 0 || monto > cuota.Saldo)
+        {
+            mensaje = $"Indique el número de cheque y un monto mayor a cero que no pase del saldo (Q{cuota.Saldo:N2}).";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            var usuId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+            await CuentasRepository.EmitirChequeAsync(cuota.PpgId, cbcId, numeroCheque.Trim(), monto, bmpId == 0 ? null : bmpId, usuId);
+            mensaje = $"Cheque {numeroCheque} emitido por Q{monto:N2}.";
+            esMensajeError = false;
+            cuota = null;
+            chequeras = await CuentasRepository.ConsultarChequerasAsync();
+            await CargarDocumentosAsync();
+            documento = documentos.FirstOrDefault(d => d.EncId == documento?.EncId);
+            if (documento is not null) cuotas = await CuentasRepository.ConsultarCuotasProveedorAsync(documento.EncId);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

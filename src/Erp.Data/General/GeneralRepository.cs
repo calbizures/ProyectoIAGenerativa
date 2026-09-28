@@ -52,6 +52,37 @@ public sealed class GeneralRepository(IDbConnectionFactory connectionFactory) : 
 			?? new ParametrosCompania();
 	}
 
+	public async Task<IReadOnlyList<SucursalDetalle>> ConsultarSucursalesAsync(int? ciaId, bool soloActivas)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var filas = await connection.QueryAsync<SucursalDetalle>("dbo.paSucursalConsultar",
+			new { CiaId = ciaId, SoloActivas = soloActivas }, commandType: CommandType.StoredProcedure);
+		return filas.ToList();
+	}
+
+	public async Task<int> GuardarSucursalAsync(SucursalDetalle sucursal, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new DynamicParameters();
+		parametros.Add("@SucId", sucursal.SucId == 0 ? null : sucursal.SucId);
+		parametros.Add("@CiaId", sucursal.CiaId);
+		parametros.Add("@Codigo", sucursal.SucCodigo);
+		parametros.Add("@Descripcion", sucursal.SucDescripcion);
+		parametros.Add("@Direccion", sucursal.SucDireccion);
+		parametros.Add("@Telefono", sucursal.SucTelefono);
+		parametros.Add("@UsuId", usuarioAccionId);
+		parametros.Add("@IdResultado", dbType: DbType.Int32, direction: ParameterDirection.Output);
+		await connection.ExecuteAsync("dbo.paSucursalGuardar", parametros, commandType: CommandType.StoredProcedure);
+		return parametros.Get<int>("@IdResultado");
+	}
+
+	public async Task CambiarEstadoSucursalAsync(int sucId, string estado, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		await connection.ExecuteAsync("dbo.paSucursalCambiarEstado",
+			new { SucId = sucId, Estado = estado, UsuId = usuarioAccionId }, commandType: CommandType.StoredProcedure);
+	}
+
 	public async Task<IReadOnlyList<EntidadFinancieraTipo>> ConsultarTiposEntidadAsync()
 	{
 		using var connection = connectionFactory.CreateConnection();

@@ -1,0 +1,76 @@
+@* Reporte imprimible de antigüedad de saldos (renderizado estático). *@
+@using Erp.Data.Cuentas
+@using Erp.Data.General
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ICuentasRepository CuentasRepository
+@inject IGeneralRepository GeneralRepository
+
+<PageTitle>Antigüedad de saldos de @(EsCliente ? "clientes" : "proveedores")</PageTitle>
+
+<div class="reporte-acciones">
+    <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
+        <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir o guardar PDF</span>
+    </button>
+</div>
+
+<div class="reporte-encabezado">
+    <div>
+        <div class="reporte-compania">@compania</div>
+        <h1>Antigüedad de saldos de @(EsCliente ? "clientes" : "proveedores") · @(Vista == "documento" ? (EsCliente ? "por factura" : "por compra") : (EsCliente ? "por cliente" : "por proveedor"))</h1>
+    </div>
+    <div class="reporte-meta">
+        Fecha de corte: <strong>@FechaCorte.ToString("dd/MM/yyyy")</strong><br />
+        @if (TerceroId is not null)
+        {
+            <span>@(EsCliente ? "Cliente" : "Proveedor"): @(grupos.FirstOrDefault()?.Nombre ?? "sin saldo")</span><br />
+        }
+        Rangos por días desde el vencimiento de cada cuota
+    </div>
+</div>
+
+@if (error is not null)
+{
+    <p class="mensaje-error" role="alert">@error</p>
+}
+else
+{
+    <AntiguedadTabla Grupos="grupos" Vista="@Vista" EsCliente="EsCliente" />
+}
+
+<p class="reporte-pie">Generado el @DateTime.Now.ToString("dd/MM/yyyy HH:mm") por @usuario.</p>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    [Parameter] public bool EsCliente { get; set; } = true;
+    [Parameter] public DateTime FechaCorte { get; set; } = DateTime.Today;
+    [Parameter] public int? TerceroId { get; set; }
+    [Parameter] public string Vista { get; set; } = "tercero";
+
+    private List<AntiguedadGrupo> grupos = new();
+    private string compania = "";
+    private string usuario = "";
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            int? sucId = null;
+            if (AuthenticationStateTask is not null)
+            {
+                var estado = await AuthenticationStateTask;
+                usuario = estado.User.Identity?.Name ?? "";
+                sucId = estado.User.ObtenerSucId();
+            }
+            compania = (await GeneralRepository.ConsultarParametrosAsync(sucId)).CiaNombreComercial;
+            var filas = EsCliente
+                ? await CuentasRepository.ConsultarAntiguedadClientesAsync(FechaCorte, TerceroId)
+                : await CuentasRepository.ConsultarAntiguedadProveedoresAsync(FechaCorte, TerceroId);
+            grupos = AntiguedadGrupo.Agrupar(filas);
+        }
+        catch (Exception ex) { error = MensajesError.Traducir(ex); }
+    }
+}

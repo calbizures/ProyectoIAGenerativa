@@ -37,7 +37,7 @@ public sealed class FacturaRepository(IDbConnectionFactory connectionFactory) : 
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var filas = await connection.QueryAsync<DocumentoTipoVenta>(
-			"SELECT tdo_id, tdo_codigo, tdo_descripcion FROM dbo.inv_documento_tipo WHERE tdo_naturaleza = '-' AND tdo_estado = 'A' ORDER BY tdo_descripcion");
+			"SELECT tdo_id, tdo_codigo, tdo_descripcion FROM dbo.inv_documento_tipo WHERE tdo_naturaleza = '-' AND tdo_estado = 'A' AND tdo_es_nota = 0 ORDER BY tdo_descripcion");
 		return filas.ToList();
 	}
 
@@ -123,14 +123,14 @@ public sealed class FacturaRepository(IDbConnectionFactory connectionFactory) : 
 	}
 
 	// El orden de las columnas debe coincidir exactamente con CREATE TYPE
-	// dbo.factura_det_type (01_tipos_tabla.sql): SQL Server relaciona los
+	// dbo.factura_det_type (31_sucursales_unidades_organigrama.sql): SQL Server relaciona los
 	// parámetros de tabla por posición, no por nombre.
 	private static DataTable ConstruirTablaDetalle(IReadOnlyList<NuevaLineaFactura> detalle)
 	{
 		var tabla = new DataTable();
 		tabla.Columns.Add("det_item", typeof(int));
 		tabla.Columns.Add("det_bien_o_servicio", typeof(string));
-		tabla.Columns.Add("det_cantidad", typeof(int));
+		tabla.Columns.Add("det_cantidad", typeof(decimal));
 		tabla.Columns.Add("det_descripcion", typeof(string));
 		tabla.Columns.Add("det_precio_unitario", typeof(decimal));
 		tabla.Columns.Add("det_valor_descuento", typeof(decimal));
@@ -140,6 +140,7 @@ public sealed class FacturaRepository(IDbConnectionFactory connectionFactory) : 
 		tabla.Columns.Add("bod_id", typeof(int));
 		tabla.Columns.Add("pro_id", typeof(int));
 		tabla.Columns.Add("ppr_id", typeof(int));
+		tabla.Columns.Add("ume_id", typeof(int));
 
 		var item = 1;
 		foreach (var linea in detalle)
@@ -155,8 +156,9 @@ public sealed class FacturaRepository(IDbConnectionFactory connectionFactory) : 
 				(object?)linea.CostoUnitario ?? DBNull.Value,
 				(object?)linea.PorcentajeIva ?? DBNull.Value,
 				linea.BodId,
-				linea.ProId,
-				(object?)linea.PprId ?? DBNull.Value);
+				(object?)linea.ProId ?? DBNull.Value,
+				(object?)linea.PprId ?? DBNull.Value,
+				(object?)linea.UmeId ?? DBNull.Value);
 		}
 
 		return tabla;

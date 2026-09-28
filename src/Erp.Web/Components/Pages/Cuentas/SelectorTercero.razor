@@ -1,0 +1,93 @@
+@* Elige un cliente (búsqueda por código, nombre o NIT) o un proveedor (lista). *@
+@using Erp.Data.Compras
+@using Erp.Data.Ventas
+@inject IClienteRepository ClienteRepository
+@inject IProveedorRepository ProveedorRepository
+
+@if (Seleccionado is not null)
+{
+    <div class="doc-chip">
+        <span class="doc-chip-texto">
+            <strong>@Seleccionado.Nombre</strong>
+            <span>@(EsCliente ? "Cliente" : "Proveedor") @Seleccionado.Codigo</span>
+        </span>
+        @if (PermiteCambiar)
+        {
+            <BotonIcono Icono="x" Tooltip="@($"Cambiar {(EsCliente ? "cliente" : "proveedor")}")" Variante="fantasma" OnClick="() => SeleccionarAsync(null)" />
+        }
+    </div>
+}
+else if (EsCliente)
+{
+    <div class="doc-buscador">
+        <div class="doc-buscador-fila">
+            <input placeholder="Buscar cliente por código, nombre o NIT" aria-label="Buscar cliente por código, nombre o NIT" @bind="texto" @bind:event="oninput"
+                   @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
+            <BotonIcono Icono="search" Tooltip="Buscar cliente" OnClick="BuscarAsync" />
+        </div>
+        @if (clientes.Count > 0)
+        {
+            <div class="doc-buscador-resultados">
+                @foreach (var c in clientes)
+                {
+                    <div class="doc-resultado-fila" @onclick="() => SeleccionarAsync(new TerceroSeleccion(c.CliId, c.CliCodigo, c.NombreCompleto))">
+                        <span class="doc-resultado-texto"><strong>@c.NombreCompleto</strong><span>@c.CliCodigo · NIT @(c.CliNit ?? "C/F")</span></span>
+                    </div>
+                }
+            </div>
+        }
+        @if (sinResultados)
+        {
+            <p class="texto-ayuda">No se encontraron clientes con ese texto.</p>
+        }
+    </div>
+}
+else
+{
+    <select aria-label="Proveedor" value="0" @onchange="ElegirProveedorAsync">
+        <option value="0">Seleccione el proveedor...</option>
+        @foreach (var p in proveedores)
+        {
+            <option value="@p.PrvId">@p.PrvCodigo - @p.PrvNombreComercial</option>
+        }
+    </select>
+}
+
+@code {
+    [Parameter] public bool EsCliente { get; set; } = true;
+    [Parameter] public TerceroSeleccion? Seleccionado { get; set; }
+    [Parameter] public EventCallback<TerceroSeleccion?> SeleccionadoChanged { get; set; }
+    [Parameter] public bool PermiteCambiar { get; set; } = true;
+
+    private string texto = "";
+    private bool sinResultados;
+    private IReadOnlyList<Cliente> clientes = Array.Empty<Cliente>();
+    private IReadOnlyList<Proveedor> proveedores = Array.Empty<Proveedor>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!EsCliente)
+            proveedores = await ProveedorRepository.ConsultarAsync(null, "A");
+    }
+
+    private async Task BuscarAsync()
+    {
+        clientes = string.IsNullOrWhiteSpace(texto) ? Array.Empty<Cliente>() : await ClienteRepository.ConsultarAsync(texto.Trim(), "A");
+        sinResultados = !string.IsNullOrWhiteSpace(texto) && clientes.Count == 0;
+    }
+
+    private async Task ElegirProveedorAsync(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var id) || id == 0) return;
+        var p = proveedores.First(x => x.PrvId == id);
+        await SeleccionarAsync(new TerceroSeleccion(p.PrvId, p.PrvCodigo, p.PrvNombreComercial));
+    }
+
+    private async Task SeleccionarAsync(TerceroSeleccion? tercero)
+    {
+        clientes = Array.Empty<Cliente>();
+        texto = "";
+        sinResultados = false;
+        await SeleccionadoChanged.InvokeAsync(tercero);
+    }
+}

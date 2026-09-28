@@ -67,6 +67,16 @@
                     <option value="S">Servicio</option>
                 </select>
             </div>
+            <div class="campo">
+                <label>Unidad de medida</label>
+                <select @bind="nuevoProducto.UmeId">
+                    <option value="0">Según la clasificación</option>
+                    @foreach (var u in unidadesMedida)
+                    {
+                        <option value="@u.UmeId">@u.UmeCodigo - @u.UmeDescripcion</option>
+                    }
+                </select>
+            </div>
             <div class="campo campo-checkbox">
                 <label><input type="checkbox" @bind="nuevoProducto.ManejaExistencia" /> Maneja existencia</label>
             </div>
@@ -142,6 +152,15 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
                     <option value="S">Servicio</option>
                 </select>
             </div>
+            <div class="campo">
+                <label>Unidad de medida</label>
+                <select @bind="edicionProducto.UmeId">
+                    @foreach (var u in unidadesMedida.Where(u => u.UmeEstado == "A" || u.UmeId == edicionProducto.UmeId))
+                    {
+                        <option value="@u.UmeId">@u.UmeCodigo - @u.UmeDescripcion</option>
+                    }
+                </select>
+            </div>
             <div class="campo campo-checkbox">
                 <label><input type="checkbox" @bind="edicionProducto.ManejaExistencia" /> Maneja existencia</label>
             </div>
@@ -161,6 +180,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         <div class="campo"><label>Descripción</label><span class="valor-detalle">@seleccionado.ProDescripcion</span></div>
         <div class="campo"><label>Tipo de producto</label><span class="valor-detalle">@seleccionado.PrtDescripcion</span></div>
         <div class="campo"><label>Clasificación</label><span class="valor-detalle">@(seleccionado.ProTipoItem == "B" ? "Bien" : "Servicio")</span></div>
+        <div class="campo"><label>Unidad de medida</label><span class="valor-detalle">@(seleccionado.UmeDescripcion ?? "—")</span></div>
         <div class="campo campo-checkbox"><label>Maneja existencia</label><span class="valor-detalle">@(seleccionado.ProManejaExistencia ? "Sí" : "No")</span></div>
         <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_EDITAR">
             <Authorized>
@@ -393,6 +413,7 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
     private string? mensaje;
     private bool esMensajeError;
 
+    private List<UnidadMedida> unidadesMedida = new();
     private readonly ProductoModelo nuevoProducto = new();
     private readonly ProductoModelo edicionProducto = new();
 
@@ -402,6 +423,7 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
         tiposCaracteristica = await CaracteristicaRepository.ConsultarTiposAsync("A");
         bodegasDisponibles = await BodegaRepository.ConsultarAsync(sucId: null, estado: "A");
         monedasDisponibles = await PrecioRepository.ConsultarMonedasAsync();
+        unidadesMedida = (await BodegaRepository.ConsultarUnidadesAsync(soloActivas: false)).ToList();
         await BuscarAsync();
     }
 
@@ -431,6 +453,7 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
         nuevoProducto.PrtId = 0;
         nuevoProducto.TipoItem = "B";
         nuevoProducto.ManejaExistencia = true;
+        nuevoProducto.UmeId = 0;
         mostrarNuevo = true;
     }
 
@@ -441,7 +464,8 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
             var usuId = await ObtenerUsuIdActualAsync();
             await ProductoRepository.InsertarAsync(
                 nuevoProducto.Codigo, nuevoProducto.Descripcion, nuevoProducto.PrtId,
-                nuevoProducto.TipoItem, nuevoProducto.ManejaExistencia, idPadre: null, usuId);
+                nuevoProducto.TipoItem, nuevoProducto.ManejaExistencia, idPadre: null, usuId,
+                umeId: nuevoProducto.UmeId == 0 ? null : nuevoProducto.UmeId);
             mostrarNuevo = false;
             mensaje = "Producto creado correctamente.";
             esMensajeError = false;
@@ -479,6 +503,7 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
         edicionProducto.PrtId = seleccionado.PrtId;
         edicionProducto.TipoItem = seleccionado.ProTipoItem;
         edicionProducto.ManejaExistencia = seleccionado.ProManejaExistencia;
+        edicionProducto.UmeId = seleccionado.UmeId ?? 0;
         mensaje = null;
         pestanaActiva = "editar";
     }
@@ -652,7 +677,8 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
             var usuId = await ObtenerUsuIdActualAsync();
             await ProductoRepository.ActualizarAsync(
                 seleccionado.ProId, edicionProducto.Codigo, edicionProducto.Descripcion, edicionProducto.PrtId,
-                edicionProducto.TipoItem, edicionProducto.ManejaExistencia, idPadre: null, porcentajeRentabilidad: null, usuId);
+                edicionProducto.TipoItem, edicionProducto.ManejaExistencia, idPadre: null, porcentajeRentabilidad: null, usuId,
+                umeId: edicionProducto.UmeId == 0 ? null : edicionProducto.UmeId);
             mensaje = "Cambios guardados.";
             esMensajeError = false;
             await BuscarAsync();
@@ -695,6 +721,7 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
         [Range(1, int.MaxValue, ErrorMessage = "Seleccione un tipo de producto")] public int PrtId { get; set; }
         public string TipoItem { get; set; } = "B";
         public bool ManejaExistencia { get; set; } = true;
+        public int UmeId { get; set; }
     }
 
     private sealed class CaracteristicaModelo

@@ -1,0 +1,39 @@
+@* Movimientos del estado de cuenta con saldo corrido. *@
+@using Erp.Data.Cuentas
+
+<table class="tabla-datos tabla-estado-cuenta">
+    <thead>
+        <tr><th>Fecha</th><th>Tipo</th><th>Documento</th><th>Referencia</th><th class="num">Cargo</th><th class="num">Abono</th><th class="num">Saldo</th></tr>
+    </thead>
+    <tbody>
+        <tr class="antiguedad-grupo">
+            <td colspan="6">Saldo inicial</td>
+            <td class="num">@SaldoInicial.ToString("N2")</td>
+        </tr>
+        @foreach (var m in Movimientos)
+        {
+            <tr>
+                <td>@m.Fecha.ToString("dd/MM/yyyy")</td>
+                <td>@m.Tipo</td>
+                <td>@m.Documento</td>
+                <td>@m.Referencia</td>
+                <td class="num">@(m.Cargo == 0 ? "" : m.Cargo.ToString("N2"))</td>
+                <td class="num">@(m.Abono == 0 ? "" : m.Abono.ToString("N2"))</td>
+                <td class="num @(m.Saldo < 0 ? "saldo-negativo" : "")">@m.Saldo.ToString("N2")</td>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr>
+            <td colspan="4">Totales del período</td>
+            <td class="num">@Movimientos.Sum(m => m.Cargo).ToString("N2")</td>
+            <td class="num">@Movimientos.Sum(m => m.Abono).ToString("N2")</td>
+            <td class="num">@((Movimientos.LastOrDefault()?.Saldo ?? SaldoInicial).ToString("N2"))</td>
+        </tr>
+    </tfoot>
+</table>
+
+@code {
+    [Parameter] public IReadOnlyList<MovimientoEstadoCuenta> Movimientos { get; set; } = Array.Empty<MovimientoEstadoCuenta>();
+    [Parameter] public decimal SaldoInicial { get; set; }
+}

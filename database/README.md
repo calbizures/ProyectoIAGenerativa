@@ -45,21 +45,24 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 28_nomenclatura_contable.sql                  -- nomenclatura contable definitiva y su mantenimiento
 29_asientos_deposito_cierre_nomina.sql        -- partidas de depósito, cierre de caja y nómina
 30_datos_sinteticos_procesos.sql              -- opcional: datos de prueba de caja y nómina
+31_sucursales_unidades_organigrama.sql        -- sucursales, bodegas, unidades de medida, factura con servicios, organigrama
+32_cuentas_por_cobrar_pagar.sql               -- cuentas por cobrar y por pagar, notas de crédito y débito
+33_datos_sinteticos_cxc_organigrama.sql       -- opcional: organigrama de ejemplo, factura con servicios y notas
 ```
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `30` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `33` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
-no lo incluyas (ni el `30`).
+no lo incluyas (ni el `30` ni el `33`).
 
-`25` a `29` se corren siempre (también en una instalación nueva) y se
-pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
+`25` a `29`, `31` y `32` se corren siempre (también en una instalación
+nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `29`. Si vuelves a
-correr `12`, corre después `22` a `30` (el `12` vacía todas las tablas).
+cualquiera de los dos, vuelve a correr después `26` a `33`. Si vuelves a
+correr `12`, corre después `22` a `33` (el `12` vacía todas las tablas).
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -656,6 +659,89 @@ el cierre o la aprobación tampoco se graban y se muestra el motivo.
   originó (`pcd_id`, `pca_id` o `IdNomina`); `asi_origen` admite ahora
   `DEPOSITO`, `CIERRE_CAJA` y `NOMINA`.
 
+### Sucursales, bodegas y unidades de medida (`31`)
+
+- **General › Sucursales y bodegas**: sucursales (maestro) y sus bodegas
+  (detalle). Una sucursal tiene una o más bodegas. **Inventario › Bodegas**
+  lista todas las bodegas con filtro por sucursal. Una sucursal no se
+  inactiva con bodegas activas o caja abierta; una bodega no se inactiva ni
+  cambia de sucursal si tiene existencias. No se eliminan: se inactivan.
+- **Inventario › Unidades de medida** (`inv_unidad_medida`): unidad, hora,
+  día, mes, servicio, licencia, caja, paquete, metro, kit. El producto tiene
+  su unidad por defecto (`inv_producto.ume_id`) y cada línea de documento
+  guarda la suya (`inv_documento_det.ume_id`). Una unidad en uso no se
+  elimina.
+
+### Factura con bienes y servicios (`31`)
+
+Cada línea del detalle tiene su casilla **B/S**. Un bien (**B**) toma el
+producto del inventario (buscador general o dentro de la línea); un
+servicio (**S**) se describe en la misma línea sin producto. En ambos se
+captura cantidad (con decimales en servicios, p. ej. 2.5 horas), unidad de
+medida, precio con IVA incluido y descuento, y se calcula el subtotal.
+`factura_det_type` ahora lleva `det_cantidad` decimal y `ume_id`. El
+historial del cliente y el plan de pagos pasaron al final de la captura,
+debajo de la forma de pago.
+
+### Unidades organizativas y organigrama (`31`)
+
+`rrhhUnidadOrganizativa` es recursiva (`IdUnidadPadre`, `Orden`). En **RRHH ›
+Estructura organizativa** la pestaña **Unidades organizativas** mantiene el
+árbol por nodos (agregar raíz o subunidad, editar, mover con su rama,
+activar o inactivar, eliminar sin hijos ni departamentos; no se permiten
+ciclos) y la pestaña **Organigrama** dibuja unidades › departamentos ›
+plazas con el empleado que las ocupa (o *Vacante*). Cada nodo lleva su
+código de posición: `n<nivel>.<posición>` para unidades (`n1` Junta
+Directiva, `n2.1`…`n2.4` gerencias), `.d<n>` para departamentos
+(`n2.2.d1`) y `.p<n>` para plazas.
+
+### Cuentas por cobrar y por pagar (`32`)
+
+Menús **Cuentas por cobrar** (permiso `CXC_ADMIN`: roles Administrador,
+Contador y Cajero) y **Cuentas por pagar** (`CXP_ADMIN`: Administrador y
+Contador):
+
+- **Estado de cuenta**: documentos con saldo (con sus cuotas) y movimientos
+  con saldo corrido (facturas o compras, pagos o cheques y notas), con
+  saldo inicial según la fecha *Desde*.
+- **Cobros** (CxC): cuota por cuota, con formas de pago, en la caja abierta
+  de la sucursal. **Pagos a proveedores** (CxP): cheque de una chequera
+  activa (propone el siguiente número). Ambos aceptan abonos parciales y
+  rechazan pagar más que el saldo de la cuota.
+- **Notas de crédito y débito** (`NCC`/`NDC` a clientes, `NCP`/`NDP` de
+  proveedores), ligadas al documento que afectan (`enc_id_referencia`):
+  - La nota de crédito rebaja el saldo desde la última cuota hacia atrás
+    (`pos_cliente_nota_aplicacion` / `inv_proveedor_nota_aplicacion`
+    registran qué cuota rebajó) y no puede pasar del saldo pendiente. Puede
+    devolver mercadería (líneas del documento original, sin pasar de lo que
+    queda por devolver): la del cliente reingresa al costo de la venta; la
+    que se devuelve al proveedor sale al costo de compra.
+  - La nota de débito agrega una cuota nueva al plan del documento con su
+    propio vencimiento.
+  - Una nota no se anula (se corrige con la nota contraria) y un documento
+    con notas tampoco se puede anular.
+- **Antigüedad de saldos** (también en **Ventas › Antigüedad de saldos**):
+  saldo de cada cuota por días desde su vencimiento a la fecha de corte:
+  No vencido, 1-30, 31-60, 61-90 y más de 90 días; por cliente/proveedor o
+  por documento, con totales y porcentajes. **Excel** (hojas por tercero,
+  por documento y por cuota) y **vista imprimible** (se imprime o se guarda
+  como PDF desde el navegador). El estado de cuenta también se exporta e
+  imprime.
+
+Pólizas de las notas (conceptos configurables en **Cuentas de pólizas**):
+
+| Nota | Debe | Haber |
+|---|---|---|
+| Crédito a cliente | `NC_CLIENTE_REBAJA` 4110028 Devoluciones y rebajas sobre ventas (neto) + IVA débito | `VENTA_CLIENTES` (total) |
+| … si devuelve mercadería | `INVENTARIO` (costo) | `VENTA_COSTO` (costo) |
+| Débito a cliente | `VENTA_CLIENTES` (total) | `ND_CLIENTE_INGRESO` 4110026 Otros ingresos (neto) + IVA débito |
+| Crédito de proveedor | `COMPRA_PROVEEDORES` (total) | `INVENTARIO` (devolución) / `NC_PROVEEDOR_REBAJA` 4110026 (rebaja) + IVA crédito |
+| Débito de proveedor | `ND_PROVEEDOR_GASTO` 5110033 (neto) + IVA crédito | `COMPRA_PROVEEDORES` (total) |
+
+La subcuenta 4110028 se crea en el `32`. El cobro de cuota y el pago con
+cheque ahora guardan en `asi_origen_id` el recibo o el cheque y en `enc_id`
+el documento pagado.
+
 ## Módulos nuevos
 
 - **Seguridad (`sec_*`)**: roles, permisos y las tablas de asignación
@@ -722,6 +808,12 @@ las líneas anteriores y chocaba con la llave única de `det_item`. Los errores
 quedaban atrapados por `TRY/CATCH` y solo se imprimían. Ahora se vacía al
 inicio de cada vuelta, y el `13` ya no reintenta si las compras existen.
 
+`33_datos_sinteticos_cxc_organigrama.sql` arma el organigrama de ejemplo
+(Junta Directiva › Gerencias de Operaciones, IT, Financiera y RRHH ›
+departamentos, con dos plazas vacantes en IT), graba una factura a crédito
+con un producto y dos líneas de servicio (3.5 horas de instalación y una
+capacitación) y registra una nota de cada tipo.
+
 `30_datos_sinteticos_procesos.sql` agrega lo que el `12` no puede generar
 porque sus procedimientos se crean después: tres cobros en efectivo, un
 depósito, el cierre de la caja con un faltante de Q2.00 (sube la tolerancia
@@ -740,6 +832,11 @@ prueba.
   de asiento balanceado, no para cumplimiento fiscal real.
 - `sp_documento_anular` no revierte automáticamente las cuotas de plan de
   pago ya generadas.
+- Una nota de crédito solo se aplica a un documento con saldo pendiente: la
+  devolución de una factura de contado ya pagada (que implicaría reembolso)
+  no está cubierta.
+- La antigüedad de saldos usa el saldo actual de cada cuota; con una fecha
+  de corte pasada no descuenta los pagos hechos después de esa fecha.
 - No se implementó el flujo de firma/certificación electrónica de facturas
   (FEL) que insinuaba la columna `enc_xml` del script original; la columna
   se conserva por compatibilidad pero ningún procedimiento la llena todavía.

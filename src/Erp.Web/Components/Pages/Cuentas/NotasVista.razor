@@ -1,0 +1,334 @@
+@* Notas de crédito y débito a clientes (NCC/NDC) o de proveedores (NCP/NDP).
+   Los precios se capturan con IVA incluido, como en la factura; aquí se
+   convierten a neto antes de enviarlos. *@
+@using Erp.Data.Cuentas
+@using Erp.Data.General
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ICuentasRepository CuentasRepository
+@inject IGeneralRepository GeneralRepository
+
+<div class="pagina-encabezado">
+    <h1>Notas de crédito y débito @(EsCliente ? "a clientes" : "de proveedores")</h1>
+    <p>
+        La nota de crédito rebaja el saldo de @(EsCliente ? "una factura" : "una compra") desde la última cuota; puede incluir devolución de mercadería
+        (@(EsCliente ? "reingresa al inventario" : "sale del inventario")) y rebajas por monto. La nota de débito agrega una cuota nueva con su vencimiento.
+        Cada nota genera su póliza. Una nota no se anula: se corrige con la nota contraria.
+    </p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="barra-filtros">
+    <div class="filtro-tercero">
+        <SelectorTercero EsCliente="EsCliente" Seleccionado="tercero" SeleccionadoChanged="CambiarTerceroAsync" />
+    </div>
+    <span class="barra-herramientas-separador"></span>
+    <BotonIcono Icono="plus" Tooltip="Nueva nota de crédito" Etiqueta="Nota de crédito" Variante="primario" Deshabilitado="tercero is null" OnClick='() => NuevaNotaAsync("C")' />
+    <BotonIcono Icono="plus" Tooltip="Nueva nota de débito" Etiqueta="Nota de débito" Deshabilitado="tercero is null" OnClick='() => NuevaNotaAsync("D")' />
+</div>
+
+@if (formulario is not null)
+{
+    <section class="tarjeta" aria-labelledby="titulo-nota">
+        <h2 id="titulo-nota">Nueva nota de @(formulario.EsCredito ? "crédito" : "débito") · @tercero?.Nombre</h2>
+        <div class="panel-formulario panel-ancho">
+            <div class="campo">
+                <label for="nota-doc">@(EsCliente ? "Factura" : "Compra")</label>
+                <select id="nota-doc" value="@formulario.EncIdReferencia" @onchange="CambiarDocumentoAsync">
+                    <option value="0">Seleccione...</option>
+                    @foreach (var d in documentosTercero)
+                    {
+                        <option value="@d.EncId">@d.Documento · @d.EncFechaDocto.ToString("dd/MM/yyyy") · saldo Q@(d.Saldo.ToString("N2"))</option>
+                    }
+                </select>
+                @if (formulario.EsCredito && documentosTercero.Count == 0)
+                {
+                    <small class="texto-ayuda">@(EsCliente ? "El cliente" : "El proveedor") no tiene documentos con saldo pendiente.</small>
+                }
+            </div>
+            <div class="campo"><label for="nota-fecha">Fecha</label><input id="nota-fecha" type="date" @bind="formulario.Fecha" /></div>
+            @if (!EsCliente)
+            {
+                <div class="campo"><label for="nota-numero">Número de la nota del proveedor</label><input id="nota-numero" @bind="formulario.NumeroDocto" maxlength="32" /></div>
+            }
+            @if (!formulario.EsCredito)
+            {
+                <div class="campo"><label for="nota-venc">Vencimiento del cargo</label><input id="nota-venc" type="date" @bind="formulario.FechaVencimiento" /></div>
+            }
+            <div class="campo campo-ancho"><label for="nota-motivo">Motivo</label><input id="nota-motivo" @bind="formulario.Motivo" maxlength="256" /></div>
+        </div>
+
+        @if (formulario.EsCredito && formulario.EncIdReferencia > 0)
+        {
+            <h3>Devolución de mercadería</h3>
+            @if (lineasDevolucion.Count == 0)
+            {
+                <p class="estado-vacio">Este documento no tiene productos para devolver.</p>
+            }
+            else
+            {
+                <table class="doc-tabla">
+                    <thead>
+                        <tr><th>Producto</th><th class="num">@(EsCliente ? "Vendido" : "Comprado")</th><th class="num">Ya devuelto</th><th class="num">Disponible</th>
+                            <th class="num">Cantidad a devolver</th><th class="num">Precio unit. (IVA incl.)</th><th class="num">Subtotal</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var l in formulario.Devoluciones)
+                        {
+                            <tr>
+                                <td>@l.Origen.ProCodigo · @l.Origen.DetDescripcion</td>
+                                <td class="num">@l.Origen.DetCantidad.ToString("0.##")</td>
+                                <td class="num">@l.Origen.Devuelto.ToString("0.##")</td>
+                                <td class="num">@l.Origen.Disponible.ToString("0.##")</td>
+                                <td class="num"><input type="number" min="0" max="@l.Origen.Disponible" step="1" aria-label="Cantidad a devolver" @bind="l.Cantidad" disabled="@(l.Origen.Disponible <= 0)" /></td>
+                                <td class="num"><input type="number" min="0" step="0.01" aria-label="Precio unitario" @bind="l.PrecioConIva" /></td>
+                                <td class="num">@((l.Cantidad * l.PrecioConIva).ToString("N2"))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+
+        @if (formulario.EncIdReferencia > 0)
+        {
+            <h3>@(formulario.EsCredito ? "Rebajas por monto" : "Cargos")</h3>
+            <table class="doc-tabla">
+                <thead><tr><th>Descripción</th><th class="num">Monto (IVA incl.)</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var m in formulario.Montos)
+                    {
+                        <tr>
+                            <td><input class="doc-input-descripcion" aria-label="Descripción" maxlength="256" @bind="m.Descripcion" placeholder="@(formulario.EsCredito ? "Ej. descuento por pronto pago" : "Ej. intereses por mora")" /></td>
+                            <td class="num"><input type="number" min="0" step="0.01" aria-label="Monto" @bind="m.MontoConIva" /></td>
+                            <td><BotonIcono Icono="trash-2" Tooltip="Quitar" Variante="peligro" OnClick="() => formulario.Montos.Remove(m)" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <BotonIcono Icono="plus" Tooltip="Agregar línea" Etiqueta="Agregar línea" OnClick="() => formulario.Montos.Add(new LineaMonto())" />
+
+            <div class="doc-totales">
+                <div class="doc-totales-total"><span>Total de la nota</span><span>Q@(TotalNota.ToString("N2"))</span></div>
+                <div class="doc-totales-nota">IVA incluido (@porcentajeIva.ToString("0.##")%)@(formulario.EsCredito && documentoReferencia is not null ? $" · saldo del documento Q{documentoReferencia.Saldo:N2}" : "")</div>
+            </div>
+        }
+
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Grabar nota" Etiqueta="Grabar nota" Variante="primario" Deshabilitado="formulario.EncIdReferencia == 0" OnClick="GrabarAsync" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => formulario = null" />
+        </div>
+    </section>
+}
+
+@if (notas.Count == 0)
+{
+    <p class="estado-vacio">@(tercero is null ? "No hay notas registradas." : "Este tercero no tiene notas.")</p>
+}
+else
+{
+    <table class="tabla-datos">
+        <thead>
+            <tr><th>Tipo</th><th>Número</th><th>Fecha</th><th>@(EsCliente ? "Cliente" : "Proveedor")</th><th>Documento</th><th>Motivo</th><th class="num">Total</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var n in notas)
+            {
+                <tr>
+                    <td><span class="estado-badge @(n.EsCredito ? "estado-badge-activo" : "estado-badge-inactivo")">@(n.EsCredito ? "Crédito" : "Débito")</span>@(n.LineasDevolucion > 0 ? " · devolución" : "")</td>
+                    <td>@n.Numero</td>
+                    <td>@n.EncFechaDocto.ToString("dd/MM/yyyy")</td>
+                    <td>@n.Tercero</td>
+                    <td>@n.DocumentoReferencia</td>
+                    <td>@n.EncMotivo</td>
+                    <td class="num">@n.EncMontoTotal.ToString("N2")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    [Parameter] public bool EsCliente { get; set; } = true;
+
+    private sealed class LineaDevolucionCaptura
+    {
+        public required LineaDevolucion Origen { get; init; }
+        public decimal Cantidad { get; set; }
+        public decimal PrecioConIva { get; set; }
+    }
+
+    private sealed class LineaMonto
+    {
+        public string Descripcion { get; set; } = "";
+        public decimal MontoConIva { get; set; }
+    }
+
+    private sealed class NotaFormulario
+    {
+        public bool EsCredito { get; init; }
+        public int EncIdReferencia { get; set; }
+        public DateTime Fecha { get; set; } = DateTime.Today;
+        public DateTime? FechaVencimiento { get; set; } = DateTime.Today.AddDays(30);
+        public string? NumeroDocto { get; set; }
+        public string Motivo { get; set; } = "";
+        public List<LineaDevolucionCaptura> Devoluciones { get; } = new();
+        public List<LineaMonto> Montos { get; } = new();
+    }
+
+    private TerceroSeleccion? tercero;
+    private IReadOnlyList<NotaResumen> notas = Array.Empty<NotaResumen>();
+    private IReadOnlyList<DocumentoSaldo> documentosTercero = Array.Empty<DocumentoSaldo>();
+    private IReadOnlyList<LineaDevolucion> lineasDevolucion = Array.Empty<LineaDevolucion>();
+    private DocumentoSaldo? documentoReferencia;
+    private NotaFormulario? formulario;
+    private decimal porcentajeIva = 12m;
+
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private decimal TotalNota => formulario is null ? 0
+        : formulario.Devoluciones.Sum(d => d.Cantidad * d.PrecioConIva) + formulario.Montos.Sum(m => m.MontoConIva);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            int? sucId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerSucId();
+            porcentajeIva = (await GeneralRepository.ConsultarParametrosAsync(sucId)).CiaPorcIva;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        await CargarNotasAsync();
+    }
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private async Task CargarNotasAsync()
+    {
+        try
+        {
+            notas = await CuentasRepository.ConsultarNotasAsync(EsCliente, EsCliente ? tercero?.Id : null, EsCliente ? null : tercero?.Id, null);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task CambiarTerceroAsync(TerceroSeleccion? nuevo)
+    {
+        tercero = nuevo;
+        formulario = null;
+        await CargarNotasAsync();
+    }
+
+    private async Task NuevaNotaAsync(string tipo)
+    {
+        if (tercero is null) return;
+        mensaje = null;
+        formulario = new NotaFormulario { EsCredito = tipo == "C" };
+        if (!formulario.EsCredito) formulario.Montos.Add(new LineaMonto());
+        lineasDevolucion = Array.Empty<LineaDevolucion>();
+        documentoReferencia = null;
+        try
+        {
+            // Crédito: solo documentos con saldo. Débito: cualquier documento grabado.
+            documentosTercero = EsCliente
+                ? await CuentasRepository.ConsultarDocumentosCxcAsync(tercero.Id, soloPendientes: formulario.EsCredito)
+                : await CuentasRepository.ConsultarDocumentosCxpAsync(tercero.Id, soloPendientes: formulario.EsCredito);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task CambiarDocumentoAsync(ChangeEventArgs e)
+    {
+        if (formulario is null) return;
+        formulario.EncIdReferencia = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        documentoReferencia = documentosTercero.FirstOrDefault(d => d.EncId == formulario.EncIdReferencia);
+        formulario.Devoluciones.Clear();
+        if (formulario.EncIdReferencia == 0 || !formulario.EsCredito) return;
+        try
+        {
+            lineasDevolucion = await CuentasRepository.ConsultarLineasDevolucionAsync(formulario.EncIdReferencia);
+            foreach (var l in lineasDevolucion)
+                formulario.Devoluciones.Add(new LineaDevolucionCaptura
+                {
+                    Origen = l,
+                    PrecioConIva = Math.Round(l.DetPrecioUnitario * (1 + (l.DetPorcIva ?? porcentajeIva) / 100m), 2)
+                });
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task GrabarAsync()
+    {
+        if (formulario is null || tercero is null) return;
+        var lineas = new List<NuevaLineaNota>();
+        foreach (var d in formulario.Devoluciones.Where(d => d.Cantidad > 0))
+        {
+            if (d.Cantidad > d.Origen.Disponible)
+            {
+                mensaje = $"No puede devolver más de {d.Origen.Disponible:0.##} de {d.Origen.DetDescripcion}.";
+                esMensajeError = true;
+                return;
+            }
+            var iva = d.Origen.DetPorcIva ?? porcentajeIva;
+            lineas.Add(new NuevaLineaNota
+            {
+                Descripcion = $"Devolución: {d.Origen.DetDescripcion}",
+                Cantidad = d.Cantidad,
+                PrecioUnitario = Math.Round(d.PrecioConIva / (1 + iva / 100m), 2),
+                PorcentajeIva = iva,
+                DetIdOrigen = d.Origen.DetId
+            });
+        }
+        foreach (var m in formulario.Montos.Where(m => m.MontoConIva > 0))
+        {
+            if (string.IsNullOrWhiteSpace(m.Descripcion))
+            {
+                mensaje = "Cada línea por monto necesita una descripción.";
+                esMensajeError = true;
+                return;
+            }
+            lineas.Add(new NuevaLineaNota
+            {
+                Descripcion = m.Descripcion.Trim(),
+                Cantidad = 1,
+                PrecioUnitario = Math.Round(m.MontoConIva / (1 + porcentajeIva / 100m), 2),
+                PorcentajeIva = porcentajeIva
+            });
+        }
+        if (lineas.Count == 0)
+        {
+            mensaje = formulario.EsCredito ? "Indique una cantidad a devolver o una rebaja por monto." : "Agregue al menos un cargo con monto.";
+            esMensajeError = true;
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(formulario.Motivo))
+        {
+            mensaje = "Ingrese el motivo de la nota.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            var tipo = (formulario.EsCredito ? "NC" : "ND") + (EsCliente ? "C" : "P");
+            var usuId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+            var (_, numero) = await CuentasRepository.CrearNotaAsync(tipo, formulario.EncIdReferencia, formulario.Fecha, formulario.NumeroDocto,
+                formulario.Motivo.Trim(), formulario.EsCredito ? null : formulario.FechaVencimiento, lineas, usuId);
+            mensaje = $"Nota de {(formulario.EsCredito ? "crédito" : "débito")} {numero} grabada por Q{TotalNota:N2}.";
+            esMensajeError = false;
+            formulario = null;
+            await CargarNotasAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

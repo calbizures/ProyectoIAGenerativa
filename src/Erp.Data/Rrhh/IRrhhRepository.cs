@@ -15,6 +15,14 @@ public interface IRrhhRepository
 	Task<IReadOnlyList<Plaza>> ConsultarPlazasAsync(bool soloActivos);
 	Task<int> GuardarPlazaAsync(Plaza plaza, int? usuarioAccionId);
 
+	// Unidades organizativas (árbol) y organigrama
+	Task<IReadOnlyList<UnidadOrganizativaNodo>> ConsultarUnidadesArbolAsync();
+	Task<int> GuardarUnidadAsync(int? idUnidad, int? idPadre, string descripcion, short orden, int? usuarioAccionId);
+	Task MoverUnidadAsync(int idUnidad, int? idPadreNuevo, int? usuarioAccionId);
+	Task CambiarEstadoUnidadAsync(int idUnidad, string estado, int? usuarioAccionId);
+	Task EliminarUnidadAsync(int idUnidad);
+	Task<IReadOnlyList<OrganigramaNodo>> ConsultarOrganigramaAsync(bool soloActivos);
+
 	// Empleados
 	Task<IReadOnlyList<EmpleadoResumen>> ConsultarEmpleadosAsync(string? filtro, string? estado);
 	Task<(Empleado? Empleado, IReadOnlyList<HistorialPlaza> Historial)> ConsultarEmpleadoPorIdAsync(int idEmpleado);

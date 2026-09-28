@@ -32,21 +32,24 @@
 
         <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR">
             <Authorized>
-                <SidebarNodo Titulo="Inventario" IconoNombre="package" Rutas="@(new[] { "productos", "caracteristicas", "tipos-caracteristica", "existencias", "precios" })">
+                <SidebarNodo Titulo="Inventario" IconoNombre="package" Rutas="@(new[] { "productos", "caracteristicas", "tipos-caracteristica", "existencias", "precios", "bodegas", "unidades-medida" })">
                     <NavLink href="productos" class="sidebar-hijo-link">Productos</NavLink>
                     <NavLink href="caracteristicas" class="sidebar-hijo-link">Características</NavLink>
                     <NavLink href="tipos-caracteristica" class="sidebar-hijo-link">Tipos de característica</NavLink>
                     <NavLink href="existencias" class="sidebar-hijo-link">Existencias</NavLink>
                     <NavLink href="precios" class="sidebar-hijo-link">Precios</NavLink>
+                    <NavLink href="bodegas" class="sidebar-hijo-link">Bodegas</NavLink>
+                    <NavLink href="unidades-medida" class="sidebar-hijo-link">Unidades de medida</NavLink>
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
         <AuthorizeView Policy="Permiso:VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR">
             <Authorized>
-                <SidebarNodo Titulo="Ventas / POS" IconoNombre="receipt" Rutas="@(new[] { "facturas", "clientes", "vendedores" })">
+                <SidebarNodo Titulo="Ventas / POS" IconoNombre="receipt" Rutas="@(new[] { "facturas", "clientes", "vendedores", "ventas" })">
                     <NavLink href="facturas" class="sidebar-hijo-link">Facturas</NavLink>
                     <NavLink href="clientes" class="sidebar-hijo-link">Clientes</NavLink>
                     <NavLink href="vendedores" class="sidebar-hijo-link">Vendedores</NavLink>
+                    <NavLink href="ventas/antiguedad" class="sidebar-hijo-link">Antigüedad de saldos</NavLink>
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
@@ -55,6 +58,26 @@
                 <SidebarNodo Titulo="Compras" IconoNombre="shopping-cart" Rutas="@(new[] { "compras", "proveedores" })">
                     <NavLink href="compras" class="sidebar-hijo-link">Compras</NavLink>
                     <NavLink href="proveedores" class="sidebar-hijo-link">Proveedores</NavLink>
+                </SidebarNodo>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Policy="Permiso:CXC_ADMIN">
+            <Authorized>
+                <SidebarNodo Titulo="Cuentas por cobrar" IconoNombre="wallet" Rutas="@(new[] { "cxc" })">
+                    <NavLink href="cxc/estado-cuenta" class="sidebar-hijo-link">Estado de cuenta</NavLink>
+                    <NavLink href="cxc/cobros" class="sidebar-hijo-link">Cobros</NavLink>
+                    <NavLink href="cxc/notas" class="sidebar-hijo-link">Notas de crédito y débito</NavLink>
+                    <NavLink href="cxc/antiguedad" class="sidebar-hijo-link">Antigüedad de saldos</NavLink>
+                </SidebarNodo>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Policy="Permiso:CXP_ADMIN">
+            <Authorized>
+                <SidebarNodo Titulo="Cuentas por pagar" IconoNombre="banknote" Rutas="@(new[] { "cxp" })">
+                    <NavLink href="cxp/estado-cuenta" class="sidebar-hijo-link">Estado de cuenta</NavLink>
+                    <NavLink href="cxp/pagos" class="sidebar-hijo-link">Pagos a proveedores</NavLink>
+                    <NavLink href="cxp/notas" class="sidebar-hijo-link">Notas de crédito y débito</NavLink>
+                    <NavLink href="cxp/antiguedad" class="sidebar-hijo-link">Antigüedad de saldos</NavLink>
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
@@ -81,6 +104,7 @@
             <Authorized>
                 <SidebarNodo Titulo="General" IconoNombre="settings" Rutas="@(new[] { "general" })">
                     <NavLink href="general/companias" class="sidebar-hijo-link">Compañías</NavLink>
+                    <NavLink href="general/sucursales" class="sidebar-hijo-link">Sucursales y bodegas</NavLink>
                     <NavLink href="general/entidades-financieras" class="sidebar-hijo-link">Entidades financieras</NavLink>
                     <NavLink href="general/cuentas-poliza" class="sidebar-hijo-link">Cuentas de pólizas</NavLink>
                 </SidebarNodo>

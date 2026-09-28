@@ -19,7 +19,7 @@ public sealed class CompraRepository(IDbConnectionFactory connectionFactory) : I
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var filas = await connection.QueryAsync<DocumentoTipoCompra>(
-			"SELECT tdo_id, tdo_codigo, tdo_descripcion FROM dbo.inv_documento_tipo WHERE tdo_naturaleza = '+' AND tdo_estado = 'A' ORDER BY tdo_descripcion");
+			"SELECT tdo_id, tdo_codigo, tdo_descripcion FROM dbo.inv_documento_tipo WHERE tdo_naturaleza = '+' AND tdo_estado = 'A' AND tdo_es_nota = 0 ORDER BY tdo_descripcion");
 		return filas.ToList();
 	}
 

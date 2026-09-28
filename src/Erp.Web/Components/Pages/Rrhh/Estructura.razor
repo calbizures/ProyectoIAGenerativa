@@ -13,7 +13,7 @@
 
 <div class="pagina-encabezado">
     <h1>Estructura organizativa</h1>
-    <p>Departamentos, puestos y plazas. Una plaza es un puesto dentro de un departamento y la ocupa un empleado.</p>
+    <p>Unidades organizativas (jerarquía), departamentos, puestos y plazas. Una plaza es un puesto dentro de un departamento y la ocupa un empleado.</p>
 </div>
 
 @if (mensaje is not null)
@@ -23,7 +23,15 @@
 
 <BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
 
-@if (pestanaActiva == "departamentos")
+@if (pestanaActiva == "unidades")
+{
+    <UnidadesArbol OnCambio="CargarUnidadesAsync" />
+}
+else if (pestanaActiva == "organigrama")
+{
+    <OrganigramaVista />
+}
+else if (pestanaActiva == "departamentos")
 {
     <div class="barra-herramientas">
         <BotonIcono Icono="plus" Tooltip="Nuevo departamento" Etiqueta="Nuevo departamento" Variante="primario" OnClick="() => EditarDepartamento(new Departamento())" />
@@ -37,9 +45,9 @@
                 <label for="dep-unidad">Unidad organizativa</label>
                 <select id="dep-unidad" @bind="departamentoEdicion.IdUnidadOrganizativa">
                     <option value="">(Ninguna)</option>
-                    @foreach (var u in unidades)
+                    @foreach (var u in unidades.Where(u => u.Estado == "A" || u.IdUnidadOrganizativa == departamentoEdicion.IdUnidadOrganizativa))
                     {
-                        <option value="@u.Id">@u.Descripcion</option>
+                        <option value="@u.IdUnidadOrganizativa">@(new string('·', (u.Nivel - 1) * 2)) @u.Descripcion</option>
                     }
                 </select>
             </div>
@@ -181,16 +189,18 @@ else if (pestanaActiva == "plazas")
 
     private static readonly IReadOnlyList<PestanaItem> Pestanas = new[]
     {
+        new PestanaItem("unidades", "Unidades organizativas"),
         new PestanaItem("departamentos", "Departamentos"),
         new PestanaItem("puestos", "Puestos"),
         new PestanaItem("plazas", "Plazas"),
+        new PestanaItem("organigrama", "Organigrama"),
     };
 
-    private string pestanaActiva = "departamentos";
+    private string pestanaActiva = "unidades";
     private IReadOnlyList<Departamento> departamentos = Array.Empty<Departamento>();
     private IReadOnlyList<Puesto> puestos = Array.Empty<Puesto>();
     private IReadOnlyList<Plaza> plazas = Array.Empty<Plaza>();
-    private IReadOnlyList<CatalogoRrhh> unidades = Array.Empty<CatalogoRrhh>();
+    private IReadOnlyList<UnidadOrganizativaNodo> unidades = Array.Empty<UnidadOrganizativaNodo>();
     private IReadOnlyList<Sucursal> sucursales = Array.Empty<Sucursal>();
 
     private Departamento? departamentoEdicion;
@@ -203,9 +213,19 @@ else if (pestanaActiva == "plazas")
     {
         try
         {
-            unidades = await RrhhRepository.ConsultarCatalogoAsync("UnidadOrganizativa", soloActivos: true);
+            unidades = await RrhhRepository.ConsultarUnidadesArbolAsync();
             sucursales = await CajaRepository.ConsultarSucursalesAsync();
             await CargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task CargarUnidadesAsync()
+    {
+        try
+        {
+            unidades = await RrhhRepository.ConsultarUnidadesArbolAsync();
+            departamentos = await RrhhRepository.ConsultarDepartamentosAsync(soloActivos: false);
         }
         catch (Exception ex) { MostrarError(ex); }
     }

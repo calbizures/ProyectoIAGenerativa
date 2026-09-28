@@ -1,0 +1,126 @@
+@* Tabla de antigüedad de saldos, por tercero o por documento. La usan la
+   pantalla y la vista imprimible. *@
+
+@if (Grupos.Count == 0)
+{
+    <p class="estado-vacio">No hay saldos pendientes a la fecha de corte.</p>
+}
+else if (Vista == "tercero")
+{
+    <table class="tabla-datos tabla-antiguedad">
+        <thead>
+            <tr>
+                <th class="col-codigo">Código</th>
+                <th>@Tercero</th>
+                <th class="num">Documentos</th>
+                @foreach (var r in RangosAntiguedad.Etiquetas)
+                {
+                    <th class="num">@r</th>
+                }
+                <th class="num">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var g in Grupos)
+            {
+                <tr>
+                    <td class="col-codigo">@g.Codigo</td>
+                    <td>@g.Nombre</td>
+                    <td class="num">@g.Documentos.Count</td>
+                    @for (var i = 0; i < 5; i++)
+                    {
+                        <td class="num @(i > 0 && g.Rangos[i] > 0 ? "antiguedad-vencido" : "")">@Monto(g.Rangos[i])</td>
+                    }
+                    <td class="num"><strong>@g.Total.ToString("N2")</strong></td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            @FilaTotales(3)
+        </tfoot>
+    </table>
+}
+else
+{
+    <table class="tabla-datos tabla-antiguedad">
+        <thead>
+            <tr>
+                <th>@Documento</th>
+                <th>Fecha</th>
+                <th>Vence</th>
+                <th class="num">Días</th>
+                @foreach (var r in RangosAntiguedad.Etiquetas)
+                {
+                    <th class="num">@r</th>
+                }
+                <th class="num">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var g in Grupos)
+            {
+                <tr class="antiguedad-grupo">
+                    <td colspan="10"><strong>@g.Codigo · @g.Nombre</strong></td>
+                </tr>
+                @foreach (var d in g.Documentos)
+                {
+                    <tr>
+                        <td>@d.Documento@(d.Cuotas > 1 ? $" ({d.Cuotas} cuotas)" : "")</td>
+                        <td>@d.FechaDocumento.ToString("dd/MM/yyyy")</td>
+                        <td>@d.VencimientoMasAntiguo.ToString("dd/MM/yyyy")</td>
+                        <td class="num @(d.DiasMaximos > 0 ? "antiguedad-vencido" : "")">@(d.DiasMaximos > 0 ? d.DiasMaximos : 0)</td>
+                        @for (var i = 0; i < 5; i++)
+                        {
+                            <td class="num @(i > 0 && d.Rangos[i] > 0 ? "antiguedad-vencido" : "")">@Monto(d.Rangos[i])</td>
+                        }
+                        <td class="num">@d.Total.ToString("N2")</td>
+                    </tr>
+                }
+                <tr class="antiguedad-subtotal">
+                    <td colspan="4">Total @g.Nombre</td>
+                    @for (var i = 0; i < 5; i++)
+                    {
+                        <td class="num">@Monto(g.Rangos[i])</td>
+                    }
+                    <td class="num"><strong>@g.Total.ToString("N2")</strong></td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            @FilaTotales(4)
+        </tfoot>
+    </table>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<AntiguedadGrupo> Grupos { get; set; } = Array.Empty<AntiguedadGrupo>();
+    [Parameter] public string Vista { get; set; } = "tercero";		// tercero | documento
+    [Parameter] public bool EsCliente { get; set; } = true;
+
+    private string Tercero => EsCliente ? "Cliente" : "Proveedor";
+    private string Documento => EsCliente ? "Factura" : "Compra";
+
+    private static string Monto(decimal m) => m == 0 ? "—" : m.ToString("N2");
+
+    private RenderFragment FilaTotales(int columnasEtiqueta) => __builder =>
+    {
+        var totales = AntiguedadGrupo.Totales(Grupos);
+        var total = totales.Sum();
+        <tr class="antiguedad-total">
+            <td colspan="@columnasEtiqueta">Total general</td>
+            @foreach (var t in totales)
+            {
+                <td class="num">@t.ToString("N2")</td>
+            }
+            <td class="num">@total.ToString("N2")</td>
+        </tr>
+        <tr class="antiguedad-porcentaje">
+            <td colspan="@columnasEtiqueta">% del total</td>
+            @foreach (var t in totales)
+            {
+                <td class="num">@(total == 0 ? "0.0" : (t * 100 / total).ToString("N1"))%</td>
+            }
+            <td class="num">100%</td>
+        </tr>
+    };
+}

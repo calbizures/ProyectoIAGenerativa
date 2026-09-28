@@ -1,0 +1,7 @@
+@page "/cxp/estado-cuenta"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CXP_ADMIN")]
+
+<PageTitle>Estado de cuenta de proveedores</PageTitle>
+
+<EstadoCuentaVista EsCliente="false" />

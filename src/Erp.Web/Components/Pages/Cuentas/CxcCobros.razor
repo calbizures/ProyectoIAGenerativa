@@ -1,0 +1,260 @@
+@page "/cxc/cobros"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CXC_ADMIN")]
+@using Erp.Data.Caja
+@using Erp.Data.Cuentas
+@using Erp.Data.Ventas
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ICuentasRepository CuentasRepository
+@inject ICajaRepository CajaRepository
+
+<PageTitle>Cobros a clientes</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Cobros a clientes</h1>
+    <p>Elija el cliente, la factura y la cuota. El cobro entra a la caja abierta de su sucursal y genera su póliza (Caja / Clientes).</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+@if (cajasAbiertas.Count == 0)
+{
+    <div class="doc-nota">
+        <Icono Nombre="alert-triangle" Tamano="15" />
+        <span>No hay una caja abierta en su sucursal. Abra la caja en Bancos › Caja para poder cobrar.</span>
+    </div>
+}
+
+<section class="tarjeta" aria-labelledby="titulo-cliente">
+    <h2 id="titulo-cliente">Cliente</h2>
+    <SelectorTercero EsCliente="true" Seleccionado="cliente" SeleccionadoChanged="CambiarClienteAsync" />
+</section>
+
+@if (cliente is not null)
+{
+    <section class="tarjeta" aria-labelledby="titulo-documentos">
+        <h2 id="titulo-documentos">Facturas con saldo</h2>
+        <DocumentosSaldoTabla Documentos="documentos" EsCliente="true" SeleccionadoId="documento?.EncId" OnSeleccionar="SeleccionarDocumentoAsync" />
+    </section>
+}
+
+@if (documento is not null)
+{
+    <section class="tarjeta" aria-labelledby="titulo-cuotas">
+        <h2 id="titulo-cuotas">Cuotas de @documento.Documento</h2>
+        <CuotasTabla EsCliente="true" CuotasCliente="cuotas" ElegidaId="cuota?.CppId" OnElegir="ElegirCuota" />
+    </section>
+}
+
+@if (cuota is not null)
+{
+    <section class="tarjeta" aria-labelledby="titulo-cobro">
+        <h2 id="titulo-cobro">Cobrar cuota @cuota.CppNroCuota (saldo Q@(cuota.CppSaldoCuota.ToString("N2")))</h2>
+        <div class="panel-formulario panel-ancho">
+            @if (cajasAbiertas.Count > 1)
+            {
+                <div class="campo">
+                    <label for="cob-caja">Caja</label>
+                    <select id="cob-caja" @bind="pcaId">
+                        @foreach (var c in cajasAbiertas)
+                        {
+                            <option value="@c.PcaId">@c.PcrDescripcion</option>
+                        }
+                    </select>
+                </div>
+            }
+            <div class="campo">
+                <label for="cob-monto">Monto a cobrar</label>
+                <input id="cob-monto" type="number" step="0.01" min="0" @bind="monto" />
+                <small class="texto-ayuda">Puede ser un abono parcial; no puede pasar del saldo de la cuota.</small>
+            </div>
+        </div>
+
+        <table class="doc-tabla">
+            <thead><tr><th>Forma de pago</th><th class="num">Monto</th><th>Referencia</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var f in formas)
+                {
+                    <tr>
+                        <td>@NombreForma(f.PftId)</td>
+                        <td class="num">Q@(f.Monto.ToString("N2"))</td>
+                        <td>@(f.NumeroCheque ?? f.NumeroTarjetaUlt4 ?? entidades.FirstOrDefault(e => e.GefId == f.GefId)?.GefDescripcion ?? "—")</td>
+                        <td><BotonIcono Icono="trash-2" Tooltip="Quitar" Variante="peligro" OnClick="() => formas.Remove(f)" /></td>
+                    </tr>
+                }
+                <tr>
+                    <td>
+                        <select aria-label="Forma de pago" @bind="formaNueva.PftId">
+                            <option value="0">Seleccione...</option>
+                            @foreach (var t in tiposForma)
+                            {
+                                <option value="@t.PftId">@t.PftDescripcion</option>
+                            }
+                        </select>
+                    </td>
+                    <td class="num"><input type="number" step="0.01" min="0" aria-label="Monto" @bind="formaNueva.Monto" /></td>
+                    <td>
+                        @if (EsForma(formaNueva.PftId, "Cheque"))
+                        {
+                            <input placeholder="No. de cheque" aria-label="No. de cheque" @bind="formaNueva.NumeroCheque" />
+                        }
+                        else if (EsForma(formaNueva.PftId, "Tarjeta"))
+                        {
+                            <input placeholder="Últimos 4 dígitos" aria-label="Últimos 4 dígitos" maxlength="4" @bind="formaNueva.NumeroTarjetaUlt4" />
+                        }
+                        @if (EsForma(formaNueva.PftId, "Cheque") || EsForma(formaNueva.PftId, "Transferencia") || EsForma(formaNueva.PftId, "Tarjeta"))
+                        {
+                            <select aria-label="Entidad financiera" @bind="formaNueva.GefId">
+                                <option value="">Entidad...</option>
+                                @foreach (var e in entidades)
+                                {
+                                    <option value="@e.GefId">@e.GefDescripcion</option>
+                                }
+                            </select>
+                        }
+                    </td>
+                    <td><BotonIcono Icono="plus" Tooltip="Agregar forma de pago" OnClick="AgregarForma" /></td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="doc-totales-nota">Capturado: Q@(formas.Sum(f => f.Monto).ToString("N2")) de Q@(monto.ToString("N2"))</div>
+
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Registrar cobro" Etiqueta="Registrar cobro" Variante="primario" Deshabilitado="cajasAbiertas.Count == 0" OnClick="CobrarAsync" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => cuota = null" />
+        </div>
+    </section>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private TerceroSeleccion? cliente;
+    private IReadOnlyList<DocumentoSaldo> documentos = Array.Empty<DocumentoSaldo>();
+    private DocumentoSaldo? documento;
+    private IReadOnlyList<CuotaPlanPago> cuotas = Array.Empty<CuotaPlanPago>();
+    private CuotaPlanPago? cuota;
+    private decimal monto;
+    private readonly List<FormaPagoCaptura> formas = new();
+    private FormaPagoCaptura formaNueva = new();
+
+    private IReadOnlyList<CajaAperturaActiva> cajasAbiertas = Array.Empty<CajaAperturaActiva>();
+    private int pcaId;
+    private IReadOnlyList<FormaPagoTipo> tiposForma = Array.Empty<FormaPagoTipo>();
+    private IReadOnlyList<EntidadFinanciera> entidades = Array.Empty<EntidadFinanciera>();
+
+    private string? mensaje;
+    private bool esMensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            tiposForma = await CajaRepository.ConsultarFormasPagoTipoAsync();
+            entidades = await CajaRepository.ConsultarEntidadesFinancierasAsync();
+            if (AuthenticationStateTask is not null)
+            {
+                var sucId = (await AuthenticationStateTask).User.ObtenerSucId();
+                if (sucId is > 0) cajasAbiertas = await CajaRepository.ConsultarAperturaActivaPorSucursalAsync(sucId.Value);
+            }
+            pcaId = cajasAbiertas.FirstOrDefault()?.PcaId ?? 0;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private string NombreForma(int pftId) => tiposForma.FirstOrDefault(t => t.PftId == pftId)?.PftDescripcion ?? "—";
+    private bool EsForma(int pftId, string nombre) => NombreForma(pftId).Equals(nombre, StringComparison.OrdinalIgnoreCase);
+
+    private async Task CambiarClienteAsync(TerceroSeleccion? nuevo)
+    {
+        cliente = nuevo;
+        documento = null;
+        cuota = null;
+        documentos = Array.Empty<DocumentoSaldo>();
+        if (cliente is not null) await CargarDocumentosAsync();
+    }
+
+    private async Task CargarDocumentosAsync()
+    {
+        try { documentos = await CuentasRepository.ConsultarDocumentosCxcAsync(cliente!.Id, soloPendientes: true); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task SeleccionarDocumentoAsync(DocumentoSaldo d)
+    {
+        documento = d;
+        cuota = null;
+        try { cuotas = await CuentasRepository.ConsultarCuotasClienteAsync(d.EncId); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void ElegirCuota(int cppId)
+    {
+        cuota = cuotas.FirstOrDefault(c => c.CppId == cppId);
+        if (cuota is null) return;
+        monto = cuota.CppSaldoCuota;
+        formas.Clear();
+        formaNueva = new FormaPagoCaptura { PftId = tiposForma.FirstOrDefault(t => t.PftDescripcion == "Efectivo")?.PftId ?? 0, Monto = monto };
+        mensaje = null;
+    }
+
+    private void AgregarForma()
+    {
+        if (formaNueva.PftId <= 0 || formaNueva.Monto <= 0)
+        {
+            mensaje = "Seleccione la forma de pago e indique un monto mayor a cero.";
+            esMensajeError = true;
+            return;
+        }
+        formas.Add(formaNueva);
+        var restante = monto - formas.Sum(f => f.Monto);
+        formaNueva = new FormaPagoCaptura { Monto = restante > 0 ? restante : 0 };
+        mensaje = null;
+    }
+
+    private async Task CobrarAsync()
+    {
+        if (cuota is null) return;
+        // Si no agregó formas, el monto completo se toma en la forma que tenga en la fila de captura.
+        if (formas.Count == 0 && formaNueva.PftId > 0)
+        {
+            formaNueva.Monto = monto;
+            formas.Add(formaNueva);
+        }
+        if (monto <= 0 || monto > cuota.CppSaldoCuota)
+        {
+            mensaje = $"El monto debe ser mayor a cero y no pasar del saldo de la cuota (Q{cuota.CppSaldoCuota:N2}).";
+            esMensajeError = true;
+            return;
+        }
+        if (Math.Abs(formas.Sum(f => f.Monto) - monto) > 0.001m)
+        {
+            mensaje = $"Las formas de pago suman Q{formas.Sum(f => f.Monto):N2} y el cobro es de Q{monto:N2}.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            var usuId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+            var recibo = await CuentasRepository.RegistrarCobroAsync(cuota.CppId, monto, pcaId, formas, usuId);
+            mensaje = $"Cobro registrado: recibo {recibo} por Q{monto:N2}.";
+            esMensajeError = false;
+            cuota = null;
+            await CargarDocumentosAsync();
+            documento = documentos.FirstOrDefault(d => d.EncId == documento?.EncId);
+            if (documento is not null) cuotas = await CuentasRepository.ConsultarCuotasClienteAsync(documento.EncId);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

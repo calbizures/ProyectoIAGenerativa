@@ -1,0 +1,91 @@
+@* Estado de cuenta imprimible (renderizado estático). *@
+@using Erp.Data.Compras
+@using Erp.Data.Cuentas
+@using Erp.Data.General
+@using Erp.Data.Ventas
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ICuentasRepository CuentasRepository
+@inject IGeneralRepository GeneralRepository
+@inject IClienteRepository ClienteRepository
+@inject IProveedorRepository ProveedorRepository
+
+<PageTitle>Estado de cuenta</PageTitle>
+
+<div class="reporte-acciones">
+    <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
+        <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir o guardar PDF</span>
+    </button>
+</div>
+
+<div class="reporte-encabezado">
+    <div>
+        <div class="reporte-compania">@compania</div>
+        <h1>Estado de cuenta · @tercero</h1>
+    </div>
+    <div class="reporte-meta">
+        @(Desde is null ? "Desde el inicio" : $"Del {Desde:dd/MM/yyyy}") al @((Hasta ?? DateTime.Today).ToString("dd/MM/yyyy"))<br />
+        Saldo pendiente: <strong>Q@(documentos.Sum(d => d.Saldo).ToString("N2"))</strong>
+    </div>
+</div>
+
+@if (error is not null)
+{
+    <p class="mensaje-error" role="alert">@error</p>
+}
+else
+{
+    <h2>Movimientos</h2>
+    <EstadoCuentaTabla Movimientos="movimientos" SaldoInicial="@(movimientos.FirstOrDefault()?.SaldoInicial ?? 0)" />
+    <h2>Documentos con saldo</h2>
+    <DocumentosSaldoTabla Documentos="documentos" EsCliente="EsCliente" />
+}
+
+<p class="reporte-pie">Generado el @DateTime.Now.ToString("dd/MM/yyyy HH:mm") por @usuario.</p>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    [Parameter] public bool EsCliente { get; set; } = true;
+    [Parameter] public int TerceroId { get; set; }
+    [Parameter] public DateTime? Desde { get; set; }
+    [Parameter] public DateTime? Hasta { get; set; }
+
+    private IReadOnlyList<MovimientoEstadoCuenta> movimientos = Array.Empty<MovimientoEstadoCuenta>();
+    private IReadOnlyList<DocumentoSaldo> documentos = Array.Empty<DocumentoSaldo>();
+    private string compania = "";
+    private string tercero = "";
+    private string usuario = "";
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            int? sucId = null;
+            if (AuthenticationStateTask is not null)
+            {
+                var estado = await AuthenticationStateTask;
+                usuario = estado.User.Identity?.Name ?? "";
+                sucId = estado.User.ObtenerSucId();
+            }
+            compania = (await GeneralRepository.ConsultarParametrosAsync(sucId)).CiaNombreComercial;
+            if (EsCliente)
+            {
+                var cliente = await ClienteRepository.ConsultarPorIdAsync(TerceroId);
+                tercero = cliente is null ? "Cliente no encontrado" : $"{cliente.CliCodigo} {cliente.NombreCompleto}";
+                movimientos = await CuentasRepository.ConsultarEstadoCuentaClienteAsync(TerceroId, Desde, Hasta);
+                documentos = await CuentasRepository.ConsultarDocumentosCxcAsync(TerceroId, soloPendientes: true);
+            }
+            else
+            {
+                var proveedor = await ProveedorRepository.ConsultarPorIdAsync(TerceroId);
+                tercero = proveedor is null ? "Proveedor no encontrado" : $"{proveedor.PrvCodigo} {proveedor.PrvNombreComercial}";
+                movimientos = await CuentasRepository.ConsultarEstadoCuentaProveedorAsync(TerceroId, Desde, Hasta);
+                documentos = await CuentasRepository.ConsultarDocumentosCxpAsync(TerceroId, soloPendientes: true);
+            }
+        }
+        catch (Exception ex) { error = MensajesError.Traducir(ex); }
+    }
+}

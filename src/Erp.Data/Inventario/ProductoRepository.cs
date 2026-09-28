@@ -5,7 +5,7 @@ namespace Erp.Data.Inventario;
 
 public sealed class ProductoRepository(IDbConnectionFactory connectionFactory) : IProductoRepository
 {
-	public async Task<int> InsertarAsync(string codigo, string descripcion, int prtId, string tipoItem, bool manejaExistencia, int? idPadre, int? usuarioAccionId)
+	public async Task<int> InsertarAsync(string codigo, string descripcion, int prtId, string tipoItem, bool manejaExistencia, int? idPadre, int? usuarioAccionId, int? umeId = null)
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new DynamicParameters();
@@ -17,12 +17,13 @@ public sealed class ProductoRepository(IDbConnectionFactory connectionFactory) :
 		parametros.Add("@pro_id_padre", idPadre);
 		parametros.Add("@usu_id", usuarioAccionId);
 		parametros.Add("@pro_id", dbType: DbType.Int32, direction: ParameterDirection.Output);
+		parametros.Add("@ume_id", umeId);
 
 		await connection.ExecuteAsync("dbo.sp_producto_insertar", parametros, commandType: CommandType.StoredProcedure);
 		return parametros.Get<int>("@pro_id");
 	}
 
-	public async Task ActualizarAsync(int proId, string codigo, string descripcion, int prtId, string tipoItem, bool manejaExistencia, int? idPadre, decimal? porcentajeRentabilidad, int? usuarioAccionId)
+	public async Task ActualizarAsync(int proId, string codigo, string descripcion, int prtId, string tipoItem, bool manejaExistencia, int? idPadre, decimal? porcentajeRentabilidad, int? usuarioAccionId, int? umeId = null)
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new
@@ -35,7 +36,8 @@ public sealed class ProductoRepository(IDbConnectionFactory connectionFactory) :
 			pro_maneja_existencia = manejaExistencia,
 			pro_id_padre = idPadre,
 			pro_ptje_rentabilidad = porcentajeRentabilidad,
-			usu_id = usuarioAccionId
+			usu_id = usuarioAccionId,
+			ume_id = umeId
 		};
 		await connection.ExecuteAsync("dbo.sp_producto_actualizar", parametros, commandType: CommandType.StoredProcedure);
 	}

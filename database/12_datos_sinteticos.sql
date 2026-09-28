@@ -251,7 +251,9 @@ INSERT INTO dbo.sec_permiso (per_modulo, per_codigo, per_descripcion) VALUES
 -- quite al rol ADMIN).
 ('GENERAL', 'GENERAL_CONFIG_ADMIN', 'Administrar compañía, parámetros y entidades financieras'),
 ('RRHH', 'RRHH_ADMIN', 'Administrar recursos humanos y nómina'),
-('CONTABILIDAD', 'CONTABILIDAD_NOMENCLATURA_ADMIN', 'Mantenimiento de la nomenclatura contable');
+('CONTABILIDAD', 'CONTABILIDAD_NOMENCLATURA_ADMIN', 'Mantenimiento de la nomenclatura contable'),
+('CXC', 'CXC_ADMIN', 'Cuentas por cobrar: estado de cuenta, cobros, notas y antigüedad de saldos'),
+('CXP', 'CXP_ADMIN', 'Cuentas por pagar: estado de cuenta, pagos, notas y antigüedad de saldos');
 GO
 
 DECLARE @rol_admin INT, @rol_vendedor INT, @rol_cajero INT, @rol_contador INT;
@@ -267,10 +269,10 @@ INSERT INTO dbo.sec_rol_permiso (rol_id, per_id)
 SELECT @rol_vendedor, per_id FROM dbo.sec_permiso WHERE per_codigo IN ('VENTAS_FACTURA_CREAR');
 
 INSERT INTO dbo.sec_rol_permiso (rol_id, per_id)
-SELECT @rol_contador, per_id FROM dbo.sec_permiso WHERE per_modulo = 'CONTABILIDAD';
+SELECT @rol_contador, per_id FROM dbo.sec_permiso WHERE per_modulo IN ('CONTABILIDAD', 'CXC', 'CXP');
 
 INSERT INTO dbo.sec_rol_permiso (rol_id, per_id)
-SELECT @rol_cajero, per_id FROM dbo.sec_permiso WHERE per_codigo IN ('BANCOS_CAJA_ADMIN', 'VENTAS_FACTURA_CREAR');
+SELECT @rol_cajero, per_id FROM dbo.sec_permiso WHERE per_codigo IN ('BANCOS_CAJA_ADMIN', 'VENTAS_FACTURA_CREAR', 'CXC_ADMIN');
 
 DECLARE @usu_admin INT, @usu_vendedor INT, @usu_cajero INT, @usu_contador INT;
 EXEC dbo.sp_usuario_insertar @usu_codigo = 'ADMIN', @usu_usuario = 'admin', @usu_password = 'Demo#2024', @usu_email = 'admin@siq.com.gt', @usu_id = @usu_admin OUTPUT;

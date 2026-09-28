@@ -12,6 +12,9 @@ public sealed class Producto
 	public int PrtId { get; set; }
 	public string PrtDescripcion { get; set; } = "";
 	public string ProEstado { get; set; } = "A";
+	public int? UmeId { get; set; }
+	public string? UmeCodigo { get; set; }
+	public string? UmeDescripcion { get; set; }
 }
 
 public sealed class ProductoExistenciaBodega
@@ -78,4 +81,25 @@ public sealed class ProductoPrecio
 	public DateTime PprVigenciaDesde { get; set; }
 	public DateTime? PprVigenciaHasta { get; set; }
 	public string PprEstado { get; set; } = "A";
+}
+
+public sealed class UnidadMedida
+{
+	public int UmeId { get; set; }
+	public string UmeCodigo { get; set; } = "";
+	public string UmeDescripcion { get; set; } = "";
+	public string UmeEstado { get; set; } = "A";
+	public int CantidadUsos { get; set; }
+}
+
+public sealed class BodegaDetalle
+{
+	public int BodId { get; set; }
+	public string BodCodigo { get; set; } = "";
+	public string BodDescripcion { get; set; } = "";
+	public int SucId { get; set; }
+	public string SucCodigo { get; set; } = "";
+	public string SucDescripcion { get; set; } = "";
+	public string BodEstado { get; set; } = "A";
+	public int ProductosConExistencia { get; set; }
 }

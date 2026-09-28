@@ -1,0 +1,7 @@
+@page "/cxp/notas"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CXP_ADMIN")]
+
+<PageTitle>Notas de crédito y débito de proveedores</PageTitle>
+
+<NotasVista EsCliente="false" />

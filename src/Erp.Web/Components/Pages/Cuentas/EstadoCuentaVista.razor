@@ -1,0 +1,134 @@
+@* Estado de cuenta de un cliente (CxC) o un proveedor (CxP). *@
+@using Erp.Data.Cuentas
+@using Erp.Data.Ventas
+@inject ICuentasRepository CuentasRepository
+
+<div class="pagina-encabezado">
+    <h1>Estado de cuenta de @(EsCliente ? "clientes" : "proveedores")</h1>
+    <p>Documentos con saldo y movimientos (@(EsCliente ? "facturas, pagos y notas" : "compras, cheques y notas")) con saldo corrido.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="mensaje-error" role="alert">@mensaje</p>
+}
+
+<div class="barra-filtros">
+    <div class="filtro-tercero">
+        <SelectorTercero EsCliente="EsCliente" Seleccionado="tercero" SeleccionadoChanged="CambiarTerceroAsync" />
+    </div>
+    <label for="ec-desde">Desde</label>
+    <input id="ec-desde" type="date" @bind="desde" />
+    <label for="ec-hasta">Hasta</label>
+    <input id="ec-hasta" type="date" @bind="hasta" />
+    <BotonIcono Icono="search" Tooltip="Consultar" Etiqueta="Consultar" Variante="primario" Deshabilitado="tercero is null" OnClick="ConsultarAsync" />
+    @if (tercero is not null)
+    {
+        <span class="barra-herramientas-separador"></span>
+        <a class="boton-icono boton-icono-con-etiqueta" href="@UrlExcel" download title="Exportar a Excel">
+            <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Excel</span>
+        </a>
+        <a class="boton-icono boton-icono-con-etiqueta" href="@UrlImprimir" target="_blank" rel="noopener" title="Abrir el estado de cuenta para imprimir">
+            <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+        </a>
+    }
+</div>
+
+@if (tercero is null)
+{
+    <p class="estado-vacio">Seleccione @(EsCliente ? "un cliente" : "un proveedor") para ver su estado de cuenta.</p>
+}
+else if (consultado)
+{
+    <div class="kpi-fila">
+        <div class="kpi"><span class="kpi-etiqueta">Saldo pendiente</span><span class="kpi-valor">Q@(documentos.Sum(d => d.Saldo).ToString("N2"))</span></div>
+        <div class="kpi"><span class="kpi-etiqueta">Documentos con saldo</span><span class="kpi-valor">@documentos.Count</span></div>
+        <div class="kpi kpi-alerta"><span class="kpi-etiqueta">Con cuotas vencidas</span><span class="kpi-valor">@documentos.Count(d => d.ProximoVencimiento < DateTime.Today)</span></div>
+    </div>
+
+    <BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestana" />
+
+    @if (pestana == "documentos")
+    {
+        <DocumentosSaldoTabla Documentos="documentos" EsCliente="EsCliente" SeleccionadoId="documentoSeleccionado?.EncId" OnSeleccionar="SeleccionarDocumentoAsync" />
+        @if (documentoSeleccionado is not null)
+        {
+            <section class="tarjeta" aria-labelledby="titulo-cuotas">
+                <h2 id="titulo-cuotas">Cuotas de @documentoSeleccionado.Documento</h2>
+                <CuotasTabla EsCliente="EsCliente" CuotasCliente="cuotasCliente" CuotasProveedor="cuotasProveedor" />
+            </section>
+        }
+    }
+    else
+    {
+        <EstadoCuentaTabla Movimientos="movimientos" SaldoInicial="@(movimientos.FirstOrDefault()?.SaldoInicial ?? 0)" />
+    }
+}
+
+@code {
+    [Parameter] public bool EsCliente { get; set; } = true;
+
+    private static readonly IReadOnlyList<PestanaItem> Pestanas = new[]
+    {
+        new PestanaItem("documentos", "Documentos con saldo"),
+        new PestanaItem("movimientos", "Movimientos"),
+    };
+
+    private TerceroSeleccion? tercero;
+    private DateTime? desde = new DateTime(DateTime.Today.Year, 1, 1);
+    private DateTime? hasta = DateTime.Today;
+    private string pestana = "documentos";
+    private bool consultado;
+    private IReadOnlyList<DocumentoSaldo> documentos = Array.Empty<DocumentoSaldo>();
+    private IReadOnlyList<MovimientoEstadoCuenta> movimientos = Array.Empty<MovimientoEstadoCuenta>();
+    private DocumentoSaldo? documentoSeleccionado;
+    private IReadOnlyList<CuotaPlanPago> cuotasCliente = Array.Empty<CuotaPlanPago>();
+    private IReadOnlyList<CuotaProveedor> cuotasProveedor = Array.Empty<CuotaProveedor>();
+    private string? mensaje;
+
+    private string Modulo => EsCliente ? "cxc" : "cxp";
+    private string Filtros => $"id={tercero?.Id}{(desde is null ? "" : $"&desde={desde:yyyy-MM-dd}")}{(hasta is null ? "" : $"&hasta={hasta:yyyy-MM-dd}")}";
+    private string UrlExcel => $"reportes/{Modulo}/estado-cuenta.xlsx?{Filtros}";
+    private string UrlImprimir => $"{Modulo}/estado-cuenta/imprimir?{Filtros}";
+
+    private async Task CambiarTerceroAsync(TerceroSeleccion? nuevo)
+    {
+        tercero = nuevo;
+        consultado = false;
+        documentoSeleccionado = null;
+        if (tercero is not null) await ConsultarAsync();
+    }
+
+    private async Task ConsultarAsync()
+    {
+        if (tercero is null) return;
+        try
+        {
+            if (EsCliente)
+            {
+                documentos = await CuentasRepository.ConsultarDocumentosCxcAsync(tercero.Id, soloPendientes: true);
+                movimientos = await CuentasRepository.ConsultarEstadoCuentaClienteAsync(tercero.Id, desde, hasta);
+            }
+            else
+            {
+                documentos = await CuentasRepository.ConsultarDocumentosCxpAsync(tercero.Id, soloPendientes: true);
+                movimientos = await CuentasRepository.ConsultarEstadoCuentaProveedorAsync(tercero.Id, desde, hasta);
+            }
+            documentoSeleccionado = null;
+            consultado = true;
+            mensaje = null;
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+    }
+
+    private async Task SeleccionarDocumentoAsync(DocumentoSaldo documento)
+    {
+        documentoSeleccionado = documento;
+        try
+        {
+            if (EsCliente) cuotasCliente = await CuentasRepository.ConsultarCuotasClienteAsync(documento.EncId);
+            else cuotasProveedor = await CuentasRepository.ConsultarCuotasProveedorAsync(documento.EncId);
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+    }
+}

@@ -50,7 +50,8 @@ GO
 IF OBJECT_ID('dbo.CK_cont_asiento_enc_origen', 'C') IS NOT NULL
 	ALTER TABLE dbo.cont_asiento_enc DROP CONSTRAINT [CK_cont_asiento_enc_origen];
 ALTER TABLE dbo.cont_asiento_enc ADD CONSTRAINT [CK_cont_asiento_enc_origen]
-	CHECK ([asi_origen] IN ('MANUAL','VENTA','COMPRA','PAGO_CLIENTE','PAGO_PROVEEDOR','DEPOSITO','CIERRE_CAJA','NOMINA'));
+	CHECK ([asi_origen] IN ('MANUAL','VENTA','COMPRA','PAGO_CLIENTE','PAGO_PROVEEDOR','DEPOSITO','CIERRE_CAJA','NOMINA',
+							'NOTA_CREDITO','NOTA_DEBITO'));	-- notas: 32
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_cont_asiento_enc_origen_id' AND object_id = OBJECT_ID('dbo.cont_asiento_enc'))

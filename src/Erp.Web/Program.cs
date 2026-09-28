@@ -1,5 +1,10 @@
 using Erp.Data;
+using Erp.Data.Compras;
+using Erp.Data.Cuentas;
+using Erp.Data.General;
+using Erp.Data.Ventas;
 using Erp.Web.Components;
+using Erp.Web.Reportes;
 using Erp.Web.Security;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -79,6 +84,57 @@ app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
 	.AddInteractiveServerRenderMode();
+
+// Exportación a Excel de cuentas por cobrar y por pagar.
+const string TipoExcel = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+async Task<string> NombreCompaniaAsync(HttpContext contexto, IGeneralRepository general) =>
+	(await general.ConsultarParametrosAsync(contexto.User.ObtenerSucId())).CiaNombreComercial;
+
+app.MapGet("/reportes/{modulo}/antiguedad.xlsx", async (string modulo, DateTime? fecha, int? id, HttpContext contexto,
+	ICuentasRepository cuentas, IGeneralRepository general, IAuthorizationService autorizacion) =>
+{
+	var esCliente = modulo == "cxc";
+	if (!esCliente && modulo != "cxp") return Results.NotFound();
+	var politica = esCliente ? "Permiso:CXC_ADMIN,VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR" : "Permiso:CXP_ADMIN";
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, politica)).Succeeded) return Results.Forbid();
+
+	var corte = (fecha ?? DateTime.Today).Date;
+	var filas = esCliente ? await cuentas.ConsultarAntiguedadClientesAsync(corte, id) : await cuentas.ConsultarAntiguedadProveedoresAsync(corte, id);
+	var archivo = ReportesExcel.Antiguedad(filas, esCliente, corte, await NombreCompaniaAsync(contexto, general));
+	return Results.File(archivo, TipoExcel, $"antiguedad-{(esCliente ? "clientes" : "proveedores")}-{corte:yyyyMMdd}.xlsx");
+}).RequireAuthorization();
+
+app.MapGet("/reportes/{modulo}/estado-cuenta.xlsx", async (string modulo, int id, DateTime? desde, DateTime? hasta, HttpContext contexto,
+	ICuentasRepository cuentas, IGeneralRepository general, IClienteRepository clientes, IProveedorRepository proveedores,
+	IAuthorizationService autorizacion) =>
+{
+	var esCliente = modulo == "cxc";
+	if (!esCliente && modulo != "cxp") return Results.NotFound();
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, esCliente ? "Permiso:CXC_ADMIN" : "Permiso:CXP_ADMIN")).Succeeded) return Results.Forbid();
+
+	string tercero;
+	IReadOnlyList<MovimientoEstadoCuenta> movimientos;
+	IReadOnlyList<DocumentoSaldo> documentos;
+	if (esCliente)
+	{
+		var cliente = await clientes.ConsultarPorIdAsync(id);
+		if (cliente is null) return Results.NotFound();
+		tercero = $"{cliente.CliCodigo} {cliente.NombreCompleto}";
+		movimientos = await cuentas.ConsultarEstadoCuentaClienteAsync(id, desde, hasta);
+		documentos = await cuentas.ConsultarDocumentosCxcAsync(id, soloPendientes: true);
+	}
+	else
+	{
+		var proveedor = await proveedores.ConsultarPorIdAsync(id);
+		if (proveedor is null) return Results.NotFound();
+		tercero = $"{proveedor.PrvCodigo} {proveedor.PrvNombreComercial}";
+		movimientos = await cuentas.ConsultarEstadoCuentaProveedorAsync(id, desde, hasta);
+		documentos = await cuentas.ConsultarDocumentosCxpAsync(id, soloPendientes: true);
+	}
+	var archivo = ReportesExcel.EstadoCuenta(movimientos, documentos, esCliente, tercero, desde, hasta, await NombreCompaniaAsync(contexto, general));
+	return Results.File(archivo, TipoExcel, $"estado-cuenta-{(esCliente ? "cliente" : "proveedor")}-{id}.xlsx");
+}).RequireAuthorization();
 
 app.MapPost("/logout", async (HttpContext context) =>
 {

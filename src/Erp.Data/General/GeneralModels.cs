@@ -59,3 +59,16 @@ public sealed class CuentaParametro
 	public string? CtaCodigo { get; set; }
 	public string? CtaNombre { get; set; }
 }
+
+public sealed class SucursalDetalle
+{
+	public int SucId { get; set; }
+	public string SucCodigo { get; set; } = "";
+	public string SucDescripcion { get; set; } = "";
+	public string? SucDireccion { get; set; }
+	public string? SucTelefono { get; set; }
+	public int CiaId { get; set; }
+	public string CiaNombreComercial { get; set; } = "";
+	public string SucEstado { get; set; } = "A";
+	public int CantidadBodegas { get; set; }
+}

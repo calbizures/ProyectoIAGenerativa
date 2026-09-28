@@ -10,6 +10,10 @@ public interface IGeneralRepository
 	Task CambiarEstadoCompaniaAsync(int ciaId, string estado, int? usuarioAccionId);
 	Task<ParametrosCompania> ConsultarParametrosAsync(int? sucId);
 
+	Task<IReadOnlyList<SucursalDetalle>> ConsultarSucursalesAsync(int? ciaId, bool soloActivas);
+	Task<int> GuardarSucursalAsync(SucursalDetalle sucursal, int? usuarioAccionId);
+	Task CambiarEstadoSucursalAsync(int sucId, string estado, int? usuarioAccionId);
+
 	// Entidades financieras (maestro: tipo, detalle: entidad)
 	Task<IReadOnlyList<EntidadFinancieraTipo>> ConsultarTiposEntidadAsync();
 	Task<int> GuardarTipoEntidadAsync(int? geftId, string descripcion, int? usuarioAccionId);

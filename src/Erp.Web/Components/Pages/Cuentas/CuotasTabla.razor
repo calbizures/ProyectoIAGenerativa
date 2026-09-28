@@ -1,0 +1,46 @@
+@* Cuotas del plan de pagos de un documento (cliente o proveedor). *@
+@using Erp.Data.Cuentas
+@using Erp.Data.Ventas
+
+<table class="tabla-datos">
+    <thead>
+        <tr><th class="num">Cuota</th><th>Vencimiento</th><th class="num">Valor</th><th class="num">Saldo</th><th>Estado</th>
+            @if (OnElegir.HasDelegate) { <th class="col-acciones"></th> }
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var c in Filas())
+        {
+            <tr class="@(ElegidaId == c.Id ? "fila-seleccionada" : "")">
+                <td class="num">@c.Numero</td>
+                <td class="@(c.Saldo > 0 && c.Vencimiento < DateTime.Today ? "antiguedad-vencido" : "")">@c.Vencimiento.ToString("dd/MM/yyyy")</td>
+                <td class="num">@c.Valor.ToString("N2")</td>
+                <td class="num">@c.Saldo.ToString("N2")</td>
+                <td><span class="estado-badge @(c.Saldo > 0 ? "estado-badge-inactivo" : "estado-badge-activo")">@(c.Saldo > 0 ? (c.Vencimiento < DateTime.Today ? $"Vencida ({(DateTime.Today - c.Vencimiento).Days} días)" : "Pendiente") : "Pagada")</span></td>
+                @if (OnElegir.HasDelegate)
+                {
+                    <td class="col-acciones">
+                        @if (c.Saldo > 0)
+                        {
+                            <BotonIcono Icono="check-circle" Tooltip="@(EsCliente ? "Cobrar esta cuota" : "Pagar esta cuota")" Etiqueta="@(EsCliente ? "Cobrar" : "Pagar")" OnClick="() => OnElegir.InvokeAsync(c.Id)" />
+                        }
+                    </td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [Parameter] public IReadOnlyList<CuotaPlanPago> CuotasCliente { get; set; } = Array.Empty<CuotaPlanPago>();
+    [Parameter] public IReadOnlyList<CuotaProveedor> CuotasProveedor { get; set; } = Array.Empty<CuotaProveedor>();
+    [Parameter] public bool EsCliente { get; set; } = true;
+    [Parameter] public int? ElegidaId { get; set; }
+    [Parameter] public EventCallback<int> OnElegir { get; set; }
+
+    private sealed record Cuota(int Id, int Numero, DateTime Vencimiento, decimal Valor, decimal Saldo);
+
+    private IEnumerable<Cuota> Filas() => EsCliente
+        ? CuotasCliente.Select(c => new Cuota(c.CppId, c.CppNroCuota, c.CppFechaMaximaPago, c.CppValorCuota, c.CppSaldoCuota))
+        : CuotasProveedor.Select(c => new Cuota(c.PpgId, c.PpgNroPago, c.PpgFechaPago, c.PpgValorPago, c.Saldo));
+}

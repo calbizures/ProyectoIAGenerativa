@@ -221,4 +221,30 @@ public sealed class RrhhRepository(IDbConnectionFactory connectionFactory) : IRr
 
 	public Task<IReadOnlyList<NominaDetalle>> ConsultarNominaDetalleAsync(int idNominaEmpleado) =>
 		ConsultarAsync<NominaDetalle>("dbo.paRrhhNominaDetalleConsultar", new { IdNominaEmpleado = idNominaEmpleado });
+
+	public Task<IReadOnlyList<UnidadOrganizativaNodo>> ConsultarUnidadesArbolAsync() =>
+		ConsultarAsync<UnidadOrganizativaNodo>("dbo.paRrhhUnidadArbolConsultar");
+
+	public Task<int> GuardarUnidadAsync(int? idUnidad, int? idPadre, string descripcion, short orden, int? usuarioAccionId)
+	{
+		var parametros = new DynamicParameters();
+		parametros.Add("@IdUnidad", idUnidad);
+		parametros.Add("@IdPadre", idPadre);
+		parametros.Add("@Descripcion", descripcion);
+		parametros.Add("@Orden", orden);
+		parametros.Add("@UsuId", usuarioAccionId);
+		return GuardarConResultadoAsync("dbo.paRrhhUnidadGuardar", parametros);
+	}
+
+	public Task MoverUnidadAsync(int idUnidad, int? idPadreNuevo, int? usuarioAccionId) =>
+		EjecutarAsync("dbo.paRrhhUnidadMover", new { IdUnidad = idUnidad, IdPadreNuevo = idPadreNuevo, UsuId = usuarioAccionId });
+
+	public Task CambiarEstadoUnidadAsync(int idUnidad, string estado, int? usuarioAccionId) =>
+		EjecutarAsync("dbo.paRrhhUnidadCambiarEstado", new { IdUnidad = idUnidad, Estado = estado, UsuId = usuarioAccionId });
+
+	public Task EliminarUnidadAsync(int idUnidad) =>
+		EjecutarAsync("dbo.paRrhhUnidadEliminar", new { IdUnidad = idUnidad });
+
+	public Task<IReadOnlyList<OrganigramaNodo>> ConsultarOrganigramaAsync(bool soloActivos) =>
+		ConsultarAsync<OrganigramaNodo>("dbo.paRrhhOrganigramaConsultar", new { SoloActivos = soloActivos });
 }

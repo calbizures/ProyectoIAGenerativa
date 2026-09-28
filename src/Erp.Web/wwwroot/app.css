@@ -1981,3 +1981,449 @@ a.modulo-card:focus-visible {
         max-height: 50vh;
     }
 }
+
+/* ------------------------------------------------------------------
+   Organigrama (RRHH › Estructura organizativa › Organigrama)
+   Listas anidadas: cada <li> dibuja la línea que lo une con sus
+   hermanos (::before/::after) y cada <ul> interno la que baja del padre.
+   ------------------------------------------------------------------ */
+.organigrama-herramientas {
+    gap: 1rem;
+}
+
+.organigrama-leyenda {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    color: var(--texto-tenue);
+}
+
+.org-muestra {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    margin-left: 0.5rem;
+}
+
+.org-muestra.org-u { background: var(--si-navy-700); }
+.org-muestra.org-d { background: var(--si-blue-500); }
+.org-muestra.org-p { background: var(--superficie); border: 1px solid var(--borde); }
+
+.organigrama-lienzo {
+    overflow: auto;
+    padding: 1.25rem 1rem 1.5rem;
+    background: var(--superficie);
+    border: 1px solid var(--borde-suave);
+    border-radius: var(--radio-grande);
+    box-shadow: var(--sombra-tarjeta);
+}
+
+.organigrama,
+.organigrama ul {
+    display: flex;
+    justify-content: center;
+    margin: 0;
+    padding: 22px 0 0;
+    position: relative;
+    list-style: none;
+}
+
+.organigrama {
+    padding-top: 0;
+    min-width: max-content;
+}
+
+.organigrama li {
+    list-style: none;
+    position: relative;
+    padding: 22px 6px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.organigrama li::before,
+.organigrama li::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 50%;
+    width: 50%;
+    height: 22px;
+    border-top: 2px solid var(--borde);
+}
+
+.organigrama li::after {
+    right: auto;
+    left: 50%;
+    border-left: 2px solid var(--borde);
+}
+
+.organigrama li:only-child::before,
+.organigrama li:only-child::after {
+    border-top: none;
+}
+
+.organigrama li:only-child::before {
+    display: none;
+}
+
+.organigrama li:first-child::before,
+.organigrama li:last-child::after {
+    border-top: none;
+}
+
+.organigrama li:last-child::before {
+    border-right: 2px solid var(--borde);
+    border-radius: 0 6px 0 0;
+}
+
+.organigrama li:first-child::after {
+    border-radius: 6px 0 0 0;
+}
+
+.organigrama ul::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    height: 22px;
+    border-left: 2px solid var(--borde);
+}
+
+.organigrama > li {
+    padding-top: 0;
+}
+
+.organigrama > li::before,
+.organigrama > li::after {
+    display: none;
+}
+
+.org-tarjeta {
+    position: relative;
+    min-width: 150px;
+    max-width: 240px;
+    padding: 0.55rem 0.7rem 0.7rem;
+    border-radius: 10px;
+    text-align: left;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    box-shadow: 0 2px 8px rgba(13, 27, 76, 0.08);
+}
+
+.org-tarjeta.org-u {
+    background: var(--si-navy-700);
+    border-color: var(--si-navy-700);
+    color: #ffffff;
+}
+
+.org-tarjeta.org-d {
+    background: #eaf3ff;
+    border-color: var(--si-blue-500);
+    border-left-width: 4px;
+}
+
+.org-tarjeta.org-inactiva {
+    opacity: 0.55;
+}
+
+.org-cabecera {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.85;
+}
+
+.org-codigo {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.org-nombre {
+    font-weight: 600;
+    font-size: 0.92rem;
+    margin-top: 0.15rem;
+}
+
+.org-detalle {
+    font-size: 0.78rem;
+    color: var(--texto-tenue);
+}
+
+/* La lista de plazas va dentro de la tarjeta: no hereda el dibujo del árbol. */
+.organigrama .org-plazas {
+    display: block;
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0.4rem 0 0;
+    border-top: 1px solid rgba(21, 101, 192, 0.25);
+}
+
+.organigrama .org-plazas::before {
+    display: none;
+}
+
+.organigrama .org-plazas li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 0.4rem;
+    align-items: baseline;
+    padding: 0.2rem 0;
+    font-size: 0.78rem;
+}
+
+.organigrama .org-plazas li::before,
+.organigrama .org-plazas li::after {
+    display: none;
+}
+
+.org-plaza-nombre {
+    color: var(--texto);
+}
+
+.organigrama .org-empleado {
+    grid-column: 2;
+    font-weight: 600;
+    color: var(--si-navy-700);
+}
+
+.organigrama .org-empleado.org-vacante {
+    font-weight: 500;
+    font-style: italic;
+    color: var(--aviso-texto);
+}
+
+.org-alternar {
+    position: absolute;
+    bottom: -11px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 11px;
+    border: 1px solid var(--borde);
+    background: var(--superficie);
+    color: var(--texto);
+    font-size: 0.72rem;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.org-alternar:focus-visible {
+    outline: none;
+    box-shadow: var(--anillo-foco);
+}
+
+/* Detalle de factura: casilla Bien/Servicio, descripción libre del servicio
+   y búsqueda de producto dentro de la línea. */
+.doc-tabla .col-bs {
+    width: 64px;
+    text-align: center;
+}
+
+.doc-tabla .col-bs select {
+    min-width: 52px;
+}
+
+.doc-input-descripcion {
+    width: 100%;
+    min-width: 220px;
+}
+
+.doc-buscador-linea {
+    position: relative;
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+    min-width: 220px;
+}
+
+.doc-buscador-linea .doc-buscador-resultados {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 5;
+    margin-top: 0.25rem;
+    background: var(--superficie);
+}
+
+/* ------------------------------------------------------------------
+   Cuentas por cobrar / por pagar
+   ------------------------------------------------------------------ */
+a.boton-icono {
+    text-decoration: none;
+}
+
+.filtro-tercero {
+    flex: 1 1 280px;
+    max-width: 420px;
+}
+
+.filtro-tercero .doc-buscador {
+    max-width: none;
+}
+
+.kpi-fila {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.8rem 1rem;
+    background: var(--superficie);
+    border: 1px solid var(--borde-suave);
+    border-left: 4px solid var(--si-blue-500);
+    border-radius: 10px;
+    box-shadow: var(--sombra-tarjeta);
+}
+
+.kpi.kpi-alerta {
+    border-left-color: var(--error-texto);
+}
+
+.kpi-etiqueta {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--texto-tenue);
+}
+
+.kpi-valor {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--si-navy-900);
+    font-variant-numeric: tabular-nums;
+}
+
+.tabla-antiguedad td.num,
+.tabla-estado-cuenta td.num {
+    font-variant-numeric: tabular-nums;
+}
+
+.antiguedad-vencido {
+    color: var(--error-texto);
+}
+
+.tabla-datos tr.antiguedad-grupo td {
+    background: var(--superficie-suave);
+    color: var(--si-navy-900);
+}
+
+.tabla-datos tr.antiguedad-subtotal td {
+    font-weight: 600;
+    border-bottom: 2px solid var(--borde);
+}
+
+.tabla-datos tfoot td {
+    font-weight: 700;
+    background: var(--superficie-suave);
+}
+
+.tabla-datos tr.antiguedad-porcentaje td {
+    font-weight: 500;
+    color: var(--texto-tenue);
+}
+
+.saldo-negativo {
+    color: var(--exito-texto);
+}
+
+/* Vista imprimible (ReporteLayout): hoja blanca, sin menú. */
+.reporte-pagina {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    background: #ffffff;
+    min-height: 100vh;
+}
+
+.reporte-encabezado {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    border-bottom: 2px solid var(--si-navy-700);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.reporte-encabezado h1 {
+    font-size: 1.3rem;
+    margin: 0.15rem 0 0;
+}
+
+.reporte-compania {
+    font-weight: 700;
+    color: var(--si-navy-700);
+}
+
+.reporte-meta {
+    text-align: right;
+    font-size: 0.85rem;
+    color: var(--texto-tenue);
+}
+
+.reporte-pie {
+    margin-top: 1.5rem;
+    font-size: 0.78rem;
+    color: var(--texto-tenue);
+}
+
+.reporte-acciones {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+@media print {
+    @page {
+        size: landscape;
+        margin: 12mm;
+    }
+
+    body {
+        background: #ffffff;
+    }
+
+    .no-imprimir,
+    .reporte-acciones,
+    #components-reconnect-modal {
+        display: none !important;
+    }
+
+    .reporte-pagina {
+        max-width: none;
+        padding: 0;
+    }
+
+    .tabla-datos {
+        box-shadow: none;
+        font-size: 0.78rem;
+        display: table;
+    }
+
+    .tabla-datos th, .tabla-datos td {
+        padding: 0.3rem 0.45rem;
+        white-space: normal;
+    }
+
+    .tabla-datos tr {
+        break-inside: avoid;
+    }
+}

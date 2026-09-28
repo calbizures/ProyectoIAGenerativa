@@ -1,0 +1,201 @@
+@page "/bodegas"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:INVENTARIO_PRODUCTO_EDITAR,GENERAL_CONFIG_ADMIN")]
+@using Erp.Data.General
+@using Erp.Data.Inventario
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IGeneralRepository GeneralRepository
+@inject IBodegaRepository BodegaRepository
+
+<PageTitle>Bodegas</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Bodegas</h1>
+    <p>Cada bodega pertenece a una sucursal; una sucursal puede tener varias. Una bodega con existencias no se puede inactivar ni cambiar de sucursal.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="barra-filtros">
+    <label for="filtro-sucursal">Sucursal</label>
+    <select id="filtro-sucursal" value="@filtroSucId" @onchange="CambiarFiltroAsync">
+        <option value="0">Todas</option>
+        @foreach (var s in sucursales)
+        {
+            <option value="@s.SucId">@s.SucCodigo - @s.SucDescripcion</option>
+        }
+    </select>
+    <span class="barra-herramientas-separador"></span>
+    <BotonIcono Icono="plus" Tooltip="Nueva bodega" Etiqueta="Nueva bodega" Variante="primario" OnClick="Nueva" />
+</div>
+
+@if (editandoId is not null)
+{
+    <section class="tarjeta" aria-labelledby="titulo-edicion">
+        <h2 id="titulo-edicion">@(editandoId == 0 ? "Nueva bodega" : "Editar bodega")</h2>
+        <div class="panel-formulario">
+            <div class="campo">
+                <label for="bod-sucursal">Sucursal</label>
+                <select id="bod-sucursal" @bind="formSucId">
+                    <option value="0">Seleccione...</option>
+                    @foreach (var s in sucursales.Where(s => s.SucEstado == "A" || s.SucId == formSucId))
+                    {
+                        <option value="@s.SucId">@s.SucCodigo - @s.SucDescripcion</option>
+                    }
+                </select>
+            </div>
+            <div class="campo"><label for="bod-codigo">Código</label><input id="bod-codigo" @bind="formCodigo" maxlength="8" /></div>
+            <div class="campo"><label for="bod-desc">Descripción</label><input id="bod-desc" @bind="formDescripcion" maxlength="128" /></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarAsync" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => editandoId = null" />
+            </div>
+        </div>
+    </section>
+}
+
+@if (bodegas.Count == 0)
+{
+    <p class="estado-vacio">No hay bodegas para el filtro seleccionado.</p>
+}
+else
+{
+    <table class="tabla-datos">
+        <thead>
+            <tr><th>Sucursal</th><th class="col-codigo">Código</th><th>Bodega</th><th class="num">Productos con existencia</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var b in bodegas)
+            {
+                <tr>
+                    <td>@b.SucCodigo - @b.SucDescripcion</td>
+                    <td class="col-codigo">@b.BodCodigo</td>
+                    <td>@b.BodDescripcion</td>
+                    <td class="num">@b.ProductosConExistencia</td>
+                    <td class="col-estado"><span class="estado-badge @(b.BodEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(b.BodEstado == "A" ? "Activa" : "Inactiva")</span></td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="pencil" Tooltip="Editar bodega" OnClick="() => Editar(b)" />
+                            @if (b.BodEstado == "A")
+                            {
+                                <BotonIcono Icono="ban" Tooltip="Inactivar bodega" Variante="peligro" OnClick='() => CambiarEstadoAsync(b, "I")' />
+                            }
+                            else
+                            {
+                                <BotonIcono Icono="check-circle" Tooltip="Activar bodega" OnClick='() => CambiarEstadoAsync(b, "A")' />
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<SucursalDetalle> sucursales = Array.Empty<SucursalDetalle>();
+    private IReadOnlyList<BodegaDetalle> bodegas = Array.Empty<BodegaDetalle>();
+    private int filtroSucId;
+
+    // 0 = nueva, null = sin edición en curso.
+    private int? editandoId;
+    private int formSucId;
+    private string formCodigo = "";
+    private string formDescripcion = "";
+
+    private string? mensaje;
+    private bool esMensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            sucursales = await GeneralRepository.ConsultarSucursalesAsync(ciaId: null, soloActivas: false);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        await CargarAsync();
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        return (await AuthenticationStateTask).User.ObtenerUsuId();
+    }
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private async Task CargarAsync()
+    {
+        try
+        {
+            bodegas = await BodegaRepository.ConsultarDetalleAsync(filtroSucId == 0 ? null : filtroSucId, soloActivas: false);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task CambiarFiltroAsync(ChangeEventArgs e)
+    {
+        filtroSucId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        await CargarAsync();
+    }
+
+    private void Nueva()
+    {
+        mensaje = null;
+        editandoId = 0;
+        formSucId = filtroSucId;
+        formCodigo = "";
+        formDescripcion = "";
+    }
+
+    private void Editar(BodegaDetalle b)
+    {
+        mensaje = null;
+        editandoId = b.BodId;
+        formSucId = b.SucId;
+        formCodigo = b.BodCodigo;
+        formDescripcion = b.BodDescripcion;
+    }
+
+    private async Task GuardarAsync()
+    {
+        if (formSucId == 0 || string.IsNullOrWhiteSpace(formCodigo) || string.IsNullOrWhiteSpace(formDescripcion))
+        {
+            mensaje = "Seleccione la sucursal e ingrese el código y la descripción.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            await BodegaRepository.GuardarAsync(editandoId == 0 ? null : editandoId, formSucId, formCodigo.Trim(), formDescripcion.Trim(), await ObtenerUsuIdActualAsync());
+            mensaje = editandoId == 0 ? "Bodega creada." : "Bodega actualizada.";
+            esMensajeError = false;
+            editandoId = null;
+            await CargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task CambiarEstadoAsync(BodegaDetalle b, string estado)
+    {
+        try
+        {
+            await BodegaRepository.CambiarEstadoAsync(b.BodId, estado, await ObtenerUsuIdActualAsync());
+            mensaje = estado == "A" ? "Bodega activada." : "Bodega inactivada.";
+            esMensajeError = false;
+            await CargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

@@ -155,89 +155,14 @@
                 }
             </div>
 
-            @if (nuevaFactura.CliId is not null)
-            {
-                <div class="doc-seccion">
-                    <BarraPestanas Pestanas="PestanasNuevaFactura" @bind-PestanaActiva="pestanaNuevaFactura" />
-
-                    @if (pestanaNuevaFactura == "historial")
-                    {
-                        @if (historialCliente.Count == 0)
-                        {
-                            <div class="doc-nota">
-                                <Icono Nombre="info" Tamano="15" />
-                                <span>Este cliente no tiene compras registradas.</span>
-                            </div>
-                        }
-                        else
-                        {
-                            <table class="doc-tabla">
-                                <thead>
-                                    <tr><th>Fecha</th><th>Serie/Número</th><th class="num">Total</th><th>Estado</th><th></th></tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var h in historialCliente)
-                                    {
-                                        <tr>
-                                            <td>@h.EncFechaDocto.ToString("dd/MM/yyyy")</td>
-                                            <td>@(string.IsNullOrWhiteSpace(h.EncSerieDocto) ? $"{h.EncNumeroDocto}" : $"{h.EncSerieDocto}-{h.EncNumeroDocto}")</td>
-                                            <td class="num">@MonedaSimbolo @h.EncMontoTotal.ToString("N2")</td>
-                                            <td>@(h.EncEstado == "G" ? "Grabada" : "Anulada")</td>
-                                            <td><BotonIcono Icono="eye" Tooltip="Ver qué compró" OnClick="() => AlternarDetalleHistorialAsync(h)" /></td>
-                                        </tr>
-                                        @if (historialClienteExpandidoId == h.EncId)
-                                        {
-                                            <tr>
-                                                <td colspan="5">
-                                                    <table class="doc-tabla">
-                                                        <thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Precio unit.</th></tr></thead>
-                                                        <tbody>
-                                                            @foreach (var d in historialClienteDetalleExpandido)
-                                                            {
-                                                                var precioConIva = d.DetPrecioUnitario * (1 + (d.DetPorcIva ?? 0) / 100m);
-                                                                <tr>
-                                                                    <td>@d.DetDescripcion</td>
-                                                                    <td class="num">@d.DetCantidad</td>
-                                                                    <td class="num">@precioConIva.ToString("N2")</td>
-                                                                </tr>
-                                                            }
-                                                        </tbody>
-                                                    </table>
-                                                </td>
-                                            </tr>
-                                        }
-                                    }
-                                </tbody>
-                            </table>
-                        }
-                    }
-                    else if (pestanaNuevaFactura == "planpagos")
-                    {
-                        @if (condicionPagoFactura == "credito")
-                        {
-                            <div class="doc-nota">
-                                <Icono Nombre="info" Tamano="15" />
-                                <span>Plan de pagos: @nuevaFactura.NumeroCuotas cuota(s) de @MonedaSimbolo @ValorCuotaFactura.ToString("N2"), a partir del enganche de @MonedaSimbolo @nuevaFactura.MontoEnganche.ToString("N2").</span>
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="doc-nota">
-                                <Icono Nombre="info" Tamano="15" />
-                                <span>Esta factura es de contado. Seleccione la condición "Crédito" en Forma de pago para ver el plan de cuotas.</span>
-                            </div>
-                        }
-                    }
-                </div>
-            }
-
             <div class="doc-seccion">
-                <p class="doc-seccion-titulo"><Icono Nombre="package" Tamano="15" /> Detalle de productos</p>
+                <p class="doc-seccion-titulo"><Icono Nombre="package" Tamano="15" /> Detalle</p>
 
                 <div class="doc-buscador">
                     <div class="doc-buscador-fila">
                         <input placeholder="Buscar producto por código o descripción" aria-label="Buscar producto por código o descripción" @bind="textoBusquedaProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
                         <BotonIcono Icono="search" Tooltip="Buscar producto" OnClick="BuscarProductosAsync" />
+                        <BotonIcono Icono="plus" Tooltip="Agregar un servicio (sin producto)" Etiqueta="Agregar servicio" OnClick="AgregarServicio" />
                     </div>
                     @if (productosEncontrados.Count > 0)
                     {
@@ -248,7 +173,7 @@
                                     <span class="doc-avatar doc-avatar-icono"><Icono Nombre="package" Tamano="15" /></span>
                                     <span class="doc-resultado-texto">
                                         <strong>@p.ProDescripcion</strong>
-                                        <span>@p.ProCodigo</span>
+                                        <span>@p.ProCodigo · @(p.ProTipoItem == "S" ? "Servicio" : "Bien")</span>
                                     </span>
                                 </div>
                             }
@@ -258,14 +183,16 @@
 
                 <div class="doc-nota">
                     <Icono Nombre="check-circle" Tamano="15" />
-                    <span>El precio unitario ya incluye IVA (@PorcentajeIvaTexto%), como se factura en Guatemala — no se suma aparte.</span>
+                    <span>B = bien (producto del inventario), S = servicio (se describe en la línea). El precio unitario ya incluye IVA (@PorcentajeIvaTexto%), como se factura en Guatemala — no se suma aparte.</span>
                 </div>
 
-                <table class="doc-tabla">
+                <table class="doc-tabla doc-tabla-detalle">
                     <thead>
                         <tr>
-                            <th>Producto</th>
+                            <th class="col-bs">B/S</th>
+                            <th>Descripción</th>
                             <th class="num">Cantidad</th>
+                            <th>Unidad</th>
                             <th class="num">Precio unit. (IVA incl.)</th>
                             <th class="num">Descuento</th>
                             <th class="num">Subtotal</th>
@@ -276,10 +203,10 @@
                         @if (lineas.Count == 0)
                         {
                             <tr>
-                                <td colspan="6">
+                                <td colspan="8">
                                     <div class="doc-tabla-vacia">
                                         <Icono Nombre="package" Tamano="26" />
-                                        Usa el buscador de arriba para agregar productos a la factura.
+                                        Busque un producto arriba o use «Agregar servicio» para una línea de servicio.
                                     </div>
                                 </td>
                             </tr>
@@ -287,10 +214,53 @@
                         @foreach (var linea in lineas)
                         {
                             <tr>
-                                <td>@linea.Descripcion</td>
-                                <td class="num"><input type="number" min="1" @bind="linea.Cantidad" /></td>
-                                <td class="num"><input type="number" step="0.01" @bind="linea.PrecioUnitario" /></td>
-                                <td class="num"><input type="number" step="0.01" @bind="linea.ValorDescuento" /></td>
+                                <td class="col-bs">
+                                    <select aria-label="Bien o servicio" value="@linea.BienOServicio" @onchange="e => CambiarTipoLinea(linea, e.Value?.ToString())">
+                                        <option value="B">B</option>
+                                        <option value="S">S</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    @if (linea.BienOServicio == "S")
+                                    {
+                                        <input class="doc-input-descripcion" placeholder="Describa el servicio" aria-label="Descripción del servicio" maxlength="256" @bind="linea.Descripcion" />
+                                    }
+                                    else if (linea.ProId is not null)
+                                    {
+                                        @linea.Descripcion
+                                    }
+                                    else
+                                    {
+                                        <div class="doc-buscador-linea">
+                                            <input placeholder="Buscar producto" aria-label="Buscar producto para esta línea" @bind="linea.Busqueda" @bind:event="oninput"
+                                                   @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductoLineaAsync(linea); })" />
+                                            <BotonIcono Icono="search" Tooltip="Buscar producto" OnClick="() => BuscarProductoLineaAsync(linea)" />
+                                            @if (linea.Resultados.Count > 0)
+                                            {
+                                                <div class="doc-buscador-resultados">
+                                                    @foreach (var p in linea.Resultados)
+                                                    {
+                                                        <div class="doc-resultado-fila" @onclick="() => AsignarProductoLineaAsync(linea, p)">
+                                                            <span class="doc-resultado-texto"><strong>@p.ProDescripcion</strong><span>@p.ProCodigo</span></span>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </td>
+                                <td class="num"><input type="number" min="0" step="@(linea.ManejaExistencia ? "1" : "0.01")" aria-label="Cantidad" @bind="linea.Cantidad" /></td>
+                                <td>
+                                    <select aria-label="Unidad de medida" @bind="linea.UmeId">
+                                        <option value="0">—</option>
+                                        @foreach (var u in unidadesMedida.Where(u => u.UmeEstado == "A" || u.UmeId == linea.UmeId))
+                                        {
+                                            <option value="@u.UmeId">@u.UmeCodigo</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td class="num"><input type="number" step="0.01" min="0" aria-label="Precio unitario" @bind="linea.PrecioUnitario" /></td>
+                                <td class="num"><input type="number" step="0.01" min="0" aria-label="Descuento" @bind="linea.ValorDescuento" /></td>
                                 <td class="num">@MonedaSimbolo @linea.SubTotal.ToString("N2")</td>
                                 <td><BotonIcono Icono="trash-2" Tooltip="Quitar línea" Variante="peligro" OnClick="() => lineas.Remove(linea)" /></td>
                             </tr>
@@ -407,6 +377,81 @@
                     }
                 }
             </div>
+            @if (nuevaFactura.CliId is not null)
+            {
+                <div class="doc-seccion">
+                    <BarraPestanas Pestanas="PestanasNuevaFactura" @bind-PestanaActiva="pestanaNuevaFactura" />
+
+                    @if (pestanaNuevaFactura == "historial")
+                    {
+                        @if (historialCliente.Count == 0)
+                        {
+                            <div class="doc-nota">
+                                <Icono Nombre="info" Tamano="15" />
+                                <span>Este cliente no tiene compras registradas.</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <table class="doc-tabla">
+                                <thead>
+                                    <tr><th>Fecha</th><th>Serie/Número</th><th class="num">Total</th><th>Estado</th><th></th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var h in historialCliente)
+                                    {
+                                        <tr>
+                                            <td>@h.EncFechaDocto.ToString("dd/MM/yyyy")</td>
+                                            <td>@(string.IsNullOrWhiteSpace(h.EncSerieDocto) ? $"{h.EncNumeroDocto}" : $"{h.EncSerieDocto}-{h.EncNumeroDocto}")</td>
+                                            <td class="num">@MonedaSimbolo @h.EncMontoTotal.ToString("N2")</td>
+                                            <td>@(h.EncEstado == "G" ? "Grabada" : "Anulada")</td>
+                                            <td><BotonIcono Icono="eye" Tooltip="Ver qué compró" OnClick="() => AlternarDetalleHistorialAsync(h)" /></td>
+                                        </tr>
+                                        @if (historialClienteExpandidoId == h.EncId)
+                                        {
+                                            <tr>
+                                                <td colspan="5">
+                                                    <table class="doc-tabla">
+                                                        <thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Precio unit.</th></tr></thead>
+                                                        <tbody>
+                                                            @foreach (var d in historialClienteDetalleExpandido)
+                                                            {
+                                                                var precioConIva = d.DetPrecioUnitario * (1 + (d.DetPorcIva ?? 0) / 100m);
+                                                                <tr>
+                                                                    <td>@d.DetDescripcion</td>
+                                                                    <td class="num">@d.DetCantidad.ToString("0.####")</td>
+                                                                    <td class="num">@precioConIva.ToString("N2")</td>
+                                                                </tr>
+                                                            }
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    }
+                    else if (pestanaNuevaFactura == "planpagos")
+                    {
+                        @if (condicionPagoFactura == "credito")
+                        {
+                            <div class="doc-nota">
+                                <Icono Nombre="info" Tamano="15" />
+                                <span>Plan de pagos: @nuevaFactura.NumeroCuotas cuota(s) de @MonedaSimbolo @ValorCuotaFactura.ToString("N2"), a partir del enganche de @MonedaSimbolo @nuevaFactura.MontoEnganche.ToString("N2").</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="doc-nota">
+                                <Icono Nombre="info" Tamano="15" />
+                                <span>Esta factura es de contado. Seleccione la condición "Crédito" en Forma de pago para ver el plan de cuotas.</span>
+                            </div>
+                        }
+                    }
+                </div>
+            }
         </div>
 
         <div class="doc-card-footer">
@@ -492,8 +537,10 @@
                 <table class="doc-tabla">
                     <thead>
                         <tr>
+                            <th class="col-bs">B/S</th>
                             <th>Descripción</th>
                             <th class="num">Cantidad</th>
+                            <th>Unidad</th>
                             <th class="num">Precio unit. (IVA incl.)</th>
                             <th class="num">Descuento</th>
                             <th class="num">Subtotal</th>
@@ -506,8 +553,10 @@
                             var descuentoConIva = d.DetValorDescuento * (1 + (d.DetPorcIva ?? 0) / 100m);
                             var subtotalConIva = d.DetSubTotal * (1 + (d.DetPorcIva ?? 0) / 100m);
                             <tr>
+                                <td class="col-bs">@d.DetBienOServicio</td>
                                 <td>@d.DetDescripcion</td>
-                                <td class="num">@d.DetCantidad</td>
+                                <td class="num">@d.DetCantidad.ToString("0.####")</td>
+                                <td>@(unidadesMedida.FirstOrDefault(u => u.UmeId == d.UmeId)?.UmeCodigo ?? "—")</td>
                                 <td class="num">@precioConIva.ToString("N2")</td>
                                 <td class="num">@descuentoConIva.ToString("N2")</td>
                                 <td class="num">@subtotalConIva.ToString("N2")</td>
@@ -596,6 +645,7 @@
 
     private readonly NuevaFacturaModelo nuevaFactura = new();
     private readonly List<LineaCaptura> lineas = new();
+    private IReadOnlyList<UnidadMedida> unidadesMedida = Array.Empty<UnidadMedida>();
 
     // En Guatemala el IVA (% de la compañía, 12 por defecto) va incluido en el precio unitario que ve el
     // cliente; no se suma aparte. El total es simplemente subtotal - descuento,
@@ -636,11 +686,12 @@
         PorcentajeIva = (await GeneralRepository.ConsultarParametrosAsync(sucIdParametros)).CiaPorcIva;
         monedas = await FacturaRepository.ConsultarMonedasAsync();
         bodegas = await BodegaRepository.ConsultarAsync(sucId: null, estado: "A");
+        unidadesMedida = await BodegaRepository.ConsultarUnidadesAsync(soloActivas: false);
         formasPagoTipo = await CajaRepository.ConsultarFormasPagoTipoAsync();
         entidadesFinancieras = await CajaRepository.ConsultarEntidadesFinancierasAsync();
 
         var tiposDocumento = await FacturaRepository.ConsultarTiposDocumentoAsync();
-        tdoIdFactura = tiposDocumento.FirstOrDefault()?.TdoId ?? 0;
+        tdoIdFactura = (tiposDocumento.FirstOrDefault(t => t.TdoCodigo == "FCAM") ?? tiposDocumento.FirstOrDefault())?.TdoId ?? 0;
 
         var monedaLocal = monedas.FirstOrDefault(m => m.MonEsLocal);
         if (monedaLocal is not null) nuevaFactura.MonId = monedaLocal.MonId;
@@ -848,20 +899,93 @@
             .ToList();
     }
 
-    private async Task AgregarLineaAsync(Producto producto)
+    // Línea de servicio en blanco: se describe, se elige la unidad y se pone el precio.
+    private void AgregarServicio()
+    {
+        lineas.Add(new LineaCaptura
+        {
+            BienOServicio = "S",
+            Cantidad = 1,
+            UmeId = unidadesMedida.FirstOrDefault(u => u.UmeCodigo == "SRV")?.UmeId ?? 0
+        });
+        mensaje = null;
+    }
+
+    private void CambiarTipoLinea(LineaCaptura linea, string? tipo)
+    {
+        if (tipo is not ("B" or "S") || tipo == linea.BienOServicio) return;
+        linea.BienOServicio = tipo;
+        if (tipo == "S" && linea.ManejaExistencia)
+        {
+            // Un producto de inventario no se factura como servicio: la línea queda libre.
+            linea.ProId = null;
+            linea.PprId = null;
+            linea.CostoUnitario = null;
+            linea.ManejaExistencia = false;
+            linea.Descripcion = "";
+        }
+        else if (tipo == "B" && linea.ProId is null)
+        {
+            linea.Descripcion = "";
+            linea.Busqueda = "";
+        }
+    }
+
+    private async Task BuscarProductoLineaAsync(LineaCaptura linea)
+    {
+        if (string.IsNullOrWhiteSpace(linea.Busqueda)) return;
+        try
+        {
+            var texto = linea.Busqueda.Trim();
+            var porCodigo = await ProductoRepository.ConsultarAsync(texto, null, null, "A", 1, 10);
+            var porDescripcion = await ProductoRepository.ConsultarAsync(null, texto, null, "A", 1, 10);
+            linea.Resultados = porCodigo.Concat(porDescripcion).DistinctBy(p => p.ProId).Where(p => p.ProTipoItem == "B").Take(10).ToList();
+            if (linea.Resultados.Count == 0)
+            {
+                mensaje = "No se encontraron bienes con ese texto.";
+                esMensajeError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private async Task AsignarProductoLineaAsync(LineaCaptura linea, Producto producto)
+    {
+        var precio = await ObtenerPrecioVigenteAsync(producto);
+        if (precio is null) return;
+        linea.ProId = producto.ProId;
+        linea.Descripcion = producto.ProDescripcion;
+        linea.ManejaExistencia = producto.ProManejaExistencia;
+        linea.UmeId = producto.UmeId ?? linea.UmeId;
+        linea.PrecioUnitario = Math.Round(precio.PprPrecioUnitarioVenta, 2);
+        linea.CostoUnitario = producto.ProCostoUnitario;
+        linea.PprId = precio.PprId;
+        if (linea.ManejaExistencia) linea.Cantidad = Math.Max(1, Math.Round(linea.Cantidad, 0));
+        linea.Resultados = Array.Empty<Producto>();
+        linea.Busqueda = "";
+        mensaje = null;
+    }
+
+    // Precio vigente del producto en la bodega, moneda y fecha de la factura;
+    // si no hay, avisa y devuelve null.
+    private async Task<ProductoPrecio?> ObtenerPrecioVigenteAsync(Producto producto)
     {
         if (nuevaFactura.BodId == 0)
         {
             mensaje = "Debe seleccionar la bodega antes de agregar productos.";
             esMensajeError = true;
-            return;
+            return null;
         }
 
         if (nuevaFactura.MonId is null)
         {
             mensaje = "Debe seleccionar la moneda antes de agregar productos.";
             esMensajeError = true;
-            return;
+            return null;
         }
 
         var precios = await PrecioRepository.ConsultarAsync(producto.ProId, nuevaFactura.BodId, estado: "A");
@@ -874,10 +998,16 @@
         {
             mensaje = $"El producto '{producto.ProDescripcion}' no tiene precio vigente en la lista de precios para la bodega y moneda seleccionadas en la fecha de la factura.";
             esMensajeError = true;
-            productosEncontrados = Array.Empty<Producto>();
-            textoBusquedaProducto = "";
-            return;
         }
+        return precioVigente;
+    }
+
+    private async Task AgregarLineaAsync(Producto producto)
+    {
+        var precioVigente = await ObtenerPrecioVigenteAsync(producto);
+        productosEncontrados = Array.Empty<Producto>();
+        textoBusquedaProducto = "";
+        if (precioVigente is null) return;
 
         lineas.Add(new LineaCaptura
         {
@@ -885,14 +1015,14 @@
             Descripcion = producto.ProDescripcion,
             BienOServicio = producto.ProTipoItem,
             Cantidad = 1,
+            UmeId = producto.UmeId ?? 0,
             PrecioUnitario = Math.Round(precioVigente.PprPrecioUnitarioVenta, 2),
             ValorDescuento = 0,
             CostoUnitario = producto.ProCostoUnitario,
-            PprId = precioVigente.PprId
+            PprId = precioVigente.PprId,
+            ManejaExistencia = producto.ProManejaExistencia
         });
         mensaje = null;
-        productosEncontrados = Array.Empty<Producto>();
-        textoBusquedaProducto = "";
     }
 
     private async Task GrabarFacturaAsync()
@@ -906,7 +1036,33 @@
 
         if (lineas.Count == 0)
         {
-            mensaje = "Debe agregar al menos un producto.";
+            mensaje = "Debe agregar al menos una línea (producto o servicio).";
+            esMensajeError = true;
+            return;
+        }
+
+        var lineaInvalida = lineas.FirstOrDefault(l => l.BienOServicio == "B" && l.ProId is null);
+        if (lineaInvalida is not null)
+        {
+            mensaje = "Hay una línea de bien sin producto: búsquelo en la línea o cámbiela a servicio (S).";
+            esMensajeError = true;
+            return;
+        }
+        if (lineas.Any(l => string.IsNullOrWhiteSpace(l.Descripcion)))
+        {
+            mensaje = "Toda línea de servicio necesita la descripción del servicio prestado.";
+            esMensajeError = true;
+            return;
+        }
+        if (lineas.Any(l => l.Cantidad <= 0 || l.PrecioUnitario < 0))
+        {
+            mensaje = "La cantidad de cada línea debe ser mayor a cero y el precio no puede ser negativo.";
+            esMensajeError = true;
+            return;
+        }
+        if (lineas.Any(l => l.ManejaExistencia && l.Cantidad != Math.Round(l.Cantidad, 0)))
+        {
+            mensaje = "Los productos con existencia se venden en cantidades enteras.";
             esMensajeError = true;
             return;
         }
@@ -951,7 +1107,8 @@
                     ProId = l.ProId,
                     BienOServicio = l.BienOServicio,
                     Cantidad = l.Cantidad,
-                    Descripcion = l.Descripcion,
+                    UmeId = l.UmeId == 0 ? null : l.UmeId,
+                    Descripcion = l.Descripcion.Trim(),
                     PrecioUnitario = precioUnitarioNeto,
                     ValorDescuento = valorDescuentoNeto,
                     SubTotal = Math.Round(precioUnitarioNeto * l.Cantidad, 2),
@@ -1073,14 +1230,19 @@
 
     private sealed class LineaCaptura
     {
-        public int ProId { get; set; }
+        public int? ProId { get; set; }			// obligatorio en bienes; en servicios, solo si viene del catálogo
         public string Descripcion { get; set; } = "";
         public string BienOServicio { get; set; } = "B";
-        public int Cantidad { get; set; } = 1;
+        public decimal Cantidad { get; set; } = 1;
+        public int UmeId { get; set; }
         public decimal PrecioUnitario { get; set; }
         public decimal ValorDescuento { get; set; }
-        public decimal SubTotal => Cantidad * PrecioUnitario;
-        public decimal CostoUnitario { get; set; }
+        public decimal SubTotal => Math.Round(Cantidad * PrecioUnitario, 2);
+        public decimal? CostoUnitario { get; set; }
         public int? PprId { get; set; }
+        public bool ManejaExistencia { get; set; }
+        // Búsqueda de producto dentro de la línea (bien sin producto todavía).
+        public string Busqueda { get; set; } = "";
+        public IReadOnlyList<Producto> Resultados { get; set; } = Array.Empty<Producto>();
     }
 }
