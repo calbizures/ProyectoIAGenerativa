@@ -1582,10 +1582,6 @@ BEGIN
 END;
 GO
 
-------------------------------------------------------------
--- 5. Corte de caja, saldos y estados de cuenta sin anulados
-------------------------------------------------------------
-
 CREATE OR ALTER PROCEDURE [dbo].[paBcoChequeAnular]
 	@BceId	INT,
 	@Motivo	VARCHAR(250),
