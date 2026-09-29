@@ -16,6 +16,7 @@
 
 <div class="reporte-encabezado">
     <div>
+        <LogoCompania Clase="reporte-logo" />
         <div class="reporte-compania">@compania</div>
         <h1>Antigüedad de saldos de @(EsCliente ? "clientes" : "proveedores") · @(Vista == "documento" ? (EsCliente ? "por factura" : "por compra") : (EsCliente ? "por cliente" : "por proveedor"))</h1>
     </div>

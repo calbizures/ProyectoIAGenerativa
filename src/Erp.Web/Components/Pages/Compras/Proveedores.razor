@@ -70,6 +70,9 @@
                     <td class="col-acciones">
                         <div class="acciones-fila">
                             <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(p)" />
+                            <a class="boton-icono boton-icono-neutral" href="compras/productos-proveedor?prv=@p.PrvId" aria-label="Productos del proveedor">
+                                <Icono Nombre="package" Tamano="17" /><span class="boton-icono-tip" aria-hidden="true">Productos del proveedor</span>
+                            </a>
                             @if (p.PrvEstado == "A")
                             {
                                 <BotonIcono Icono="trash-2" Tooltip="Desactivar proveedor" Confirmacion="¿Desactivar el proveedor?" Variante="peligro" OnClick="() => DesactivarAsync(p)" />

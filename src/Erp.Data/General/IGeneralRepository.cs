@@ -9,6 +9,9 @@ public interface IGeneralRepository
 	Task<int> GuardarCompaniaAsync(Compania compania, int? usuarioAccionId);
 	Task CambiarEstadoCompaniaAsync(int ciaId, string estado, int? usuarioAccionId);
 	Task<ParametrosCompania> ConsultarParametrosAsync(int? sucId);
+	Task GuardarLogoAsync(int ciaId, byte[]? logo, string? tipo, int? usuarioAccionId);
+	// Sin ciaId: la compañía de la sucursal o la primera activa.
+	Task<CompaniaLogo?> ConsultarLogoAsync(int? ciaId, int? sucId, bool soloVersion);
 
 	Task<IReadOnlyList<SucursalDetalle>> ConsultarSucursalesAsync(int? ciaId, bool soloActivas);
 	Task<int> GuardarSucursalAsync(SucursalDetalle sucursal, int? usuarioAccionId);

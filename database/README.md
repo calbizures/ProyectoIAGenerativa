@@ -54,24 +54,28 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 37_datos_sinteticos_bancos_nomina.sql         -- opcional: datos de prueba de bancos y pago de nómina
 38_inventario_fisico_cargas_iniciales.sql     -- inventario físico, inventario inicial, saldos iniciales y carga de empleados desde Excel
 39_datos_sinteticos_inventario_saldos.sql     -- opcional: datos de prueba de inventario físico, inventario inicial y apertura
+40_logo_cuentas_bancarias_productos_proveedor.sql -- nomenclatura sin datos confidenciales, cuentas de cargos/abonos, logotipo, productos por proveedor
+41_datos_sinteticos_productos_proveedor.sql   -- opcional: productos por proveedor a partir de las compras
 ```
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `39` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `41` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
-no lo incluyas (ni el `30`, el `33`, el `37` ni el `39`).
+no lo incluyas (ni el `30`, el `33`, el `37`, el `39` ni el `41`).
 
-`25` a `29`, `31`, `32`, `34` a `36` y `38` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38` y `40` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `39`. Si vuelves a
-correr `12`, corre después `22` a `39` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `41`. Si vuelves a
+correr `12`, corre después `22` a `41` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
-cualquiera de ellos corre de nuevo el `34`, `35`, `36` y `38`.
+cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38` y `40`. Si
+vuelves a correr `23`, `29` o `36`, corre después el `40` (redefine el
+depósito de caja y el mantenimiento de cuentas bancarias).
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -577,7 +581,7 @@ rechaza el documento (error 51304) si falta la cuenta de algún concepto.
 
 ### Nomenclatura contable (`28`)
 
-Se carga la nomenclatura de `tbl_Nomenclatura_Contable` (DMOSOFT) en
+Se carga la nomenclatura de `tbl_Nomenclatura_Contable` (sistema anterior) en
 `cont_cuenta_contable`, reemplazando el catálogo mínimo de prueba. La
 jerarquía la definen las posiciones del código:
 
@@ -973,6 +977,66 @@ Mixco, una toma aplicada en la bodega principal (un sobrante y un faltante) y
 la partida de apertura al 1 de enero con el inventario igual al cargado.
 
 Errores `53501`-`53510`.
+
+### Nomenclatura sin datos confidenciales, cuentas de cargos y abonos, logotipo y productos por proveedor (`40`)
+
+**Nomenclatura.** Las cuentas de bancos migradas del sistema anterior traían
+números de cuenta y nombres reales (`1120014`-`1120022`, `2160003` y
+`5110058`). `28` ya las carga con nombres sintéticos y `40` renombra las de
+una base existente. Solo cambia las que conservan el nombre original: las
+reconoce por su huella SHA-256, así el texto original no queda escrito en el
+script. Un nombre ya cambiado desde la nomenclatura se respeta.
+
+**Cuentas bancarias: cargos y abonos.** Cada cuenta bancaria
+(`bco_cuenta_bancaria`) tiene dos cuentas contables:
+
+| Columna | Movimiento | Se afecta en |
+|---|---|---|
+| `cta_id_cargo` | Depósitos a la cuenta | Debe |
+| `cta_id` | Cheques y pagos desde la cuenta | Haber |
+
+Pueden ser la misma cuenta contable; las cuentas que ya existían quedan con
+la misma en ambas. El depósito de caja ahora se hace a una **cuenta
+bancaria** (`pos_caja_deposito.bcb_id`, en **Caja › Depósitos**) y su
+partida carga la cuenta de cargos de esa cuenta (`fnBcoCuentaContableCargo`;
+sin cuenta de cargos usa el concepto `DEPOSITO_BANCOS`). Los cheques siguen
+abonando `cta_id` (`fnBcoCuentaContable`). Los depósitos anteriores quedan
+en la cuenta de su banco cuando ese banco tiene una sola cuenta. Se
+configuran en **Caja y bancos › Cuentas bancarias**.
+
+**Logotipo.** `gen_compania` guarda el logotipo (`cia_logo`,
+`cia_logo_tipo`, `cia_logo_actualizado`): PNG, JPG, GIF o WEBP de hasta
+1 MB, cargado en **General › Compañías** (detalle). Se muestra en el menú,
+la pantalla de inicio de sesión, los documentos impresos (recibos, estados
+de cuenta, antigüedad) y el encabezado de los libros de Excel (Excel no
+admite WEBP). Sin logotipo se usa el del sistema. La aplicación lo sirve en
+`/compania/logo`, que es público porque lo usa la pantalla de inicio de
+sesión.
+
+**Productos por proveedor.** `inv_producto_proveedor` suma el código del
+producto en el catálogo del proveedor, el último costo de compra (sin IVA),
+su fecha y la compra; un producto tiene un solo proveedor preferido (índice
+único filtrado). Se mantiene en **Compras › Productos por proveedor** (por
+proveedor), en la pestaña **Proveedores** de cada producto y desde
+**Proveedores** (botón de productos del proveedor). En **Compras**, al elegir
+el proveedor la búsqueda se limita a sus productos (se puede quitar la
+marca para buscar en todo el catálogo) y el costo propuesto es el de su
+última compra. Los productos que el proveedor todavía no tiene se marcan en
+la línea y se relacionan con **Relacionar ahora** o, al grabar, con la
+casilla *Relacionar con el proveedor los productos que aún no lo están*.
+`paProductoProveedorRegistrarCompra` actualiza el último costo al grabar.
+
+**Vendedor por defecto al facturar.** Ya lo proponía
+`paVendedorConsultarPorUsuario` (`25`): usuario → empleado → vendedor.
+**Facturas** ahora indica cuándo el vendedor es el del usuario y, si el
+usuario no tiene vendedor, dónde vincularlo (**RRHH › Empleados › Vínculos
+con el sistema**).
+
+Datos de prueba (`41`): cada compra vigente actualiza el último costo y
+relaciona sus productos con el proveedor; las relaciones reciben un código
+del proveedor de ejemplo.
+
+Errores `53601`-`53611`.
 
 ## Módulos nuevos
 

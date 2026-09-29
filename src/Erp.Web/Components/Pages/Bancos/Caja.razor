@@ -7,6 +7,7 @@
 @using Erp.Web.Security
 @using Microsoft.AspNetCore.Components.Authorization
 @inject ICajaRepository CajaRepository
+@inject Erp.Data.Bancos.IBancosRepository BancosRepository
 @inject NavigationManager NavigationManager
 
 <PageTitle>Caja</PageTitle>
@@ -245,12 +246,12 @@ else if (pestanaActiva == "depositos")
             <p class="doc-seccion-titulo"><Icono Nombre="landmark" Tamano="15" /> Nuevo depósito</p>
             <div class="doc-grid">
                 <div class="campo">
-                    <label>Entidad financiera</label>
-                    <select @bind="nuevoDeposito.GefId">
+                    <label>Cuenta bancaria</label>
+                    <select @bind="nuevoDeposito.BcbId">
                         <option value="0">Seleccione...</option>
-                        @foreach (var e in entidadesFinancieras)
+                        @foreach (var c in cuentasBancarias)
                         {
-                            <option value="@e.GefId">@e.GeftDescripcion — @e.GefDescripcion</option>
+                            <option value="@c.BcbId">@c.Banco — @c.NumeroCuenta@(string.IsNullOrWhiteSpace(c.Descripcion) ? "" : $" · {c.Descripcion}")</option>
                         }
                     </select>
                 </div>
@@ -267,7 +268,7 @@ else if (pestanaActiva == "depositos")
         <div class="tarjeta doc-seccion">
             <p class="doc-seccion-titulo"><Icono Nombre="clipboard-list" Tamano="15" /> Depósitos registrados</p>
             <table class="tabla-datos">
-                <thead><tr><th>Fecha</th><th>Entidad</th><th class="num">Valor</th><th>Boleta</th><th>Observaciones</th></tr></thead>
+                <thead><tr><th>Fecha</th><th>Cuenta bancaria</th><th class="num">Valor</th><th>Boleta</th><th>Observaciones</th></tr></thead>
                 <tbody>
                     @if (depositos.Count == 0)
                     {
@@ -277,7 +278,7 @@ else if (pestanaActiva == "depositos")
                     {
                         <tr>
                             <td>@d.PcdFechaDeposito.ToString("dd/MM/yyyy")</td>
-                            <td>@d.GefDescripcion</td>
+                            <td>@d.GefDescripcion @d.BcbNumeroCuenta</td>
                             <td class="num">Q@(d.PcdValorDeposito.ToString("N2"))</td>
                             <td>@(d.PcdNumeroBoleta ?? "—")</td>
                             <td>@(d.PcdObservaciones ?? "—")</td>
@@ -412,7 +413,7 @@ else if (pestanaActiva == "cajasreceptoras")
 
     private int pcaIdParaDeposito;
     private IReadOnlyList<CajaApertura> aperturasRecientes = Array.Empty<CajaApertura>();
-    private IReadOnlyList<EntidadFinanciera> entidadesFinancieras = Array.Empty<EntidadFinanciera>();
+    private IReadOnlyList<Erp.Data.Bancos.CuentaBancaria> cuentasBancarias = Array.Empty<Erp.Data.Bancos.CuentaBancaria>();
     private IReadOnlyList<DepositoCaja> depositos = Array.Empty<DepositoCaja>();
     private readonly NuevoDepositoModelo nuevoDeposito = new();
 
@@ -424,7 +425,7 @@ else if (pestanaActiva == "cajasreceptoras")
     protected override async Task OnInitializedAsync()
     {
         sucursales = await CajaRepository.ConsultarSucursalesAsync();
-        entidadesFinancieras = await CajaRepository.ConsultarEntidadesFinancierasAsync();
+        cuentasBancarias = await BancosRepository.ConsultarCuentasAsync(soloActivas: true);
 
         var sucClaim = 0;
         if (AuthenticationStateTask is not null)
@@ -571,7 +572,7 @@ else if (pestanaActiva == "cajasreceptoras")
         depositos = pcaIdParaDeposito > 0
             ? await CajaRepository.ConsultarDepositosAsync(pcaIdParaDeposito)
             : Array.Empty<DepositoCaja>();
-        nuevoDeposito.GefId = 0;
+        nuevoDeposito.BcbId = cuentasBancarias.Count == 1 ? cuentasBancarias[0].BcbId : 0;
         nuevoDeposito.Fecha = DateTime.Today;
         nuevoDeposito.Valor = 0;
         nuevoDeposito.NumeroBoleta = null;
@@ -581,9 +582,9 @@ else if (pestanaActiva == "cajasreceptoras")
     private async Task RegistrarDepositoAsync()
     {
         if (pcaIdParaDeposito <= 0) return;
-        if (nuevoDeposito.GefId <= 0 || nuevoDeposito.Valor <= 0)
+        if (nuevoDeposito.BcbId <= 0 || nuevoDeposito.Valor <= 0)
         {
-            mensaje = "Seleccione la entidad financiera e indique un valor mayor a cero.";
+            mensaje = "Seleccione la cuenta bancaria e indique un valor mayor a cero.";
             esMensajeError = true;
             return;
         }
@@ -592,7 +593,7 @@ else if (pestanaActiva == "cajasreceptoras")
         {
             var usuId = await ObtenerUsuIdActualAsync();
             await CajaRepository.InsertarDepositoAsync(
-                pcaIdParaDeposito, nuevoDeposito.GefId, nuevoDeposito.Fecha, nuevoDeposito.Valor,
+                pcaIdParaDeposito, nuevoDeposito.BcbId, nuevoDeposito.Fecha, nuevoDeposito.Valor,
                 nuevoDeposito.NumeroBoleta, nuevoDeposito.Observaciones, usuId);
             mensaje = "Depósito registrado.";
             esMensajeError = false;
@@ -690,7 +691,7 @@ else if (pestanaActiva == "cajasreceptoras")
 
     private sealed class NuevoDepositoModelo
     {
-        public int GefId { get; set; }
+        public int BcbId { get; set; }
         public DateTime Fecha { get; set; } = DateTime.Today;
         public decimal Valor { get; set; }
         public string? NumeroBoleta { get; set; }

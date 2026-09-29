@@ -9,9 +9,14 @@ public sealed class CuentaBancaria
 	public string Banco { get; set; } = "";
 	// M = monetaria, A = ahorro
 	public string Tipo { get; set; } = "M";
+	// Cuenta contable de abonos: cheques y pagos.
 	public int? CtaId { get; set; }
 	public string? CuentaCodigo { get; set; }
 	public string? CuentaNombre { get; set; }
+	// Cuenta contable de cargos: depósitos.
+	public int? CtaIdCargo { get; set; }
+	public string? CuentaCargoCodigo { get; set; }
+	public string? CuentaCargoNombre { get; set; }
 	public string Estado { get; set; } = "A";
 	public int ChequerasActivas { get; set; }
 	public string Nombre => $"{Banco} {NumeroCuenta}";

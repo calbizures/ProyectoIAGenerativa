@@ -3,8 +3,10 @@
 
 <aside class="sidebar @(menuAbierto ? "sidebar-abierta" : "")">
     <div class="sidebar-marca">
-        <img src="images/logo-si-icono.svg" alt="" class="sidebar-logo" />
-        <span class="sidebar-marca-texto">ERP · Servicios Informáticos Integrados</span>
+        <LogoCompania Clase="sidebar-logo-compania" ClaseNombre="sidebar-marca-texto">
+            <img src="images/logo-si-icono.svg" alt="" class="sidebar-logo" />
+            <span class="sidebar-marca-texto">ERP · Servicios Informáticos Integrados</span>
+        </LogoCompania>
         <button type="button" class="sidebar-menu-boton"
                 aria-label="@(menuAbierto ? "Cerrar menú" : "Abrir menú")"
                 aria-expanded="@(menuAbierto ? "true" : "false")"
@@ -84,8 +86,9 @@
         <AuthorizeView Policy="Permiso:COMPRAS_DOCUMENTO_CREAR">
             <Authorized>
                 <SidebarNodo Titulo="Compras" IconoNombre="shopping-cart" Rutas="@(new[] { "compras", "proveedores" })">
-                    <NavLink href="compras" class="sidebar-hijo-link">Compras</NavLink>
+                    <NavLink href="compras" Match="NavLinkMatch.All" class="sidebar-hijo-link">Compras</NavLink>
                     <NavLink href="proveedores" class="sidebar-hijo-link">Proveedores</NavLink>
+                    <NavLink href="compras/productos-proveedor" class="sidebar-hijo-link">Productos por proveedor</NavLink>
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>

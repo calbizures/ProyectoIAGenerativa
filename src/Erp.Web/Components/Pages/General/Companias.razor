@@ -91,6 +91,33 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         <div class="acciones-fila">
             <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
         </div>
+
+        <h3>Logotipo</h3>
+        <div class="logo-compania-vista">
+            @if (seleccionada.CiaTieneLogo)
+            {
+                <img src="@($"compania/logo?cia={seleccionada.CiaId}&v={seleccionada.CiaLogoActualizado?.Ticks ?? 0}")" alt="Logotipo de @seleccionada.CiaNombreComercial" />
+            }
+            else
+            {
+                <span class="texto-tenue">Sin logotipo: se usa el del sistema.</span>
+            }
+        </div>
+        <div class="acciones-fila">
+            <label class="boton-icono boton-icono-con-etiqueta" title="PNG, JPG, GIF o WEBP de hasta 1 MB">
+                <Icono Nombre="upload" Tamano="16" /><span class="boton-icono-etiqueta">@(seleccionada.CiaTieneLogo ? "Cambiar logotipo" : "Subir logotipo")</span>
+                <InputFile OnChange="SubirLogoAsync" accept="image/png,image/jpeg,image/gif,image/webp" class="oculto" />
+            </label>
+            @if (seleccionada.CiaTieneLogo)
+            {
+                <BotonIcono Icono="trash-2" Tooltip="Quitar el logotipo" Etiqueta="Quitar logotipo" Variante="peligro"
+                            Confirmacion="¿Quitar el logotipo? Se usará el del sistema." OnClick="QuitarLogoAsync" />
+            }
+        </div>
+        <p class="texto-ayuda">
+            PNG, JPG, GIF o WEBP de hasta 1 MB; mejor un PNG con fondo transparente de al menos 400 px de ancho.
+            Se muestra en el menú, el inicio de sesión, los documentos impresos y los libros de Excel (Excel no admite WEBP).
+        </p>
     </div>
 }
 else if (pestanaActiva == "editar")
@@ -221,6 +248,65 @@ else if (pestanaActiva == "editar")
             mensaje = MensajesError.Traducir(ex);
             esMensajeError = true;
         }
+    }
+
+    private static readonly string[] TiposLogo = { "image/png", "image/jpeg", "image/gif", "image/webp" };
+    private const long TamanoMaximoLogo = 1024 * 1024;
+
+    private async Task SubirLogoAsync(InputFileChangeEventArgs e)
+    {
+        if (seleccionada is null) return;
+        mensaje = null;
+        if (!TiposLogo.Contains(e.File.ContentType))
+        {
+            mensaje = "El logotipo debe ser una imagen PNG, JPG, GIF o WEBP.";
+            esMensajeError = true;
+            return;
+        }
+        if (e.File.Size > TamanoMaximoLogo)
+        {
+            mensaje = "El logotipo no puede pesar más de 1 MB.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            using var memoria = new MemoryStream();
+            await e.File.OpenReadStream(TamanoMaximoLogo).CopyToAsync(memoria);
+            await GeneralRepository.GuardarLogoAsync(seleccionada.CiaId, memoria.ToArray(), e.File.ContentType, await ObtenerUsuIdActualAsync());
+            await RecargarSeleccionadaAsync();
+            mensaje = "Logotipo guardado. El menú lo muestra al recargar la página.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private async Task QuitarLogoAsync()
+    {
+        if (seleccionada is null) return;
+        try
+        {
+            await GeneralRepository.GuardarLogoAsync(seleccionada.CiaId, null, null, await ObtenerUsuIdActualAsync());
+            await RecargarSeleccionadaAsync();
+            mensaje = "Logotipo quitado; se usará el del sistema.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private async Task RecargarSeleccionadaAsync()
+    {
+        var id = seleccionada?.CiaId;
+        await BuscarAsync();
+        seleccionada = companias.FirstOrDefault(c => c.CiaId == id) ?? seleccionada;
     }
 
     private async Task CambiarEstadoAsync(Compania compania, string estado)

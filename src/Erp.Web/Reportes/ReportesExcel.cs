@@ -4,12 +4,15 @@ using Erp.Web.Components.Pages.Cuentas;
 
 namespace Erp.Web.Reportes;
 
+// Compañía que encabeza los libros de Excel: nombre y logotipo.
+public sealed record CompaniaReporte(string Nombre, byte[]? Logo = null);
+
 // Libros de Excel de cuentas por cobrar y por pagar.
 public static partial class ReportesExcel
 {
 	private const string FormatoMonto = "#,##0.00;[Red]-#,##0.00";
 
-	public static byte[] Antiguedad(IReadOnlyList<AntiguedadFila> filas, bool esCliente, DateTime fechaCorte, string compania)
+	public static byte[] Antiguedad(IReadOnlyList<AntiguedadFila> filas, bool esCliente, DateTime fechaCorte, CompaniaReporte compania)
 	{
 		var tercero = esCliente ? "Cliente" : "Proveedor";
 		var documento = esCliente ? "Factura" : "Compra";
@@ -88,7 +91,7 @@ public static partial class ReportesExcel
 	}
 
 	public static byte[] EstadoCuenta(IReadOnlyList<MovimientoEstadoCuenta> movimientos, IReadOnlyList<DocumentoSaldo> documentos, bool esCliente,
-		string tercero, DateTime? desde, DateTime? hasta, string compania)
+		string tercero, DateTime? desde, DateTime? hasta, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
 		var hoja = libro.Worksheets.Add("Estado de cuenta");
@@ -143,22 +146,40 @@ public static partial class ReportesExcel
 		return Guardar(libro);
 	}
 
-	private static int Encabezado(IXLWorksheet hoja, string compania, string titulo, string subtitulo)
+	// Logotipo (si la compañía lo tiene) en las filas 1 a 4 y debajo el nombre
+	// de la compañía, el título, el subtítulo y la fecha. Devuelve la primera
+	// fila libre.
+	private static int Encabezado(IXLWorksheet hoja, CompaniaReporte compania, string titulo, string subtitulo)
 	{
-		hoja.Cell(1, 1).Value = compania;
-		hoja.Cell(1, 1).Style.Font.Bold = true;
-		hoja.Cell(2, 1).Value = titulo;
-		hoja.Cell(2, 1).Style.Font.Bold = true;
-		hoja.Cell(2, 1).Style.Font.FontSize = 14;
-		hoja.Cell(3, 1).Value = subtitulo;
-		hoja.Cell(4, 1).Value = $"Generado el {DateTime.Now:dd/MM/yyyy HH:mm}";
-		hoja.Cell(4, 1).Style.Font.FontColor = XLColor.Gray;
-		return 6;
+		var fila = 1;
+		if (compania.Logo is { Length: > 0 } logo)
+		{
+			try
+			{
+				using var imagen = new MemoryStream(logo);
+				var foto = hoja.AddPicture(imagen, "Logotipo").MoveTo(hoja.Cell(1, 1), 4, 4);
+				foto.Scale(Math.Min(56.0 / foto.OriginalHeight, 220.0 / foto.OriginalWidth));
+				fila = 5;
+			}
+			catch (Exception)
+			{
+				// Un formato que Excel no admite (p. ej. WEBP) deja el libro sin logotipo.
+			}
+		}
+		hoja.Cell(fila, 1).Value = compania.Nombre;
+		hoja.Cell(fila, 1).Style.Font.Bold = true;
+		hoja.Cell(fila + 1, 1).Value = titulo;
+		hoja.Cell(fila + 1, 1).Style.Font.Bold = true;
+		hoja.Cell(fila + 1, 1).Style.Font.FontSize = 14;
+		hoja.Cell(fila + 2, 1).Value = subtitulo;
+		hoja.Cell(fila + 3, 1).Value = $"Generado el {DateTime.Now:dd/MM/yyyy HH:mm}";
+		hoja.Cell(fila + 3, 1).Style.Font.FontColor = XLColor.Gray;
+		return fila + 5;
 	}
 
 	// Listado de transferencias de un lote de nómina: resumen por banco y una
 	// hoja por banco destino, lista para enviar o cargar en cada banco.
-	public static byte[] TransferenciasNomina(IReadOnlyList<Erp.Data.Rrhh.TransferenciaNomina> filas, string compania)
+	public static byte[] TransferenciasNomina(IReadOnlyList<Erp.Data.Rrhh.TransferenciaNomina> filas, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
 		var primera = filas.FirstOrDefault();
@@ -207,7 +228,7 @@ public static partial class ReportesExcel
 	}
 
 	// Gasto por centro de costo (departamento) y cuenta.
-	public static byte[] CentrosCosto(IReadOnlyList<Erp.Data.Contabilidad.CentroCostoFila> filas, DateTime desde, DateTime hasta, string compania)
+	public static byte[] CentrosCosto(IReadOnlyList<Erp.Data.Contabilidad.CentroCostoFila> filas, DateTime desde, DateTime hasta, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
 		var hoja = libro.Worksheets.Add("Centros de costo");

@@ -52,6 +52,24 @@ public sealed class GeneralRepository(IDbConnectionFactory connectionFactory) : 
 			?? new ParametrosCompania();
 	}
 
+	public async Task GuardarLogoAsync(int ciaId, byte[]? logo, string? tipo, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new DynamicParameters();
+		parametros.Add("@CiaId", ciaId);
+		parametros.Add("@Logo", logo, DbType.Binary, size: -1);
+		parametros.Add("@Tipo", tipo);
+		parametros.Add("@UsuId", usuarioAccionId);
+		await connection.ExecuteAsync("dbo.paCompaniaLogoGuardar", parametros, commandType: CommandType.StoredProcedure);
+	}
+
+	public async Task<CompaniaLogo?> ConsultarLogoAsync(int? ciaId, int? sucId, bool soloVersion)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		return await connection.QueryFirstOrDefaultAsync<CompaniaLogo>("dbo.paCompaniaLogoConsultar",
+			new { CiaId = ciaId, SucId = sucId, SoloVersion = soloVersion }, commandType: CommandType.StoredProcedure);
+	}
+
 	public async Task<IReadOnlyList<SucursalDetalle>> ConsultarSucursalesAsync(int? ciaId, bool soloActivas)
 	{
 		using var connection = connectionFactory.CreateConnection();

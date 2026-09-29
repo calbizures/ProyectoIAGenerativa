@@ -16,6 +16,21 @@ public sealed class Compania
 	public bool CiaPagaComision { get; set; }
 	public decimal CiaToleranciaCierreCaja { get; set; }
 	public string CiaPeriodicidadNomina { get; set; } = "M";
+	public bool CiaTieneLogo { get; set; }
+	public DateTime? CiaLogoActualizado { get; set; }
+}
+
+// Logotipo de una compañía (Logo es null cuando solo se pidió la versión).
+public sealed class CompaniaLogo
+{
+	public int CiaId { get; set; }
+	public string Nombre { get; set; } = "";
+	public byte[]? Logo { get; set; }
+	public string? Tipo { get; set; }
+	public DateTime? Actualizado { get; set; }
+	public bool TieneLogo => Tipo is not null;
+	// Dirección de la imagen; la versión cambia al cambiar el logotipo.
+	public string Url => $"compania/logo?cia={CiaId}&v={Actualizado?.Ticks ?? 0}";
 }
 
 // Parámetros de uso general de la compañía a la que pertenece una sucursal.

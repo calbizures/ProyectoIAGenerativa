@@ -11,6 +11,7 @@
 @inject IProductoRepository ProductoRepository
 @inject IBodegaRepository BodegaRepository
 @inject IProveedorRepository ProveedorRepository
+@inject IProductoProveedorRepository ProductoProveedorRepository
 
 <PageTitle>Compras</PageTitle>
 
@@ -141,7 +142,7 @@
                             <strong>@nuevaCompra.NombreProveedor</strong>
                             <span>NIT: @(nuevaCompra.Nit ?? "—")</span>
                         </span>
-                        <BotonIcono Icono="x" Tooltip="Cambiar proveedor" Variante="fantasma" OnClick="() => nuevaCompra.PrvId = null" />
+                        <BotonIcono Icono="x" Tooltip="Cambiar proveedor" Variante="fantasma" OnClick="CambiarProveedor" />
                     </div>
                 }
             </div>
@@ -151,24 +152,42 @@
 
                 <div class="doc-buscador">
                     <div class="doc-buscador-fila">
-                        <input placeholder="Buscar producto por código o descripción" aria-label="Buscar producto por código o descripción" @bind="textoBusquedaProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
+                        <input placeholder="@(soloDelProveedor ? "Buscar entre los productos del proveedor (vacío = todos)" : "Buscar producto por código o descripción")" aria-label="Buscar producto por código o descripción" @bind="textoBusquedaProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
                         <BotonIcono Icono="search" Tooltip="Buscar producto" OnClick="BuscarProductosAsync" />
                     </div>
+                    @if (nuevaCompra.PrvId is not null)
+                    {
+                        <label class="casilla">
+                            <input type="checkbox" @bind="soloDelProveedor" @bind:after="BuscarProductosAsync" />
+                            Solo productos de este proveedor (@productosProveedor.Count)
+                        </label>
+                    }
                     @if (productosEncontrados.Count > 0)
                     {
                         <div class="doc-buscador-resultados">
                             @foreach (var p in productosEncontrados)
                             {
+                                var relacion = RelacionDe(p.ProId);
                                 <div class="doc-resultado-fila" @onclick="() => AgregarLinea(p)">
                                     <span class="doc-avatar doc-avatar-icono"><Icono Nombre="package" Tamano="15" /></span>
                                     <span class="doc-resultado-texto">
                                         <strong>@p.ProDescripcion</strong>
-                                        <span>@p.ProCodigo</span>
+                                        <span>
+                                            @p.ProCodigo@(relacion?.CodigoProveedor is { } codigoProveedor ? $" · código del proveedor {codigoProveedor}" : "")
+                                            @if (nuevaCompra.PrvId is not null && relacion is null)
+                                            {
+                                                <span class="etiqueta-aviso"> · no es producto de este proveedor</span>
+                                            }
+                                        </span>
                                     </span>
-                                    <span class="doc-resultado-precio">@MonedaSimbolo @p.ProCostoUnitario.ToString("N2")</span>
+                                    <span class="doc-resultado-precio">@MonedaSimbolo @CostoPropuesto(p).ToString("N2")</span>
                                 </div>
                             }
                         </div>
+                    }
+                    else if (busquedaSinResultados)
+                    {
+                        <p class="texto-ayuda">@(soloDelProveedor ? "Ningún producto del proveedor coincide; quite la marca para buscar en todo el catálogo." : "Ningún producto coincide con la búsqueda.")</p>
                     }
                 </div>
 
@@ -203,7 +222,15 @@
                         @foreach (var linea in lineas)
                         {
                             <tr>
-                                <td>@linea.Descripcion</td>
+                                <td>
+                                    @linea.Descripcion
+                                    @if (nuevaCompra.PrvId is not null && !linea.Relacionado)
+                                    {
+                                        <br />
+                                        <span class="etiqueta-aviso"><Icono Nombre="info" Tamano="13" /> No es producto de este proveedor</span>
+                                        <button type="button" class="boton-mini" @onclick="() => RelacionarLineaAsync(linea)">Relacionar ahora</button>
+                                    }
+                                </td>
                                 <td class="num"><input type="number" min="1" @bind="linea.Cantidad" /></td>
                                 <td class="num"><input type="number" step="0.01" @bind="linea.PrecioUnitario" /></td>
                                 <td class="num"><input type="number" step="0.01" @bind="linea.ValorDescuento" /></td>
@@ -252,6 +279,13 @@
         </div>
 
         <div class="doc-card-footer">
+            @if (nuevaCompra.PrvId is not null && lineas.Any(l => !l.Relacionado))
+            {
+                <label class="casilla">
+                    <input type="checkbox" @bind="relacionarAlGrabar" />
+                    Relacionar con el proveedor los productos que aún no lo están (@lineas.Count(l => !l.Relacionado))
+                </label>
+            }
             <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevaCompra = false" />
             <BotonIcono Icono="save" Tooltip="Grabar compra" Etiqueta="Grabar compra" Variante="primario" OnClick="GrabarCompraAsync" />
         </div>
@@ -382,6 +416,11 @@
     private bool mostrarNuevoProveedor;
     private readonly ProveedorRapidoModelo nuevoProveedorRapido = new();
     private IReadOnlyList<Producto> productosEncontrados = Array.Empty<Producto>();
+    // Productos del proveedor elegido (inv_producto_proveedor).
+    private IReadOnlyList<ProductoProveedor> productosProveedor = Array.Empty<ProductoProveedor>();
+    private bool soloDelProveedor;
+    private bool busquedaSinResultados;
+    private bool relacionarAlGrabar = true;
 
     private CompraEncabezadoDetalle? encabezadoSeleccionado;
     private IReadOnlyList<CompraDetalleLinea> detalleSeleccionado = Array.Empty<CompraDetalleLinea>();
@@ -469,6 +508,10 @@
         lineas.Clear();
         proveedoresEncontrados = Array.Empty<Proveedor>();
         productosEncontrados = Array.Empty<Producto>();
+        productosProveedor = Array.Empty<ProductoProveedor>();
+        soloDelProveedor = false;
+        busquedaSinResultados = false;
+        relacionarAlGrabar = true;
         mostrarNuevoProveedor = false;
         mostrarNuevaCompra = true;
         return Task.CompletedTask;
@@ -480,12 +523,66 @@
             string.IsNullOrWhiteSpace(textoBusquedaProveedor) ? null : textoBusquedaProveedor, "A");
     }
 
-    private void SeleccionarProveedor(Proveedor proveedor)
+    private async Task SeleccionarProveedor(Proveedor proveedor)
     {
         nuevaCompra.PrvId = proveedor.PrvId;
         nuevaCompra.NombreProveedor = proveedor.PrvNombreComercial;
         nuevaCompra.Nit = proveedor.PrvNit;
         proveedoresEncontrados = Array.Empty<Proveedor>();
+        await CargarProductosProveedorAsync();
+    }
+
+    // Al elegir el proveedor se cargan sus productos: la búsqueda se limita a
+    // ellos (si tiene) y se marcan las líneas que no son suyas.
+    private async Task CargarProductosProveedorAsync()
+    {
+        productosProveedor = nuevaCompra.PrvId is null
+            ? Array.Empty<ProductoProveedor>()
+            : await ProductoProveedorRepository.ConsultarAsync(nuevaCompra.PrvId, null);
+        soloDelProveedor = productosProveedor.Count > 0;
+        foreach (var linea in lineas)
+            linea.Relacionado = RelacionDe(linea.ProId) is not null;
+        productosEncontrados = soloDelProveedor ? ProductosDelProveedor(null) : Array.Empty<Producto>();
+    }
+
+    private void CambiarProveedor()
+    {
+        nuevaCompra.PrvId = null;
+        productosProveedor = Array.Empty<ProductoProveedor>();
+        soloDelProveedor = false;
+        productosEncontrados = Array.Empty<Producto>();
+        busquedaSinResultados = false;
+    }
+
+    private ProductoProveedor? RelacionDe(int proId) => productosProveedor.FirstOrDefault(r => r.ProId == proId);
+
+    private IReadOnlyList<Producto> ProductosDelProveedor(string? texto) => productosProveedor
+        .Where(r => r.ProEstado == "A")
+        .Where(r => texto is null || $"{r.ProCodigo} {r.ProDescripcion} {r.CodigoProveedor}".Contains(texto, StringComparison.CurrentCultureIgnoreCase))
+        .Select(r => new Producto { ProId = r.ProId, ProCodigo = r.ProCodigo, ProDescripcion = r.ProDescripcion, ProTipoItem = r.ProTipoItem, ProCostoUnitario = r.ProCostoUnitario })
+        .ToList();
+
+    // Costo unitario con IVA que se propone: el de la última compra a este
+    // proveedor y, si no hay, el costo promedio del producto (ambos sin IVA).
+    private decimal CostoPropuesto(Producto producto) =>
+        Math.Round((RelacionDe(producto.ProId)?.UltimoCosto ?? producto.ProCostoUnitario) * (1 + PorcentajeIva / 100m), 2);
+
+    private async Task RelacionarLineaAsync(LineaCaptura linea)
+    {
+        if (nuevaCompra.PrvId is null) return;
+        try
+        {
+            await ProductoProveedorRepository.GuardarAsync(null, nuevaCompra.PrvId.Value, linea.ProId,
+                preferido: false, codigoProveedor: null, await ObtenerUsuIdActualAsync());
+            await CargarProductosProveedorAsync();
+            mensaje = $"{linea.Descripcion} quedó relacionado con {nuevaCompra.NombreProveedor}.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
     }
 
     private async Task CrearProveedorRapidoAsync()
@@ -509,6 +606,7 @@
             nuevaCompra.Nit = nuevoProveedorRapido.Nit;
 
             proveedoresEncontrados = Array.Empty<Proveedor>();
+            await CargarProductosProveedorAsync();
             mostrarNuevoProveedor = false;
             nuevoProveedorRapido.Codigo = "";
             nuevoProveedorRapido.NombreComercial = "";
@@ -525,6 +623,13 @@
     private async Task BuscarProductosAsync()
     {
         var texto = string.IsNullOrWhiteSpace(textoBusquedaProducto) ? null : textoBusquedaProducto.Trim();
+        busquedaSinResultados = false;
+        if (soloDelProveedor && nuevaCompra.PrvId is not null)
+        {
+            productosEncontrados = ProductosDelProveedor(texto);
+            busquedaSinResultados = productosEncontrados.Count == 0;
+            return;
+        }
         if (texto is null)
         {
             productosEncontrados = Array.Empty<Producto>();
@@ -542,6 +647,7 @@
             .Select(g => g.First())
             .Take(20)
             .ToList();
+        busquedaSinResultados = productosEncontrados.Count == 0;
     }
 
     private void AgregarLinea(Producto producto)
@@ -552,8 +658,9 @@
             Descripcion = producto.ProDescripcion,
             BienOServicio = producto.ProTipoItem,
             Cantidad = 1,
-            PrecioUnitario = Math.Round(producto.ProCostoUnitario, 2),
-            ValorDescuento = 0
+            PrecioUnitario = CostoPropuesto(producto),
+            ValorDescuento = 0,
+            Relacionado = RelacionDe(producto.ProId) is not null
         });
         productosEncontrados = Array.Empty<Producto>();
         textoBusquedaProducto = "";
@@ -627,10 +734,22 @@
                 ValorDescuento = detalle.Sum(d => d.ValorDescuento)
             };
 
-            await CompraRepository.CrearAsync(encabezado, detalle, usuId);
+            var encId = await CompraRepository.CrearAsync(encabezado, detalle, usuId);
             mostrarNuevaCompra = false;
             mensaje = "Compra grabada correctamente.";
             esMensajeError = false;
+
+            // Último costo por proveedor y, si se pidió, relación de los productos nuevos.
+            try
+            {
+                var relacionados = await ProductoProveedorRepository.RegistrarCompraAsync(encId, relacionarAlGrabar, usuId);
+                if (relacionados > 0)
+                    mensaje += $" {relacionados} producto(s) quedaron relacionados con el proveedor.";
+            }
+            catch (Exception ex)
+            {
+                mensaje += $" No se actualizaron los productos del proveedor: {MensajesError.Traducir(ex)}";
+            }
             await BuscarAsync();
         }
         catch (Exception ex)
@@ -712,5 +831,7 @@
         public decimal PrecioUnitario { get; set; }
         public decimal ValorDescuento { get; set; }
         public decimal SubTotal => Cantidad * PrecioUnitario;
+        // El producto ya está relacionado con el proveedor de la compra.
+        public bool Relacionado { get; set; }
     }
 }

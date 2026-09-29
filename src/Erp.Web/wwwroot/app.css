@@ -260,6 +260,18 @@ input[type=checkbox], input[type=radio] {
     flex-shrink: 0;
 }
 
+/* Logotipo de la compañía (General > Compañías) sobre una placa blanca para
+   que se vea bien sobre el fondo oscuro del menú. */
+.sidebar-logo-compania {
+    max-width: 96px;
+    max-height: 40px;
+    object-fit: contain;
+    background: #ffffff;
+    border-radius: 6px;
+    padding: 3px;
+    flex-shrink: 0;
+}
+
 .sidebar-marca-texto {
     font-size: 0.78rem;
     font-weight: 600;
@@ -523,6 +535,8 @@ input[type=checkbox], input[type=radio] {
 .login-logo {
     display: block;
     width: min(200px, 50vw);
+    max-height: 160px;
+    object-fit: contain;
 }
 
 .login-eslogan {
@@ -2368,6 +2382,14 @@ a.boton-icono {
     margin: 0.15rem 0 0;
 }
 
+.reporte-logo {
+    display: block;
+    max-width: 220px;
+    max-height: 56px;
+    object-fit: contain;
+    margin-bottom: 0.4rem;
+}
+
 .reporte-compania {
     font-weight: 700;
     color: var(--si-navy-700);
@@ -2727,3 +2749,37 @@ label.boton-icono { cursor: pointer; position: relative; }
 .pasos-carga .panel-formulario { margin: 0; max-width: none; }
 /* El primer título de un panel no lleva separador arriba. */
 .panel-formulario > h3:first-child, .panel-detalle > h3:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+
+/* Logotipo en General > Compañías. */
+.logo-compania-vista {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+.logo-compania-vista img {
+    max-width: 280px;
+    max-height: 96px;
+    object-fit: contain;
+    background: #ffffff;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    padding: 0.5rem;
+}
+
+/* Resultado de búsqueda que no se puede elegir (p. ej. ya relacionado). */
+.doc-resultado-inactivo {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* Producto de la compra que no está relacionado con el proveedor. */
+.etiqueta-aviso {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    color: var(--aviso-texto);
+}

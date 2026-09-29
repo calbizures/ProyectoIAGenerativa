@@ -38,6 +38,7 @@ public sealed class BancosRepository(IDbConnectionFactory connectionFactory) : I
 			cuenta.GefId,
 			cuenta.Tipo,
 			cuenta.CtaId,
+			cuenta.CtaIdCargo,
 			cuenta.Estado,
 			UsuId = usuarioAccionId
 		}));

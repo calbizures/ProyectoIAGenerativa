@@ -85,6 +85,14 @@
                                 <option value="@v.PveId">@v.PveNombres @v.PveApellidos</option>
                             }
                         </select>
+                        @if (pveIdUsuario is null)
+                        {
+                            <small class="texto-ayuda">Su usuario no tiene vendedor: vincúlelo en RRHH › Empleados › Vínculos con el sistema.</small>
+                        }
+                        else if (nuevaFactura.PveId == pveIdUsuario)
+                        {
+                            <small class="texto-ayuda">El vendedor de su usuario.</small>
+                        }
                     </div>
                     <div class="campo">
                         <label>Bodega</label>

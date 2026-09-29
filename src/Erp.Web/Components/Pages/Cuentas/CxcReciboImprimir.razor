@@ -21,6 +21,7 @@ else
     var enc = recibo.Encabezado;
     <div class="reporte-encabezado">
         <div>
+            <LogoCompania Clase="reporte-logo" />
             <div class="reporte-compania">@enc.Compania</div>
             <div class="texto-tenue">NIT @enc.CompaniaNit · @enc.CompaniaDireccion</div>
             <h1>Recibo de caja No. @enc.PpeId</h1>

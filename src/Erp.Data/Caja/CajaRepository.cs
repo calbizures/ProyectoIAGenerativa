@@ -153,12 +153,12 @@ public sealed class CajaRepository(IDbConnectionFactory connectionFactory) : ICa
 		await connection.ExecuteAsync("dbo.paCajaCorteFormaGuardar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
-	public async Task<int> InsertarDepositoAsync(int pcaId, int gefId, DateTime fecha, decimal valor, string? numeroBoleta, string? observaciones, int? usuarioAccionId)
+	public async Task<int> InsertarDepositoAsync(int pcaId, int bcbId, DateTime fecha, decimal valor, string? numeroBoleta, string? observaciones, int? usuarioAccionId)
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new DynamicParameters();
 		parametros.Add("@pca_id", pcaId);
-		parametros.Add("@gef_id", gefId);
+		parametros.Add("@bcb_id", bcbId);
 		parametros.Add("@pcd_fecha_deposito", fecha);
 		parametros.Add("@pcd_valor_deposito", valor);
 		parametros.Add("@pcd_numero_boleta", numeroBoleta);

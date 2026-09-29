@@ -50,7 +50,17 @@
                     </select>
                 </div>
                 <div class="campo">
-                    <label for="cta-contable">Cuenta contable</label>
+                    <label for="cta-cargo">Cuenta contable de cargos (depósitos)</label>
+                    <select id="cta-cargo" @bind="cuentaEdicion.CtaIdCargo">
+                        <option value="">(La del concepto DEPOSITO_BANCOS)</option>
+                        @foreach (var c in cuentasContables)
+                        {
+                            <option value="@c.CtaId">@c.CtaCodigo — @c.CtaNombre</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="cta-contable">Cuenta contable de abonos (cheques y pagos)</label>
                     <select id="cta-contable" @bind="cuentaEdicion.CtaId">
                         <option value="">(La del concepto PAGO_BANCOS)</option>
                         @foreach (var c in cuentasContables)
@@ -59,6 +69,7 @@
                         }
                     </select>
                 </div>
+                <p class="texto-ayuda">Un depósito a esta cuenta se carga (Debe) a la cuenta de cargos; un cheque o pago se abona (Haber) a la cuenta de abonos. Pueden ser la misma cuenta contable.</p>
                 <div class="campo">
                     <label for="cta-estado">Estado</label>
                     <select id="cta-estado" @bind="cuentaEdicion.Estado">
@@ -79,13 +90,14 @@
         else
         {
             <table class="tabla-datos">
-                <thead><tr><th>Cuenta</th><th class="col-estado">Tipo</th><th>Cuenta contable</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+                <thead><tr><th>Cuenta</th><th class="col-estado">Tipo</th><th>Cargos (depósitos)</th><th>Abonos (cheques y pagos)</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
                 <tbody>
                     @foreach (var c in cuentas)
                     {
                         <tr class="fila-seleccionable @(seleccionada?.BcbId == c.BcbId ? "fila-seleccionada" : "")" @onclick="() => SeleccionarAsync(c)">
                             <td><strong>@c.Banco</strong> @c.NumeroCuenta<br /><span class="texto-tenue">@c.Descripcion</span></td>
                             <td class="col-estado">@(c.Tipo == "A" ? "Ahorro" : "Monetaria")</td>
+                            <td>@(c.CuentaCargoCodigo is null ? "—" : $"{c.CuentaCargoCodigo} {c.CuentaCargoNombre}")</td>
                             <td>@(c.CuentaCodigo is null ? "—" : $"{c.CuentaCodigo} {c.CuentaNombre}")</td>
                             <td class="col-estado"><span class="estado-badge @(c.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.Estado == "A" ? "Activa" : "Inactiva")</span></td>
                             <td class="col-acciones" @onclick:stopPropagation="true">
@@ -235,7 +247,7 @@
         cuentaEdicion = new CuentaBancaria
         {
             BcbId = c.BcbId, NumeroCuenta = c.NumeroCuenta, Descripcion = c.Descripcion, GefId = c.GefId,
-            Tipo = c.Tipo, CtaId = c.CtaId, Estado = c.Estado
+            Tipo = c.Tipo, CtaId = c.CtaId, CtaIdCargo = c.CtaIdCargo, Estado = c.Estado
         };
     }
 

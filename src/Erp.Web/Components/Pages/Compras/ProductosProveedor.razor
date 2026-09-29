@@ -1,0 +1,297 @@
+@page "/compras/productos-proveedor"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:COMPRAS_DOCUMENTO_CREAR")]
+@using Erp.Data.Compras
+@using Erp.Data.Inventario
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IProductoProveedorRepository ProductoProveedorRepository
+@inject IProveedorRepository ProveedorRepository
+@inject IProductoRepository ProductoRepository
+
+<PageTitle>Productos por proveedor</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Productos por proveedor</h1>
+    <p>Los productos que vende cada proveedor, cuál es su proveedor preferido, el código en el catálogo del proveedor y el último costo de compra. En Compras se proponen los productos del proveedor con ese costo.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="barra-herramientas">
+    <label class="filtro-campo">
+        Proveedor
+        <select @bind="prvId" @bind:after="CargarAsync">
+            <option value="0">Seleccione...</option>
+            @foreach (var p in proveedores)
+            {
+                <option value="@p.PrvId">@p.PrvNombreComercial (@p.PrvCodigo)</option>
+            }
+        </select>
+    </label>
+    <input type="search" placeholder="Filtrar por código o producto" aria-label="Filtrar por código o producto" @bind="textoFiltro" @bind:event="oninput" />
+    <span class="barra-herramientas-separador"></span>
+    <BotonIcono Icono="plus" Tooltip="Relacionar un producto con el proveedor" Etiqueta="Agregar producto" Variante="primario"
+                Deshabilitado="prvId == 0" OnClick="MostrarAgregar" />
+</div>
+
+@if (prvId != 0 && agregando)
+{
+    <div class="panel-formulario">
+        <h3>Agregar producto al proveedor</h3>
+        @if (productoNuevo is null)
+        {
+            <div class="doc-buscador">
+                <div class="doc-buscador-fila">
+                    <input placeholder="Buscar producto por código o descripción" aria-label="Buscar producto por código o descripción"
+                           @bind="textoProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
+                    <BotonIcono Icono="search" Tooltip="Buscar producto" OnClick="BuscarProductosAsync" />
+                </div>
+                @if (productosEncontrados.Count > 0)
+                {
+                    <div class="doc-buscador-resultados">
+                        @foreach (var p in productosEncontrados)
+                        {
+                            var yaRelacionado = relaciones.Any(r => r.ProId == p.ProId);
+                            <div class="doc-resultado-fila @(yaRelacionado ? "doc-resultado-inactivo" : "")" @onclick="() => ElegirProducto(p, yaRelacionado)">
+                                <span class="doc-avatar doc-avatar-icono"><Icono Nombre="package" Tamano="15" /></span>
+                                <span class="doc-resultado-texto">
+                                    <strong>@p.ProDescripcion</strong>
+                                    <span>@p.ProCodigo@(yaRelacionado ? " · ya es de este proveedor" : "")</span>
+                                </span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="doc-chip">
+                <span class="doc-avatar doc-avatar-icono"><Icono Nombre="package" Tamano="15" /></span>
+                <span class="doc-chip-texto"><strong>@productoNuevo.ProDescripcion</strong><span>@productoNuevo.ProCodigo</span></span>
+                <BotonIcono Icono="x" Tooltip="Cambiar producto" Variante="fantasma" OnClick="() => productoNuevo = null" />
+            </div>
+            <div class="campo"><label for="pp-codigo">Código del producto en el catálogo del proveedor</label><input id="pp-codigo" maxlength="64" @bind="codigoNuevo" /></div>
+            <label class="casilla"><input type="checkbox" @bind="preferidoNuevo" /> Proveedor preferido de este producto</label>
+        }
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar la relación" Etiqueta="Guardar" Variante="primario" Deshabilitado="productoNuevo is null" OnClick="AgregarAsync" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => agregando = false" />
+        </div>
+    </div>
+}
+
+@if (prvId == 0)
+{
+    <p class="estado-vacio">Seleccione un proveedor para ver y mantener sus productos.</p>
+}
+else if (relacionesFiltradas.Count == 0)
+{
+    <p class="estado-vacio">@(relaciones.Count == 0 ? "Este proveedor todavía no tiene productos relacionados." : "Ningún producto coincide con el filtro.")</p>
+}
+else
+{
+    <table class="tabla-datos">
+        <thead>
+            <tr>
+                <th class="col-codigo">Código</th><th>Producto</th><th>Código del proveedor</th>
+                <th class="num col-monto">Último costo (sin IVA)</th><th class="col-fecha">Última compra</th>
+                <th class="col-estado">Preferido</th><th class="col-acciones">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in relacionesFiltradas)
+            {
+                @if (editandoId == r.PppId)
+                {
+                    <tr class="fila-edicion-tabla">
+                        <td class="col-codigo">@r.ProCodigo</td>
+                        <td>@r.ProDescripcion</td>
+                        <td><input maxlength="64" aria-label="Código del proveedor" @bind="codigoEdicion" /></td>
+                        <td class="num col-monto">@(r.UltimoCosto?.ToString("N2") ?? "—")</td>
+                        <td class="col-fecha">@(r.FechaUltimaCompra?.ToString("dd/MM/yyyy") ?? "—")</td>
+                        <td class="col-estado"><input type="checkbox" aria-label="Preferido" @bind="preferidoEdicion" /></td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="() => GuardarEdicionAsync(r)" />
+                                <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => editandoId = null" />
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    <tr>
+                        <td class="col-codigo">@r.ProCodigo</td>
+                        <td>@r.ProDescripcion@(r.UmeCodigo is null ? "" : $" ({r.UmeCodigo})")@(r.ProEstado == "A" ? "" : " · inactivo")</td>
+                        <td>@(r.CodigoProveedor ?? "—")</td>
+                        <td class="num col-monto">@(r.UltimoCosto?.ToString("N2") ?? "—")</td>
+                        <td class="col-fecha">@(r.FechaUltimaCompra?.ToString("dd/MM/yyyy") ?? "—")</td>
+                        <td class="col-estado">
+                            @if (r.Preferido)
+                            {
+                                <span class="estado-badge estado-badge-activo">Preferido</span>
+                            }
+                            else
+                            {
+                                <span class="texto-tenue">Alterno</span>
+                            }
+                        </td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => IniciarEdicion(r)" />
+                                <BotonIcono Icono="trash-2" Tooltip="Quitar el producto del proveedor" Variante="peligro"
+                                            Confirmacion="@($"¿Quitar {r.ProDescripcion} de los productos de este proveedor?")" OnClick="() => EliminarAsync(r)" />
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+    <p class="texto-ayuda">@relaciones.Count producto(s). El último costo se actualiza al grabar cada compra a este proveedor.</p>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    // Proveedor que se abre al entrar (enlace desde Proveedores).
+    [SupplyParameterFromQuery(Name = "prv")] public int? PrvInicial { get; set; }
+
+    private IReadOnlyList<Proveedor> proveedores = Array.Empty<Proveedor>();
+    private IReadOnlyList<ProductoProveedor> relaciones = Array.Empty<ProductoProveedor>();
+    private int prvId;
+    private string textoFiltro = "";
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private bool agregando;
+    private string textoProducto = "";
+    private IReadOnlyList<Producto> productosEncontrados = Array.Empty<Producto>();
+    private Producto? productoNuevo;
+    private string? codigoNuevo;
+    private bool preferidoNuevo;
+
+    private int? editandoId;
+    private string? codigoEdicion;
+    private bool preferidoEdicion;
+
+    private IReadOnlyList<ProductoProveedor> relacionesFiltradas => string.IsNullOrWhiteSpace(textoFiltro)
+        ? relaciones
+        : relaciones.Where(r => $"{r.ProCodigo} {r.ProDescripcion} {r.CodigoProveedor}".Contains(textoFiltro.Trim(), StringComparison.CurrentCultureIgnoreCase)).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            proveedores = await ProveedorRepository.ConsultarAsync(null, "A");
+            if (PrvInicial is { } inicial && proveedores.Any(p => p.PrvId == inicial))
+            {
+                prvId = inicial;
+                await CargarAsync();
+            }
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private async Task CargarAsync()
+    {
+        editandoId = null;
+        agregando = false;
+        try
+        {
+            relaciones = prvId == 0 ? Array.Empty<ProductoProveedor>() : await ProductoProveedorRepository.ConsultarAsync(prvId, null);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void MostrarAgregar()
+    {
+        mensaje = null;
+        agregando = true;
+        productoNuevo = null;
+        productosEncontrados = Array.Empty<Producto>();
+        textoProducto = "";
+        codigoNuevo = null;
+        preferidoNuevo = false;
+    }
+
+    private async Task BuscarProductosAsync()
+    {
+        var texto = string.IsNullOrWhiteSpace(textoProducto) ? null : textoProducto.Trim();
+        if (texto is null)
+        {
+            productosEncontrados = Array.Empty<Producto>();
+            return;
+        }
+        var porCodigo = await ProductoRepository.ConsultarAsync(texto, null, prtId: null, estado: "A", pagina: 1, tamanioPagina: 20);
+        var porDescripcion = await ProductoRepository.ConsultarAsync(null, texto, prtId: null, estado: "A", pagina: 1, tamanioPagina: 20);
+        productosEncontrados = porCodigo.Concat(porDescripcion).GroupBy(p => p.ProId).Select(g => g.First()).Take(20).ToList();
+    }
+
+    private void ElegirProducto(Producto producto, bool yaRelacionado)
+    {
+        if (yaRelacionado) return;
+        productoNuevo = producto;
+        productosEncontrados = Array.Empty<Producto>();
+    }
+
+    private async Task AgregarAsync()
+    {
+        if (productoNuevo is null) return;
+        try
+        {
+            await ProductoProveedorRepository.GuardarAsync(null, prvId, productoNuevo.ProId, preferidoNuevo, codigoNuevo, await ObtenerUsuIdActualAsync());
+            mensaje = $"{productoNuevo.ProDescripcion} quedó relacionado con el proveedor.";
+            esMensajeError = false;
+            await CargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void IniciarEdicion(ProductoProveedor relacion)
+    {
+        mensaje = null;
+        editandoId = relacion.PppId;
+        codigoEdicion = relacion.CodigoProveedor;
+        preferidoEdicion = relacion.Preferido;
+    }
+
+    private async Task GuardarEdicionAsync(ProductoProveedor relacion)
+    {
+        try
+        {
+            await ProductoProveedorRepository.GuardarAsync(relacion.PppId, relacion.PrvId, relacion.ProId, preferidoEdicion, codigoEdicion, await ObtenerUsuIdActualAsync());
+            mensaje = "Cambios guardados.";
+            esMensajeError = false;
+            await CargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task EliminarAsync(ProductoProveedor relacion)
+    {
+        try
+        {
+            await ProductoProveedorRepository.EliminarAsync(relacion.PppId, await ObtenerUsuIdActualAsync());
+            mensaje = $"{relacion.ProDescripcion} ya no es producto de este proveedor.";
+            esMensajeError = false;
+            await CargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

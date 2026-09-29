@@ -28,6 +28,6 @@ public interface ICajaRepository
 	Task GuardarCorteFormaAsync(int pcaId, IReadOnlyList<CorteFormaFisico> formas, int? usuarioAccionId);
 
 	// Depósitos
-	Task<int> InsertarDepositoAsync(int pcaId, int gefId, DateTime fecha, decimal valor, string? numeroBoleta, string? observaciones, int? usuarioAccionId);
+	Task<int> InsertarDepositoAsync(int pcaId, int bcbId, DateTime fecha, decimal valor, string? numeroBoleta, string? observaciones, int? usuarioAccionId);
 	Task<IReadOnlyList<DepositoCaja>> ConsultarDepositosAsync(int? pcaId);
 }

@@ -29,7 +29,7 @@ public static partial class ReportesExcel
 	private static readonly XLColor Agrupacion = XLColor.FromHtml("#eef1f6");
 
 	public static byte[] PlantillaInventarioInicial(IReadOnlyList<BodegaDetalle> bodegas, IReadOnlyList<ProductoTipo> tipos,
-		IReadOnlyList<UnidadMedida> unidades, string compania)
+		IReadOnlyList<UnidadMedida> unidades, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
 		var hoja = libro.Worksheets.Add("Inventario inicial");
@@ -70,7 +70,7 @@ public static partial class ReportesExcel
 	}
 
 	public static byte[] PlantillaEmpleados(IReadOnlyList<Plaza> plazas, IReadOnlyList<EntidadFinanciera> bancos,
-		IReadOnlyList<CatalogoRrhh> tiposDocumento, string compania)
+		IReadOnlyList<CatalogoRrhh> tiposDocumento, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
 		var hoja = libro.Worksheets.Add("Empleados");
@@ -110,7 +110,7 @@ public static partial class ReportesExcel
 
 	// Nomenclatura para que el contador ponga los saldos iniciales. Las cuentas
 	// de agrupación van en gris (no llevan saldo) y abajo están los totales.
-	public static byte[] SaldosIniciales(IReadOnlyList<CuentaSaldoInicial> cuentas, string compania)
+	public static byte[] SaldosIniciales(IReadOnlyList<CuentaSaldoInicial> cuentas, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
 		var hoja = libro.Worksheets.Add("Saldos iniciales");
@@ -154,7 +154,7 @@ public static partial class ReportesExcel
 	}
 
 	// Hoja para contar: se imprime o se llena la columna Conteo y se sube a la toma.
-	public static byte[] HojaConteo(TomaFisica toma, IReadOnlyList<TomaFisicaLinea> lineas, string compania)
+	public static byte[] HojaConteo(TomaFisica toma, IReadOnlyList<TomaFisicaLinea> lineas, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
 		var hoja = libro.Worksheets.Add("Conteo");

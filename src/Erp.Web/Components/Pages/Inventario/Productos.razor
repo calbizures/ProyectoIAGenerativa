@@ -9,6 +9,8 @@
 @inject IProductoCaracteristicaRepository CaracteristicaRepository
 @inject IProductoPrecioRepository PrecioRepository
 @inject IBodegaRepository BodegaRepository
+@inject Erp.Data.Compras.IProductoProveedorRepository ProductoProveedorRepository
+@inject Erp.Data.Compras.IProveedorRepository ProveedorRepository
 
 <PageTitle>Productos</PageTitle>
 
@@ -370,6 +372,79 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
         </table>
     </div>
 }
+else if (pestanaActiva == "proveedores" && seleccionado is not null)
+{
+    <div class="panel-detalle panel-ancho">
+        <h2>Proveedores: @seleccionado.ProDescripcion</h2>
+        <div class="barra-herramientas">
+            <BotonIcono Icono="plus" Tooltip="Relacionar un proveedor" Etiqueta="Agregar proveedor" Variante="primario" OnClick="MostrarNuevoProveedorProducto" />
+        </div>
+        @if (mostrarNuevoProveedor)
+        {
+            <div class="panel-formulario">
+                <div class="campo">
+                    <label for="pp-proveedor">Proveedor</label>
+                    <select id="pp-proveedor" @bind="nuevoProveedorId">
+                        <option value="0">Seleccione...</option>
+                        @foreach (var p in proveedoresActivos.Where(p => proveedoresProducto.All(r => r.PrvId != p.PrvId)))
+                        {
+                            <option value="@p.PrvId">@p.PrvNombreComercial (@p.PrvCodigo)</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo"><label for="pp-codigo">Código del producto en el catálogo del proveedor</label><input id="pp-codigo" maxlength="64" @bind="nuevoProveedorCodigo" /></div>
+                <label class="casilla"><input type="checkbox" @bind="nuevoProveedorPreferido" /> Proveedor preferido</label>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario"
+                                OnClick="() => GuardarProveedorProductoAsync(null, nuevoProveedorId, nuevoProveedorPreferido, nuevoProveedorCodigo)" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevoProveedor = false" />
+                </div>
+            </div>
+        }
+        <table class="tabla-datos">
+            <thead><tr><th>Proveedor</th><th>Código del proveedor</th><th class="num col-monto">Último costo (sin IVA)</th><th class="col-fecha">Última compra</th><th class="col-estado">Preferido</th><th class="col-acciones">Acciones</th></tr></thead>
+            <tbody>
+                @if (proveedoresProducto.Count == 0)
+                {
+                    <tr><td colspan="6">Ningún proveedor relacionado. También se relacionan al grabar una compra.</td></tr>
+                }
+                @foreach (var r in proveedoresProducto)
+                {
+                    <tr>
+                        @if (pppEditandoId == r.PppId)
+                        {
+                            <td>@r.Proveedor</td>
+                            <td><input maxlength="64" aria-label="Código del proveedor" @bind="pppEditCodigo" /></td>
+                            <td class="num col-monto">@(r.UltimoCosto?.ToString("N2") ?? "—")</td>
+                            <td class="col-fecha">@(r.FechaUltimaCompra?.ToString("dd/MM/yyyy") ?? "—")</td>
+                            <td class="col-estado"><input type="checkbox" aria-label="Preferido" @bind="pppEditPreferido" /></td>
+                            <td class="col-acciones">
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="() => GuardarProveedorProductoAsync(r.PppId, r.PrvId, pppEditPreferido, pppEditCodigo)" />
+                                    <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => pppEditandoId = null" />
+                                </div>
+                            </td>
+                        }
+                        else
+                        {
+                            <td>@r.Proveedor <span class="texto-tenue">@r.PrvCodigo</span></td>
+                            <td>@(r.CodigoProveedor ?? "—")</td>
+                            <td class="num col-monto">@(r.UltimoCosto?.ToString("N2") ?? "—")</td>
+                            <td class="col-fecha">@(r.FechaUltimaCompra?.ToString("dd/MM/yyyy") ?? "—")</td>
+                            <td class="col-estado">@if (r.Preferido) { <span class="estado-badge estado-badge-activo">Preferido</span> } else { <span class="texto-tenue">Alterno</span> }</td>
+                            <td class="col-acciones">
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => { pppEditandoId = r.PppId; pppEditCodigo = r.CodigoProveedor; pppEditPreferido = r.Preferido; }" />
+                                    <BotonIcono Icono="trash-2" Tooltip="Quitar el proveedor" Confirmacion="¿Quitar este proveedor del producto?" Variante="peligro" OnClick="() => EliminarProveedorProductoAsync(r)" />
+                                </div>
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
 
 @code {
     [CascadingParameter]
@@ -389,8 +464,8 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
     private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
         ? new[] { new PestanaItem("lista", "Lista") }
         : pestanaActiva == "editar"
-            ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar"), new PestanaItem("caracteristicas", "Características"), new PestanaItem("precios", "Precios") }
-            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("caracteristicas", "Características"), new PestanaItem("precios", "Precios") };
+            ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar"), new PestanaItem("caracteristicas", "Características"), new PestanaItem("precios", "Precios"), new PestanaItem("proveedores", "Proveedores") }
+            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("caracteristicas", "Características"), new PestanaItem("precios", "Precios"), new PestanaItem("proveedores", "Proveedores") };
 
     private bool mostrarNuevaCaracteristica;
     private readonly CaracteristicaModelo nuevaCaracteristica = new();
@@ -493,6 +568,84 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
 
         mostrarNuevoPrecio = false;
         preciosProducto = await PrecioRepository.ConsultarAsync(producto.ProId, bodId: null, estado: "A");
+
+        await CargarProveedoresProductoAsync();
+    }
+
+    // Pestaña Proveedores: quién vende el producto (inv_producto_proveedor).
+    private IReadOnlyList<Erp.Data.Compras.ProductoProveedor> proveedoresProducto = Array.Empty<Erp.Data.Compras.ProductoProveedor>();
+    private IReadOnlyList<Erp.Data.Compras.Proveedor> proveedoresActivos = Array.Empty<Erp.Data.Compras.Proveedor>();
+    private bool mostrarNuevoProveedor;
+    private int nuevoProveedorId;
+    private string? nuevoProveedorCodigo;
+    private bool nuevoProveedorPreferido;
+    private int? pppEditandoId;
+    private string? pppEditCodigo;
+    private bool pppEditPreferido;
+
+    private async Task CargarProveedoresProductoAsync()
+    {
+        if (seleccionado is null) return;
+        mostrarNuevoProveedor = false;
+        pppEditandoId = null;
+        try
+        {
+            proveedoresProducto = await ProductoProveedorRepository.ConsultarAsync(null, seleccionado.ProId);
+            if (proveedoresActivos.Count == 0)
+                proveedoresActivos = await ProveedorRepository.ConsultarAsync(null, "A");
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private void MostrarNuevoProveedorProducto()
+    {
+        mostrarNuevoProveedor = !mostrarNuevoProveedor;
+        nuevoProveedorId = 0;
+        nuevoProveedorCodigo = null;
+        nuevoProveedorPreferido = proveedoresProducto.Count == 0;
+    }
+
+    private async Task GuardarProveedorProductoAsync(int? pppId, int prvId, bool preferido, string? codigo)
+    {
+        if (seleccionado is null) return;
+        if (prvId <= 0)
+        {
+            mensaje = "Seleccione el proveedor.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            await ProductoProveedorRepository.GuardarAsync(pppId, prvId, seleccionado.ProId, preferido, codigo, await ObtenerUsuIdActualAsync());
+            mensaje = pppId is null ? "Proveedor relacionado con el producto." : "Cambios guardados.";
+            esMensajeError = false;
+            await CargarProveedoresProductoAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private async Task EliminarProveedorProductoAsync(Erp.Data.Compras.ProductoProveedor relacion)
+    {
+        try
+        {
+            await ProductoProveedorRepository.EliminarAsync(relacion.PppId, await ObtenerUsuIdActualAsync());
+            mensaje = $"{relacion.Proveedor} ya no aparece como proveedor del producto.";
+            esMensajeError = false;
+            await CargarProveedoresProductoAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
     }
 
     private void IniciarEdicion()

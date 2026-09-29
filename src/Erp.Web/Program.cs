@@ -105,11 +105,28 @@ app.MapGet("/fel/xml/{encId:int}/{tipo}", async (int encId, string tipo, HttpCon
 	return Results.File(System.Text.Encoding.UTF8.GetBytes(xml), "application/xml", $"dte-{encId}-{tipo}.xml");
 }).RequireAuthorization();
 
+// Logotipo de la compañía. Es público porque también se muestra en la
+// pantalla de inicio de sesión; con la versión (v) en la dirección se guarda
+// en caché, porque al cambiar el logotipo cambia la dirección.
+app.MapGet("/compania/logo", async (int? cia, HttpContext contexto, IGeneralRepository general) =>
+{
+	var logo = await general.ConsultarLogoAsync(cia, contexto.User.ObtenerSucId(), soloVersion: false);
+	if (logo?.Logo is null || logo.Tipo is null) return Results.NotFound();
+	contexto.Response.Headers.CacheControl = contexto.Request.Query.ContainsKey("v") ? "public, max-age=31536000, immutable" : "no-cache";
+	contexto.Response.Headers.XContentTypeOptions = "nosniff";
+	return Results.File(logo.Logo, logo.Tipo);
+}).AllowAnonymous();
+
 // Exportación a Excel de cuentas por cobrar y por pagar.
 const string TipoExcel = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-async Task<string> NombreCompaniaAsync(HttpContext contexto, IGeneralRepository general) =>
-	(await general.ConsultarParametrosAsync(contexto.User.ObtenerSucId())).CiaNombreComercial;
+// Compañía de la sucursal del usuario, con su logotipo, para el encabezado.
+async Task<CompaniaReporte> CompaniaReporteAsync(HttpContext contexto, IGeneralRepository general)
+{
+	var parametros = await general.ConsultarParametrosAsync(contexto.User.ObtenerSucId());
+	var logo = parametros.CiaId == 0 ? null : await general.ConsultarLogoAsync(parametros.CiaId, null, soloVersion: false);
+	return new CompaniaReporte(parametros.CiaNombreComercial, logo?.Logo);
+}
 
 app.MapGet("/reportes/{modulo}/antiguedad.xlsx", async (string modulo, DateTime? fecha, int? id, HttpContext contexto,
 	ICuentasRepository cuentas, IGeneralRepository general, IAuthorizationService autorizacion) =>
@@ -121,7 +138,7 @@ app.MapGet("/reportes/{modulo}/antiguedad.xlsx", async (string modulo, DateTime?
 
 	var corte = (fecha ?? DateTime.Today).Date;
 	var filas = esCliente ? await cuentas.ConsultarAntiguedadClientesAsync(corte, id) : await cuentas.ConsultarAntiguedadProveedoresAsync(corte, id);
-	var archivo = ReportesExcel.Antiguedad(filas, esCliente, corte, await NombreCompaniaAsync(contexto, general));
+	var archivo = ReportesExcel.Antiguedad(filas, esCliente, corte, await CompaniaReporteAsync(contexto, general));
 	return Results.File(archivo, TipoExcel, $"antiguedad-{(esCliente ? "clientes" : "proveedores")}-{corte:yyyyMMdd}.xlsx");
 }).RequireAuthorization();
 
@@ -152,7 +169,7 @@ app.MapGet("/reportes/{modulo}/estado-cuenta.xlsx", async (string modulo, int id
 		movimientos = await cuentas.ConsultarEstadoCuentaProveedorAsync(id, desde, hasta);
 		documentos = await cuentas.ConsultarDocumentosCxpAsync(id, soloPendientes: true);
 	}
-	var archivo = ReportesExcel.EstadoCuenta(movimientos, documentos, esCliente, tercero, desde, hasta, await NombreCompaniaAsync(contexto, general));
+	var archivo = ReportesExcel.EstadoCuenta(movimientos, documentos, esCliente, tercero, desde, hasta, await CompaniaReporteAsync(contexto, general));
 	return Results.File(archivo, TipoExcel, $"estado-cuenta-{(esCliente ? "cliente" : "proveedor")}-{id}.xlsx");
 }).RequireAuthorization();
 
@@ -163,7 +180,7 @@ app.MapGet("/reportes/nomina/transferencias/{idNominaPago:int}.xlsx", async (int
 	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:BANCOS_ADMIN")).Succeeded) return Results.Forbid();
 	var filas = await rrhh.ConsultarListadoTransferenciasAsync(idNominaPago);
 	if (filas.Count == 0) return Results.NotFound();
-	var archivo = ReportesExcel.TransferenciasNomina(filas, await NombreCompaniaAsync(contexto, general));
+	var archivo = ReportesExcel.TransferenciasNomina(filas, await CompaniaReporteAsync(contexto, general));
 	return Results.File(archivo, TipoExcel, $"transferencias-nomina-{idNominaPago}.xlsx");
 }).RequireAuthorization();
 
@@ -172,7 +189,7 @@ app.MapGet("/reportes/contabilidad/centros-costo.xlsx", async (DateTime desde, D
 {
 	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:CONTABILIDAD_CENTRO_COSTO")).Succeeded) return Results.Forbid();
 	var filas = await centros.ConsultarAsync(desde, hasta, departamento);
-	var archivo = ReportesExcel.CentrosCosto(filas, desde, hasta, await NombreCompaniaAsync(contexto, general));
+	var archivo = ReportesExcel.CentrosCosto(filas, desde, hasta, await CompaniaReporteAsync(contexto, general));
 	return Results.File(archivo, TipoExcel, $"centros-costo-{desde:yyyyMMdd}-{hasta:yyyyMMdd}.xlsx");
 }).RequireAuthorization();
 
@@ -182,7 +199,7 @@ app.MapGet("/reportes/inventario/plantilla-inventario-inicial.xlsx", async (Http
 {
 	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:INVENTARIO_CARGA_INICIAL")).Succeeded) return Results.Forbid();
 	var archivo = ReportesExcel.PlantillaInventarioInicial(await bodegas.ConsultarDetalleAsync(null, soloActivas: true), await productos.ConsultarTiposAsync(),
-		await bodegas.ConsultarUnidadesAsync(soloActivas: true), await NombreCompaniaAsync(contexto, general));
+		await bodegas.ConsultarUnidadesAsync(soloActivas: true), await CompaniaReporteAsync(contexto, general));
 	return Results.File(archivo, TipoExcel, "plantilla-inventario-inicial.xlsx");
 }).RequireAuthorization();
 
@@ -192,7 +209,7 @@ app.MapGet("/reportes/inventario/toma/{tfiId:int}.xlsx", async (int tfiId, HttpC
 	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:INVENTARIO_FISICO")).Succeeded) return Results.Forbid();
 	var toma = (await tomas.ConsultarAsync(null, null, null)).FirstOrDefault(t => t.TfiId == tfiId);
 	if (toma is null) return Results.NotFound();
-	var archivo = ReportesExcel.HojaConteo(toma, await tomas.ConsultarLineasAsync(tfiId), await NombreCompaniaAsync(contexto, general));
+	var archivo = ReportesExcel.HojaConteo(toma, await tomas.ConsultarLineasAsync(tfiId), await CompaniaReporteAsync(contexto, general));
 	return Results.File(archivo, TipoExcel, $"inventario-fisico-{tfiId}.xlsx");
 }).RequireAuthorization();
 
@@ -200,7 +217,7 @@ app.MapGet("/reportes/contabilidad/saldos-iniciales.xlsx", async (HttpContext co
 	IGeneralRepository general, IAuthorizationService autorizacion) =>
 {
 	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:CONTABILIDAD_SALDOS_INICIALES")).Succeeded) return Results.Forbid();
-	var archivo = ReportesExcel.SaldosIniciales(await cargas.ConsultarPlantillaSaldosAsync(), await NombreCompaniaAsync(contexto, general));
+	var archivo = ReportesExcel.SaldosIniciales(await cargas.ConsultarPlantillaSaldosAsync(), await CompaniaReporteAsync(contexto, general));
 	return Results.File(archivo, TipoExcel, "saldos-iniciales.xlsx");
 }).RequireAuthorization();
 
@@ -211,7 +228,7 @@ app.MapGet("/reportes/rrhh/plantilla-empleados.xlsx", async (HttpContext context
 	var tipoBanco = (await general.ConsultarTiposEntidadAsync()).FirstOrDefault(t => t.GeftDescripcion == "Banco");
 	var bancos = tipoBanco is null ? Array.Empty<Erp.Data.Caja.EntidadFinanciera>() : await general.ConsultarEntidadesAsync(tipoBanco.GeftId, soloActivas: true);
 	var archivo = ReportesExcel.PlantillaEmpleados(await rrhh.ConsultarPlazasAsync(soloActivos: true), bancos,
-		await rrhh.ConsultarCatalogoAsync("TipoDocumentoIdentificacion", soloActivos: true), await NombreCompaniaAsync(contexto, general));
+		await rrhh.ConsultarCatalogoAsync("TipoDocumentoIdentificacion", soloActivos: true), await CompaniaReporteAsync(contexto, general));
 	return Results.File(archivo, TipoExcel, "plantilla-empleados.xlsx");
 }).RequireAuthorization();
 

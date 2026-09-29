@@ -72,6 +72,8 @@ public sealed class DepositoCaja
 	public int? GefId { get; set; }
 	public string? GefCodigo { get; set; }
 	public string? GefDescripcion { get; set; }
+	public int? BcbId { get; set; }
+	public string? BcbNumeroCuenta { get; set; }
 }
 
 // Captura de una forma de pago (efectivo/cheque/tarjeta) usada al pagar de
