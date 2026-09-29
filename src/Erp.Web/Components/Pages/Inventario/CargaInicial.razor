@@ -1,0 +1,231 @@
+@page "/inventario/carga-inicial"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:INVENTARIO_CARGA_INICIAL")]
+@using Erp.Data.Cargas
+@using Erp.Web.Reportes
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ICargasRepository CargasRepository
+
+<PageTitle>Inventario inicial</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Carga del inventario inicial</h1>
+    <p>Cantidad, costo y precio de venta de cada producto por sucursal y bodega, desde Excel. Crea los productos que no existen, sus existencias, el costo promedio y el precio de venta de la bodega. No genera póliza: su valor entra en la partida de saldos iniciales.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="pasos-carga">
+    <div class="panel-formulario">
+        <h3>1. Descargue la plantilla</h3>
+        <p class="texto-ayuda">Trae la hoja para llenar, las instrucciones y los códigos de sucursales, bodegas, tipos y unidades.</p>
+        <a class="boton-icono boton-icono-con-etiqueta" href="reportes/inventario/plantilla-inventario-inicial.xlsx" download>
+            <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Plantilla de Excel</span>
+        </a>
+    </div>
+    <div class="panel-formulario">
+        <h3>2. Suba el archivo lleno</h3>
+        <div class="campo"><label for="carga-fecha">Fecha del inventario inicial</label><input id="carga-fecha" type="date" @bind="fecha" /></div>
+        <div class="campo">
+            <label for="carga-archivo">Archivo (.xlsx)</label>
+            <InputFile id="carga-archivo" OnChange="LeerArchivoAsync" accept=".xlsx" />
+        </div>
+    </div>
+    <div class="panel-formulario">
+        <h3>3. Revise y grabe</h3>
+        @if (resultado?.Resumen is { } r)
+        {
+            <div class="resumen-totales">
+                <span>Filas: <strong>@r.Filas</strong></span>
+                <span>Productos nuevos: <strong>@r.ProductosNuevos</strong></span>
+                <span>Bodegas: <strong>@r.Bodegas</strong></span>
+                <span>Valor: <strong>Q @r.CostoTotal.ToString("N2")</strong></span>
+            </div>
+        }
+        else
+        {
+            <p class="texto-ayuda">Al subir el archivo se valida completo; si alguna fila tiene error no se graba nada.</p>
+        }
+        <BotonIcono Icono="save" Tooltip="Grabar el inventario inicial" Etiqueta="Grabar inventario inicial" Variante="primario"
+                    Deshabilitado="!PuedeGrabar || guardando" OnClick="GrabarAsync" />
+    </div>
+</div>
+
+@if (resultado is not null)
+{
+    <section class="tarjeta">
+        <h2>Validación de @nombreArchivo</h2>
+        <MensajesCargaVista Mensajes="resultado.Mensajes" />
+    </section>
+}
+
+<section class="tarjeta" aria-labelledby="titulo-cargas">
+    <h2 id="titulo-cargas">Cargas grabadas</h2>
+    @if (cargas.Count == 0)
+    {
+        <p class="estado-vacio">Todavía no se ha cargado inventario inicial.</p>
+    }
+    else
+    {
+        <table class="tabla-datos">
+            <thead><tr><th class="col-codigo">Documento</th><th class="col-fecha">Fecha</th><th>Bodega</th><th class="num col-estado">Líneas</th><th class="num col-monto">Unidades</th><th class="num col-monto">Valor</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+            <tbody>
+                @foreach (var c in cargas)
+                {
+                    <tr>
+                        <td class="col-codigo">@c.Documento</td>
+                        <td class="col-fecha">@c.Fecha.ToString("dd/MM/yyyy")</td>
+                        <td>@c.Bodega<br /><span class="texto-tenue">@c.Sucursal · @c.Usuario</span></td>
+                        <td class="num col-estado">@c.Lineas</td>
+                        <td class="num col-monto">@c.Cantidad.ToString("#,##0.##")</td>
+                        <td class="num col-monto">@c.Valor.ToString("N2")</td>
+                        <td class="col-estado"><span class="estado-badge @(c.Estado == "G" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.Estado == "G" ? "Vigente" : "Anulada")</span></td>
+                        <td class="col-acciones">
+                            @if (c.Estado == "G")
+                            {
+                                <BotonIcono Icono="ban" Tooltip="Anular la carga (revierte las existencias)" Variante="peligro"
+                                            Confirmacion="¿Anular esta carga? Se revierten sus existencias." OnClick="() => AnularAsync(c)" />
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private static readonly string[] Obligatorias = { "Sucursal", "Bodega", "Producto", "Cantidad", "Costo total" };
+
+    private IReadOnlyList<CargaInventarioInicial> cargas = Array.Empty<CargaInventarioInicial>();
+    private List<FilaInventarioInicial> filas = new();
+    private ResultadoCarga<ResumenInventarioInicial>? resultado;
+    private DateTime fecha = new(DateTime.Today.Year, 1, 1);
+    private string nombreArchivo = "";
+    private bool lecturaConErrores;
+    private List<MensajeCarga> erroresLectura = new();
+    private bool guardando;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private bool PuedeGrabar => resultado is not null && !resultado.TieneErrores && !lecturaConErrores && filas.Count > 0;
+
+    protected override Task OnInitializedAsync() => CargarListaAsync();
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private async Task CargarListaAsync()
+    {
+        try { cargas = await CargasRepository.ConsultarInventarioInicialAsync(); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private async Task LeerArchivoAsync(InputFileChangeEventArgs e)
+    {
+        mensaje = null;
+        resultado = null;
+        filas = new();
+        nombreArchivo = e.File.Name;
+        try
+        {
+            using var memoria = new MemoryStream();
+            await e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(memoria);
+            memoria.Position = 0;
+            using var lector = LectorExcel.Leer(memoria, ReportesExcel.ColumnasInventarioInicial);
+            var faltantes = lector.ColumnasFaltantes(Obligatorias).ToList();
+            if (lector.Errores.Count == 0 && faltantes.Count > 0)
+                lector.Errores.Add(new MensajeCarga { Mensaje = $"Faltan las columnas: {string.Join(", ", faltantes)}." });
+            if (lector.Errores.Count == 0)
+                foreach (var fila in lector.Filas)
+                    filas.Add(new FilaInventarioInicial
+                    {
+                        Fila = fila.RowNumber(),
+                        Sucursal = lector.Texto(fila, "Sucursal"),
+                        Bodega = lector.Texto(fila, "Bodega"),
+                        Producto = lector.Texto(fila, "Producto"),
+                        Descripcion = lector.Texto(fila, "Descripción"),
+                        Tipo = lector.Texto(fila, "Tipo"),
+                        Unidad = lector.Texto(fila, "Unidad"),
+                        Cantidad = lector.Numero(fila, "Cantidad"),
+                        CostoTotal = lector.Numero(fila, "Costo total"),
+                        PrecioVenta = lector.Numero(fila, "Precio venta")
+                    });
+
+            erroresLectura = lector.Errores.ToList();
+            lecturaConErrores = erroresLectura.Count > 0;
+            // Sin encabezados válidos no hay filas que validar.
+            if (erroresLectura.Any(m => m.Fila == 0))
+            {
+                resultado = new ResultadoCarga<ResumenInventarioInicial> { Mensajes = erroresLectura };
+                return;
+            }
+            await RevalidarAsync();
+        }
+        catch (Exception ex) when (ex is not Microsoft.Data.SqlClient.SqlException)
+        {
+            mensaje = "No se pudo leer el archivo. Verifique que sea un libro de Excel (.xlsx) válido y que no esté abierto en otro programa.";
+            esMensajeError = true;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    // Valida en la base y junta esos mensajes con los valores que no se pudieron leer.
+    private async Task RevalidarAsync()
+    {
+        if (filas.Count == 0) return;
+        try
+        {
+            var validacion = await CargasRepository.ProcesarInventarioInicialAsync(fecha, filas, soloValidar: true, await ObtenerUsuIdActualAsync());
+            resultado = new ResultadoCarga<ResumenInventarioInicial>
+            {
+                Mensajes = erroresLectura.Concat(validacion.Mensajes).OrderBy(m => m.Fila).ThenBy(m => m.Tipo == "E" ? 0 : 1).ToList(),
+                Resumen = validacion.Resumen
+            };
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task GrabarAsync()
+    {
+        guardando = true;
+        try
+        {
+            resultado = await CargasRepository.ProcesarInventarioInicialAsync(fecha, filas, soloValidar: false, await ObtenerUsuIdActualAsync());
+            if (resultado.Resumen?.Grabado == true)
+            {
+                mensaje = $"Inventario inicial grabado: {resultado.Resumen.Filas} fila(s), valor Q {resultado.Resumen.CostoTotal:N2}.";
+                esMensajeError = false;
+                filas = new();
+                await CargarListaAsync();
+            }
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task AnularAsync(CargaInventarioInicial carga)
+    {
+        try
+        {
+            await CargasRepository.AnularInventarioInicialAsync(carga.EncId, await ObtenerUsuIdActualAsync());
+            mensaje = $"Carga {carga.Documento} anulada; sus existencias se revirtieron.";
+            esMensajeError = false;
+            await CargarListaAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

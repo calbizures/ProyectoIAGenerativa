@@ -1,5 +1,6 @@
 using Erp.Data.Bancos;
 using Erp.Data.Caja;
+using Erp.Data.Cargas;
 using Erp.Data.Compras;
 using Erp.Data.Contabilidad;
 using Erp.Data.Cuentas;
@@ -46,6 +47,8 @@ public static class DependencyInjection
 		services.AddScoped<ITableroRepository, TableroRepository>();
 		services.AddScoped<IBancosRepository, BancosRepository>();
 		services.AddScoped<ICentroCostoRepository, CentroCostoRepository>();
+		services.AddScoped<IInventarioFisicoRepository, InventarioFisicoRepository>();
+		services.AddScoped<ICargasRepository, CargasRepository>();
 		return services;
 	}
 }

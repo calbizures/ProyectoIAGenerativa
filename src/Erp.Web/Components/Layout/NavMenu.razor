@@ -39,16 +39,30 @@
             </Authorized>
         </AuthorizeView>
 
-        <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR">
+        <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR,INVENTARIO_FISICO,INVENTARIO_CARGA_INICIAL">
             <Authorized>
-                <SidebarNodo Titulo="Inventario" IconoNombre="package" Rutas="@(new[] { "productos", "caracteristicas", "tipos-caracteristica", "existencias", "precios", "bodegas", "unidades-medida" })">
-                    <NavLink href="productos" class="sidebar-hijo-link">Productos</NavLink>
-                    <NavLink href="caracteristicas" class="sidebar-hijo-link">Características</NavLink>
-                    <NavLink href="tipos-caracteristica" class="sidebar-hijo-link">Tipos de característica</NavLink>
-                    <NavLink href="existencias" class="sidebar-hijo-link">Existencias</NavLink>
-                    <NavLink href="precios" class="sidebar-hijo-link">Precios</NavLink>
-                    <NavLink href="bodegas" class="sidebar-hijo-link">Bodegas</NavLink>
-                    <NavLink href="unidades-medida" class="sidebar-hijo-link">Unidades de medida</NavLink>
+                <SidebarNodo Titulo="Inventario" IconoNombre="package" Rutas="@(new[] { "productos", "caracteristicas", "tipos-caracteristica", "existencias", "precios", "bodegas", "unidades-medida", "inventario" })">
+                    <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR" Context="productosContexto">
+                        <Authorized>
+                            <NavLink href="productos" class="sidebar-hijo-link">Productos</NavLink>
+                            <NavLink href="caracteristicas" class="sidebar-hijo-link">Características</NavLink>
+                            <NavLink href="tipos-caracteristica" class="sidebar-hijo-link">Tipos de característica</NavLink>
+                            <NavLink href="existencias" class="sidebar-hijo-link">Existencias</NavLink>
+                            <NavLink href="precios" class="sidebar-hijo-link">Precios</NavLink>
+                            <NavLink href="bodegas" class="sidebar-hijo-link">Bodegas</NavLink>
+                            <NavLink href="unidades-medida" class="sidebar-hijo-link">Unidades de medida</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:INVENTARIO_FISICO" Context="fisicoContexto">
+                        <Authorized>
+                            <NavLink href="inventario/fisico" class="sidebar-hijo-link">Inventario físico</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:INVENTARIO_CARGA_INICIAL" Context="inicialContexto">
+                        <Authorized>
+                            <NavLink href="inventario/carga-inicial" class="sidebar-hijo-link">Inventario inicial</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
@@ -117,6 +131,7 @@
             <Authorized>
                 <SidebarNodo Titulo="RRHH" IconoNombre="briefcase" Rutas="@(new[] { "rrhh" })">
                     <NavLink href="rrhh/empleados" class="sidebar-hijo-link">Empleados</NavLink>
+                    <NavLink href="rrhh/carga-empleados" class="sidebar-hijo-link">Carga de empleados</NavLink>
                     <NavLink href="rrhh/nominas" class="sidebar-hijo-link">Nóminas</NavLink>
                     <NavLink href="rrhh/movimientos" class="sidebar-hijo-link">Movimientos de nómina</NavLink>
                     <NavLink href="rrhh/tipos-movimiento" class="sidebar-hijo-link">Tipos de movimiento</NavLink>
@@ -140,13 +155,18 @@
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <AuthorizeView Policy="Permiso:CONTABILIDAD_NOMENCLATURA_ADMIN,CONTABILIDAD_CENTRO_COSTO">
+        <AuthorizeView Policy="Permiso:CONTABILIDAD_NOMENCLATURA_ADMIN,CONTABILIDAD_CENTRO_COSTO,CONTABILIDAD_SALDOS_INICIALES">
             <Authorized>
                 <SidebarNodo Titulo="Contabilidad" IconoNombre="bar-chart-2" Rutas="@(new[] { "contabilidad" })">
                     <AuthorizeView Policy="Permiso:CONTABILIDAD_NOMENCLATURA_ADMIN" Context="nomenclaturaContexto">
                         <Authorized>
                             <NavLink href="contabilidad/nomenclatura" class="sidebar-hijo-link">Nomenclatura</NavLink>
                             <NavLink href="general/cuentas-poliza" class="sidebar-hijo-link">Cuentas de pólizas</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CONTABILIDAD_SALDOS_INICIALES" Context="saldosContexto">
+                        <Authorized>
+                            <NavLink href="contabilidad/saldos-iniciales" class="sidebar-hijo-link">Saldos iniciales</NavLink>
                         </Authorized>
                     </AuthorizeView>
                     <AuthorizeView Policy="Permiso:CONTABILIDAD_CENTRO_COSTO" Context="centroContexto">

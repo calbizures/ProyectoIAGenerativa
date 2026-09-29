@@ -176,6 +176,45 @@ app.MapGet("/reportes/contabilidad/centros-costo.xlsx", async (DateTime desde, D
 	return Results.File(archivo, TipoExcel, $"centros-costo-{desde:yyyyMMdd}-{hasta:yyyyMMdd}.xlsx");
 }).RequireAuthorization();
 
+// Plantillas y hojas de trabajo de las cargas desde Excel.
+app.MapGet("/reportes/inventario/plantilla-inventario-inicial.xlsx", async (HttpContext contexto, Erp.Data.Inventario.IBodegaRepository bodegas,
+	Erp.Data.Inventario.IProductoRepository productos, IGeneralRepository general, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:INVENTARIO_CARGA_INICIAL")).Succeeded) return Results.Forbid();
+	var archivo = ReportesExcel.PlantillaInventarioInicial(await bodegas.ConsultarDetalleAsync(null, soloActivas: true), await productos.ConsultarTiposAsync(),
+		await bodegas.ConsultarUnidadesAsync(soloActivas: true), await NombreCompaniaAsync(contexto, general));
+	return Results.File(archivo, TipoExcel, "plantilla-inventario-inicial.xlsx");
+}).RequireAuthorization();
+
+app.MapGet("/reportes/inventario/toma/{tfiId:int}.xlsx", async (int tfiId, HttpContext contexto, Erp.Data.Inventario.IInventarioFisicoRepository tomas,
+	IGeneralRepository general, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:INVENTARIO_FISICO")).Succeeded) return Results.Forbid();
+	var toma = (await tomas.ConsultarAsync(null, null, null)).FirstOrDefault(t => t.TfiId == tfiId);
+	if (toma is null) return Results.NotFound();
+	var archivo = ReportesExcel.HojaConteo(toma, await tomas.ConsultarLineasAsync(tfiId), await NombreCompaniaAsync(contexto, general));
+	return Results.File(archivo, TipoExcel, $"inventario-fisico-{tfiId}.xlsx");
+}).RequireAuthorization();
+
+app.MapGet("/reportes/contabilidad/saldos-iniciales.xlsx", async (HttpContext contexto, Erp.Data.Cargas.ICargasRepository cargas,
+	IGeneralRepository general, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:CONTABILIDAD_SALDOS_INICIALES")).Succeeded) return Results.Forbid();
+	var archivo = ReportesExcel.SaldosIniciales(await cargas.ConsultarPlantillaSaldosAsync(), await NombreCompaniaAsync(contexto, general));
+	return Results.File(archivo, TipoExcel, "saldos-iniciales.xlsx");
+}).RequireAuthorization();
+
+app.MapGet("/reportes/rrhh/plantilla-empleados.xlsx", async (HttpContext contexto, Erp.Data.Rrhh.IRrhhRepository rrhh,
+	IGeneralRepository general, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:RRHH_ADMIN")).Succeeded) return Results.Forbid();
+	var tipoBanco = (await general.ConsultarTiposEntidadAsync()).FirstOrDefault(t => t.GeftDescripcion == "Banco");
+	var bancos = tipoBanco is null ? Array.Empty<Erp.Data.Caja.EntidadFinanciera>() : await general.ConsultarEntidadesAsync(tipoBanco.GeftId, soloActivas: true);
+	var archivo = ReportesExcel.PlantillaEmpleados(await rrhh.ConsultarPlazasAsync(soloActivos: true), bancos,
+		await rrhh.ConsultarCatalogoAsync("TipoDocumentoIdentificacion", soloActivos: true), await NombreCompaniaAsync(contexto, general));
+	return Results.File(archivo, TipoExcel, "plantilla-empleados.xlsx");
+}).RequireAuthorization();
+
 app.MapPost("/logout", async (HttpContext context) =>
 {
 	await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);

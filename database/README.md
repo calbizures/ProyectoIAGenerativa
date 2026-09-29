@@ -52,24 +52,26 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 35_costos_fel_tableros.sql                    -- costo unitario por línea, factura electrónica (FEL) parametrizada, tableros
 36_bancos_nomina_centro_costo.sql             -- bancos (cuentas, chequeras, motivos, cheques), nómina por período, pago a empleados, centro de costo
 37_datos_sinteticos_bancos_nomina.sql         -- opcional: datos de prueba de bancos y pago de nómina
+38_inventario_fisico_cargas_iniciales.sql     -- inventario físico, inventario inicial, saldos iniciales y carga de empleados desde Excel
+39_datos_sinteticos_inventario_saldos.sql     -- opcional: datos de prueba de inventario físico, inventario inicial y apertura
 ```
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `37` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `39` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
-no lo incluyas (ni el `30`, el `33` ni el `37`).
+no lo incluyas (ni el `30`, el `33`, el `37` ni el `39`).
 
-`25` a `29`, `31`, `32` y `34` a `36` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36` y `38` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `37`. Si vuelves a
-correr `12`, corre después `22` a `37` (el `12` vacía todas las tablas). Lo
-mismo con `25`, `26`, `27`, `29`, `31`, `32` y `34`: redefinen procedimientos
-que los scripts posteriores corrigen, así que después de cualquiera de ellos
-corre de nuevo del `34` al `36`.
+cualquiera de los dos, vuelve a correr después `26` a `39`. Si vuelves a
+correr `12`, corre después `22` a `39` (el `12` vacía todas las tablas). Lo
+mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
+procedimientos que los scripts posteriores corrigen, así que después de
+cualquiera de ellos corre de nuevo el `34`, `35`, `36` y `38`.
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -928,6 +930,49 @@ transferencias y cheque), la nómina semanal de la semana pasada aprobada y
 pagada, y dos cheques libres con centro de costo.
 
 Errores `53401`-`53439`.
+
+### Inventario físico, inventario inicial, saldos iniciales y carga de empleados (`38`)
+
+**Documentos internos de inventario.** `inv_documento_tipo.tdo_es_interno`
+marca los tipos que no son ventas ni compras: `INVI` inventario inicial (+),
+`AJIS` sobrante de inventario físico (+) y `AJIF` faltante (-). No aparecen en
+Facturas, Compras, cuentas por cobrar/pagar ni en los tableros (el `38`
+redefine `paTableroVentas` y `paTableroCompras` con ese filtro).
+`paInvDocumentoInternoCrear` los graba y mueve existencias y costo promedio.
+
+**Inventario físico** (**Inventario › Inventario físico**, permiso
+`INVENTARIO_FISICO`, administrador y contador):
+- Se abre una toma por bodega (`inv_toma_fisica`) con los productos que
+  manejan existencia; una toma abierta por bodega.
+- La pantalla muestra la existencia del sistema (no editable) y el conteo de
+  cada producto. El conteo también se puede llenar en la hoja de Excel de la
+  toma y subirla.
+- Al aplicar, la diferencia se calcula contra la existencia de ese momento y
+  se valora al costo promedio. Los productos sin conteo no se ajustan.
+- Sobrante: documento `AJIS` y póliza Debe `INVENTARIO` / Haber
+  `INVENTARIO_SOBRANTE`. Faltante: documento `AJIF` y póliza Debe
+  `INVENTARIO_FALTANTE` / Haber `INVENTARIO` (origen `AJUSTE_INVENTARIO`).
+- Si la nomenclatura no las tiene, el `38` crea las cuentas SOBRANTES DE
+  INVENTARIO (bajo 411) y FALTANTES DE INVENTARIO (bajo 511); se pueden
+  cambiar en Cuentas de pólizas.
+- Anular una toma aplicada anula sus documentos (revierte existencias) y sus
+  pólizas.
+
+**Cargas desde Excel.** Todas bajan una plantilla (con instrucciones y los
+códigos válidos), validan el archivo completo y solo graban si ninguna fila
+tiene error. Muestran cada error o advertencia con su fila.
+
+| Carga | Dónde | Qué hace |
+|---|---|---|
+| Inventario inicial | **Inventario › Inventario inicial** (`INVENTARIO_CARGA_INICIAL`) | Por sucursal, bodega y producto + unidad: cantidad, costo total y precio de venta con IVA. Crea los productos que no existen, un documento `INVI` por bodega (costo unitario = costo total / cantidad) y el precio de venta en la bodega. No genera póliza. Se puede anular. |
+| Saldos iniciales | **Contabilidad › Saldos iniciales** (`CONTABILIDAD_SALDOS_INICIALES`) | Exporta la nomenclatura; el contador pone el Debe o el Haber de cada cuenta de movimiento; al subirla se genera la partida de apertura (origen `APERTURA`). Debe cuadrar; avisa si una cuenta queda con saldo contrario a su naturaleza y si la cuenta del concepto `INVENTARIO` no coincide con el inventario inicial cargado. Una nueva reemplaza (anula) a la vigente solo si se marca Reemplazar. |
+| Empleados | **RRHH › Carga de empleados** (`RRHH_ADMIN`) | Alta o actualización por código con plaza, salario, tipo de nómina y datos de pago; los datos opcionales vacíos conservan lo que ya tenía el empleado. |
+
+Datos de prueba (`39`): inventario inicial de tres accesorios en la bodega de
+Mixco, una toma aplicada en la bodega principal (un sobrante y un faltante) y
+la partida de apertura al 1 de enero con el inventario igual al cargado.
+
+Errores `53501`-`53510`.
 
 ## Módulos nuevos
 

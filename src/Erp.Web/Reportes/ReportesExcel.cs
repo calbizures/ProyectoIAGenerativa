@@ -5,7 +5,7 @@ using Erp.Web.Components.Pages.Cuentas;
 namespace Erp.Web.Reportes;
 
 // Libros de Excel de cuentas por cobrar y por pagar.
-public static class ReportesExcel
+public static partial class ReportesExcel
 {
 	private const string FormatoMonto = "#,##0.00;[Red]-#,##0.00";
 

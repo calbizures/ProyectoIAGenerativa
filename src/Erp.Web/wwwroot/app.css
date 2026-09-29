@@ -2715,3 +2715,15 @@ a.boton-icono { text-decoration: none; }
 }
 .tarjeta .fel-formulario .campo { margin: 0; }
 .tarjeta .fel-formulario .acciones-fila { grid-column: 1 / -1; margin-top: 0.25rem; }
+
+/* Cargas desde Excel e inventario físico */
+.oculto { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+label.boton-icono { cursor: pointer; position: relative; }
+.casilla { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.85rem; }
+.entrada-numero { width: 7rem; text-align: right; }
+.tabla-datos tr.fila-sobrante td { background: var(--exito-fondo); }
+.tabla-datos tr.fila-faltante td { background: var(--error-fondo); }
+.pasos-carga { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+.pasos-carga .panel-formulario { margin: 0; max-width: none; }
+/* El primer título de un panel no lleva separador arriba. */
+.panel-formulario > h3:first-child, .panel-detalle > h3:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
