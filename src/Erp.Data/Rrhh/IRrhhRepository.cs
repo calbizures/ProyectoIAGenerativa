@@ -31,6 +31,7 @@ public interface IRrhhRepository
 	Task ReactivarEmpleadoAsync(int idEmpleado, int? usuarioAccionId);
 	Task AsignarUsuarioAsync(int idEmpleado, int? usuIdAsignado, int? usuarioAccionId);
 	Task AsignarVendedorAsync(int idEmpleado, int? pveId, int? usuarioAccionId);
+	Task GuardarPagoEmpleadoAsync(int idEmpleado, string tipoNomina, string formaPago, int? gefId, string? tipoCuenta, string? numeroCuenta, int? usuarioAccionId);
 
 	// Tipos de movimiento y movimientos manuales
 	Task<IReadOnlyList<TipoMovimientoNomina>> ConsultarTiposMovimientoAsync(bool soloActivos);
@@ -47,4 +48,12 @@ public interface IRrhhRepository
 	Task AnularNominaAsync(int idNomina, int? usuarioAccionId);
 	Task<IReadOnlyList<NominaEmpleado>> ConsultarNominaEmpleadosAsync(int idNomina);
 	Task<IReadOnlyList<NominaDetalle>> ConsultarNominaDetalleAsync(int idNominaEmpleado);
+	Task<PeriodoSugerido> ConsultarPeriodoSugeridoAsync(int ciaId, string tipoPeriodo);
+
+	// Pago de nómina
+	Task<IReadOnlyList<NominaPago>> ConsultarPagosNominaAsync(int idNomina);
+	Task<int> PagarTransferenciasAsync(int idNomina, int bcbId, DateTime fecha, string? referencia, int? usuarioAccionId);
+	Task<int> EmitirChequesNominaAsync(int idNomina, int cbcId, DateTime fecha, int? usuarioAccionId);
+	Task AnularPagoNominaAsync(int idNominaPago, string motivo, int? usuarioAccionId);
+	Task<IReadOnlyList<TransferenciaNomina>> ConsultarListadoTransferenciasAsync(int idNominaPago);
 }

@@ -34,9 +34,9 @@ GO
 -- Forma(s) de pago del monto pagado al momento de facturar (de contado, o
 -- el enganche si es a crédito) y del cobro de una cuota. Un mismo pago
 -- puede dividirse en varias formas (p.ej. parte efectivo, parte cheque).
-IF TYPE_ID(N'dbo.pago_forma_type') IS NOT NULL
-	DROP TYPE [dbo].[pago_forma_type];
-GO
+-- Solo se crea si no existe: al volver a correr el script no se puede borrar
+-- porque ya lo usan procedimientos de scripts posteriores (p. ej. 34).
+IF TYPE_ID(N'dbo.pago_forma_type') IS NULL
 CREATE TYPE [dbo].[pago_forma_type] AS TABLE
 (
 	[pft_id]							INT				NOT NULL,

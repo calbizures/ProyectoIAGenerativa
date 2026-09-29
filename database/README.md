@@ -50,23 +50,26 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 33_datos_sinteticos_cxc_organigrama.sql       -- opcional: organigrama de ejemplo, factura con servicios y notas
 34_auditoria_procesos.sql                     -- recibos y cheques anulables, cobro de varias cuotas, límite de crédito
 35_costos_fel_tableros.sql                    -- costo unitario por línea, factura electrónica (FEL) parametrizada, tableros
+36_bancos_nomina_centro_costo.sql             -- bancos (cuentas, chequeras, motivos, cheques), nómina por período, pago a empleados, centro de costo
+37_datos_sinteticos_bancos_nomina.sql         -- opcional: datos de prueba de bancos y pago de nómina
 ```
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `35` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `37` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
-no lo incluyas (ni el `30` ni el `33`).
+no lo incluyas (ni el `30`, el `33` ni el `37`).
 
-`25` a `29`, `31`, `32`, `34` y `35` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32` y `34` a `36` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `35`. Si vuelves a
-correr `12`, corre después `22` a `35` (el `12` vacía todas las tablas). Lo
-mismo con `27`, `31` y `32`: redefinen procedimientos que el `34` y el `35`
-corrigen, así que después de cualquiera de ellos corre de nuevo `34` y `35`.
+cualquiera de los dos, vuelve a correr después `26` a `37`. Si vuelves a
+correr `12`, corre después `22` a `37` (el `12` vacía todas las tablas). Lo
+mismo con `25`, `26`, `27`, `29`, `31`, `32` y `34`: redefinen procedimientos
+que los scripts posteriores corrigen, así que después de cualquiera de ellos
+corre de nuevo del `34` al `36`.
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -864,6 +867,67 @@ rango es de hasta 62 días y por mes si es mayor. Devuelven:
 
 Errores `53301`-`53314`. Permisos `TABLERO_GERENCIAL` (Administrador) y
 `FEL_ADMIN` (Administrador y Contador).
+
+### Bancos, nómina por período, pago a empleados y centro de costo (`36`)
+
+Menú **Caja y bancos** (permiso `BANCOS_ADMIN`, solo Administrador y Contador):
+
+| Pantalla | Qué hace |
+|---|---|
+| **Cuentas y chequeras** | Cuentas bancarias de la empresa (`bco_cuenta_bancaria`): banco, número, tipo (`bcb_tipo` M monetaria / A ahorro) y su cuenta contable (`cta_id`; si falta se usa el concepto `PAGO_BANCOS`). Cada cuenta con sus chequeras: rangos sin traslape, siguiente número y cheques disponibles. |
+| **Motivos de pago** | Catálogo `bco_motivo_pago`. |
+| **Cheques** | Todos los cheques (`bce_tipo` P proveedor, L libre, N nómina) con filtros. Emite el **cheque libre**: beneficiario, motivo, cuenta de gasto y centro de costo; póliza Debe cuenta elegida / Haber banco (origen `CHEQUE`). Marca un cheque como cobrado y anula con motivo: se anula su póliza; el de proveedor devuelve el saldo a la cuota y el de nómina deja al empleado pendiente de pago. |
+
+- El número de cheque se valida contra la chequera (activa, dentro del rango,
+  sin repetir); vacío toma el siguiente. Aplica también al cheque a
+  proveedor, que ahora usa la cuenta contable de su banco y guarda el
+  beneficiario.
+
+**Nómina por período.** `rrhhNomina.TipoPeriodo` acepta `S` semanal, `Q`
+quincenal y `M` mensual; cada empleado tiene su `TipoNomina` y solo entra en
+las nóminas de su tipo. Al abrir una nómina, `paRrhhNominaPeriodoSugerido`
+propone el período que sigue a la última del mismo tipo (semana de lunes a
+domingo, quincena 1-15 / 16-fin de mes, mes completo); si no hay ninguna, el
+que contiene la fecha de hoy. El traslape solo se valida entre nóminas del
+mismo tipo. La semana usa 7 días base y el sueldo semanal es el mensual × 12 / 52.
+
+**Pago a empleados (no se paga en efectivo).** En **RRHH › Empleados ›
+Pago de nómina**: forma de pago (`T` transferencia / `C` cheque), banco,
+tipo y número de cuenta (obligatorios para transferencia). La nómina guarda
+una foto de esos datos y del departamento al calcular y al aprobar; aprobar
+exige que todos los empleados con líquido tengan forma de pago. Ya aprobada,
+la pestaña de la nómina muestra la sección **Pago** (permiso `BANCOS_ADMIN`):
+
+- **Transferencias:** un lote (`rrhhNominaPago` tipo T) con todos los
+  pendientes que cobran por transferencia. Póliza Debe
+  `NOMINA_SUELDOS_POR_PAGAR` / Haber banco (origen `PAGO_NOMINA`). Se
+  descarga el **listado en Excel**: resumen por banco y una hoja por banco
+  destino.
+- **Cheques:** uno por empleado con números correlativos de la chequera, cada
+  uno con su póliza (origen `CHEQUE`).
+- Un pago se anula con motivo (su póliza también). Una nómina con pagos
+  vigentes no se puede anular.
+
+**Centro de costo = departamento.** `cont_asiento_det.IdDepartamento` guarda
+el centro de costo de cada línea de póliza (nuevo tipo
+`cont_asiento_det_cc_type` y `paContabilidadAsientoInsertarCc`; el tipo y el
+procedimiento anteriores no cambian). La nómina aprobada desglosa cada
+ingreso por el departamento de la plaza del empleado (descuentos y líquido
+van sin centro de costo) y el cheque libre lleva el que se elija. Reporte en
+**Contabilidad › Centros de costo** (permiso `CONTABILIDAD_CENTRO_COSTO`):
+saldo por departamento y cuenta, pólizas de cada línea y exportación a Excel.
+
+También: la periodicidad de la compañía acepta semanal y el `24` ya no falla
+al volver a correrlo (no intenta borrar `pago_forma_type`, que usan
+procedimientos posteriores).
+
+Datos de prueba (`37`): cuenta de nómina en Banrural con chequera 5001-5050,
+datos de pago de los empleados (tres por transferencia, uno con cheque), un
+técnico de soporte en nómina semanal, pago de la nómina mensual (lote de
+transferencias y cheque), la nómina semanal de la semana pasada aprobada y
+pagada, y dos cheques libres con centro de costo.
+
+Errores `53401`-`53439`.
 
 ## Módulos nuevos
 

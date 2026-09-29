@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = "Permiso:RRHH_ADMIN")]
 @using System.ComponentModel.DataAnnotations
+@using Erp.Data.Caja
 @using Erp.Data.General
 @using Erp.Data.Rrhh
 @using Erp.Data.Security
@@ -49,7 +50,7 @@
     {
         <table class="tabla-datos">
             <thead>
-                <tr><th class="col-codigo">Código</th><th>Nombre</th><th>Puesto</th><th>Departamento</th><th class="col-fecha">Ingreso</th><th class="num col-monto">Salario base</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+                <tr><th class="col-codigo">Código</th><th>Nombre</th><th>Puesto</th><th>Departamento</th><th class="col-estado">Nómina</th><th>Pago</th><th class="col-fecha">Ingreso</th><th class="num col-monto">Salario base</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
             </thead>
             <tbody>
                 @foreach (var e in empleados)
@@ -59,6 +60,8 @@
                         <td>@e.NombreCompleto</td>
                         <td>@e.Puesto</td>
                         <td>@e.Departamento</td>
+                        <td class="col-estado">@NombreTipoNomina(e.TipoNomina)</td>
+                        <td>@(e.FormaPago switch { "T" => $"Transferencia · {e.Banco}", "C" => "Cheque", _ => "Sin definir" })</td>
                         <td class="col-fecha">@e.FechaIngreso.ToString("dd/MM/yyyy")</td>
                         <td class="num col-monto">@e.SalarioBase.ToString("N2")</td>
                         <td class="col-estado"><span class="estado-badge @(e.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(e.Estado == "A" ? "Activo" : "De baja")</span></td>
@@ -129,6 +132,56 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
                     }
                 </select>
                 <BotonIcono Icono="link" Tooltip="Guardar vendedor" Etiqueta="Asignar" OnClick="AsignarVendedorAsync" />
+            </div>
+        </div>
+
+        <h3>Pago de nómina</h3>
+        <p class="texto-ayuda">No se paga en efectivo. El empleado entra solo en las nóminas de su tipo y su departamento (por la plaza) es el centro de costo de su sueldo.</p>
+        <div class="panel-formulario panel-ancho">
+            <div class="campo">
+                <label for="emp-tipo-nomina">Tipo de nómina</label>
+                <select id="emp-tipo-nomina" @bind="pagoTipoNomina">
+                    <option value="S">Semanal</option>
+                    <option value="Q">Quincenal</option>
+                    <option value="M">Mensual</option>
+                </select>
+            </div>
+            <div class="campo">
+                <label for="emp-forma-pago">Forma de pago</label>
+                <select id="emp-forma-pago" @bind="pagoForma">
+                    <option value="">Seleccione...</option>
+                    <option value="T">Transferencia a su cuenta</option>
+                    <option value="C">Cheque</option>
+                </select>
+            </div>
+            <div class="campo">
+                <label for="emp-banco">Banco</label>
+                <select id="emp-banco" @bind="pagoGefId">
+                    <option value="">(Sin banco)</option>
+                    @foreach (var b in bancos)
+                    {
+                        <option value="@b.GefId">@b.GefDescripcion</option>
+                    }
+                </select>
+            </div>
+            <div class="campo">
+                <label for="emp-tipo-cuenta">Tipo de cuenta</label>
+                <select id="emp-tipo-cuenta" @bind="pagoTipoCuenta">
+                    <option value="">(Sin cuenta)</option>
+                    <option value="M">Monetaria</option>
+                    <option value="A">Ahorro</option>
+                </select>
+            </div>
+            <div class="campo">
+                <label for="emp-numero-cuenta">Número de cuenta</label>
+                <input id="emp-numero-cuenta" maxlength="30" @bind="pagoNumeroCuenta" />
+                @if (pagoForma == "T")
+                {
+                    <small class="texto-ayuda">Obligatorios para transferencia: banco, tipo y número de cuenta.</small>
+                }
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar datos de pago" Etiqueta="Guardar pago" Variante="primario" OnClick="GuardarPagoAsync" />
             </div>
         </div>
 
@@ -239,6 +292,12 @@ else if (pestanaActiva == "editar")
     private EmpleadoModelo modelo = new();
     private int? usuIdVinculo;
     private int? pveIdVinculo;
+    private IReadOnlyList<EntidadFinanciera> bancos = Array.Empty<EntidadFinanciera>();
+    private string pagoTipoNomina = "M";
+    private string pagoForma = "";
+    private int? pagoGefId;
+    private string pagoTipoCuenta = "";
+    private string pagoNumeroCuenta = "";
     private DateTime fechaBaja = DateTime.Today;
 
     private string pestanaActiva = "lista";
@@ -266,6 +325,8 @@ else if (pestanaActiva == "editar")
             tiposDocumento = await RrhhRepository.ConsultarCatalogoAsync("TipoDocumentoIdentificacion", soloActivos: true);
             usuarios = await UsuarioRepository.ConsultarAsync(null, "A", 1, 500);
             vendedores = await VendedorRepository.ConsultarAsync("A");
+            var tipoBanco = (await GeneralRepository.ConsultarTiposEntidadAsync()).FirstOrDefault(t => t.GeftDescripcion == "Banco");
+            if (tipoBanco is not null) bancos = await GeneralRepository.ConsultarEntidadesAsync(tipoBanco.GeftId, soloActivas: true);
             await CargarPlazasAsync();
             await BuscarAsync();
         }
@@ -312,6 +373,11 @@ else if (pestanaActiva == "editar")
             historial = hist;
             usuIdVinculo = empleado?.UsuId;
             pveIdVinculo = empleado?.PveId;
+            pagoTipoNomina = empleado?.TipoNomina ?? "M";
+            pagoForma = empleado?.FormaPago ?? "";
+            pagoGefId = empleado?.GefId;
+            pagoTipoCuenta = empleado?.TipoCuenta ?? "";
+            pagoNumeroCuenta = empleado?.NumeroCuenta ?? "";
             fechaBaja = DateTime.Today;
             pestanaActiva = empleado is null ? "lista" : "detalle";
         }
@@ -383,6 +449,28 @@ else if (pestanaActiva == "editar")
         {
             await RrhhRepository.AsignarUsuarioAsync(seleccionado.IdEmpleado, usuIdVinculo, await ObtenerUsuIdActualAsync());
             MostrarOk(usuIdVinculo is null ? "Se quitó el usuario del empleado." : "Usuario asignado al empleado.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private static string NombreTipoNomina(string tipo) => tipo switch { "S" => "Semanal", "Q" => "Quincenal", _ => "Mensual" };
+
+    private async Task GuardarPagoAsync()
+    {
+        if (seleccionado is null) return;
+        if (pagoForma == "")
+        {
+            mensaje = "Seleccione la forma de pago: transferencia o cheque.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            await RrhhRepository.GuardarPagoEmpleadoAsync(seleccionado.IdEmpleado, pagoTipoNomina, pagoForma, pagoGefId,
+                pagoTipoCuenta == "" ? null : pagoTipoCuenta, string.IsNullOrWhiteSpace(pagoNumeroCuenta) ? null : pagoNumeroCuenta.Trim(),
+                await ObtenerUsuIdActualAsync());
+            await BuscarAsync();
+            MostrarOk("Datos de pago de nómina guardados.");
         }
         catch (Exception ex) { MostrarError(ex); }
     }

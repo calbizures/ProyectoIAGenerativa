@@ -1,18 +1,20 @@
 @page "/rrhh/nominas"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = "Permiso:RRHH_ADMIN")]
+@using Erp.Data.Bancos
 @using Erp.Data.General
 @using Erp.Data.Rrhh
 @using Erp.Web.Security
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IRrhhRepository RrhhRepository
 @inject IGeneralRepository GeneralRepository
+@inject IBancosRepository BancosRepository
 
 <PageTitle>Nóminas</PageTitle>
 
 <div class="pagina-encabezado">
     <h1>Nóminas</h1>
-    <p>Cree el período, calcule (sueldo proporcional, bonificación, IGSS y movimientos del período), revise y apruebe.</p>
+    <p>Abra el período (semanal, quincenal o mensual), calcule, revise, apruebe y pague por transferencia o cheque. Cada empleado entra solo en las nóminas de su tipo.</p>
 </div>
 
 @if (mensaje is not null)
@@ -50,23 +52,14 @@
                 </select>
             </div>
             <div class="campo">
-                <label for="nom-periodo">Período</label>
-                <select id="nom-periodo" @bind="nuevoTipoPeriodo" @bind:after="SugerirFechas">
-                    <option value="M">Mensual</option>
+                <label for="nom-periodo">Tipo de nómina</label>
+                <select id="nom-periodo" @bind="nuevoTipoPeriodo" @bind:after="SugerirFechasAsync">
+                    <option value="S">Semanal</option>
                     <option value="Q">Quincenal</option>
+                    <option value="M">Mensual</option>
                 </select>
+                <small class="texto-ayuda">Las fechas proponen el período que sigue a la última nómina de este tipo; puede cambiarlas.</small>
             </div>
-            @if (nuevoTipoPeriodo == "Q")
-            {
-                <div class="campo">
-                    <label for="nom-quincena">Quincena</label>
-                    <select id="nom-quincena" @bind="nuevaQuincena" @bind:after="SugerirFechas">
-                        <option value="1">Primera (1 al 15)</option>
-                        <option value="2">Segunda (16 a fin de mes)</option>
-                    </select>
-                </div>
-            }
-            <div class="campo"><label for="nom-mes">Mes</label><input id="nom-mes" type="month" @bind="nuevoMes" @bind:format="yyyy-MM" @bind:after="SugerirFechas" /></div>
             <div class="campo"><label for="nom-del">Del</label><input id="nom-del" type="date" @bind="nuevaFechaDel" /></div>
             <div class="campo"><label for="nom-al">Al</label><input id="nom-al" type="date" @bind="nuevaFechaAl" /></div>
             <div class="campo"><label for="nom-pago">Fecha de pago</label><input id="nom-pago" type="date" @bind="nuevaFechaPago" /></div>
@@ -93,7 +86,7 @@
                 {
                     <tr class="@(seleccionada?.IdNomina == n.IdNomina ? "fila-seleccionada" : "")">
                         <td>@n.Descripcion</td>
-                        <td class="col-estado">@(n.TipoPeriodo == "Q" ? "Quincenal" : "Mensual")</td>
+                        <td class="col-estado">@NombrePeriodo(n.TipoPeriodo)</td>
                         <td class="col-fecha">@n.FechaDel.ToString("dd/MM/yyyy")</td>
                         <td class="col-fecha">@n.FechaAl.ToString("dd/MM/yyyy")</td>
                         <td class="num col-estado">@n.CantidadEmpleados</td>
@@ -111,6 +104,10 @@
                                 @if (n.Estado == "C")
                                 {
                                     <BotonIcono Icono="check-circle" Tooltip="Aprobar" Variante="primario" OnClick="() => AprobarAsync(n)" />
+                                }
+                                @if (n.Estado == "A" && n.PendientesPago > 0)
+                                {
+                                    <BotonIcono Icono="banknote" Tooltip="@($"Pagar ({n.PendientesPago} pendiente(s))")" OnClick="() => SeleccionarAsync(n)" />
                                 }
                                 @if (n.Estado != "N")
                                 {
@@ -134,6 +131,11 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             <span>Ingresos: <strong>Q @seleccionada.TotalIngresos.ToString("N2")</strong></span>
             <span>Descuentos: <strong>Q @seleccionada.TotalDescuentos.ToString("N2")</strong></span>
             <span>Líquido a pagar: <strong>Q @seleccionada.TotalLiquido.ToString("N2")</strong></span>
+            @if (seleccionada.Estado == "A")
+            {
+                <span>Pagado: <strong>Q @seleccionada.TotalPagado.ToString("N2")</strong></span>
+                <span>Pendientes de pago: <strong>@seleccionada.PendientesPago</strong></span>
+            }
         </div>
         <div class="acciones-fila">
             @if (seleccionada.Estado is "B" or "C")
@@ -154,7 +156,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         {
             <table class="tabla-datos">
                 <thead>
-                    <tr><th class="col-codigo">Código</th><th>Empleado</th><th class="num col-monto">Salario base</th><th class="num col-estado">Días</th><th class="num col-monto">Ingresos</th><th class="num col-monto">Descuentos</th><th class="num col-monto">Líquido</th><th class="col-acciones">Detalle</th></tr>
+                    <tr><th class="col-codigo">Código</th><th>Empleado</th><th>Centro de costo</th><th class="num col-monto">Salario base</th><th class="num col-estado">Días</th><th class="num col-monto">Ingresos</th><th class="num col-monto">Descuentos</th><th class="num col-monto">Líquido</th><th>Pago</th><th class="col-acciones">Detalle</th></tr>
                 </thead>
                 <tbody>
                     @foreach (var e in empleadosNomina)
@@ -162,11 +164,27 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
                         <tr class="@(expandidoId == e.IdNominaEmpleado ? "fila-seleccionada" : "")">
                             <td class="col-codigo">@e.CodigoEmpleado</td>
                             <td>@e.Empleado</td>
+                            <td>@(e.Departamento ?? "—")</td>
                             <td class="num col-monto">@e.SalarioBase.ToString("N2")</td>
                             <td class="num col-estado">@e.DiasLaborados.ToString("0.##")</td>
                             <td class="num col-monto">@e.TotalIngresos.ToString("N2")</td>
                             <td class="num col-monto">@e.TotalDescuentos.ToString("N2")</td>
                             <td class="num col-monto"><strong>@e.Liquido.ToString("N2")</strong></td>
+                            <td>
+                                @(e.FormaPago switch { "T" => "Transferencia", "C" => e.NumeroCheque is null ? "Cheque" : $"Cheque {e.NumeroCheque}", _ => "Sin forma de pago" })
+                                @if (e.FormaPago == "T")
+                                {
+                                    <br /><span class="texto-tenue">@e.Banco · @(e.TipoCuenta == "A" ? "ahorro" : "monetaria") @e.NumeroCuenta</span><br />
+                                }
+                                @if (e.IdNominaPago is not null)
+                                {
+                                    <span class="estado-badge estado-badge-activo">Pagado</span>
+                                }
+                                else if (seleccionada.Estado == "A" && e.Liquido > 0)
+                                {
+                                    <span class="estado-badge estado-badge-inactivo">Pendiente</span>
+                                }
+                            </td>
                             <td class="col-acciones">
                                 <div class="acciones-fila">
                                     <BotonIcono Icono="@(expandidoId == e.IdNominaEmpleado ? "x" : "list")" Tooltip="@(expandidoId == e.IdNominaEmpleado ? "Ocultar detalle" : "Ver detalle")" OnClick="() => AlternarDetalleAsync(e)" />
@@ -176,7 +194,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
                         @if (expandidoId == e.IdNominaEmpleado)
                         {
                             <tr class="fila-subdetalle">
-                                <td colspan="8">
+                                <td colspan="10">
                                     <table class="doc-tabla">
                                         <thead><tr><th>Concepto</th><th>Descripción</th><th class="num">Ingreso</th><th class="num">Descuento</th></tr></thead>
                                         <tbody>
@@ -199,6 +217,112 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             </table>
         }
     </div>
+
+    @if (seleccionada.Estado == "A")
+    {
+        <AuthorizeView Policy="Permiso:BANCOS_ADMIN" Context="bancosContexto">
+            <Authorized>
+                <section class="tarjeta" id="pago-nomina" aria-labelledby="titulo-pago-nomina">
+                    <h2 id="titulo-pago-nomina">Pago de la nómina</h2>
+                    <p class="texto-tenue">No se paga en efectivo: cada empleado cobra por transferencia a su cuenta o con cheque, según su ficha en RRHH &gt; Empleados.</p>
+                    <div class="resumen-totales">
+                        <span>Pendientes por transferencia: <strong>@PendientesTransferencia.Count · Q @PendientesTransferencia.Sum(e => e.Liquido).ToString("N2")</strong></span>
+                        <span>Pendientes con cheque: <strong>@PendientesCheque.Count · Q @PendientesCheque.Sum(e => e.Liquido).ToString("N2")</strong></span>
+                    </div>
+
+                    <div class="maestro-detalle">
+                        <div class="panel-formulario">
+                            <h3>Transferencias</h3>
+                            <div class="campo">
+                                <label for="pag-cuenta">Cuenta bancaria de la empresa</label>
+                                <select id="pag-cuenta" @bind="pagoBcbId">
+                                    @foreach (var c in cuentasBancarias)
+                                    {
+                                        <option value="@c.BcbId">@c.Nombre (@(c.Tipo == "A" ? "ahorro" : "monetaria"))</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="campo"><label for="pag-fecha-t">Fecha</label><input id="pag-fecha-t" type="date" @bind="pagoFecha" /></div>
+                            <div class="campo"><label for="pag-ref">Referencia del lote</label><input id="pag-ref" maxlength="60" placeholder="Ej.: número de lote del banco" @bind="pagoReferencia" /></div>
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="check-check" Tooltip="Registrar el lote de transferencias" Etiqueta="Registrar transferencias" Variante="primario"
+                                            Deshabilitado="PendientesTransferencia.Count == 0 || pagoBcbId == 0 || guardando" OnClick="PagarTransferenciasAsync" />
+                            </div>
+                        </div>
+                        <div class="panel-formulario">
+                            <h3>Cheques</h3>
+                            <div class="campo">
+                                <label for="pag-chequera">Chequera</label>
+                                <select id="pag-chequera" @bind="pagoCbcId">
+                                    @foreach (var c in chequeras)
+                                    {
+                                        <option value="@c.CbcId">@c.Nombre · siguiente @(c.Siguiente?.ToString() ?? "agotada") (@c.Disponibles disp.)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="campo"><label for="pag-fecha-c">Fecha</label><input id="pag-fecha-c" type="date" @bind="pagoFecha" /></div>
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="file-text" Tooltip="Emitir un cheque por empleado pendiente" Etiqueta="Emitir cheques" Variante="primario"
+                                            Deshabilitado="PendientesCheque.Count == 0 || pagoCbcId == 0 || guardando" OnClick="EmitirChequesAsync" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>Pagos registrados</h3>
+                    @if (pagos.Count == 0)
+                    {
+                        <p class="estado-vacio">Todavía no hay pagos de esta nómina.</p>
+                    }
+                    else
+                    {
+                        <table class="tabla-datos">
+                            <thead><tr><th class="col-fecha">Fecha</th><th class="col-estado">Tipo</th><th>Cuenta</th><th>Referencia</th><th class="num col-estado">Empleados</th><th class="num col-monto">Monto</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+                            <tbody>
+                                @foreach (var p in pagos)
+                                {
+                                    <tr>
+                                        <td class="col-fecha">@p.FechaPago.ToString("dd/MM/yyyy")</td>
+                                        <td class="col-estado">@(p.Tipo == "T" ? "Transferencias" : "Cheques")</td>
+                                        <td>@p.Cuenta</td>
+                                        <td>@p.Referencia@(p.Estado == "N" && p.MotivoAnulacion is not null ? $" · Anulado: {p.MotivoAnulacion}" : "")</td>
+                                        <td class="num col-estado">@p.Empleados</td>
+                                        <td class="num col-monto">@p.Monto.ToString("N2")</td>
+                                        <td class="col-estado"><span class="estado-badge @(p.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(p.Estado == "A" ? "Vigente" : "Anulado")</span></td>
+                                        <td class="col-acciones">
+                                            <div class="acciones-fila">
+                                                @if (p.Tipo == "T" && p.Estado == "A")
+                                                {
+                                                    <a class="boton-icono boton-icono-con-etiqueta" href="reportes/nomina/transferencias/@(p.IdNominaPago).xlsx" download title="Listado de transferencias por banco (Excel)"><Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Listado</span></a>
+                                                }
+                                                @if (p.Estado == "A")
+                                                {
+                                                    <BotonIcono Icono="ban" Tooltip="Anular pago" Variante="peligro" OnClick="() => IniciarAnulacionPago(p)" />
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @if (anulandoPago?.IdNominaPago == p.IdNominaPago)
+                                    {
+                                        <tr class="fila-subdetalle">
+                                            <td colspan="8">
+                                                <div class="fila-edicion">
+                                                    <label for="motivo-pago">Motivo de la anulación</label>
+                                                    <input id="motivo-pago" maxlength="200" placeholder="Ej.: el banco rechazó el archivo" @bind="motivoAnulacion" @bind:event="oninput" />
+                                                    <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Anular pago" Variante="peligro"
+                                                                Deshabilitado="motivoAnulacion.Trim().Length < 5 || guardando" OnClick="AnularPagoAsync" />
+                                                    <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => anulandoPago = null" />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </section>
+            </Authorized>
+        </AuthorizeView>
+    }
 }
 
 @code {
@@ -217,8 +341,6 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
     private bool mostrarNueva;
     private int nuevaCiaId;
     private string nuevoTipoPeriodo = "M";
-    private string nuevaQuincena = "1";
-    private DateTime nuevoMes = new(DateTime.Today.Year, DateTime.Today.Month, 1);
     private DateTime nuevaFechaDel;
     private DateTime nuevaFechaAl;
     private DateTime? nuevaFechaPago;
@@ -230,8 +352,25 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         ? new[] { new PestanaItem("lista", "Lista") }
         : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle") };
 
-    private static readonly string[] Meses =
-        { "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre" };
+    // Pago
+    private IReadOnlyList<NominaPago> pagos = Array.Empty<NominaPago>();
+    private IReadOnlyList<CuentaBancaria> cuentasBancarias = Array.Empty<CuentaBancaria>();
+    private IReadOnlyList<Chequera> chequeras = Array.Empty<Chequera>();
+    private int pagoBcbId;
+    private int pagoCbcId;
+    private DateTime pagoFecha = DateTime.Today;
+    private string pagoReferencia = "";
+    private NominaPago? anulandoPago;
+    private string motivoAnulacion = "";
+    private bool guardando;
+
+    private List<NominaEmpleado> PendientesTransferencia =>
+        empleadosNomina.Where(e => e.IdNominaPago is null && e.Liquido > 0 && e.FormaPago == "T").ToList();
+    private List<NominaEmpleado> PendientesCheque =>
+        empleadosNomina.Where(e => e.IdNominaPago is null && e.Liquido > 0 && e.FormaPago == "C").ToList();
+
+    private static string NombrePeriodo(string tipo) => tipo switch { "S" => "Semanal", "Q" => "Quincenal", _ => "Mensual" };
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -278,42 +417,35 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         catch (Exception ex) { MostrarError(ex); }
     }
 
-    private void IniciarNueva()
+    private async Task IniciarNueva()
     {
         mensaje = null;
         nuevaCiaId = filtroCiaId ?? companias.FirstOrDefault()?.CiaId ?? 0;
-        nuevoMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-        nuevaQuincena = DateTime.Today.Day <= 15 ? "1" : "2";
-        AlCambiarCompania();
+        await AlCambiarCompania();
         mostrarNueva = true;
     }
 
     // La periodicidad por defecto viene de la compañía (gen_compania.cia_periodicidad_nomina).
-    private void AlCambiarCompania()
+    private async Task AlCambiarCompania()
     {
         nuevoTipoPeriodo = companias.FirstOrDefault(c => c.CiaId == nuevaCiaId)?.CiaPeriodicidadNomina ?? "M";
-        SugerirFechas();
+        await SugerirFechasAsync();
     }
 
-    private void SugerirFechas()
+    // Siguiente semana (lunes a domingo), quincena o mes después de la última
+    // nómina de ese tipo; si no hay ninguna, el período que contiene la fecha de hoy.
+    private async Task SugerirFechasAsync()
     {
-        var inicioMes = new DateTime(nuevoMes.Year, nuevoMes.Month, 1);
-        var finMes = inicioMes.AddMonths(1).AddDays(-1);
-        var nombreMes = $"{Meses[inicioMes.Month - 1]} {inicioMes.Year}";
-        if (nuevoTipoPeriodo == "Q")
+        if (nuevaCiaId <= 0) return;
+        try
         {
-            var primera = nuevaQuincena == "1";
-            nuevaFechaDel = primera ? inicioMes : inicioMes.AddDays(15);
-            nuevaFechaAl = primera ? inicioMes.AddDays(14) : finMes;
-            nuevaDescripcion = $"Nómina {(primera ? "primera" : "segunda")} quincena de {nombreMes}";
+            var sugerido = await RrhhRepository.ConsultarPeriodoSugeridoAsync(nuevaCiaId, nuevoTipoPeriodo);
+            nuevaFechaDel = sugerido.FechaDel;
+            nuevaFechaAl = sugerido.FechaAl;
+            nuevaFechaPago = sugerido.FechaPago;
+            nuevaDescripcion = $"Nómina {NombrePeriodo(nuevoTipoPeriodo).ToLowerInvariant()} - {sugerido.Descripcion}";
         }
-        else
-        {
-            nuevaFechaDel = inicioMes;
-            nuevaFechaAl = finMes;
-            nuevaDescripcion = $"Nómina mensual de {nombreMes}";
-        }
-        nuevaFechaPago = nuevaFechaAl;
+        catch (Exception ex) { MostrarError(ex); }
     }
 
     private async Task CrearAsync()
@@ -340,12 +472,85 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
     {
         seleccionada = nomina;
         expandidoId = null;
+        anulandoPago = null;
         pestanaActiva = "detalle";
         try
         {
             empleadosNomina = await RrhhRepository.ConsultarNominaEmpleadosAsync(nomina.IdNomina);
+            if (nomina.Estado == "A") await CargarPagoAsync();
         }
         catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task CargarPagoAsync()
+    {
+        if (seleccionada is null) return;
+        pagos = await RrhhRepository.ConsultarPagosNominaAsync(seleccionada.IdNomina);
+        cuentasBancarias = await BancosRepository.ConsultarCuentasAsync(soloActivas: true);
+        chequeras = (await BancosRepository.ConsultarChequerasAsync(null, soloActivas: true)).Where(c => c.Disponibles > 0).ToList();
+        if (cuentasBancarias.All(c => c.BcbId != pagoBcbId)) pagoBcbId = cuentasBancarias.FirstOrDefault()?.BcbId ?? 0;
+        if (chequeras.All(c => c.CbcId != pagoCbcId)) pagoCbcId = chequeras.FirstOrDefault()?.CbcId ?? 0;
+        pagoFecha = DateTime.Today;
+    }
+
+    private async Task RefrescarSeleccionadaAsync()
+    {
+        if (seleccionada is null) return;
+        await BuscarAsync();
+        if (seleccionada is not null) await SeleccionarAsync(seleccionada);
+    }
+
+    private async Task PagarTransferenciasAsync()
+    {
+        if (seleccionada is null) return;
+        guardando = true;
+        try
+        {
+            var total = PendientesTransferencia.Sum(e => e.Liquido);
+            await RrhhRepository.PagarTransferenciasAsync(seleccionada.IdNomina, pagoBcbId, pagoFecha,
+                string.IsNullOrWhiteSpace(pagoReferencia) ? null : pagoReferencia.Trim(), await ObtenerUsuIdActualAsync());
+            pagoReferencia = "";
+            await RefrescarSeleccionadaAsync();
+            MostrarOk($"Transferencias registradas por Q {total:N2}, con su póliza. Descargue el listado para el banco en Pagos registrados.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task EmitirChequesAsync()
+    {
+        if (seleccionada is null) return;
+        guardando = true;
+        try
+        {
+            var cantidad = PendientesCheque.Count;
+            await RrhhRepository.EmitirChequesNominaAsync(seleccionada.IdNomina, pagoCbcId, pagoFecha, await ObtenerUsuIdActualAsync());
+            await RefrescarSeleccionadaAsync();
+            MostrarOk($"{cantidad} cheque(s) emitido(s), cada uno con su póliza. Puede verlos en Bancos > Cheques.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private void IniciarAnulacionPago(NominaPago pago)
+    {
+        anulandoPago = pago;
+        motivoAnulacion = "";
+    }
+
+    private async Task AnularPagoAsync()
+    {
+        if (anulandoPago is null) return;
+        guardando = true;
+        try
+        {
+            await RrhhRepository.AnularPagoNominaAsync(anulandoPago.IdNominaPago, motivoAnulacion.Trim(), await ObtenerUsuIdActualAsync());
+            anulandoPago = null;
+            await RefrescarSeleccionadaAsync();
+            MostrarOk("Pago anulado junto con su póliza; los empleados quedaron pendientes de pago.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
     }
 
     private async Task AlternarDetalleAsync(NominaEmpleado empleado)
@@ -381,7 +586,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         EjecutarAsync(nomina, RrhhRepository.CalcularNominaAsync, "Nómina calculada. Revise el detalle y apruébela.");
 
     private Task AprobarAsync(Nomina nomina) =>
-        EjecutarAsync(nomina, RrhhRepository.AprobarNominaAsync, "Nómina aprobada. Los movimientos del período quedaron aplicados.");
+        EjecutarAsync(nomina, RrhhRepository.AprobarNominaAsync, "Nómina aprobada con su póliza por centro de costo. Ya puede pagarla.");
 
     private Task AnularAsync(Nomina nomina) =>
         EjecutarAsync(nomina, RrhhRepository.AnularNominaAsync, "Nómina anulada; sus movimientos quedaron libres para otra nómina.");

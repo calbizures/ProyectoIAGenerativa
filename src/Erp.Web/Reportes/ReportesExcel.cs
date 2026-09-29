@@ -156,6 +156,81 @@ public static class ReportesExcel
 		return 6;
 	}
 
+	// Listado de transferencias de un lote de nómina: resumen por banco y una
+	// hoja por banco destino, lista para enviar o cargar en cada banco.
+	public static byte[] TransferenciasNomina(IReadOnlyList<Erp.Data.Rrhh.TransferenciaNomina> filas, string compania)
+	{
+		using var libro = new XLWorkbook();
+		var primera = filas.FirstOrDefault();
+		var subtitulo = primera is null ? "Sin transferencias"
+			: $"{primera.Nomina} · pagado el {primera.FechaPago:dd/MM/yyyy} desde {primera.CuentaOrigen}{(string.IsNullOrWhiteSpace(primera.Referencia) ? "" : $" · referencia {primera.Referencia}")}";
+		var bancos = filas.GroupBy(f => f.Banco ?? "(sin banco)").OrderBy(g => g.Key).ToList();
+
+		var hoja = libro.Worksheets.Add("Resumen");
+		var fila = Encabezado(hoja, compania, "Transferencias de nómina por banco", subtitulo);
+		fila = Titulos(hoja, fila, new List<string> { "Banco", "Empleados", "Monto" });
+		var inicioDatos = fila;
+		foreach (var g in bancos)
+		{
+			hoja.Cell(fila, 1).Value = g.Key;
+			hoja.Cell(fila, 2).Value = g.Count();
+			hoja.Cell(fila, 3).Value = g.Sum(f => f.Monto);
+			fila++;
+		}
+		Totales(hoja, fila, inicioDatos, 2, 3, 1);
+		Formato(hoja, inicioDatos, fila, 3, 3);
+
+		foreach (var g in bancos)
+		{
+			var nombreHoja = new string(g.Key.Where(c => !"[]*?/\\:".Contains(c)).ToArray());
+			var hojaBanco = libro.Worksheets.Add(nombreHoja.Length > 31 ? nombreHoja[..31] : nombreHoja);
+			fila = Encabezado(hojaBanco, compania, $"Transferencias a {g.Key}", subtitulo);
+			fila = Titulos(hojaBanco, fila, new List<string> { "Tipo de cuenta", "Número de cuenta", "Código", "Empleado", "Documento", "Monto" });
+			inicioDatos = fila;
+			foreach (var f in g)
+			{
+				hojaBanco.Cell(fila, 1).Value = f.TipoCuenta;
+				hojaBanco.Cell(fila, 2).Value = f.NumeroCuenta;
+				hojaBanco.Cell(fila, 3).Value = f.CodigoEmpleado;
+				hojaBanco.Cell(fila, 4).Value = f.Empleado;
+				hojaBanco.Cell(fila, 5).Value = f.NumeroDocumento;
+				hojaBanco.Cell(fila, 6).Value = f.Monto;
+				fila++;
+			}
+			// Números de cuenta y documento como texto (no perder ceros ni guiones).
+			hojaBanco.Range(inicioDatos, 2, fila, 2).Style.NumberFormat.Format = "@";
+			hojaBanco.Range(inicioDatos, 5, fila, 5).Style.NumberFormat.Format = "@";
+			Totales(hojaBanco, fila, inicioDatos, 6, 6, 4);
+			Formato(hojaBanco, inicioDatos, fila, 6, 6);
+		}
+		return Guardar(libro);
+	}
+
+	// Gasto por centro de costo (departamento) y cuenta.
+	public static byte[] CentrosCosto(IReadOnlyList<Erp.Data.Contabilidad.CentroCostoFila> filas, DateTime desde, DateTime hasta, string compania)
+	{
+		using var libro = new XLWorkbook();
+		var hoja = libro.Worksheets.Add("Centros de costo");
+		var fila = Encabezado(hoja, compania, "Gasto por centro de costo", $"Del {desde:dd/MM/yyyy} al {hasta:dd/MM/yyyy}");
+		fila = Titulos(hoja, fila, new List<string> { "Centro de costo", "Cuenta", "Nombre", "Pólizas", "Debe", "Haber", "Saldo" });
+		var inicioDatos = fila;
+		foreach (var f in filas)
+		{
+			hoja.Cell(fila, 1).Value = f.Departamento;
+			hoja.Cell(fila, 2).Value = f.CuentaCodigo;
+			hoja.Cell(fila, 3).Value = f.CuentaNombre;
+			hoja.Cell(fila, 4).Value = f.Partidas;
+			hoja.Cell(fila, 5).Value = f.Debe;
+			hoja.Cell(fila, 6).Value = f.Haber;
+			hoja.Cell(fila, 7).Value = f.Saldo;
+			fila++;
+		}
+		Totales(hoja, fila, inicioDatos, 5, 7, 3);
+		Formato(hoja, inicioDatos, fila, 5, 7);
+		if (fila > inicioDatos) hoja.Range(inicioDatos - 1, 1, fila - 1, 7).SetAutoFilter();
+		return Guardar(libro);
+	}
+
 	private static int Titulos(IXLWorksheet hoja, int fila, IList<string> columnas)
 	{
 		for (var i = 0; i < columnas.Count; i++) hoja.Cell(fila, i + 1).Value = columnas[i];

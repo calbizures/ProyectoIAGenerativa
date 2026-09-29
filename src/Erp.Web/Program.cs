@@ -156,6 +156,26 @@ app.MapGet("/reportes/{modulo}/estado-cuenta.xlsx", async (string modulo, int id
 	return Results.File(archivo, TipoExcel, $"estado-cuenta-{(esCliente ? "cliente" : "proveedor")}-{id}.xlsx");
 }).RequireAuthorization();
 
+// Listado de un lote de transferencias de nómina, por banco destino.
+app.MapGet("/reportes/nomina/transferencias/{idNominaPago:int}.xlsx", async (int idNominaPago, HttpContext contexto,
+	Erp.Data.Rrhh.IRrhhRepository rrhh, IGeneralRepository general, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:BANCOS_ADMIN")).Succeeded) return Results.Forbid();
+	var filas = await rrhh.ConsultarListadoTransferenciasAsync(idNominaPago);
+	if (filas.Count == 0) return Results.NotFound();
+	var archivo = ReportesExcel.TransferenciasNomina(filas, await NombreCompaniaAsync(contexto, general));
+	return Results.File(archivo, TipoExcel, $"transferencias-nomina-{idNominaPago}.xlsx");
+}).RequireAuthorization();
+
+app.MapGet("/reportes/contabilidad/centros-costo.xlsx", async (DateTime desde, DateTime hasta, int? departamento, HttpContext contexto,
+	Erp.Data.Contabilidad.ICentroCostoRepository centros, IGeneralRepository general, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:CONTABILIDAD_CENTRO_COSTO")).Succeeded) return Results.Forbid();
+	var filas = await centros.ConsultarAsync(desde, hasta, departamento);
+	var archivo = ReportesExcel.CentrosCosto(filas, desde, hasta, await NombreCompaniaAsync(contexto, general));
+	return Results.File(archivo, TipoExcel, $"centros-costo-{desde:yyyyMMdd}-{hasta:yyyyMMdd}.xlsx");
+}).RequireAuthorization();
+
 app.MapPost("/logout", async (HttpContext context) =>
 {
 	await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);

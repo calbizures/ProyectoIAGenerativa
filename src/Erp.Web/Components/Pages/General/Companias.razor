@@ -48,7 +48,7 @@
                         <td class="num col-estado">@c.CiaPorcIva.ToString("N2")</td>
                         <td class="col-estado">@(c.CiaPagaComision ? "Sí" : "No")</td>
                         <td class="num col-monto">@c.CiaToleranciaCierreCaja.ToString("N2")</td>
-                        <td class="col-estado">@(c.CiaPeriodicidadNomina == "Q" ? "Quincenal" : "Mensual")</td>
+                        <td class="col-estado">@(c.CiaPeriodicidadNomina switch { "Q" => "Quincenal", "S" => "Semanal", _ => "Mensual" })</td>
                         <td class="col-estado"><span class="estado-badge @(c.CiaEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.CiaEstado == "A" ? "Activa" : "Inactiva")</span></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
@@ -87,7 +87,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         <div class="campo"><label>% IVA</label><span class="valor-detalle">@seleccionada.CiaPorcIva.ToString("N2") %</span></div>
         <div class="campo"><label>Paga comisiones a vendedores</label><span class="valor-detalle">@(seleccionada.CiaPagaComision ? "Sí" : "No")</span></div>
         <div class="campo"><label>Tolerancia de cierre de caja</label><span class="valor-detalle">Q @seleccionada.CiaToleranciaCierreCaja.ToString("N2")</span></div>
-        <div class="campo"><label>Periodicidad de nómina</label><span class="valor-detalle">@(seleccionada.CiaPeriodicidadNomina == "Q" ? "Quincenal" : "Mensual")</span></div>
+        <div class="campo"><label>Periodicidad de nómina</label><span class="valor-detalle">@(seleccionada.CiaPeriodicidadNomina switch { "Q" => "Quincenal", "S" => "Semanal", _ => "Mensual" })</span></div>
         <div class="acciones-fila">
             <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
         </div>
@@ -121,6 +121,7 @@ else if (pestanaActiva == "editar")
                 <InputSelect @bind-Value="modelo.CiaPeriodicidadNomina">
                     <option value="M">Mensual</option>
                     <option value="Q">Quincenal</option>
+                    <option value="S">Semanal</option>
                 </InputSelect>
             </div>
             <p class="texto-ayuda">

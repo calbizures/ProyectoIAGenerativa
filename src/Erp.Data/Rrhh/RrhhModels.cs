@@ -55,6 +55,9 @@ public sealed class EmpleadoResumen
 	public string? Plaza { get; set; }
 	public string? Puesto { get; set; }
 	public string? Departamento { get; set; }
+	public string TipoNomina { get; set; } = "M";
+	public string? FormaPago { get; set; }
+	public string? Banco { get; set; }
 	public string NombreCompleto => $"{Nombres} {Apellidos}".Trim();
 }
 
@@ -83,6 +86,12 @@ public sealed class Empleado
 	public string Estado { get; set; } = "A";
 	public int? UsuId { get; set; }
 	public int? PveId { get; set; }
+	// Pago de nómina: S = semanal, Q = quincenal, M = mensual; T = transferencia, C = cheque.
+	public string TipoNomina { get; set; } = "M";
+	public string? FormaPago { get; set; }
+	public int? GefId { get; set; }
+	public string? TipoCuenta { get; set; }
+	public string? NumeroCuenta { get; set; }
 	public string NombreCompleto => string.Join(" ", new[] { PrimerNombre, SegundoNombre, PrimerApellido, SegundoApellido }.Where(p => !string.IsNullOrWhiteSpace(p)));
 }
 
@@ -138,7 +147,7 @@ public sealed class Nomina
 	public int CiaId { get; set; }
 	public string CiaNombreComercial { get; set; } = "";
 	public string Descripcion { get; set; } = "";
-	// M = mensual, Q = quincenal
+	// S = semanal, Q = quincenal, M = mensual
 	public string TipoPeriodo { get; set; } = "M";
 	public DateTime FechaDel { get; set; }
 	public DateTime FechaAl { get; set; }
@@ -151,6 +160,8 @@ public sealed class Nomina
 	public DateTime? FechaCalculo { get; set; }
 	public DateTime? FechaAprobacion { get; set; }
 	public int CantidadEmpleados { get; set; }
+	public decimal TotalPagado { get; set; }
+	public int PendientesPago { get; set; }
 }
 
 public sealed class NominaEmpleado
@@ -164,6 +175,54 @@ public sealed class NominaEmpleado
 	public decimal TotalIngresos { get; set; }
 	public decimal TotalDescuentos { get; set; }
 	public decimal Liquido { get; set; }
+	public string? Departamento { get; set; }
+	public string? FormaPago { get; set; }
+	public string? Banco { get; set; }
+	public string? TipoCuenta { get; set; }
+	public string? NumeroCuenta { get; set; }
+	public int? IdNominaPago { get; set; }
+	public string? NumeroCheque { get; set; }
+	public string? TipoPago { get; set; }
+	public DateTime? FechaPago { get; set; }
+}
+
+public sealed class PeriodoSugerido
+{
+	public DateTime FechaDel { get; set; }
+	public DateTime FechaAl { get; set; }
+	public DateTime FechaPago { get; set; }
+	public string Descripcion { get; set; } = "";
+}
+
+// Lote de pago de una nómina: T = transferencias, C = cheques.
+public sealed class NominaPago
+{
+	public int IdNominaPago { get; set; }
+	public string Tipo { get; set; } = "T";
+	public DateTime FechaPago { get; set; }
+	public decimal Monto { get; set; }
+	public int Empleados { get; set; }
+	public string? Referencia { get; set; }
+	public string Estado { get; set; } = "A";
+	public string? MotivoAnulacion { get; set; }
+	public string Cuenta { get; set; } = "";
+	public string? Usuario { get; set; }
+}
+
+public sealed class TransferenciaNomina
+{
+	public string? BancoCodigo { get; set; }
+	public string? Banco { get; set; }
+	public string TipoCuenta { get; set; } = "";
+	public string? NumeroCuenta { get; set; }
+	public string CodigoEmpleado { get; set; } = "";
+	public string Empleado { get; set; } = "";
+	public string? NumeroDocumento { get; set; }
+	public decimal Monto { get; set; }
+	public string Nomina { get; set; } = "";
+	public DateTime FechaPago { get; set; }
+	public string? Referencia { get; set; }
+	public string CuentaOrigen { get; set; } = "";
 }
 
 public sealed class NominaDetalle

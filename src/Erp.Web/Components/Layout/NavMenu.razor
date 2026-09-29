@@ -95,10 +95,21 @@
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <AuthorizeView Policy="Permiso:BANCOS_CAJA_ADMIN">
+        <AuthorizeView Policy="Permiso:BANCOS_CAJA_ADMIN,BANCOS_ADMIN">
             <Authorized>
-                <SidebarNodo Titulo="Bancos" IconoNombre="landmark" Rutas="@(new[] { "caja" })">
-                    <NavLink href="caja" class="sidebar-hijo-link">Caja</NavLink>
+                <SidebarNodo Titulo="Caja y bancos" IconoNombre="landmark" Rutas="@(new[] { "caja", "bancos" })">
+                    <AuthorizeView Policy="Permiso:BANCOS_CAJA_ADMIN" Context="cajaContexto">
+                        <Authorized>
+                            <NavLink href="caja" class="sidebar-hijo-link">Caja</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:BANCOS_ADMIN" Context="bancosContexto">
+                        <Authorized>
+                            <NavLink href="bancos/cheques" class="sidebar-hijo-link">Cheques</NavLink>
+                            <NavLink href="bancos/cuentas" class="sidebar-hijo-link">Cuentas y chequeras</NavLink>
+                            <NavLink href="bancos/motivos" class="sidebar-hijo-link">Motivos de pago</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
@@ -129,11 +140,20 @@
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <AuthorizeView Policy="Permiso:CONTABILIDAD_NOMENCLATURA_ADMIN">
+        <AuthorizeView Policy="Permiso:CONTABILIDAD_NOMENCLATURA_ADMIN,CONTABILIDAD_CENTRO_COSTO">
             <Authorized>
                 <SidebarNodo Titulo="Contabilidad" IconoNombre="bar-chart-2" Rutas="@(new[] { "contabilidad" })">
-                    <NavLink href="contabilidad/nomenclatura" class="sidebar-hijo-link">Nomenclatura</NavLink>
-                    <NavLink href="general/cuentas-poliza" class="sidebar-hijo-link">Cuentas de pólizas</NavLink>
+                    <AuthorizeView Policy="Permiso:CONTABILIDAD_NOMENCLATURA_ADMIN" Context="nomenclaturaContexto">
+                        <Authorized>
+                            <NavLink href="contabilidad/nomenclatura" class="sidebar-hijo-link">Nomenclatura</NavLink>
+                            <NavLink href="general/cuentas-poliza" class="sidebar-hijo-link">Cuentas de pólizas</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CONTABILIDAD_CENTRO_COSTO" Context="centroContexto">
+                        <Authorized>
+                            <NavLink href="contabilidad/centros-costo" class="sidebar-hijo-link">Centros de costo</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
                 </SidebarNodo>
             </Authorized>
             <NotAuthorized>

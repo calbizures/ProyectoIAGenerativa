@@ -222,6 +222,45 @@ public sealed class RrhhRepository(IDbConnectionFactory connectionFactory) : IRr
 	public Task<IReadOnlyList<NominaDetalle>> ConsultarNominaDetalleAsync(int idNominaEmpleado) =>
 		ConsultarAsync<NominaDetalle>("dbo.paRrhhNominaDetalleConsultar", new { IdNominaEmpleado = idNominaEmpleado });
 
+	public async Task<PeriodoSugerido> ConsultarPeriodoSugeridoAsync(int ciaId, string tipoPeriodo) =>
+		(await ConsultarAsync<PeriodoSugerido>("dbo.paRrhhNominaPeriodoSugerido", new { CiaId = ciaId, TipoPeriodo = tipoPeriodo }))[0];
+
+	public Task GuardarPagoEmpleadoAsync(int idEmpleado, string tipoNomina, string formaPago, int? gefId, string? tipoCuenta, string? numeroCuenta, int? usuarioAccionId) =>
+		EjecutarAsync("dbo.paRrhhEmpleadoPagoGuardar", new
+		{
+			IdEmpleado = idEmpleado,
+			TipoNomina = tipoNomina,
+			FormaPago = formaPago,
+			GefId = gefId,
+			TipoCuenta = tipoCuenta,
+			NumeroCuenta = numeroCuenta,
+			UsuId = usuarioAccionId
+		});
+
+	public Task<IReadOnlyList<NominaPago>> ConsultarPagosNominaAsync(int idNomina) =>
+		ConsultarAsync<NominaPago>("dbo.paRrhhNominaPagoConsultar", new { IdNomina = idNomina });
+
+	private async Task<int> PagarAsync(string procedimiento, object parametros)
+	{
+		var dinamicos = new DynamicParameters(parametros);
+		dinamicos.Add("@IdNominaPago", dbType: DbType.Int32, direction: ParameterDirection.Output);
+		using var connection = connectionFactory.CreateConnection();
+		await connection.ExecuteAsync(procedimiento, dinamicos, commandType: CommandType.StoredProcedure);
+		return dinamicos.Get<int>("@IdNominaPago");
+	}
+
+	public Task<int> PagarTransferenciasAsync(int idNomina, int bcbId, DateTime fecha, string? referencia, int? usuarioAccionId) =>
+		PagarAsync("dbo.paRrhhNominaPagarTransferencias", new { IdNomina = idNomina, BcbId = bcbId, Fecha = fecha.Date, Referencia = referencia, UsuId = usuarioAccionId });
+
+	public Task<int> EmitirChequesNominaAsync(int idNomina, int cbcId, DateTime fecha, int? usuarioAccionId) =>
+		PagarAsync("dbo.paRrhhNominaEmitirCheques", new { IdNomina = idNomina, CbcId = cbcId, Fecha = fecha.Date, UsuId = usuarioAccionId });
+
+	public Task AnularPagoNominaAsync(int idNominaPago, string motivo, int? usuarioAccionId) =>
+		EjecutarAsync("dbo.paRrhhNominaPagoAnular", new { IdNominaPago = idNominaPago, Motivo = motivo, UsuId = usuarioAccionId });
+
+	public Task<IReadOnlyList<TransferenciaNomina>> ConsultarListadoTransferenciasAsync(int idNominaPago) =>
+		ConsultarAsync<TransferenciaNomina>("dbo.paRrhhNominaTransferenciaListado", new { IdNominaPago = idNominaPago });
+
 	public Task<IReadOnlyList<UnidadOrganizativaNodo>> ConsultarUnidadesArbolAsync() =>
 		ConsultarAsync<UnidadOrganizativaNodo>("dbo.paRrhhUnidadArbolConsultar");
 
