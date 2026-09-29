@@ -8,8 +8,9 @@ SALIDA = os.environ.get('SALIDA', os.path.join(os.path.dirname(os.path.abspath(_
 SECCIONES = {
     '00_intro': 'Portada', '01_acceso': '01 · Acceso', '02_tableros': '02 · Tableros gerenciales',
     '03_factura': '03 · Ventas y facturación', '04_fel': '04 · Factura electrónica (FEL)', '05_cxc': '05 · Cuentas por cobrar',
-    '06_compras': '06 · Compras e inventario', '07_bancos': '07 · Proveedores, caja y bancos', '08_contabilidad': '08 · Contabilidad',
-    '09_rrhh': '09 · Recursos humanos', '10_admin': '10 · Administración y seguridad', '11_cierre': 'Cierre',
+    '06_compras': '06 · Compras e inventario', '07_inventario': '07 · Inventario físico', '08_caja': '08 · Proveedores y caja',
+    '09_bancos': '09 · Bancos', '10_contabilidad': '10 · Contabilidad', '11_rrhh': '11 · Recursos humanos',
+    '12_arranque': '12 · Puesta en marcha (cargas desde Excel)', '13_admin': '13 · Administración y seguridad', '14_cierre': 'Cierre',
 }
 
 
@@ -47,7 +48,7 @@ for nombre, t0, datos in tomas:
             L.append(f"- `{t}` **Panel:** fragmento real del XML del DTE (GTDocumento 0.1) enviado al certificador.")
     L.append("")
 L += ["## Qué se ve en pantalla", "",
-      "- Todo es la aplicación real corriendo contra SQL Server con los datos de prueba (scripts 00 a 35): la factura, el cobro y la compra se graban de verdad durante la grabación.",
+      "- Todo es la aplicación real corriendo contra SQL Server con los datos de prueba (scripts 00 a 41): la factura, el cobro, la compra, la toma de inventario, el depósito, el cheque y el logotipo se graban de verdad durante la grabación.",
       "- La factura electrónica usa el **simulador** de certificación (UUID, serie y número de prueba, sin validez fiscal). Con INFILE el flujo es el mismo.",
       "- Usuario de la demo: `admin`, sucursal *Casa matriz Zona 10*.", "",
       "## Si se quiere agregar voz", "",

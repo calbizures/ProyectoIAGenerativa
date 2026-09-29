@@ -2,7 +2,7 @@
 # Genera la demo completa: tomas del recorrido, música, video final (alta
 # calidad y versión liviana < 30 MB), guion y presentación.
 #
-# Requisitos (ver README.md): base erp_db recién instalada (00 a 35) en un
+# Requisitos (ver README.md): base erp_db recién instalada (00 a 41) en un
 # contenedor de SQL Server, la aplicación corriendo en ERP_URL, ffmpeg,
 # Node.js y Python 3 con numpy y scipy.
 #
@@ -38,7 +38,7 @@ echo "3/5 Montando el video..."
 FINAL="$SALIDA/Demo ERP - Servicios Informaticos Integrados.mp4"
 "$FFMPEG" -loglevel error -y -i "$SALIDA/video_sin_audio.mp4" -i "$SALIDA/musica.wav" -map 0:v -map 1:a -c:v copy \
   -af "loudnorm=I=-18:TP=-2:LRA=7" -c:a aac -b:a 192k -ar 48000 -shortest -movflags +faststart "$FINAL"
-# Versión liviana para compartir (≈ 28 MB para 8 minutos).
+# Versión liviana para compartir (≈ 40 MB para 12 minutos).
 (cd "$SALIDA" && "$FFMPEG" -loglevel error -y -i "$FINAL" -c:v libx264 -preset slow -b:v 330k -pass 1 -an -f mp4 /dev/null \
   && "$FFMPEG" -loglevel error -y -i "$FINAL" -c:v libx264 -preset slow -b:v 330k -pass 2 -c:a aac -b:a 128k \
      -movflags +faststart "Demo ERP - liviano.mp4" && rm -f ffmpeg2pass-0.log*)

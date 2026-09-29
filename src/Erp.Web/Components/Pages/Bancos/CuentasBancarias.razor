@@ -13,7 +13,7 @@
 
 <div class="pagina-encabezado">
     <h1>Cuentas bancarias y chequeras</h1>
-    <p>Cuentas de la empresa (maestro) y las chequeras de cada una (detalle). Cada cuenta lleva su cuenta contable: ahí caen los cheques, transferencias y depósitos.</p>
+    <p>Cuentas de la empresa (maestro) y las chequeras de cada una (detalle). Cada cuenta lleva dos cuentas contables: la de cargos, que reciben los depósitos, y la de abonos, que afectan los cheques y transferencias.</p>
 </div>
 
 @if (mensaje is not null)
@@ -90,15 +90,17 @@
         else
         {
             <table class="tabla-datos">
-                <thead><tr><th>Cuenta</th><th class="col-estado">Tipo</th><th>Cargos (depósitos)</th><th>Abonos (cheques y pagos)</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+                <thead><tr><th>Cuenta</th><th class="col-estado">Tipo</th><th>Cuentas contables</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
                 <tbody>
                     @foreach (var c in cuentas)
                     {
                         <tr class="fila-seleccionable @(seleccionada?.BcbId == c.BcbId ? "fila-seleccionada" : "")" @onclick="() => SeleccionarAsync(c)">
                             <td><strong>@c.Banco</strong> @c.NumeroCuenta<br /><span class="texto-tenue">@c.Descripcion</span></td>
                             <td class="col-estado">@(c.Tipo == "A" ? "Ahorro" : "Monetaria")</td>
-                            <td>@(c.CuentaCargoCodigo is null ? "—" : $"{c.CuentaCargoCodigo} {c.CuentaCargoNombre}")</td>
-                            <td>@(c.CuentaCodigo is null ? "—" : $"{c.CuentaCodigo} {c.CuentaNombre}")</td>
+                            <td>
+                                <span title="@c.CuentaCargoNombre"><span class="texto-tenue">Cargos:</span> @(c.CuentaCargoCodigo ?? "—")</span><br />
+                                <span title="@c.CuentaNombre"><span class="texto-tenue">Abonos:</span> @(c.CuentaCodigo ?? "—")</span>
+                            </td>
                             <td class="col-estado"><span class="estado-badge @(c.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.Estado == "A" ? "Activa" : "Inactiva")</span></td>
                             <td class="col-acciones" @onclick:stopPropagation="true">
                                 <div class="acciones-fila">
