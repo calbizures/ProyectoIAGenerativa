@@ -17,6 +17,17 @@ async function iniciarSesion() {
   if (await d.p.$('#sucursal')) { await d.p.selectOption('#sucursal', '1'); await d.p.click('button[type=submit]'); await d.p.waitForLoadState('networkidle'); }
 }
 
+// Los datos de prueba reparten ventas al crédito al azar: la factura de la
+// demo usa el primer cliente (empezando por CLI002) con crédito suficiente.
+function clienteConCredito(monto) {
+  const clientes = sql("SELECT cli_id, cli_apellidos FROM dbo.pos_cliente WHERE cli_estado = 'A' ORDER BY CASE WHEN cli_codigo = 'CLI002' THEN 0 ELSE 1 END, cli_codigo");
+  for (const [id, apellidos] of clientes) {
+    const [[, limite, , disponible]] = sql(`EXEC dbo.paClienteCreditoConsultar @CliId = ${id}`);
+    if (Number(limite) === 0 || Number(disponible) >= monto) return apellidos;
+  }
+  throw new Error('Ningún cliente tiene crédito disponible para la factura de la demo.');
+}
+
 const secciones = {
   async intro() {
     await d.ir('login');
@@ -94,7 +105,7 @@ const secciones = {
     await d.resaltar('.campo:has(label:text-is("Vendedor"))', 4600); await d.sinResalte();
     await d.rotulo('03 · Facturación', 'Nueva factura',
       'El cliente se busca por código, nombre o NIT; si no existe se da de alta sin salir de la factura.', { pos: 'abajo-der', espera: false });
-    await d.escribir('input[placeholder^="Buscar cliente"]', 'Suárez');
+    await d.escribir('input[placeholder^="Buscar cliente"]', clienteConCredito(6000));
     await d.p.keyboard.press('Enter'); await d.espera(1200);
     await d.clic('.doc-buscador-resultados .doc-resultado-fila', 1200);
     await d.elegir('.campo:has(label:has-text("Bodega")) select', { index: 1 }, 900);
