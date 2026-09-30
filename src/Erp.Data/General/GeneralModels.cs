@@ -20,6 +20,15 @@ public sealed class Compania
 	public DateTime? CiaLogoActualizado { get; set; }
 }
 
+// Cómo se imprime la factura de la compañía.
+public sealed class CompaniaImpresion
+{
+	public int CiaId { get; set; }
+	public string Impresora { get; set; } = "C";
+	public int AnchoTermica { get; set; } = 80;
+	public string? Pie { get; set; }
+}
+
 // Logotipo de una compañía (Logo es null cuando solo se pidió la versión).
 public sealed class CompaniaLogo
 {

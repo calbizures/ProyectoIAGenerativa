@@ -53,7 +53,7 @@
                         <td class="col-acciones">
                             <div class="acciones-fila">
                                 <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => Seleccionar(c)" />
-                                <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => { Seleccionar(c); IniciarEdicion(); }" />
+                                <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="async () => { await Seleccionar(c); IniciarEdicion(); }" />
                                 @if (c.CiaEstado == "A")
                                 {
                                     <BotonIcono Icono="trash-2" Tooltip="Desactivar compañía" Confirmacion="¿Desactivar la compañía?" Variante="peligro" OnClick="@(() => CambiarEstadoAsync(c, "I"))" />
@@ -118,6 +118,38 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             PNG, JPG, GIF o WEBP de hasta 1 MB; mejor un PNG con fondo transparente de al menos 400 px de ancho.
             Se muestra en el menú, el inicio de sesión, los documentos impresos y los libros de Excel (Excel no admite WEBP).
         </p>
+
+        <h3>Impresión de facturas</h3>
+        @if (impresion is not null && impresion.CiaId == seleccionada.CiaId)
+        {
+            <div class="panel-formulario panel-ancho fel-formulario">
+                <div class="campo">
+                    <label for="cia-impresora">Impresora</label>
+                    <select id="cia-impresora" @bind="impresion.Impresora">
+                        <option value="C">Carta (tinta o láser, p. ej. Epson L3250)</option>
+                        <option value="T">Térmica de rollo (punto de venta)</option>
+                    </select>
+                </div>
+                @if (impresion.Impresora == "T")
+                {
+                    <div class="campo">
+                        <label for="cia-ancho">Ancho del rollo</label>
+                        <select id="cia-ancho" @bind="impresion.AnchoTermica">
+                            <option value="80">80 mm</option>
+                            <option value="58">58 mm</option>
+                        </select>
+                    </div>
+                }
+                <div class="campo campo-ancho">
+                    <label for="cia-pie">Texto al pie de la factura</label>
+                    <input id="cia-pie" maxlength="256" placeholder="Ej.: ¡Gracias por su compra! Cambios dentro de 30 días con esta factura." @bind="impresion.Pie" />
+                </div>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar la configuración de impresión" Etiqueta="Guardar impresión" Variante="primario" OnClick="GuardarImpresionAsync" />
+            </div>
+            <p class="texto-ayuda">En la impresora térmica, configure en el diálogo de impresión el papel del rollo y márgenes "Ninguno". En carta, papel tamaño carta y escala 100 %.</p>
+        }
     </div>
 }
 else if (pestanaActiva == "editar")
@@ -207,11 +239,31 @@ else if (pestanaActiva == "editar")
         }
     }
 
-    private void Seleccionar(Compania compania)
+    private CompaniaImpresion? impresion;
+
+    private async Task Seleccionar(Compania compania)
     {
         seleccionada = compania;
         mensaje = null;
         pestanaActiva = "detalle";
+        try { impresion = await GeneralRepository.ConsultarImpresionAsync(compania.CiaId) ?? new CompaniaImpresion { CiaId = compania.CiaId }; }
+        catch (Exception ex) { impresion = null; mensaje = MensajesError.Traducir(ex); esMensajeError = true; }
+    }
+
+    private async Task GuardarImpresionAsync()
+    {
+        if (impresion is null) return;
+        try
+        {
+            await GeneralRepository.GuardarImpresionAsync(impresion, await ObtenerUsuIdActualAsync());
+            mensaje = $"Impresión de facturas guardada: {(impresion.Impresora == "T" ? $"térmica de {impresion.AnchoTermica} mm" : "carta")}.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
     }
 
     private void IniciarNueva()
@@ -248,6 +300,8 @@ else if (pestanaActiva == "editar")
             esMensajeError = false;
             await BuscarAsync();
             seleccionada = companias.FirstOrDefault(c => c.CiaId == id);
+            if (seleccionada is not null)
+                impresion = await GeneralRepository.ConsultarImpresionAsync(seleccionada.CiaId) ?? new CompaniaImpresion { CiaId = seleccionada.CiaId };
             pestanaActiva = seleccionada is null ? "lista" : "detalle";
         }
         catch (Exception ex)

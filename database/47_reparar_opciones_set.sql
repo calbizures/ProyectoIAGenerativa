@@ -146,20 +146,23 @@ BEGIN
 	DECLARE @tdo INT = (SELECT TOP 1 tdo_id FROM dbo.inv_documento_tipo
 						WHERE tdo_naturaleza = '-' AND tdo_estado = 'A' AND tdo_es_nota = 0 AND tdo_es_interno = 0
 						ORDER BY CASE tdo_codigo WHEN 'FCAM' THEN 0 ELSE 1 END, tdo_descripcion);
-	DECLARE @cli INT = (SELECT TOP 1 cli_id FROM dbo.pos_cliente WHERE cli_estado = 'A'
-						ORDER BY CASE WHEN cli_nit_normalizado = 'CF' THEN 0 ELSE 1 END, cli_id);
+	-- Consumidor final o un cliente con crédito libre (la prueba es al crédito).
+	DECLARE @cli INT = (SELECT TOP 1 clie.cli_id FROM dbo.pos_cliente clie
+						CROSS APPLY dbo.fnClienteCredito(clie.cli_id) cred
+						WHERE clie.cli_estado = 'A' AND (cred.Limite = 0 OR cred.Limite - cred.Saldo >= 10)
+						ORDER BY CASE WHEN clie.cli_nit_normalizado = 'CF' THEN 0 WHEN cred.Limite = 0 THEN 1 ELSE 2 END, clie.cli_id);
 	DECLARE @mon INT = (SELECT TOP 1 mon_id FROM dbo.gen_moneda WHERE mon_estado = 'A' ORDER BY mon_es_local DESC, mon_id);
 
 	IF @usu IS NULL OR @bod IS NULL OR @tdo IS NULL OR @cli IS NULL OR @mon IS NULL
 	BEGIN
 		SELECT 'NO SE PUDO PROBAR' AS Resultado,
 			   CONCAT_WS(', ', IIF(@usu IS NULL, 'usuario', NULL), IIF(@bod IS NULL, 'producto con existencia', NULL),
-						 IIF(@tdo IS NULL, 'tipo de documento de venta', NULL), IIF(@cli IS NULL, 'cliente activo', NULL),
+						 IIF(@tdo IS NULL, 'tipo de documento de venta', NULL), IIF(@cli IS NULL, 'cliente activo con crédito disponible', NULL),
 						 IIF(@mon IS NULL, 'moneda', NULL)) AS Falta;
 		RETURN;
 	END
 
-	DECLARE @precio NUMERIC(14, 2) = IIF(@costo > 0, ROUND(@costo * 1.3, 2), 100);
+	DECLARE @precio NUMERIC(14, 2) = 1;	-- Q1.00 (más IVA): no depende del crédito del cliente
 	DECLARE @detalle dbo.factura_det_type, @formas dbo.pago_forma_type;
 	INSERT INTO @detalle (det_item, det_bien_o_servicio, det_cantidad, det_descripcion, det_precio_unitario, det_valor_descuento,
 						  det_sub_total, det_costo_unitario, det_porc_iva, bod_id, pro_id, ppr_id, ume_id)

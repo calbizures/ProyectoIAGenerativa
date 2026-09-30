@@ -567,6 +567,9 @@
                         <td class="col-acciones">
                             <div class="acciones-fila">
                                 <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarFacturaAsync(f)" />
+                                <a class="boton-icono" href="@($"facturas/{f.EncId}/imprimir?auto=1")" target="_blank" rel="noopener" aria-label="Imprimir la factura">
+                                    <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-tip" role="tooltip">Imprimir</span>
+                                </a>
                                 <AuthorizeView Policy="Permiso:VENTAS_FACTURA_ANULAR">
                                     <Authorized>
                                         @if (f.EncEstado == "G")
@@ -608,14 +611,19 @@
                 <h2>@(string.IsNullOrWhiteSpace(encabezadoSeleccionado.EncSerieDocto) ? $"{encabezadoSeleccionado.EncNumeroUnico}" : $"{encabezadoSeleccionado.EncSerieDocto}-{encabezadoSeleccionado.EncNumeroUnico}")</h2>
                 <p>@encabezadoSeleccionado.EncNombresCliente @encabezadoSeleccionado.EncApellidosCliente · NIT: @(encabezadoSeleccionado.CliNit ?? "C/F")</p>
             </div>
-            @if (encabezadoSeleccionado.EncEstado == "G")
-            {
-                <span class="estado-badge estado-badge-grabada">Grabada</span>
-            }
-            else
-            {
-                <span class="estado-badge estado-badge-anulada">Anulada</span>
-            }
+            <div class="acciones-fila">
+                <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@($"facturas/{encabezadoSeleccionado.EncId}/imprimir?auto=1")" target="_blank" rel="noopener">
+                    <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+                </a>
+                @if (encabezadoSeleccionado.EncEstado == "G")
+                {
+                    <span class="estado-badge estado-badge-grabada">Grabada</span>
+                }
+                else
+                {
+                    <span class="estado-badge estado-badge-anulada">Anulada</span>
+                }
+            </div>
         </div>
         <div class="doc-card-body">
             <div class="fel-resumen fel-estado-@(felDetalle?.Estado ?? "N")">

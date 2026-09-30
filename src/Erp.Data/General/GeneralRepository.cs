@@ -184,4 +184,19 @@ public sealed class GeneralRepository(IDbConnectionFactory connectionFactory) : 
 		await connection.ExecuteAsync("dbo.paCuentaParametroGuardar",
 			new { Codigo = codigo, CtaId = ctaId, UsuId = usuarioAccionId }, commandType: CommandType.StoredProcedure);
 	}
+
+	public async Task<CompaniaImpresion?> ConsultarImpresionAsync(int ciaId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		return await connection.QueryFirstOrDefaultAsync<CompaniaImpresion>("dbo.paCompaniaImpresionConsultar", new { CiaId = ciaId },
+			commandType: CommandType.StoredProcedure);
+	}
+
+	public async Task GuardarImpresionAsync(CompaniaImpresion impresion, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		await connection.ExecuteAsync("dbo.paCompaniaImpresionGuardar",
+			new { impresion.CiaId, impresion.Impresora, AnchoTermica = (byte)impresion.AnchoTermica, impresion.Pie, UsuId = usuarioAccionId },
+			commandType: CommandType.StoredProcedure);
+	}
 }

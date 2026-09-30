@@ -15,4 +15,6 @@ public interface IFacturaRepository
 	Task<IReadOnlyList<FacturaEncabezado>> ConsultarAsync(int tdoId, int? cliId, DateTime? fechaDesde, DateTime? fechaHasta, string? estado, int pagina, int tamanioPagina);
 	Task<(FacturaEncabezadoDetalle? Encabezado, IReadOnlyList<FacturaDetalleLinea> Detalle)> ConsultarPorIdAsync(int encId);
 	Task<IReadOnlyList<CuotaPlanPago>> ConsultarPlanPagosAsync(int encId);
+	// Datos para imprimir la factura (null si no existe).
+	Task<FacturaImpresion?> ConsultarImpresionAsync(int encId);
 }

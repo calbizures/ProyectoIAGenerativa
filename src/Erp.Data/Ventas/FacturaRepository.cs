@@ -163,4 +163,16 @@ public sealed class FacturaRepository(IDbConnectionFactory connectionFactory) : 
 
 		return tabla;
 	}
+
+	public async Task<FacturaImpresion?> ConsultarImpresionAsync(int encId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		using var lector = await connection.QueryMultipleAsync("dbo.paFacturaImpresionConsultar", new { EncId = encId }, commandType: CommandType.StoredProcedure);
+		var encabezado = await lector.ReadFirstOrDefaultAsync<FacturaImpresionEncabezado>();
+		var lineas = (await lector.ReadAsync<FacturaImpresionLinea>()).ToList();
+		var frases = (await lector.ReadAsync<FacturaImpresionFrase>()).ToList();
+		var cuotas = (await lector.ReadAsync<FacturaImpresionCuota>()).ToList();
+		var pagos = (await lector.ReadAsync<FacturaImpresionPago>()).ToList();
+		return encabezado is null ? null : new FacturaImpresion(encabezado, lineas, frases, cuotas, pagos);
+	}
 }

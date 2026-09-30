@@ -2816,3 +2816,88 @@ label.boton-icono { cursor: pointer; position: relative; }
 .grupo-opciones legend { font-weight: 600; margin-bottom: 0.3rem; }
 .tabla-desplazable { overflow-x: auto; max-width: 100%; }
 .texto-url { font-family: var(--fuente-mono, ui-monospace, monospace); font-size: 0.75rem; word-break: break-all; min-width: 14rem; }
+
+/* ===== Factura impresa (FacturaImprimir): carta y ticket térmico ===== */
+.fac-carta { position: relative; max-width: 8.5in; margin: 0 auto; padding: 0.4in 0.45in; background: #fff; color: #1a1f2e;
+    font-size: 10.5pt; line-height: 1.35; box-shadow: 0 2px 14px rgba(13, 27, 76, 0.12); overflow: hidden; }
+.fac-cab { display: grid; grid-template-columns: 1fr 3.1in; gap: 0.25in; align-items: start; padding-bottom: 0.14in; border-bottom: 3px solid #0d1b4c; }
+.fac-emisor { display: flex; gap: 0.16in; align-items: flex-start; font-size: 9.5pt; color: #3a4256; }
+.fac-logo { max-width: 1.25in; max-height: 0.9in; object-fit: contain; }
+.fac-comercial { font-size: 16pt; font-weight: 800; color: #0d1b4c; line-height: 1.15; }
+.fac-razon { font-weight: 600; color: #1a1f2e; margin-bottom: 2px; }
+.fac-doc { border: 1.5px solid #0d1b4c; border-radius: 6px; overflow: hidden; font-size: 9pt; }
+.fac-doc-tipo { background: #0d1b4c; color: #fff; text-align: center; font-weight: 800; font-size: 12pt; letter-spacing: 0.06em; padding: 5px 6px 2px; }
+.fac-doc-sub { background: #0d1b4c; color: #c9d6f5; text-align: center; font-size: 7.5pt; letter-spacing: 0.08em; text-transform: uppercase; padding-bottom: 5px; }
+.fac-doc dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; padding: 6px 10px; }
+.fac-doc dt { color: #5f6a7f; }
+.fac-doc dd { margin: 0; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.fac-uuid { border-top: 1px solid #d5dbe8; padding: 5px 10px 6px; font-family: ui-monospace, "Consolas", monospace; font-size: 8.4pt; font-weight: 700; text-align: center; word-break: break-all; }
+.fac-uuid span { display: block; font-family: inherit; font-weight: 400; color: #5f6a7f; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.06em; }
+.fac-aviso { margin: 0.1in 0 0; padding: 6px 10px; border: 1.5px solid #b3261e; color: #b3261e; font-weight: 700; text-align: center; border-radius: 4px; font-size: 9pt; }
+.fac-marca { position: absolute; top: 42%; left: 50%; transform: translate(-50%, -50%) rotate(-28deg); font-size: 42pt; font-weight: 900;
+    color: rgba(179, 38, 30, 0.12); white-space: nowrap; pointer-events: none; letter-spacing: 0.08em; }
+.fac-partes { display: grid; grid-template-columns: 1fr 1fr; gap: 0.18in; margin: 0.16in 0 0.12in; }
+.fac-bloque { border: 1px solid #d5dbe8; border-radius: 6px; padding: 7px 10px; font-size: 9.5pt; }
+.fac-bloque-titulo { font-size: 7.8pt; font-weight: 800; color: #0d1b4c; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px; }
+.fac-fila { display: flex; gap: 8px; justify-content: space-between; }
+.fac-fila > span:first-child { color: #5f6a7f; flex: 0 0 auto; }
+.fac-bloque .fac-fila { justify-content: flex-start; }
+.fac-bloque .fac-fila > span:first-child { width: 1in; }
+.fac-referencia { font-size: 9pt; background: #f4f7fb; padding: 6px 10px; border-radius: 4px; margin: 0 0 0.1in; }
+.fac-items { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+.fac-items thead th { background: #eef2fa; color: #0d1b4c; font-size: 7.8pt; text-transform: uppercase; letter-spacing: 0.05em; text-align: left;
+    padding: 6px 7px; border-top: 1.5px solid #0d1b4c; border-bottom: 1.5px solid #0d1b4c; }
+.fac-items td { padding: 5px 7px; border-bottom: 1px solid #e3e8f1; vertical-align: top; }
+.fac-items .num, .fac-cuotas .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fac-items small { color: #5f6a7f; }
+.fac-bs { display: block; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.05em; }
+.fac-pie-tabla { display: grid; grid-template-columns: 1fr 2.6in; gap: 0.22in; margin-top: 0.14in; align-items: start; }
+.fac-letras { font-size: 9pt; font-weight: 700; padding: 6px 10px; background: #f4f7fb; border-radius: 4px; }
+.fac-letras span { display: block; font-weight: 400; color: #5f6a7f; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.06em; }
+.fac-mini { margin-top: 8px; font-size: 9pt; }
+.fac-cuotas { border-collapse: collapse; font-size: 8.8pt; min-width: 2.6in; }
+.fac-cuotas th { text-align: left; color: #5f6a7f; font-weight: 600; font-size: 7.8pt; border-bottom: 1px solid #d5dbe8; padding: 2px 6px; }
+.fac-cuotas td { padding: 2px 6px; border-bottom: 1px solid #eef1f6; }
+.fac-frase { margin: 8px 0 0; font-size: 9pt; font-weight: 700; color: #0d1b4c; }
+.fac-totales { border: 1.5px solid #0d1b4c; border-radius: 6px; overflow: hidden; font-size: 9.5pt; }
+.fac-totales .fac-fila { padding: 5px 10px; border-bottom: 1px solid #e3e8f1; font-variant-numeric: tabular-nums; }
+.fac-total { display: flex; justify-content: space-between; background: #0d1b4c; color: #fff; padding: 8px 10px; font-size: 13pt; font-weight: 800; font-variant-numeric: tabular-nums; }
+.fac-final { display: flex; gap: 0.18in; align-items: center; margin-top: 0.22in; padding-top: 0.1in; border-top: 1px solid #d5dbe8; font-size: 8.4pt; color: #3a4256; }
+.fac-qr svg { width: 1.05in; height: 1.05in; display: block; }
+.fac-final-texto { display: flex; flex-direction: column; gap: 3px; }
+.fac-gracias { font-weight: 700; color: #0d1b4c; font-size: 9.5pt; }
+
+.fac-ticket { width: 80mm; box-sizing: border-box; margin: 0 auto; padding: 3mm 4mm 6mm; background: #fff; color: #000;
+    font-family: "Arial Narrow", Arial, "Helvetica Neue", sans-serif; font-size: 9pt; line-height: 1.3; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15); }
+.fac-ticket-58 { width: 58mm; padding: 2mm 2.5mm 5mm; font-size: 8pt; }
+.fac-ticket-logo { display: block; max-width: 60%; max-height: 22mm; margin: 0 auto 2mm; object-fit: contain; filter: grayscale(1); }
+.fac-ticket-centro { text-align: center; }
+.fac-ticket-comercial { font-size: 11pt; }
+.fac-ticket-linea { border-top: 1px dashed #000; margin: 2mm 0; }
+.fac-ticket-datos > div { word-break: break-word; }
+.fac-ticket-datos span { font-weight: 700; }
+.fac-ticket-uuid { font-size: 0.92em; word-break: break-all; }
+.fac-ticket-aviso { border: 1px solid #000; font-weight: 700; text-align: center; padding: 1mm; margin: 1.5mm 0; }
+.fac-ticket-items { width: 100%; border-collapse: collapse; }
+.fac-ticket-items th { text-align: left; border-bottom: 1px solid #000; font-size: 0.9em; }
+.fac-ticket-items td { vertical-align: top; padding: 0.6mm 0; }
+.fac-ticket-items td:first-child { padding-right: 1.5mm; }
+.fac-ticket-items .num { text-align: right; white-space: nowrap; }
+.fac-ticket-items small { font-size: 0.85em; }
+.fac-ticket-totales > div { display: flex; justify-content: space-between; }
+.fac-ticket-total { font-size: 1.35em; font-weight: 800; }
+.fac-ticket-letras { font-size: 0.85em; margin: 1.5mm 0; }
+.fac-ticket-frase { text-align: center; font-weight: 700; margin: 1.5mm 0; }
+.fac-ticket-qr svg { display: block; width: 30mm; height: 30mm; margin: 2mm auto; }
+.fac-ticket-58 .fac-ticket-qr svg { width: 24mm; height: 24mm; }
+.fac-ticket-pie { font-size: 0.85em; }
+.fac-ticket-gracias { font-weight: 700; font-size: 1.1em; margin-top: 1.5mm; }
+.fac-acciones { align-items: center; flex-wrap: wrap; }
+@media print {
+    .fac-carta, .fac-ticket { box-shadow: none; }
+    .fac-carta { padding: 0; max-width: none; }
+    .fac-items thead { display: table-header-group; }
+    .fac-items tr, .fac-pie-tabla, .fac-final { break-inside: avoid; }
+    .fac-marca { color: rgba(179, 38, 30, 0.14); }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

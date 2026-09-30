@@ -61,21 +61,23 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 44_nit_certificadores_seguridad.sql           -- validación de NIT/CUI, consulta de NIT por certificador FEL, clientes por NIT, permisos
 45_traslados_bodegas.sql                      -- traslados entre bodegas: salida, tránsito e ingreso al recibir
 46_datos_sinteticos_traslados.sql             -- opcional: tercera bodega y dos traslados de prueba
+47_reparar_opciones_set.sql                   -- repara objetos creados con QUOTED_IDENTIFIER/ANSI_NULLS en OFF y prueba grabar una factura
+48_impresion_factura.sql                      -- impresión de la factura en carta o en impresora térmica
 ```
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `46` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `48` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44` y `45` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45`, `47` y `48` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `46`. Si vuelves a
-correr `12`, corre después `22` a `46` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `48`. Si vuelves a
+correr `12`, corre después `22` a `48` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -1123,8 +1125,9 @@ también permite probar un NIT. Las credenciales van en la configuración de la
 aplicación: `Fel:Credenciales:<NIT emisor>:ConsultaNitUsuario` y
 `:ConsultaNitLlave`.
 
-**Clientes por NIT.** Columna calculada `pos_cliente.cli_nit_normalizado`
-con índice. `paClienteBuscarPorNit` encuentra el cliente sin importar cómo se
+**Clientes por NIT.** Columna `pos_cliente.cli_nit_normalizado` con índice,
+que mantiene el trigger del cliente (una versión anterior la hacía columna
+calculada; el 44 la convierte). `paClienteBuscarPorNit` encuentra el cliente sin importar cómo se
 escribió el NIT; `paClienteRegistrarPorNit` graba el que no existe con el
 nombre que devolvió el certificador (formato de SAT
 `APELLIDO,APELLIDO,CASADA,NOMBRE,NOMBRE`) o el que escribió el cajero, con el
@@ -1176,6 +1179,54 @@ bodegas**, con los pendientes de recibir de la sucursal resaltados.
 
 Datos de prueba (`46`): bodega `BOD03` en la casa matriz, un traslado
 BOD01 → BOD03 recibido y uno BOD01 → BOD02 (Mixco) en tránsito.
+
+## Error "Ocurrió un error en la base de datos" al grabar facturas (`47`)
+
+Causa: el error SQL **1934**. Un procedimiento creado con
+`QUOTED_IDENTIFIER OFF` (un script corrido con `sqlcmd` sin `-I` o desde una
+herramienta con esa opción apagada) no puede escribir en tablas con índices
+filtrados (`pos_cliente`, `inv_documento_enc`) ni con índice sobre columna
+calculada. SQL Server guarda esa opción en cada procedimiento al crearlo.
+
+- `47_reparar_opciones_set.sql` lista los procedimientos, funciones,
+  triggers y vistas con `QUOTED_IDENTIFIER` o `ANSI_NULLS` en OFF, los recrea
+  con `CREATE OR ALTER` y las opciones en ON (sin cambiar su código ni sus
+  permisos) y muestra lo que quede pendiente.
+- `paDiagnosticoFacturaProbar` (el 47 lo ejecuta al final) graba una factura
+  al crédito de prueba y registra un cliente por NIT dentro de una
+  transacción que **siempre se revierte**: no queda factura, cliente, póliza
+  ni correlativo. Devuelve `OK` o el error real con su número, procedimiento
+  y línea. Se puede volver a ejecutar: `EXEC dbo.paDiagnosticoFacturaProbar @SucId = 1;`.
+- El 44 convierte `cli_nit_normalizado` en una columna normal, para que la
+  tabla de clientes no exija opciones SET a quien escriba en ella.
+- La aplicación muestra ahora el número de error SQL, el procedimiento y la
+  línea (y para el 1934 indica correr el 47). Si la factura ya se grabó y
+  falla un paso posterior (certificación o pantalla), avisa que **sí quedó
+  grabada** para que no se vuelva a grabar.
+
+## Impresión de la factura (`48`)
+
+Representación gráfica del DTE en dos formatos, según la compañía
+(**General › Compañías › Impresión de facturas**):
+
+- `cia_factura_impresora`: `C` carta (tinta o láser, p. ej. Epson L3250) o
+  `T` térmica de rollo; `cia_factura_ancho_termica` 80 o 58 mm;
+  `cia_factura_pie` texto al pie. Se leen y guardan con
+  `paCompaniaImpresionConsultar` / `paCompaniaImpresionGuardar`
+  (errores `54001`-`54003`).
+- `paFacturaImpresionConsultar @EncId` devuelve encabezado (emisor y
+  establecimiento, receptor, condición, vendedor, cajero, datos FEL y
+  formato), detalle con precios con IVA, frases, cuotas y formas de pago.
+
+La impresión (`/facturas/{id}/imprimir`, botón **Imprimir** en el historial
+y en el detalle) lleva: tipo de DTE, serie, número y número de autorización,
+fechas de emisión y certificación, emisor (nombre comercial, razón social,
+NIT, dirección del establecimiento), receptor, detalle, IVA incluido, total
+en letras, frases, abonos de la factura cambiaria, forma de pago, nombre y NIT
+del certificador (tomados del XML certificado) y un código QR con el número
+de autorización para verificarla en el portal de la SAT. Si el documento
+está anulado o no se ha certificado, lo indica con un aviso y una marca de
+agua. En térmica, el largo del papel se ajusta al contenido.
 
 ## Módulos nuevos
 

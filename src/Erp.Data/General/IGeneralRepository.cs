@@ -11,6 +11,9 @@ public interface IGeneralRepository
 	Task CambiarEstadoCompaniaAsync(int ciaId, string estado, int? usuarioAccionId);
 	Task<ParametrosCompania> ConsultarParametrosAsync(int? sucId);
 	Task GuardarLogoAsync(int ciaId, byte[]? logo, string? tipo, int? usuarioAccionId);
+	// Impresora de la factura (C carta, T térmica), ancho del rollo y pie.
+	Task<CompaniaImpresion?> ConsultarImpresionAsync(int ciaId);
+	Task GuardarImpresionAsync(CompaniaImpresion impresion, int? usuarioAccionId);
 	// Sin ciaId: la compañía de la sucursal o la primera activa.
 	Task<CompaniaLogo?> ConsultarLogoAsync(int? ciaId, int? sucId, bool soloVersion);
 
