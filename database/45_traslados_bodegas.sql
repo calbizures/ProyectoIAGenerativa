@@ -23,7 +23,7 @@
  concepto INVENTARIO_TRANSITO. Los documentos TRS/TRE son internos (no son
  ventas ni compras). El costo promedio no cambia: sale y entra al mismo costo.
 
- Requiere 38 y 44 (permisos). Errores 53901-53915. Se puede volver a correr.
+ Requiere 38 y 44 (permisos). Errores 53901-53914. Se puede volver a correr.
 ================================================================================
 */
 USE [erp_db];

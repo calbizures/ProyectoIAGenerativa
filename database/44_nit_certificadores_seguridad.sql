@@ -38,7 +38,7 @@
       (enviar y recibir) y revisión de NIT; los cheques libres aceptan
       BANCOS_CHEQUE_EMITIR.
 
- Requiere 38. Errores 53801-53812. Se puede volver a correr.
+ Requiere 38. Errores 53801-53810. Se puede volver a correr.
 ================================================================================
 */
 USE [erp_db];
