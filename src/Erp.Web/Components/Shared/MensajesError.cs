@@ -81,11 +81,20 @@ public static partial class MensajesError
 				return "La base de datos no tiene instalado un procedimiento requerido. Ejecute los scripts pendientes.";
 			case 207:
 			case 208:
-				return "La base de datos no está actualizada con esta versión del sistema. Ejecute los scripts pendientes.";
+				return "La base de datos no está actualizada con esta versión del sistema. Ejecute los scripts pendientes" + Referencia(sql) + ".";
+			case 1934:
+				// Procedimiento creado con QUOTED_IDENTIFIER u otra opción SET en OFF.
+				return "Un procedimiento de la base de datos se creó con opciones SET incorrectas y no puede grabar" + Referencia(sql)
+					+ ". Ejecute el script 47_reparar_opciones_set.sql y vuelva a intentarlo.";
 			default:
-				return "Ocurrió un error en la base de datos. Comuníquese con el administrador del sistema.";
+				// Sin el número y el procedimiento el error no se puede diagnosticar.
+				return "Ocurrió un error en la base de datos" + Referencia(sql) + ". Comuníquese con el administrador del sistema.";
 		}
 	}
+
+	// "(error SQL 1934 en dbo.sp_cliente_insertar, línea 25)" para el soporte.
+	private static string Referencia(SqlException sql) =>
+		$" (error SQL {sql.Number}{(string.IsNullOrEmpty(sql.Procedure) ? "" : $" en {sql.Procedure}")}{(sql.LineNumber > 0 ? $", línea {sql.LineNumber}" : "")})";
 
 	// Nombre de la tabla involucrada en una violación de llave foránea, si aparece.
 	private static string Detalle(string mensaje)

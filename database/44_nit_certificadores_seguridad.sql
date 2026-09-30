@@ -26,8 +26,8 @@
       {nit} {usuario} {llave}, encabezado de autenticación y campo del
       nombre en la respuesta. La compañía elige su certificador en la
       configuración FEL y puede activar la consulta o cambiar la URL.
-   4. Clientes por NIT: búsqueda por NIT normalizado (columna calculada con
-      índice) y registro automático del cliente que no existe, con el nombre
+   4. Clientes por NIT: búsqueda por NIT normalizado (columna con índice que
+      mantiene el trigger del cliente) y registro automático del cliente que no existe, con el nombre
       que devuelve el certificador (formato SAT "APELLIDO,APELLIDO,CASADA,
       NOMBRE,NOMBRE" o nombre libre).
    5. Proveedores con saldo pendiente (Pagos a proveedores).
@@ -52,8 +52,8 @@ GO
 ------------------------------------------------------------
 -- Sin espacios, guiones, puntos ni diagonales y en mayúsculas: '1234567-9'
 -- -> '12345679', 'c/f' -> 'CF'. Determinista para la columna calculada.
--- La usa la columna calculada pos_cliente.cli_nit_normalizado (con índice):
--- se crea una sola vez; para cambiarla hay que quitar antes esa columna.
+-- Se crea una sola vez (una versión anterior del 44 la usaba en una columna
+-- calculada, que impedía cambiarla).
 IF OBJECT_ID('dbo.fnNitNormalizar', 'FN') IS NULL
 	EXEC ('CREATE FUNCTION [dbo].[fnNitNormalizar] (@Nit VARCHAR(32))
 RETURNS VARCHAR(32)
@@ -131,6 +131,26 @@ BEGIN
 END;
 GO
 
+-- NIT normalizado del cliente, para buscarlo sin importar cómo se escribió.
+-- Es una columna normal que mantiene trg_pos_cliente_nit (no una columna
+-- calculada con índice: esa exige QUOTED_IDENTIFIER ON a todo procedimiento
+-- que escriba en pos_cliente, y uno creado con OFF fallaba con el error 1934
+-- al registrar un cliente o grabar una factura).
+IF EXISTS (SELECT 1 FROM sys.computed_columns WHERE object_id = OBJECT_ID('dbo.pos_cliente') AND name = 'cli_nit_normalizado')
+BEGIN
+	IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_pos_cliente_nit_normalizado' AND object_id = OBJECT_ID('dbo.pos_cliente'))
+		DROP INDEX [IX_pos_cliente_nit_normalizado] ON dbo.pos_cliente;
+	ALTER TABLE dbo.pos_cliente DROP COLUMN [cli_nit_normalizado];
+END
+IF COL_LENGTH('dbo.pos_cliente', 'cli_nit_normalizado') IS NULL
+	ALTER TABLE dbo.pos_cliente ADD [cli_nit_normalizado] VARCHAR(32) NULL;
+GO
+UPDATE dbo.pos_cliente SET cli_nit_normalizado = dbo.fnNitNormalizar(cli_nit)
+WHERE ISNULL(cli_nit_normalizado, '') <> ISNULL(dbo.fnNitNormalizar(cli_nit), '');
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_pos_cliente_nit_normalizado' AND object_id = OBJECT_ID('dbo.pos_cliente'))
+	CREATE INDEX [IX_pos_cliente_nit_normalizado] ON dbo.pos_cliente ([cli_nit_normalizado]);
+GO
+
 ------------------------------------------------------------
 -- 2. Validación en toda la base (solo NIT nuevos o cambiados)
 ------------------------------------------------------------
@@ -162,6 +182,10 @@ BEGIN
 		SET @mensaje = CONCAT(N'El DPI ', @dato, N' no es válido: el CUI tiene 13 dígitos y su verificador, departamento o municipio no cuadran.');
 		THROW 53802, @mensaje, 1;
 	END
+	-- NIT normalizado para la búsqueda.
+	UPDATE clie SET cli_nit_normalizado = dbo.fnNitNormalizar(ins.cli_nit)
+	FROM dbo.pos_cliente clie INNER JOIN inserted ins ON ins.cli_id = clie.cli_id
+	WHERE ISNULL(clie.cli_nit_normalizado, '') <> ISNULL(dbo.fnNitNormalizar(ins.cli_nit), '');
 END;
 GO
 
@@ -463,13 +487,7 @@ GO
 ------------------------------------------------------------
 -- 4. Clientes por NIT
 ------------------------------------------------------------
-IF COL_LENGTH('dbo.pos_cliente', 'cli_nit_normalizado') IS NULL
-	ALTER TABLE dbo.pos_cliente ADD [cli_nit_normalizado] AS dbo.fnNitNormalizar(cli_nit) PERSISTED;
-GO
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_pos_cliente_nit_normalizado' AND object_id = OBJECT_ID('dbo.pos_cliente'))
-	CREATE INDEX [IX_pos_cliente_nit_normalizado] ON dbo.pos_cliente ([cli_nit_normalizado]);
-GO
-
+-- (La columna cli_nit_normalizado y su índice se crean en la sección 1.)
 CREATE OR ALTER PROCEDURE [dbo].[paClienteBuscarPorNit]
 	@Nit	VARCHAR(32)
 AS

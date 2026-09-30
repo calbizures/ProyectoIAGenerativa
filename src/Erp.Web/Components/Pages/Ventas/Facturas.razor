@@ -17,6 +17,7 @@
 @inject ICajaRepository CajaRepository
 @inject Erp.Data.Cuentas.ICuentasRepository CuentasRepository
 @inject Erp.Web.Fel.FelService FelService
+@inject ILogger<Facturas> Log
 @inject Erp.Data.Fel.IFelRepository FelRepository
 @inject Erp.Web.Fel.FelConsultaNitServicio ConsultaNit
 
@@ -1288,6 +1289,8 @@
 
     private async Task GrabarFacturaAsync()
     {
+        int encIdGrabada;
+        string numeroGrabada;
         if (nuevaFactura.CliId is null)
         {
             mensaje = "Debe seleccionar un cliente.";
@@ -1427,23 +1430,38 @@
             };
 
             var pcaId = cajasAbiertasSucursal.Count > 0 && formasPagoCapturadas.Count > 0 ? pcaIdFactura : (int?)null;
-            var (encId, numeroUnico) = await FacturaRepository.CrearAsync(encabezado, detalle, usuId, pcaId, formasPagoCapturadas);
-            mostrarNuevaFactura = false;
-            // La factura ya está grabada; la certificación se intenta enseguida y,
-            // si falla, queda pendiente o rechazada para reintentarla.
-            var fel = await FelService.CertificarAsync(encId, usuId);
+            (encIdGrabada, numeroGrabada) = await FacturaRepository.CrearAsync(encabezado, detalle, usuId, pcaId, formasPagoCapturadas);
+        }
+        catch (Exception ex)
+        {
+            Log.LogError(ex, "No se pudo grabar la factura");
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+            return;
+        }
+
+        // Desde aquí la factura YA está grabada: un error posterior no debe
+        // parecer que no se grabó (el cajero la volvería a grabar, duplicada).
+        mostrarNuevaFactura = false;
+        try
+        {
+            // La certificación se intenta enseguida y, si falla, queda
+            // pendiente o rechazada para reintentarla.
+            var fel = await FelService.CertificarAsync(encIdGrabada, await ObtenerUsuIdActualAsync());
             mensaje = fel.Aplica && fel.Exito
-                ? $"Factura {numeroUnico} grabada y certificada (autorización {fel.Uuid})."
-                : $"Factura {numeroUnico} grabada correctamente.";
+                ? $"Factura {numeroGrabada} grabada y certificada (autorización {fel.Uuid})."
+                : $"Factura {numeroGrabada} grabada correctamente.";
             avisoFel = fel.Aplica && !fel.Exito ? fel.Mensaje : null;
             esMensajeError = false;
 
-            await CargarDetalleFacturaAsync(encId);
+            await CargarDetalleFacturaAsync(encIdGrabada);
             await BuscarAsync();
         }
         catch (Exception ex)
         {
-            mensaje = MensajesError.Traducir(ex);
+            Log.LogError(ex, "La factura {EncId} se grabó pero falló un paso posterior", encIdGrabada);
+            mensaje = $"La factura {numeroGrabada} SÍ quedó grabada; no la vuelva a grabar. No se pudo mostrar o certificar: "
+                + MensajesError.Traducir(ex) + " Búsquela en el historial.";
             esMensajeError = true;
         }
     }
