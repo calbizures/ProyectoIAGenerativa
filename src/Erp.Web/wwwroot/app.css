@@ -2496,6 +2496,11 @@ a.boton-icono { text-decoration: none; }
 .tabla-datos td.col-aplicar input { width: 120px; text-align: right; }
 .tabla-datos tfoot td { padding: 0.7rem 0.75rem; background: var(--superficie-suave); font-weight: 600; border-top: 1px solid var(--borde); }
 
+/* Pago a proveedores: facturas y cuotas que pagó un cheque. */
+.tabla-datos tr.fila-detalle-cheque > td { background: var(--superficie-suave); padding: 0.5rem 0.75rem 0.9rem; }
+.tabla-datos.tabla-detalle-cheque { margin: 0; background: var(--superficie, #fff); font-size: 0.85rem; }
+#pag-concepto { width: 100%; }
+
 /* Confirmación en línea de una anulación (motivo obligatorio). */
 .tabla-datos tr.fila-edicion-tabla td { background: #fff8f7; }
 .anulacion-form { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem; }

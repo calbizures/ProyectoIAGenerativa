@@ -66,6 +66,38 @@ public sealed class CuotaProveedor
 	public int EncId { get; set; }
 }
 
+// Cuota con saldo de un proveedor, para pagarla con cheque (sola o con otras).
+public sealed class CuotaPendienteProveedor
+{
+	public int PpgId { get; set; }
+	public int EncId { get; set; }
+	public string Documento { get; set; } = "";
+	public string NumeroDocumento { get; set; } = "";
+	public DateTime FechaDocumento { get; set; }
+	public int Cuota { get; set; }
+	public DateTime Vencimiento { get; set; }
+	public int Dias { get; set; }
+	public decimal ValorCuota { get; set; }
+	public decimal Pagado { get; set; }
+	public decimal Saldo { get; set; }
+}
+
+public sealed record CuotaPagoProveedor(int PpgId, decimal Monto);
+
+// Factura y cuota que pagó una línea de un cheque.
+public sealed class ChequeDetalleLinea
+{
+	public int CedId { get; set; }
+	public int EncId { get; set; }
+	public string Documento { get; set; } = "";
+	public DateTime FechaDocumento { get; set; }
+	public int? Cuota { get; set; }
+	public DateTime? Vencimiento { get; set; }
+	public decimal? ValorCuota { get; set; }
+	public decimal Monto { get; set; }
+	public string Aplicacion { get; set; } = "";
+}
+
 public sealed class Chequera
 {
 	public int CbcId { get; set; }
@@ -206,6 +238,7 @@ public sealed class ChequeResumen
 	public int PrvId { get; set; }
 	public string Proveedor { get; set; } = "";
 	public string Documento { get; set; } = "";
+	public int Cuotas { get; set; }
 	public decimal Valor { get; set; }
 	public string EstadoCheque { get; set; } = "E";	// E emitido, C cobrado, A anulado
 	public string? Observaciones { get; set; }

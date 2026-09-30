@@ -129,6 +129,7 @@ public sealed class CuotaPorPagar
 {
 	public int PrvId { get; set; }
 	public string Proveedor { get; set; } = "";
+	public int? EncId { get; set; }
 	public string Documento { get; set; } = "";
 	public int Cuota { get; set; }
 	public DateTime Vence { get; set; }

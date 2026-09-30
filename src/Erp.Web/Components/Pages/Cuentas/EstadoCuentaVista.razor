@@ -29,6 +29,12 @@
         <a class="boton-icono boton-icono-con-etiqueta" href="@UrlImprimir" target="_blank" rel="noopener" title="Abrir el estado de cuenta para imprimir">
             <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
         </a>
+        @if (!EsCliente && consultado && documentos.Sum(d => d.Saldo) > 0)
+        {
+            <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@($"cxp/pagos?prv={tercero.Id}&todo=1")" title="Pagar todo el saldo del proveedor con un cheque">
+                <Icono Nombre="banknote" Tamano="16" /><span class="boton-icono-etiqueta">Pagar saldo con cheque</span>
+            </a>
+        }
     }
 </div>
 
@@ -63,6 +69,12 @@
                             <td class="col-acciones">
                                 <div class="acciones-fila">
                                     <BotonIcono Icono="eye" Tooltip="Ver estado de cuenta" OnClick="() => CambiarTerceroAsync(new TerceroSeleccion(g.Id, g.Codigo, g.Nombre))" />
+                                    @if (!EsCliente)
+                                    {
+                                        <a class="boton-icono" href="@($"cxp/pagos?prv={g.Id}&todo=1")" aria-label="@($"Pagar el saldo de {g.Nombre} con cheque")">
+                                            <Icono Nombre="banknote" Tamano="16" /><span class="boton-icono-tip" role="tooltip">Pagar saldo con cheque</span>
+                                        </a>
+                                    }
                                 </div>
                             </td>
                         </tr>
@@ -84,7 +96,8 @@ else if (consultado)
 
     @if (pestana == "documentos")
     {
-        <DocumentosSaldoTabla Documentos="documentos" EsCliente="EsCliente" SeleccionadoId="documentoSeleccionado?.EncId" OnSeleccionar="SeleccionarDocumentoAsync" />
+        <DocumentosSaldoTabla Documentos="documentos" EsCliente="EsCliente" SeleccionadoId="documentoSeleccionado?.EncId" OnSeleccionar="SeleccionarDocumentoAsync"
+                              UrlPagar="@(EsCliente ? null : d => $"cxp/pagos?prv={tercero!.Id}&enc={d.EncId}")" />
         @if (documentoSeleccionado is not null)
         {
             <section class="tarjeta" aria-labelledby="titulo-cuotas">

@@ -25,7 +25,10 @@ public interface ICuentasRepository
 	Task<IReadOnlyList<CuotaProveedor>> ConsultarCuotasProveedorAsync(int encId);
 	Task<IReadOnlyList<Chequera>> ConsultarChequerasAsync();
 	Task<IReadOnlyList<MotivoPago>> ConsultarMotivosPagoAsync();
-	Task<int> EmitirChequeAsync(int ppgId, int cbcId, string numeroCheque, decimal valor, int? bmpId, int? usuarioAccionId);
+	Task<IReadOnlyList<CuotaPendienteProveedor>> ConsultarCuotasPendientesProveedorAsync(int prvId, int? encId);
+	Task<(int BceId, string Numero)> EmitirChequeAsync(int prvId, int cbcId, string? numeroCheque, int? bmpId, string? concepto,
+		IReadOnlyList<CuotaPagoProveedor> cuotas, int? usuarioAccionId);
+	Task<IReadOnlyList<ChequeDetalleLinea>> ConsultarChequeDetalleAsync(int bceId);
 	Task<IReadOnlyList<ChequeResumen>> ConsultarChequesAsync(int? prvId, DateTime? desde, DateTime? hasta);
 	Task AnularChequeAsync(int bceId, string motivo, int? usuarioAccionId);
 

@@ -18,6 +18,10 @@ else if (Vista == "tercero")
                     <th class="num">@r</th>
                 }
                 <th class="num">Total</th>
+                @if (ConPago)
+                {
+                    <th class="col-acciones"><span class="sr-only">Pagar</span></th>
+                }
             </tr>
         </thead>
         <tbody>
@@ -41,6 +45,10 @@ else if (Vista == "tercero")
                         <td class="num @(i > 0 && g.Rangos[i] > 0 ? "antiguedad-vencido" : "")">@Monto(g.Rangos[i])</td>
                     }
                     <td class="num"><strong>@g.Total.ToString("N2")</strong></td>
+                    @if (ConPago)
+                    {
+                        <td class="col-acciones">@EnlacePago($"prv={g.Id}&todo=1", $"Pagar el saldo de {g.Nombre} con cheque", "Pagar saldo con cheque")</td>
+                    }
                 </tr>
             }
         </tbody>
@@ -63,13 +71,17 @@ else
                     <th class="num">@r</th>
                 }
                 <th class="num">Total</th>
+                @if (ConPago)
+                {
+                    <th class="col-acciones"><span class="sr-only">Pagar</span></th>
+                }
             </tr>
         </thead>
         <tbody>
             @foreach (var g in Grupos)
             {
                 <tr class="antiguedad-grupo">
-                    <td colspan="10"><strong>@g.Codigo · @g.Nombre</strong></td>
+                    <td colspan="@(ConPago ? 11 : 10)"><strong>@g.Codigo · @g.Nombre</strong></td>
                 </tr>
                 @foreach (var d in g.Documentos)
                 {
@@ -83,6 +95,10 @@ else
                             <td class="num @(i > 0 && d.Rangos[i] > 0 ? "antiguedad-vencido" : "")">@Monto(d.Rangos[i])</td>
                         }
                         <td class="num">@d.Total.ToString("N2")</td>
+                        @if (ConPago)
+                        {
+                            <td class="col-acciones">@EnlacePago($"prv={g.Id}&enc={d.EncId}", $"Pagar {d.Documento} con cheque", "Pagar esta compra con cheque")</td>
+                        }
                     </tr>
                 }
                 <tr class="antiguedad-subtotal">
@@ -92,6 +108,10 @@ else
                         <td class="num">@Monto(g.Rangos[i])</td>
                     }
                     <td class="num"><strong>@g.Total.ToString("N2")</strong></td>
+                    @if (ConPago)
+                    {
+                        <td class="col-acciones">@EnlacePago($"prv={g.Id}&todo=1", $"Pagar el saldo de {g.Nombre} con cheque", "Pagar saldo con cheque")</td>
+                    }
                 </tr>
             }
         </tbody>
@@ -108,7 +128,17 @@ else
     // En pantalla, el nombre lleva al estado de cuenta; en el reporte impreso no.
     [Parameter] public bool Enlaces { get; set; }
 
+    // En pantalla, las deudas con proveedores se pagan con cheque desde aquí.
+    private bool ConPago => Enlaces && !EsCliente;
+
     private string Tercero => EsCliente ? "Cliente" : "Proveedor";
+
+    private static RenderFragment EnlacePago(string consulta, string etiqueta, string tip) => __builder =>
+    {
+        <a class="boton-icono" href="@($"cxp/pagos?{consulta}")" aria-label="@etiqueta">
+            <Icono Nombre="banknote" Tamano="16" /><span class="boton-icono-tip" role="tooltip">@tip</span>
+        </a>
+    };
     private string Documento => EsCliente ? "Factura" : "Compra";
 
     private static string Monto(decimal m) => m == 0 ? "—" : m.ToString("N2");
@@ -124,6 +154,10 @@ else
                 <td class="num">@t.ToString("N2")</td>
             }
             <td class="num">@total.ToString("N2")</td>
+            @if (ConPago)
+            {
+                <td></td>
+            }
         </tr>
         <tr class="antiguedad-porcentaje">
             <td colspan="@columnasEtiqueta">% del total</td>
@@ -132,6 +166,10 @@ else
                 <td class="num">@(total == 0 ? "0.0" : (t * 100 / total).ToString("N1"))%</td>
             }
             <td class="num">100%</td>
+            @if (ConPago)
+            {
+                <td></td>
+            }
         </tr>
     };
 }

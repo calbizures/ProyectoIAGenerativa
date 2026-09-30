@@ -1,16 +1,18 @@
 @page "/cxp/pagos"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = "Permiso:CXP_ADMIN")]
+@using Erp.Data.Compras
 @using Erp.Data.Cuentas
 @using Erp.Web.Security
 @using Microsoft.AspNetCore.Components.Authorization
 @inject ICuentasRepository CuentasRepository
+@inject IProveedorRepository ProveedorRepository
 
 <PageTitle>Pagos a proveedores</PageTitle>
 
 <div class="pagina-encabezado">
     <h1>Pagos a proveedores</h1>
-    <p>Elija el proveedor, la compra y la cuota, y emita el cheque. El pago genera su póliza (Proveedores / Bancos). Un cheque mal emitido se anula abajo, en Cheques emitidos.</p>
+    <p>Elija el proveedor y pague con un solo cheque una factura completa, varias cuotas o todo su saldo: indique el monto y se aplica de la cuota más antigua a la más reciente (o marque las que paga). El cheque genera su póliza (Proveedores / Bancos) y se anula abajo, en Cheques emitidos.</p>
 </div>
 
 @if (mensaje is not null)
@@ -18,67 +20,176 @@
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
 }
 
+@if (chequeEmitido is not null)
+{
+    <section class="tarjeta tarjeta-exito" aria-live="polite">
+        <div class="exito-contenido">
+            <Icono Nombre="check-circle" Tamano="22" />
+            <div>
+                <h2>Cheque @chequeEmitido.Value.Numero emitido</h2>
+                <p>Q@(chequeEmitido.Value.Monto.ToString("N2")) a @chequeEmitido.Value.Proveedor · @chequeEmitido.Value.Concepto</p>
+            </div>
+        </div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="list" Tooltip="Ver las facturas y cuotas que pagó" Etiqueta="Ver detalle" OnClick="() => VerDetalleAsync(chequeEmitido.Value.BceId)" />
+            <BotonIcono Icono="plus" Tooltip="Registrar otro pago" Etiqueta="Otro pago" OnClick="() => chequeEmitido = null" />
+        </div>
+    </section>
+}
+
 <section class="tarjeta" aria-labelledby="titulo-proveedor">
-    <h2 id="titulo-proveedor">Proveedor</h2>
+    <h2 id="titulo-proveedor">1. Proveedor</h2>
     <SelectorTercero EsCliente="false" Seleccionado="proveedor" SeleccionadoChanged="CambiarProveedorAsync" />
 </section>
 
 @if (proveedor is not null)
 {
-    <section class="tarjeta" aria-labelledby="titulo-documentos">
-        <h2 id="titulo-documentos">Compras con saldo</h2>
-        <DocumentosSaldoTabla Documentos="documentos" EsCliente="false" SeleccionadoId="documento?.EncId" OnSeleccionar="SeleccionarDocumentoAsync" />
-    </section>
-}
-
-@if (documento is not null)
-{
     <section class="tarjeta" aria-labelledby="titulo-cuotas">
-        <h2 id="titulo-cuotas">Cuotas de @documento.Documento</h2>
-        <CuotasTabla EsCliente="false" CuotasProveedor="cuotas" ElegidaId="cuota?.PpgId" OnElegir="ElegirCuota" />
-    </section>
-}
-
-@if (cuota is not null)
-{
-    <section class="tarjeta" aria-labelledby="titulo-pago">
-        <h2 id="titulo-pago">Pagar cuota @cuota.PpgNroPago (saldo Q@(cuota.Saldo.ToString("N2")))</h2>
-        @if (chequeras.Count == 0)
+        <h2 id="titulo-cuotas">2. Cuotas a pagar</h2>
+        @if (cuotas.Count == 0)
         {
-            <p class="mensaje-error" role="alert">No hay chequeras activas. Registre una chequera para la cuenta bancaria antes de pagar.</p>
+            <p class="estado-vacio">El proveedor no tiene cuotas pendientes.</p>
         }
-        <div class="panel-formulario panel-ancho">
-            <div class="campo">
-                <label for="pag-chequera">Chequera</label>
-                <select id="pag-chequera" value="@cbcId" @onchange="CambiarChequera">
-                    @foreach (var c in chequeras)
+        else
+        {
+            <div class="panel-formulario panel-ancho">
+                <div class="campo">
+                    <label for="pag-factura">Pagar</label>
+                    <select id="pag-factura" value="@(encFiltro?.ToString() ?? "")" @onchange="CambiarFiltro">
+                        <option value="">Todo el saldo del proveedor (@Facturas.Count factura@(Facturas.Count == 1 ? "" : "s"))</option>
+                        @foreach (var f in Facturas)
+                        {
+                            <option value="@f.EncId">Solo @f.Documento — saldo Q@(f.Saldo.ToString("N2"))</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="cobro-aplicacion">
+                <div class="campo">
+                    <label for="pag-monto">Monto del cheque</label>
+                    <input id="pag-monto" type="number" step="0.01" min="0" @bind="montoCheque" />
+                </div>
+                <BotonIcono Icono="check-check" Tooltip="Aplicar el monto a las cuotas más antiguas" Etiqueta="Aplicar a las más antiguas" OnClick="AplicarAntiguas" />
+                <BotonIcono Icono="wallet" Tooltip="@(encFiltro is null ? "Pagar todo el saldo del proveedor" : "Pagar la factura completa")" Etiqueta="@(encFiltro is null ? "Todo el saldo" : "Factura completa")" OnClick="MarcarTodo" />
+                <BotonIcono Icono="alert-triangle" Tooltip="Marcar todo lo vencido" Etiqueta="Todo lo vencido" OnClick="MarcarVencidas" />
+                <button type="button" class="boton-texto" @onclick="Limpiar">Limpiar</button>
+                <div class="cobro-resumen">
+                    <span>Vencido <strong>Q@(Visibles.Where(c => c.Dias > 0).Sum(c => c.Saldo).ToString("N2"))</strong></span>
+                    <span>Saldo @(encFiltro is null ? "total" : "de la factura") <strong>Q@(Visibles.Sum(c => c.Saldo).ToString("N2"))</strong></span>
+                </div>
+            </div>
+
+            <table class="tabla-datos tabla-cuotas-cobro">
+                <thead>
+                    <tr>
+                        <th class="col-check"><span class="sr-only">Pagar</span></th>
+                        <th>Documento</th><th class="num">Cuota</th><th class="col-fecha">Vence</th><th>Situación</th>
+                        <th class="num">Valor cuota</th><th class="num">Saldo</th><th class="num col-aplicar">A pagar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Visibles)
                     {
-                        <option value="@c.CbcId">@c.Descripcion</option>
+                        var marcada = aplicar.ContainsKey(c.PpgId);
+                        <tr class="@(marcada ? "fila-seleccionada" : "")">
+                            <td class="col-check"><input type="checkbox" checked="@marcada" aria-label="@($"Pagar cuota {c.Cuota} de {c.Documento}")" @onchange="e => Alternar(c, (bool)(e.Value ?? false))" /></td>
+                            <td>@c.Documento</td>
+                            <td class="num">@c.Cuota</td>
+                            <td class="col-fecha">@c.Vencimiento.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                @if (c.Dias > 0)
+                                {
+                                    <span class="estado-badge estado-badge-anulada">Vencida hace @c.Dias d</span>
+                                }
+                                else if (c.Dias == 0)
+                                {
+                                    <span class="estado-badge estado-badge-pendiente">Vence hoy</span>
+                                }
+                                else
+                                {
+                                    <span class="texto-tenue">En @(-c.Dias) d</span>
+                                }
+                            </td>
+                            <td class="num">@c.ValorCuota.ToString("N2")</td>
+                            <td class="num">@c.Saldo.ToString("N2")</td>
+                            <td class="num col-aplicar">
+                                @if (marcada)
+                                {
+                                    <input type="number" step="0.01" min="0" max="@c.Saldo" aria-label="@($"Monto a pagar de la cuota {c.Cuota} de {c.Documento}")"
+                                           value="@aplicar[c.PpgId]" @onchange="e => CambiarMonto(c, e.Value)" />
+                                }
+                                else
+                                {
+                                    <span class="texto-tenue">—</span>
+                                }
+                            </td>
+                        </tr>
                     }
-                </select>
-            </div>
-            <div class="campo"><label for="pag-cheque">Número de cheque</label><input id="pag-cheque" @bind="numeroCheque" maxlength="16" inputmode="numeric" /></div>
-            <div class="campo">
-                <label for="pag-monto">Monto</label>
-                <input id="pag-monto" type="number" step="0.01" min="0" @bind="monto" />
-                <small class="texto-ayuda">Puede ser un abono parcial; no puede pasar del saldo de la cuota.</small>
-            </div>
-            <div class="campo">
-                <label for="pag-motivo">Motivo</label>
-                <select id="pag-motivo" @bind="bmpId">
-                    <option value="0">(Sin motivo)</option>
-                    @foreach (var m in motivos)
-                    {
-                        <option value="@m.BmpId">@m.BmpDescripcion</option>
-                    }
-                </select>
-            </div>
-            <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Emitir cheque" Etiqueta="Emitir cheque" Variante="primario" Deshabilitado="chequeras.Count == 0" OnClick="PagarAsync" />
-                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => cuota = null" />
-            </div>
-        </div>
+                </tbody>
+                <tfoot>
+                    <tr><td colspan="7">Total del cheque (@aplicar.Count cuota@(aplicar.Count == 1 ? "" : "s") de @FacturasMarcadas.Count factura@(FacturasMarcadas.Count == 1 ? "" : "s"))</td><td class="num"><strong>Q@(TotalCheque.ToString("N2"))</strong></td></tr>
+                </tfoot>
+            </table>
+        }
     </section>
+
+    @if (aplicar.Count > 0)
+    {
+        <section class="tarjeta" aria-labelledby="titulo-cheque">
+            <h2 id="titulo-cheque">3. Cheque</h2>
+            @if (chequeras.Count == 0)
+            {
+                <p class="mensaje-error" role="alert">No hay chequeras activas. Registre una chequera para la cuenta bancaria antes de pagar.</p>
+            }
+            <div class="panel-formulario panel-ancho">
+                <div class="campo">
+                    <label for="pag-chequera">Chequera</label>
+                    <select id="pag-chequera" value="@cbcId" @onchange="CambiarChequera">
+                        @foreach (var c in chequeras)
+                        {
+                            <option value="@c.CbcId">@c.Descripcion</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="pag-cheque">Número de cheque</label>
+                    <input id="pag-cheque" @bind="numeroCheque" maxlength="16" inputmode="numeric" />
+                    <small class="texto-ayuda">Vacío = el siguiente de la chequera.</small>
+                </div>
+                <div class="campo">
+                    <label for="pag-motivo">Motivo</label>
+                    <select id="pag-motivo" @bind="bmpId">
+                        <option value="0">(Sin motivo)</option>
+                        @foreach (var m in motivos)
+                        {
+                            <option value="@m.BmpId">@m.BmpDescripcion</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo campo-ancho">
+                    <label for="pag-concepto">Concepto</label>
+                    <input id="pag-concepto" maxlength="250" value="@concepto" @oninput="e => { concepto = e.Value?.ToString() ?? string.Empty; conceptoEditado = true; }" />
+                    <small class="texto-ayuda">
+                        Se arma con las facturas que paga; puede editarlo.
+                        @if (conceptoEditado)
+                        {
+                            <button type="button" class="boton-texto" @onclick="RestablecerConcepto">Volver al automático</button>
+                        }
+                    </small>
+                </div>
+            </div>
+            <p class="texto-tenue">
+                A nombre de <strong>@proveedor.Nombre</strong> por <strong>Q@(TotalCheque.ToString("N2"))</strong>:
+                @string.Join("; ", FacturasMarcadas.Select(f => $"{f.Documento} Q{f.Monto:N2}")).
+            </p>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Emitir el cheque" Etiqueta="@($"Emitir cheque Q{TotalCheque:N2}")" Variante="primario"
+                            Deshabilitado="chequeras.Count == 0 || guardando" OnClick="EmitirAsync" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="Limpiar" />
+            </div>
+        </section>
+    }
 }
 
 <section class="tarjeta" aria-labelledby="titulo-cheques">
@@ -94,7 +205,7 @@
     {
         <table class="tabla-datos">
             <thead>
-                <tr><th class="col-fecha">Fecha</th><th class="col-codigo">Cheque</th><th>Cuenta</th><th>Proveedor</th><th>Documento</th><th class="num">Valor</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+                <tr><th class="col-fecha">Fecha</th><th class="col-codigo">Cheque</th><th>Cuenta</th><th>Proveedor</th><th>Documentos</th><th class="num">Valor</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
             </thead>
             <tbody>
                 @foreach (var c in cheques)
@@ -104,20 +215,55 @@
                         <td class="col-codigo">@c.Numero</td>
                         <td>@c.Cuenta</td>
                         <td>@c.Proveedor</td>
-                        <td>@c.Documento</td>
+                        <td>
+                            @c.Documento
+                            @if (!string.IsNullOrWhiteSpace(c.Observaciones))
+                            {
+                                <br /><small class="texto-tenue">@c.Observaciones</small>
+                            }
+                        </td>
                         <td class="num">@c.Valor.ToString("N2")</td>
                         <td class="col-estado">
                             <span class="estado-badge @(c.EstadoCheque == "A" ? "estado-badge-inactivo" : "estado-badge-activo")" title="@c.Observaciones">@c.EstadoTexto</span>
                         </td>
                         <td class="col-acciones">
-                            @if (c.EstadoCheque == "E")
-                            {
-                                <div class="acciones-fila">
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="list" Tooltip="@(detalleBceId == c.BceId ? "Ocultar detalle" : "Ver facturas y cuotas pagadas")" OnClick="() => VerDetalleAsync(c.BceId)" />
+                                @if (c.EstadoCheque == "E")
+                                {
                                     <BotonIcono Icono="ban" Tooltip="Anular cheque" Variante="peligro" OnClick="() => IniciarAnulacion(c)" />
-                                </div>
-                            }
+                                }
+                            </div>
                         </td>
                     </tr>
+                    @if (detalleBceId == c.BceId)
+                    {
+                        <tr class="fila-detalle-cheque">
+                            <td colspan="8">
+                                <table class="tabla-datos tabla-detalle-cheque">
+                                    <thead>
+                                        <tr><th>Documento</th><th class="num">Cuota</th><th class="col-fecha">Vencía</th><th class="num">Valor cuota</th><th class="num">Pagado con el cheque</th><th>Aplicación</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var d in detalle)
+                                        {
+                                            <tr>
+                                                <td>@d.Documento</td>
+                                                <td class="num">@(d.Cuota?.ToString() ?? "—")</td>
+                                                <td class="col-fecha">@(d.Vencimiento?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                                <td class="num">@(d.ValorCuota?.ToString("N2") ?? "—")</td>
+                                                <td class="num">@d.Monto.ToString("N2")</td>
+                                                <td>@d.Aplicacion</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                    <tfoot>
+                                        <tr><td colspan="4">Total</td><td class="num"><strong>@detalle.Sum(d => d.Monto).ToString("N2")</strong></td><td></td></tr>
+                                    </tfoot>
+                                </table>
+                            </td>
+                        </tr>
+                    }
                     @if (anulando?.BceId == c.BceId)
                     {
                         <tr class="fila-edicion-tabla">
@@ -128,7 +274,7 @@
                                     <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Anular cheque" Variante="peligro"
                                                 Deshabilitado="motivoAnulacion.Trim().Length < 5 || guardando" OnClick="AnularAsync" />
                                     <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => anulando = null" />
-                                    <small class="texto-ayuda">El saldo vuelve a la cuota de la compra y la póliza del pago se anula. El número de cheque queda usado.</small>
+                                    <small class="texto-ayuda">El saldo vuelve a cada cuota que pagó el cheque y la póliza del pago se anula. El número de cheque queda usado.</small>
                                 </div>
                             </td>
                         </tr>
@@ -143,26 +289,55 @@
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
+    // Desde el estado de cuenta, la antigüedad, las compras o el tablero:
+    // prv = proveedor; enc = una compra (se marca completa); todo=1 = todo el saldo.
+    [SupplyParameterFromQuery(Name = "prv")] public int? PrvId { get; set; }
+    [SupplyParameterFromQuery(Name = "enc")] public int? EncId { get; set; }
+    [SupplyParameterFromQuery(Name = "todo")] public int? Todo { get; set; }
+
+    private sealed record FacturaSaldo(int EncId, string Documento, string Numero, decimal Saldo);
+    private sealed record FacturaMarcada(int EncId, string Documento, string Numero, decimal Monto);
+
     private TerceroSeleccion? proveedor;
-    private IReadOnlyList<DocumentoSaldo> documentos = Array.Empty<DocumentoSaldo>();
-    private DocumentoSaldo? documento;
-    private IReadOnlyList<CuotaProveedor> cuotas = Array.Empty<CuotaProveedor>();
-    private CuotaProveedor? cuota;
+    private IReadOnlyList<CuotaPendienteProveedor> cuotas = Array.Empty<CuotaPendienteProveedor>();
+    private int? encFiltro;
+    // Cuotas marcadas y el monto que se les paga.
+    private readonly Dictionary<int, decimal> aplicar = new();
+    private decimal montoCheque;
 
     private IReadOnlyList<Chequera> chequeras = Array.Empty<Chequera>();
     private IReadOnlyList<MotivoPago> motivos = Array.Empty<MotivoPago>();
     private int cbcId;
     private string numeroCheque = "";
-    private decimal monto;
     private int bmpId;
+    private string concepto = "";
+    private bool conceptoEditado;
 
     private IReadOnlyList<ChequeResumen> cheques = Array.Empty<ChequeResumen>();
+    private int? detalleBceId;
+    private IReadOnlyList<ChequeDetalleLinea> detalle = Array.Empty<ChequeDetalleLinea>();
     private ChequeResumen? anulando;
     private string motivoAnulacion = "";
     private bool guardando;
+    private (int BceId, string Numero, decimal Monto, string Proveedor, string Concepto)? chequeEmitido;
 
     private string? mensaje;
     private bool esMensajeError;
+
+    private IEnumerable<CuotaPendienteProveedor> Visibles => encFiltro is null ? cuotas : cuotas.Where(c => c.EncId == encFiltro);
+    private decimal TotalCheque => aplicar.Values.Sum();
+
+    private List<FacturaSaldo> Facturas => cuotas.GroupBy(c => c.EncId)
+        .Select(g => new FacturaSaldo(g.Key, g.First().Documento, g.First().NumeroDocumento, g.Sum(c => c.Saldo)))
+        .ToList();
+
+    // Facturas que paga el cheque, de la más antigua a la más reciente.
+    private List<FacturaMarcada> FacturasMarcadas => cuotas.Where(c => aplicar.ContainsKey(c.PpgId))
+        .GroupBy(c => c.EncId)
+        .Select(g => new { Primera = g.First(), Monto = g.Sum(c => aplicar[c.PpgId]) })
+        .OrderBy(x => x.Primera.FechaDocumento).ThenBy(x => x.Primera.EncId)
+        .Select(x => new FacturaMarcada(x.Primera.EncId, x.Primera.Documento, x.Primera.NumeroDocumento, x.Monto))
+        .ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -171,11 +346,31 @@
             chequeras = await CuentasRepository.ConsultarChequerasAsync();
             motivos = await CuentasRepository.ConsultarMotivosPagoAsync();
             cbcId = chequeras.FirstOrDefault()?.CbcId ?? 0;
+            numeroCheque = SiguienteNumero();
             bmpId = motivos.FirstOrDefault(m => m.BmpDescripcion.Contains("proveedor", StringComparison.OrdinalIgnoreCase))?.BmpId ?? 0;
+
+            if (PrvId is > 0)
+            {
+                var elegido = await ProveedorRepository.ConsultarPorIdAsync(PrvId.Value);
+                if (elegido is not null)
+                {
+                    await CambiarProveedorAsync(new TerceroSeleccion(elegido.PrvId, elegido.PrvCodigo, elegido.PrvNombreComercial));
+                    if (EncId is > 0 && cuotas.Any(c => c.EncId == EncId))
+                    {
+                        encFiltro = EncId;
+                        MarcarTodo();
+                    }
+                    else if (Todo == 1) MarcarTodo();
+                    return;
+                }
+            }
             await CargarChequesAsync();
         }
         catch (Exception ex) { MostrarError(ex); }
     }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
 
     private void MostrarError(Exception ex)
     {
@@ -183,20 +378,34 @@
         esMensajeError = true;
     }
 
+    private void MostrarAviso(string texto)
+    {
+        mensaje = texto;
+        esMensajeError = true;
+    }
+
+    private string SiguienteNumero() => chequeras.FirstOrDefault(c => c.CbcId == cbcId)?.SiguienteNumero?.ToString() ?? "";
+
     private void CambiarChequera(ChangeEventArgs e)
     {
         cbcId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
-        numeroCheque = chequeras.FirstOrDefault(c => c.CbcId == cbcId)?.SiguienteNumero?.ToString() ?? "";
+        numeroCheque = SiguienteNumero();
     }
 
     private async Task CambiarProveedorAsync(TerceroSeleccion? nuevo)
     {
         proveedor = nuevo;
-        documento = null;
-        cuota = null;
-        documentos = Array.Empty<DocumentoSaldo>();
-        if (proveedor is not null) await CargarDocumentosAsync();
+        encFiltro = null;
+        Limpiar();
+        cuotas = Array.Empty<CuotaPendienteProveedor>();
+        if (proveedor is not null) await CargarCuotasAsync();
         await CargarChequesAsync();
+    }
+
+    private async Task CargarCuotasAsync()
+    {
+        try { cuotas = await CuentasRepository.ConsultarCuotasPendientesProveedorAsync(proveedor!.Id, null); }
+        catch (Exception ex) { MostrarError(ex); }
     }
 
     // Sin proveedor elegido, los cheques de los últimos 30 días.
@@ -207,6 +416,143 @@
             cheques = proveedor is null
                 ? await CuentasRepository.ConsultarChequesAsync(null, DateTime.Today.AddDays(-30), null)
                 : await CuentasRepository.ConsultarChequesAsync(proveedor.Id, null, null);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void CambiarFiltro(ChangeEventArgs e)
+    {
+        encFiltro = int.TryParse(e.Value?.ToString(), out var id) ? id : null;
+        Limpiar();
+    }
+
+    private void Limpiar()
+    {
+        aplicar.Clear();
+        montoCheque = 0;
+        conceptoEditado = false;
+        concepto = "";
+        mensaje = null;
+    }
+
+    private void Actualizar()
+    {
+        montoCheque = TotalCheque;
+        if (!conceptoEditado) concepto = ConceptoAutomatico();
+        mensaje = null;
+    }
+
+    private string ConceptoAutomatico()
+    {
+        var facturas = FacturasMarcadas;
+        if (facturas.Count == 0) return "";
+        var texto = (facturas.Count == 1 ? "Pago factura " : "Pago facturas ") + string.Join(", ", facturas.Select(f => f.Numero));
+        return texto.Length <= 250 ? texto : texto[..247] + "...";
+    }
+
+    private void RestablecerConcepto()
+    {
+        conceptoEditado = false;
+        concepto = ConceptoAutomatico();
+    }
+
+    // Reparte el monto del cheque de la cuota más antigua a la más reciente.
+    private void AplicarAntiguas()
+    {
+        if (montoCheque <= 0)
+        {
+            MostrarAviso("Indique el monto del cheque.");
+            return;
+        }
+        var saldo = Visibles.Sum(c => c.Saldo);
+        if (montoCheque > saldo)
+        {
+            MostrarAviso($"El monto del cheque (Q{montoCheque:N2}) supera el saldo {(encFiltro is null ? "del proveedor" : "de la factura")} (Q{saldo:N2}).");
+            return;
+        }
+        aplicar.Clear();
+        var restante = montoCheque;
+        foreach (var c in Visibles)
+        {
+            if (restante <= 0) break;
+            var monto = Math.Min(restante, c.Saldo);
+            aplicar[c.PpgId] = monto;
+            restante -= monto;
+        }
+        Actualizar();
+    }
+
+    private void MarcarTodo()
+    {
+        aplicar.Clear();
+        foreach (var c in Visibles) aplicar[c.PpgId] = c.Saldo;
+        Actualizar();
+    }
+
+    private void MarcarVencidas()
+    {
+        aplicar.Clear();
+        foreach (var c in Visibles.Where(c => c.Dias > 0)) aplicar[c.PpgId] = c.Saldo;
+        Actualizar();
+        if (aplicar.Count == 0) MostrarAviso(encFiltro is null ? "El proveedor no tiene cuotas vencidas." : "La factura no tiene cuotas vencidas.");
+    }
+
+    private void Alternar(CuotaPendienteProveedor c, bool marcada)
+    {
+        if (marcada) aplicar[c.PpgId] = c.Saldo;
+        else aplicar.Remove(c.PpgId);
+        Actualizar();
+    }
+
+    private void CambiarMonto(CuotaPendienteProveedor c, object? valor)
+    {
+        if (!decimal.TryParse(valor?.ToString(), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var monto))
+            return;
+        aplicar[c.PpgId] = Math.Round(monto, 2);
+        Actualizar();
+    }
+
+    private async Task EmitirAsync()
+    {
+        if (proveedor is null || aplicar.Count == 0) return;
+        var excedida = cuotas.FirstOrDefault(c => aplicar.TryGetValue(c.PpgId, out var m) && (m <= 0 || m > c.Saldo));
+        if (excedida is not null)
+        {
+            MostrarAviso($"El monto de la cuota {excedida.Cuota} de {excedida.Documento} debe ser mayor a cero y no pasar de su saldo (Q{excedida.Saldo:N2}).");
+            return;
+        }
+        guardando = true;
+        try
+        {
+            var total = TotalCheque;
+            var textoConcepto = string.IsNullOrWhiteSpace(concepto) ? ConceptoAutomatico() : concepto.Trim();
+            var pago = aplicar.Select(a => new CuotaPagoProveedor(a.Key, a.Value)).ToList();
+            var (bceId, numero) = await CuentasRepository.EmitirChequeAsync(proveedor.Id, cbcId,
+                string.IsNullOrWhiteSpace(numeroCheque) ? null : numeroCheque.Trim(), bmpId == 0 ? null : bmpId, textoConcepto, pago,
+                await ObtenerUsuIdActualAsync());
+            chequeEmitido = (bceId, numero, total, proveedor.Nombre, textoConcepto);
+            encFiltro = null;
+            Limpiar();
+            chequeras = await CuentasRepository.ConsultarChequerasAsync();
+            numeroCheque = SiguienteNumero();
+            await CargarCuotasAsync();
+            await CargarChequesAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task VerDetalleAsync(int bceId)
+    {
+        if (detalleBceId == bceId)
+        {
+            detalleBceId = null;
+            return;
+        }
+        try
+        {
+            detalle = await CuentasRepository.ConsultarChequeDetalleAsync(bceId);
+            detalleBceId = bceId;
         }
         catch (Exception ex) { MostrarError(ex); }
     }
@@ -225,65 +571,20 @@
         try
         {
             var numero = anulando.Numero;
-            var usuId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
-            await CuentasRepository.AnularChequeAsync(anulando.BceId, motivoAnulacion.Trim(), usuId);
-            mensaje = $"Cheque {numero} anulado. El saldo volvió a la cuota de la compra.";
+            await CuentasRepository.AnularChequeAsync(anulando.BceId, motivoAnulacion.Trim(), await ObtenerUsuIdActualAsync());
+            mensaje = $"Cheque {numero} anulado. El saldo volvió a las cuotas que pagó.";
             esMensajeError = false;
             anulando = null;
+            detalleBceId = null;
+            if (chequeEmitido?.Numero == numero) chequeEmitido = null;
             await CargarChequesAsync();
-            if (proveedor is not null) await CargarDocumentosAsync();
-            documento = documentos.FirstOrDefault(d => d.EncId == documento?.EncId);
-            cuotas = documento is null ? Array.Empty<CuotaProveedor>() : await CuentasRepository.ConsultarCuotasProveedorAsync(documento.EncId);
+            if (proveedor is not null)
+            {
+                aplicar.Clear();
+                await CargarCuotasAsync();
+            }
         }
         catch (Exception ex) { MostrarError(ex); }
         finally { guardando = false; }
-    }
-
-    private async Task CargarDocumentosAsync()
-    {
-        try { documentos = await CuentasRepository.ConsultarDocumentosCxpAsync(proveedor!.Id, soloPendientes: true); }
-        catch (Exception ex) { MostrarError(ex); }
-    }
-
-    private async Task SeleccionarDocumentoAsync(DocumentoSaldo d)
-    {
-        documento = d;
-        cuota = null;
-        try { cuotas = await CuentasRepository.ConsultarCuotasProveedorAsync(d.EncId); }
-        catch (Exception ex) { MostrarError(ex); }
-    }
-
-    private void ElegirCuota(int ppgId)
-    {
-        cuota = cuotas.FirstOrDefault(c => c.PpgId == ppgId);
-        if (cuota is null) return;
-        monto = cuota.Saldo;
-        numeroCheque = chequeras.FirstOrDefault(c => c.CbcId == cbcId)?.SiguienteNumero?.ToString() ?? "";
-        mensaje = null;
-    }
-
-    private async Task PagarAsync()
-    {
-        if (cuota is null) return;
-        if (string.IsNullOrWhiteSpace(numeroCheque) || monto <= 0 || monto > cuota.Saldo)
-        {
-            mensaje = $"Indique el número de cheque y un monto mayor a cero que no pase del saldo (Q{cuota.Saldo:N2}).";
-            esMensajeError = true;
-            return;
-        }
-        try
-        {
-            var usuId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
-            await CuentasRepository.EmitirChequeAsync(cuota.PpgId, cbcId, numeroCheque.Trim(), monto, bmpId == 0 ? null : bmpId, usuId);
-            mensaje = $"Cheque {numeroCheque} emitido por Q{monto:N2}.";
-            esMensajeError = false;
-            cuota = null;
-            chequeras = await CuentasRepository.ConsultarChequerasAsync();
-            await CargarDocumentosAsync();
-            documento = documentos.FirstOrDefault(d => d.EncId == documento?.EncId);
-            if (documento is not null) cuotas = await CuentasRepository.ConsultarCuotasProveedorAsync(documento.EncId);
-            await CargarChequesAsync();
-        }
-        catch (Exception ex) { MostrarError(ex); }
     }
 }

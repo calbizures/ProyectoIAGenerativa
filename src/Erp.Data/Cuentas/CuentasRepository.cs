@@ -139,20 +139,37 @@ public sealed class CuentasRepository(IDbConnectionFactory connectionFactory) : 
 		return filas.ToList();
 	}
 
-	public async Task<int> EmitirChequeAsync(int ppgId, int cbcId, string numeroCheque, decimal valor, int? bmpId, int? usuarioAccionId)
+	public Task<IReadOnlyList<CuotaPendienteProveedor>> ConsultarCuotasPendientesProveedorAsync(int prvId, int? encId) =>
+		ConsultarAsync<CuotaPendienteProveedor>("dbo.paCxpCuotasPendientesConsultar", new { PrvId = prvId, EncId = encId });
+
+	// Un cheque para una o varias cuotas del proveedor (de una o varias compras).
+	public async Task<(int BceId, string Numero)> EmitirChequeAsync(int prvId, int cbcId, string? numeroCheque, int? bmpId, string? concepto,
+		IReadOnlyList<CuotaPagoProveedor> cuotas, int? usuarioAccionId)
 	{
+		var tablaCuotas = new DataTable();
+		tablaCuotas.Columns.Add("ppg_id", typeof(int));
+		tablaCuotas.Columns.Add("monto", typeof(decimal));
+		foreach (var c in cuotas) tablaCuotas.Rows.Add(c.PpgId, c.Monto);
+
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new DynamicParameters();
-		parametros.Add("@ppg_id", ppgId);
-		parametros.Add("@cbc_id", cbcId);
-		parametros.Add("@bce_numero_cheque", numeroCheque);
-		parametros.Add("@valor_pago", valor);
-		parametros.Add("@bmp_id", bmpId);
-		parametros.Add("@usu_id", usuarioAccionId);
-		parametros.Add("@bce_id", dbType: DbType.Int32, direction: ParameterDirection.Output);
-		await connection.ExecuteAsync("dbo.sp_bancos_emitir_cheque_pago_proveedor", parametros, commandType: CommandType.StoredProcedure);
-		return parametros.Get<int>("@bce_id");
+		parametros.Add("@PrvId", prvId);
+		parametros.Add("@CbcId", cbcId);
+		parametros.Add("@Numero", numeroCheque, DbType.String, ParameterDirection.Input, 16);
+		parametros.Add("@BmpId", bmpId);
+		parametros.Add("@Concepto", concepto);
+		parametros.Add("@Cuotas", tablaCuotas.AsTableValuedParameter("dbo.cxp_pago_cuota_type"));
+		parametros.Add("@UsuId", usuarioAccionId);
+		parametros.Add("@BceId", dbType: DbType.Int32, direction: ParameterDirection.Output);
+		await connection.ExecuteAsync("dbo.paCxpChequeEmitir", parametros, commandType: CommandType.StoredProcedure);
+		var bceId = parametros.Get<int>("@BceId");
+		var numero = await connection.ExecuteScalarAsync<string>(
+			"SELECT bce_numero_cheque FROM dbo.bco_cheque_emitido_enc WHERE bce_id = @BceId", new { BceId = bceId });
+		return (bceId, numero ?? numeroCheque ?? "");
 	}
+
+	public Task<IReadOnlyList<ChequeDetalleLinea>> ConsultarChequeDetalleAsync(int bceId) =>
+		ConsultarAsync<ChequeDetalleLinea>("dbo.paCxpChequeDetalleConsultar", new { BceId = bceId });
 
 	public Task<IReadOnlyList<NotaResumen>> ConsultarNotasAsync(bool esCliente, int? cliId, int? prvId, int? encIdReferencia) =>
 		ConsultarAsync<NotaResumen>("dbo.paNotaConsultar", new { EsCliente = esCliente, CliId = cliId, PrvId = prvId, EncIdReferencia = encIdReferencia });

@@ -56,26 +56,30 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 39_datos_sinteticos_inventario_saldos.sql     -- opcional: datos de prueba de inventario físico, inventario inicial y apertura
 40_logo_cuentas_bancarias_productos_proveedor.sql -- nomenclatura sin datos confidenciales, cuentas de cargos/abonos, logotipo, productos por proveedor
 41_datos_sinteticos_productos_proveedor.sql   -- opcional: productos por proveedor a partir de las compras
+42_cxp_cheque_varias_cuotas.sql               -- pago a proveedores: un cheque por una factura completa o por el saldo de varias
+43_datos_sinteticos_cxp_pagos.sql             -- opcional: compras al crédito con varias cuotas y un cheque de varias facturas
 ```
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `41` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `43` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
-no lo incluyas (ni el `30`, el `33`, el `37`, el `39` ni el `41`).
+no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41` ni el `43`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38` y `40` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40` y `42` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `41`. Si vuelves a
-correr `12`, corre después `22` a `41` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `43`. Si vuelves a
+correr `12`, corre después `22` a `43` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
-cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38` y `40`. Si
+cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
 vuelves a correr `23`, `29` o `36`, corre después el `40` (redefine el
-depósito de caja y el mantenimiento de cuentas bancarias).
+depósito de caja y el mantenimiento de cuentas bancarias). Si vuelves a
+correr `34` o `38`, corre después el `42` (redefine la consulta de cheques a
+proveedores y el tablero de compras).
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -1037,6 +1041,48 @@ relaciona sus productos con el proveedor; las relaciones reciben un código
 del proveedor de ejemplo.
 
 Errores `53601`-`53611`.
+
+## Pago a proveedores por factura o por saldo (`42`)
+
+Un solo cheque puede pagar una factura completa, varias cuotas de distintas
+compras o todo el saldo del proveedor (antes, un cheque pagaba una sola
+cuota).
+
+- `paCxpCuotasPendientesConsultar @PrvId, @EncId`: cuotas con saldo del
+  proveedor (todas sus compras o una), de la más antigua a la más reciente.
+- `paCxpChequeEmitir`: recibe las cuotas y el monto de cada una en
+  `dbo.cxp_pago_cuota_type`. Valida que sean del proveedor, que la compra
+  esté vigente y que ningún monto pase del saldo de su cuota; bloquea las
+  cuotas mientras las paga. Graba un encabezado por el total (beneficiario =
+  proveedor, concepto en `bce_observaciones`), una línea de detalle por
+  cuota (`A` abono / `C` cancelación) y una sola póliza: Debe
+  `PAGO_PROVEEDORES` con una línea por factura, Haber la cuenta de abonos de
+  la cuenta bancaria (o `PAGO_BANCOS`). Sin concepto, lo arma con las
+  facturas: *Pago facturas A-2201, A-2245*.
+- `paCxpChequeDetalleConsultar`: facturas y cuotas que pagó un cheque.
+- `paCxpChequesConsultar` devuelve una fila por cheque con los documentos
+  agrupados (*COMP A-2201 #2; COMP A-2245 #1*).
+- `paTableroCompras` (tablero de compras) devuelve la compra de cada
+  próximo pago.
+- La anulación sigue siendo `paCxpChequeAnular` (`36`): devuelve el saldo a
+  cada cuota del cheque y anula su póliza.
+
+En la aplicación, **Cuentas por pagar › Pagos a proveedores** funciona como
+los cobros a clientes: se elige pagar todo el saldo o una sola factura, se
+indica el monto del cheque y **Aplicar a las más antiguas** lo reparte (o
+**Todo el saldo** / **Factura completa**, **Todo lo vencido**, o se marcan
+las cuotas y se ajusta cada monto). El concepto se arma solo y se puede
+editar. Se llega con la compra o el proveedor ya elegidos desde el **Estado
+de cuenta** (por compra y *Pagar saldo con cheque*), la **Antigüedad de
+saldos** (por proveedor y por compra), el historial de **Compras** y los
+**Próximos pagos** del tablero de compras
+(`/cxp/pagos?prv=…&enc=…` o `&todo=1`).
+
+Datos de prueba (`43`): tres compras al crédito de *Redes y Conectividad
+GT* (PRV04) con cuotas vencidas y por vencer, y un cheque que paga la
+primera cuota de A-2201 y abona a la primera de A-2245.
+
+Errores `53701`-`53707`.
 
 ## Módulos nuevos
 

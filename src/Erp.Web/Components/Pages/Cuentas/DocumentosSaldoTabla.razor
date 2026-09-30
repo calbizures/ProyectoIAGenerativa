@@ -12,6 +12,10 @@ else
             <tr>
                 <th>@(EsCliente ? "Factura" : "Compra")</th><th>Fecha</th><th class="num">Total</th><th class="num">Pagado</th>
                 <th class="num">N. crédito</th><th class="num">N. débito</th><th class="num">Saldo</th><th>Próximo vencimiento</th><th class="num">Cuotas pendientes</th>
+                @if (UrlPagar is not null)
+                {
+                    <th class="col-acciones"><span class="sr-only">Pagar</span></th>
+                }
             </tr>
         </thead>
         <tbody>
@@ -28,6 +32,15 @@ else
                     <td class="num"><strong>@d.Saldo.ToString("N2")</strong></td>
                     <td class="@(d.ProximoVencimiento < DateTime.Today ? "antiguedad-vencido" : "")">@(d.ProximoVencimiento?.ToString("dd/MM/yyyy") ?? "—")</td>
                     <td class="num">@d.CuotasPendientes</td>
+                    @if (UrlPagar is not null)
+                    {
+                        <td class="col-acciones" @onclick:stopPropagation="true">
+                            <a class="boton-icono boton-icono-con-etiqueta" href="@UrlPagar(d)" aria-label="@($"Pagar {d.Documento} con cheque")">
+                                <Icono Nombre="banknote" Tamano="16" /><span class="boton-icono-etiqueta">Pagar</span>
+                                <span class="boton-icono-tip" role="tooltip">Pagar esta compra con cheque</span>
+                            </a>
+                        </td>
+                    }
                 </tr>
             }
         </tbody>
@@ -35,7 +48,7 @@ else
             <tr>
                 <td colspan="6">Saldo total</td>
                 <td class="num">@Documentos.Sum(d => d.Saldo).ToString("N2")</td>
-                <td colspan="2"></td>
+                <td colspan="@(UrlPagar is null ? 2 : 3)"></td>
             </tr>
         </tfoot>
     </table>
@@ -46,4 +59,6 @@ else
     [Parameter] public bool EsCliente { get; set; } = true;
     [Parameter] public int? SeleccionadoId { get; set; }
     [Parameter] public EventCallback<DocumentoSaldo> OnSeleccionar { get; set; }
+    // Enlace para pagar el documento (solo compras, en Cuentas por pagar).
+    [Parameter] public Func<DocumentoSaldo, string>? UrlPagar { get; set; }
 }

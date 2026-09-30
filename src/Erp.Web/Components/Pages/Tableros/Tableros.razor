@@ -172,7 +172,7 @@
                 else
                 {
                     <table class="tabla-datos">
-                        <thead><tr><th>Proveedor</th><th>Documento</th><th class="col-fecha">Vence</th><th class="num">Saldo</th></tr></thead>
+                        <thead><tr><th>Proveedor</th><th>Documento</th><th class="col-fecha">Vence</th><th class="num">Saldo</th><th class="col-acciones"><span class="sr-only">Pagar</span></th></tr></thead>
                         <tbody>
                             @foreach (var c in compras.Proximas)
                             {
@@ -187,6 +187,13 @@
                                         }
                                     </td>
                                     <td class="num">@c.Saldo.ToString("N2")</td>
+                                    <td class="col-acciones">
+                                        <AuthorizeView Policy="Permiso:CXP_ADMIN" Context="permisoCxp">
+                                            <a class="boton-icono" href="@(c.EncId is null ? $"cxp/pagos?prv={c.PrvId}&todo=1" : $"cxp/pagos?prv={c.PrvId}&enc={c.EncId}")" aria-label="@($"Pagar {c.Documento} con cheque")">
+                                                <Icono Nombre="banknote" Tamano="16" /><span class="boton-icono-tip" role="tooltip">Pagar con cheque</span>
+                                            </a>
+                                        </AuthorizeView>
+                                    </td>
                                 </tr>
                             }
                         </tbody>

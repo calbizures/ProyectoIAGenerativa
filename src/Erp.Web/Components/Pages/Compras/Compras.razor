@@ -12,6 +12,7 @@
 @inject IBodegaRepository BodegaRepository
 @inject IProveedorRepository ProveedorRepository
 @inject IProductoProveedorRepository ProductoProveedorRepository
+@inject Erp.Data.Cuentas.ICuentasRepository CuentasRepository
 
 <PageTitle>Compras</PageTitle>
 
@@ -324,6 +325,14 @@
                     <td class="col-acciones">
                         <div class="acciones-fila">
                             <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarCompraAsync(c)" />
+                            @if (c.EncEstado == "G" && c.PrvId is not null && saldos.TryGetValue(c.EncId, out var saldo))
+                            {
+                                <AuthorizeView Policy="Permiso:CXP_ADMIN" Context="permisoCxp">
+                                    <a class="boton-icono" href="@($"cxp/pagos?prv={c.PrvId}&enc={c.EncId}")" aria-label="@($"Pagar la compra con cheque, saldo Q{saldo:N2}")">
+                                        <Icono Nombre="banknote" Tamano="16" /><span class="boton-icono-tip" role="tooltip">Pagar con cheque (saldo Q@(saldo.ToString("N2")))</span>
+                                    </a>
+                                </AuthorizeView>
+                            }
                             @if (c.EncEstado == "G")
                             {
                                 <BotonIcono Icono="ban" Tooltip="Anular compra" Variante="peligro" OnClick="() => { anulandoId = c.EncId; mensaje = null; }" />
@@ -456,6 +465,8 @@
         ? Math.Round((Total - nuevaCompra.MontoEnganche) / nuevaCompra.NumeroCuotas, 2)
         : 0;
 
+    private Dictionary<int, decimal> saldos = new();
+
     protected override async Task OnInitializedAsync()
     {
         tiposDocumento = await CompraRepository.ConsultarTiposDocumentoAsync();
@@ -490,6 +501,9 @@
             string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado,
             pagina: 1, tamanioPagina: 500);
         pagina = 1;
+        // Compras con saldo por pagar: se pueden pagar con cheque desde el historial.
+        try { saldos = (await CuentasRepository.ConsultarDocumentosCxpAsync(null, soloPendientes: true)).ToDictionary(d => d.EncId, d => d.Saldo); }
+        catch { saldos = new(); }
     }
 
     private Task MostrarNuevaCompraAsync()
