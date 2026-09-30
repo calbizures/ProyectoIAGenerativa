@@ -8,6 +8,10 @@ public interface IFelRepository
 	Task<(FelDocumentoDetalle? Detalle, IReadOnlyList<FelBitacora> Bitacora)> ConsultarDetalleAsync(int encId);
 
 	Task<FelConfiguracion?> ConsultarConfiguracionAsync(int ciaId);
+	// Certificadores y su servicio de consulta de NIT.
+	Task<IReadOnlyList<FelCertificador>> ConsultarCertificadoresAsync();
+	Task<FelConsultaNitConfiguracion?> ConsultarConsultaNitAsync(int ciaId);
+	Task GuardarConsultaNitAsync(int ciaId, bool activa, string? urlPropia, int? usuarioAccionId);
 	Task GuardarConfiguracionAsync(FelConfiguracion configuracion, int? usuarioAccionId);
 	Task<IReadOnlyList<FelFrase>> ConsultarFrasesAsync(int ciaId);
 	Task GuardarFraseAsync(FelFrase frase, int? usuarioAccionId);

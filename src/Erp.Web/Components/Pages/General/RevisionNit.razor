@@ -1,0 +1,87 @@
+@page "/general/revision-nit"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:GENERAL_NIT_REVISION,GENERAL_CONFIG_ADMIN")]
+@using Erp.Data.General
+@inject IGeneralRepository GeneralRepository
+
+<PageTitle>Revisión de NIT</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Revisión de NIT</h1>
+    <p>Registros grabados antes de la validación del NIT (módulo 11) y del CUI/DPI que no la cumplen. Se pueden seguir usando, pero al editarlos la pantalla pide corregir el dato. C/F y los clientes del extranjero no se revisan.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="mensaje-error" role="alert">@mensaje</p>
+}
+
+<div class="barra-herramientas">
+    <select @bind="filtroTipo" aria-label="Tipo de registro">
+        <option value="">Todos (@registros.Count)</option>
+        @foreach (var g in registros.GroupBy(r => r.Tipo).OrderBy(g => g.Key))
+        {
+            <option value="@g.Key">@g.Key (@g.Count())</option>
+        }
+    </select>
+    <input placeholder="Buscar por código, nombre o valor" aria-label="Buscar" @bind="texto" @bind:event="oninput" />
+    <span class="barra-herramientas-separador"></span>
+    <BotonIcono Icono="refresh-cw" Tooltip="Volver a revisar" Etiqueta="Actualizar" OnClick="CargarAsync" />
+</div>
+
+@if (cargando)
+{
+    <p class="estado-vacio">Revisando…</p>
+}
+else if (registros.Count == 0)
+{
+    <p class="estado-vacio mensaje-ok">Todos los NIT y DPI grabados son válidos.</p>
+}
+else
+{
+    <table class="tabla-datos">
+        <thead><tr><th class="col-estado">Tipo</th><th class="col-codigo">Código</th><th>Nombre</th><th class="col-estado">Dato</th><th class="col-codigo">Valor grabado</th><th class="col-acciones">Corregir</th></tr></thead>
+        <tbody>
+            @foreach (var r in Visibles)
+            {
+                <tr>
+                    <td class="col-estado">@r.Tipo</td>
+                    <td class="col-codigo">@r.Codigo</td>
+                    <td>@r.Nombre</td>
+                    <td class="col-estado">@r.Dato</td>
+                    <td class="col-codigo"><span class="texto-error">@(string.IsNullOrWhiteSpace(r.Valor) ? "(vacío)" : r.Valor)</span></td>
+                    <td class="col-acciones">
+                        <a class="boton-icono" href="@r.Pantalla.TrimStart('/')" aria-label="@($"Abrir {r.Tipo.ToLowerInvariant()} {r.Codigo} para corregir el {r.Dato}")">
+                            <Icono Nombre="pencil" Tamano="16" /><span class="boton-icono-tip" role="tooltip">Abrir @r.Tipo.ToLowerInvariant() (código @r.Codigo)</span>
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<NitRevision> registros = Array.Empty<NitRevision>();
+    private string filtroTipo = "";
+    private string texto = "";
+    private bool cargando = true;
+    private string? mensaje;
+
+    private IEnumerable<NitRevision> Visibles => registros.Where(r =>
+        (filtroTipo.Length == 0 || r.Tipo == filtroTipo)
+        && (texto.Length == 0 || r.Codigo.Contains(texto, StringComparison.OrdinalIgnoreCase)
+            || r.Nombre.Contains(texto, StringComparison.OrdinalIgnoreCase)
+            || (r.Valor ?? "").Contains(texto, StringComparison.OrdinalIgnoreCase)));
+
+    protected override Task OnInitializedAsync() => CargarAsync();
+
+    private async Task CargarAsync()
+    {
+        cargando = true;
+        mensaje = null;
+        try { registros = await GeneralRepository.ConsultarNitRevisionAsync(); }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+        finally { cargando = false; }
+    }
+}

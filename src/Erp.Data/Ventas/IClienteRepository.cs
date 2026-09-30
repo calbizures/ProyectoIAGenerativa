@@ -8,4 +8,8 @@ public interface IClienteRepository
 	Task<IReadOnlyList<Cliente>> ConsultarAsync(string? texto, string? estado);
 	Task<Cliente?> ConsultarPorIdAsync(int cliId);
 	Task<IReadOnlyList<FacturaCliente>> ConsultarFacturasAsync(int cliId);
+	// Cliente por NIT (normalizado: sin guiones ni espacios; C/F = CF).
+	Task<Cliente?> BuscarPorNitAsync(string nit);
+	// Devuelve el cliente con ese NIT o lo registra con el nombre dado.
+	Task<(int CliId, bool Nuevo)> RegistrarPorNitAsync(string nit, string? nombre, string? direccion, int? usuarioAccionId);
 }

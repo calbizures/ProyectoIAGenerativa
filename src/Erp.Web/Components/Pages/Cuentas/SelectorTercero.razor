@@ -3,6 +3,8 @@
 @using Erp.Data.Ventas
 @inject IClienteRepository ClienteRepository
 @inject IProveedorRepository ProveedorRepository
+@inject Erp.Data.Cuentas.ICuentasRepository CuentasRepository
+@using Erp.Data.Cuentas
 
 @if (Seleccionado is not null)
 {
@@ -45,10 +47,20 @@ else if (EsCliente)
 else
 {
     <select aria-label="Proveedor" value="0" @onchange="ElegirProveedorAsync">
-        <option value="0">Seleccione el proveedor...</option>
-        @foreach (var p in proveedores)
+        <option value="0">@(SoloConSaldo ? (conSaldo.Count == 0 ? "Ningún proveedor tiene saldo pendiente" : $"Seleccione el proveedor ({conSaldo.Count} con saldo)...") : "Seleccione el proveedor...")</option>
+        @if (SoloConSaldo)
         {
-            <option value="@p.PrvId">@p.PrvCodigo - @p.PrvNombreComercial</option>
+            @foreach (var p in conSaldo)
+            {
+                <option value="@p.PrvId">@p.Codigo - @p.Nombre · saldo Q@(p.Saldo.ToString("N2"))@(p.Vencido > 0 ? $" (vencido Q{p.Vencido:N2})" : "")</option>
+            }
+        }
+        else
+        {
+            @foreach (var p in proveedores)
+            {
+                <option value="@p.PrvId">@p.PrvCodigo - @p.PrvNombreComercial</option>
+            }
         }
     </select>
 }
@@ -58,16 +70,20 @@ else
     [Parameter] public TerceroSeleccion? Seleccionado { get; set; }
     [Parameter] public EventCallback<TerceroSeleccion?> SeleccionadoChanged { get; set; }
     [Parameter] public bool PermiteCambiar { get; set; } = true;
+    // Proveedores: solo los que tienen cuotas pendientes (con su saldo).
+    [Parameter] public bool SoloConSaldo { get; set; }
 
     private string texto = "";
     private bool sinResultados;
     private IReadOnlyList<Cliente> clientes = Array.Empty<Cliente>();
     private IReadOnlyList<Proveedor> proveedores = Array.Empty<Proveedor>();
+    private IReadOnlyList<ProveedorConSaldo> conSaldo = Array.Empty<ProveedorConSaldo>();
 
     protected override async Task OnInitializedAsync()
     {
-        if (!EsCliente)
-            proveedores = await ProveedorRepository.ConsultarAsync(null, "A");
+        if (EsCliente) return;
+        if (SoloConSaldo) conSaldo = await CuentasRepository.ConsultarProveedoresConSaldoAsync();
+        else proveedores = await ProveedorRepository.ConsultarAsync(null, "A");
     }
 
     private async Task BuscarAsync()
@@ -79,6 +95,12 @@ else
     private async Task ElegirProveedorAsync(ChangeEventArgs e)
     {
         if (!int.TryParse(e.Value?.ToString(), out var id) || id == 0) return;
+        if (SoloConSaldo)
+        {
+            var s = conSaldo.First(x => x.PrvId == id);
+            await SeleccionarAsync(new TerceroSeleccion(s.PrvId, s.Codigo, s.Nombre));
+            return;
+        }
         var p = proveedores.First(x => x.PrvId == id);
         await SeleccionarAsync(new TerceroSeleccion(p.PrvId, p.PrvCodigo, p.PrvNombreComercial));
     }

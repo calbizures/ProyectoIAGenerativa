@@ -20,98 +20,95 @@
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
 }
 
-<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
-
-@if (pestanaActiva == "lista")
-{
-    <div class="barra-filtros">
-        <BotonIcono Icono="plus" Tooltip="Nuevo rol" Etiqueta="Nuevo rol" Variante="primario" OnClick="() => mostrarNuevo = true" />
-    </div>
-
-    @if (mostrarNuevo)
-    {
-        <EditForm Model="nuevoRol" OnValidSubmit="CrearRolAsync" class="panel-formulario">
-            <DataAnnotationsValidator />
-            <ResumenValidacion />
-            <div class="campo"><label>Código</label><InputText @bind-Value="nuevoRol.Codigo" /></div>
-            <div class="campo"><label>Nombre</label><InputText @bind-Value="nuevoRol.Nombre" /></div>
-            <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
-                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
-            </div>
-        </EditForm>
-    }
-
-    <table class="tabla-datos">
-        <thead>
-            <tr><th class="col-codigo">Código</th><th>Nombre</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
-        </thead>
-        <tbody>
-            @foreach (var rol in roles)
-            {
-                <tr class="@(seleccionado?.RolId == rol.RolId ? "fila-seleccionada" : "")">
-                    <td class="col-codigo">@rol.RolCodigo</td>
-                    <td>@rol.RolNombre</td>
-                    <td class="col-estado"><span class="estado-badge @(rol.RolEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(rol.RolEstado == "A" ? "Activo" : "Inactivo")</span></td>
-                    <td class="col-acciones">
-                        <div class="acciones-fila">
-                            <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(rol)" />
-                            @if (rol.RolEstado == "A")
-                            {
-                                <BotonIcono Icono="trash-2" Tooltip="Desactivar rol" Confirmacion="¿Desactivar el rol?" Variante="peligro" OnClick="() => DesactivarAsync(rol)" />
-                            }
-                        </div>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-else if (pestanaActiva == "detalle" && seleccionado is not null)
-{
-    <div class="panel-detalle">
-        <h2>Detalle: @seleccionado.RolNombre</h2>
-
-        <div class="campo"><label>Nombre</label><span class="valor-detalle">@seleccionado.RolNombre</span></div>
-        <div class="acciones-fila">
-            <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+<div class="maestro-detalle roles-maestro">
+    <section class="tarjeta" aria-labelledby="titulo-roles">
+        <div class="maestro-detalle-encabezado">
+            <h2 id="titulo-roles">Roles</h2>
+            <BotonIcono Icono="plus" Tooltip="Nuevo rol" Etiqueta="Nuevo rol" Variante="primario" OnClick="() => mostrarNuevo = true" />
         </div>
 
-        <h3>Permisos asignados</h3>
+        @if (mostrarNuevo)
+        {
+            <EditForm Model="nuevoRol" OnValidSubmit="CrearRolAsync" class="panel-formulario">
+                <DataAnnotationsValidator />
+                <ResumenValidacion />
+                <div class="campo"><label>Código</label><InputText @bind-Value="nuevoRol.Codigo" /></div>
+                <div class="campo"><label>Nombre</label><InputText @bind-Value="nuevoRol.Nombre" /></div>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+                </div>
+            </EditForm>
+        }
+
         <table class="tabla-datos">
-            <thead><tr><th>Módulo</th><th>Permiso</th><th>Asignado</th></tr></thead>
+            <thead>
+                <tr><th class="col-codigo">Código</th><th>Nombre</th><th class="num">Permisos</th><th class="col-acciones"><span class="sr-only">Acciones</span></th></tr>
+            </thead>
             <tbody>
-                @foreach (var permiso in todosLosPermisos)
+                @foreach (var rol in roles)
                 {
-                    var asignado = permisosAsignadosId.Contains(permiso.PerId);
-                    <tr>
-                        <td>@permiso.PerModulo</td>
-                        <td>@permiso.PerCodigo — @permiso.PerDescripcion</td>
-                        <td>
-                            <input type="checkbox" checked="@asignado"
-                                   @onchange="e => CambiarPermisoAsync(permiso.PerId, (bool)(e.Value ?? false))" />
+                    <tr class="fila-seleccionable @(seleccionado?.RolId == rol.RolId ? "fila-seleccionada" : "")" @onclick="() => SeleccionarAsync(rol)">
+                        <td class="col-codigo">@rol.RolCodigo</td>
+                        <td>@rol.RolNombre</td>
+                        <td class="num">@(conteoPermisos.TryGetValue(rol.RolId, out var cuantos) ? cuantos : 0)</td>
+                        <td class="col-acciones" @onclick:stopPropagation="true">
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="trash-2" Tooltip="Desactivar rol" Confirmacion="¿Desactivar el rol?" Variante="peligro" OnClick="() => DesactivarAsync(rol)" />
+                            </div>
                         </td>
                     </tr>
                 }
             </tbody>
         </table>
-    </div>
-}
-else if (pestanaActiva == "editar" && seleccionado is not null)
-{
-    <div class="panel-formulario">
-        <h2>Editar: @seleccionado.RolNombre</h2>
-        <EditForm Model="edicionRol" OnValidSubmit="GuardarEdicionAsync">
-            <DataAnnotationsValidator />
-            <ResumenValidacion />
-            <div class="campo"><label>Nombre</label><InputText @bind-Value="edicionRol.Nombre" /></div>
-            <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
-                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicionAsync" />
+    </section>
+
+    <section class="tarjeta" aria-labelledby="titulo-permisos-rol">
+        @if (seleccionado is null)
+        {
+            <h2 id="titulo-permisos-rol">Permisos</h2>
+            <p class="estado-vacio">Seleccione un rol para ver y cambiar sus permisos.</p>
+        }
+        else
+        {
+            <div class="maestro-detalle-encabezado">
+                @if (editandoNombre)
+                {
+                    <EditForm Model="edicionRol" OnValidSubmit="GuardarEdicionAsync" class="rol-nombre-edicion">
+                        <DataAnnotationsValidator />
+                        <label for="rol-nombre" class="sr-only">Nombre del rol</label>
+                        <InputText id="rol-nombre" @bind-Value="edicionRol.Nombre" />
+                        <BotonIcono Icono="save" Tooltip="Guardar nombre" Variante="primario" TipoBoton="submit" />
+                        <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => editandoNombre = false" />
+                    </EditForm>
+                }
+                else
+                {
+                    <h2 id="titulo-permisos-rol">@seleccionado.RolNombre</h2>
+                    <BotonIcono Icono="pencil" Tooltip="Cambiar el nombre del rol" Etiqueta="Editar nombre" OnClick="IniciarEdicion" />
+                }
             </div>
-        </EditForm>
-    </div>
-}
+            <p class="texto-tenue">@permisosAsignadosId.Count de @todosLosPermisos.Count permisos asignados. Marque o desmarque para cambiarlos; se guardan al instante.</p>
+
+            <div class="roles-permisos">
+                @foreach (var modulo in todosLosPermisos.GroupBy(p => p.PerModulo).OrderBy(g => g.Key))
+                {
+                    <fieldset class="roles-modulo">
+                        <legend>@modulo.Key <span class="texto-tenue">(@modulo.Count(p => permisosAsignadosId.Contains(p.PerId))/@modulo.Count())</span></legend>
+                        @foreach (var permiso in modulo.OrderBy(p => p.PerCodigo))
+                        {
+                            var asignado = permisosAsignadosId.Contains(permiso.PerId);
+                            <label class="casilla roles-permiso">
+                                <input type="checkbox" checked="@asignado" @onchange="e => CambiarPermisoAsync(permiso.PerId, (bool)(e.Value ?? false))" />
+                                <span><strong>@(permiso.PerDescripcion ?? permiso.PerCodigo)</strong><small>@permiso.PerCodigo</small></span>
+                            </label>
+                        }
+                    </fieldset>
+                }
+            </div>
+        }
+    </section>
+</div>
 
 @code {
     [CascadingParameter]
@@ -121,13 +118,8 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
     private IReadOnlyList<Permiso> todosLosPermisos = Array.Empty<Permiso>();
     private IReadOnlyList<int> permisosAsignadosId = Array.Empty<int>();
     private Rol? seleccionado;
-    private string pestanaActiva = "lista";
-
-    private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
-        ? new[] { new PestanaItem("lista", "Lista") }
-        : pestanaActiva == "editar"
-            ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar") }
-            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle") };
+    private bool editandoNombre;
+    private Dictionary<int, int> conteoPermisos = new();
 
     private bool mostrarNuevo;
     private string? mensaje;
@@ -152,6 +144,11 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
     private async Task BuscarAsync()
     {
         roles = await RolRepository.ConsultarAsync(estado: "A");
+        var conteo = new Dictionary<int, int>();
+        foreach (var rol in roles)
+            conteo[rol.RolId] = (await RolRepository.ConsultarPermisosAsignadosAsync(rol.RolId)).Count;
+        conteoPermisos = conteo;
+        if (seleccionado is null && roles.Count > 0) await SeleccionarAsync(roles[0]);
     }
 
     private async Task CrearRolAsync()
@@ -175,7 +172,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
     private async Task SeleccionarAsync(Rol rol)
     {
         seleccionado = rol;
-        pestanaActiva = "detalle";
+        editandoNombre = false;
         edicionRol.Nombre = rol.RolNombre;
         mensaje = null;
         permisosAsignadosId = await RolRepository.ConsultarPermisosAsignadosAsync(rol.RolId);
@@ -186,12 +183,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         if (seleccionado is null) return;
         edicionRol.Nombre = seleccionado.RolNombre;
         mensaje = null;
-        pestanaActiva = "editar";
-    }
-
-    private void CancelarEdicionAsync()
-    {
-        pestanaActiva = "detalle";
+        editandoNombre = true;
     }
 
     private async Task GuardarEdicionAsync()
@@ -205,7 +197,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
             esMensajeError = false;
             await BuscarAsync();
             seleccionado = roles.FirstOrDefault(r => r.RolId == seleccionado.RolId) ?? seleccionado;
-            pestanaActiva = "detalle";
+            editandoNombre = false;
         }
         catch (Exception ex)
         {
@@ -223,10 +215,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
             mensaje = "Rol desactivado.";
             esMensajeError = false;
             if (seleccionado?.RolId == rol.RolId)
-            {
                 seleccionado = null;
-                pestanaActiva = "lista";
-            }
             await BuscarAsync();
         }
         catch (Exception ex)
@@ -252,6 +241,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
             }
 
             permisosAsignadosId = await RolRepository.ConsultarPermisosAsignadosAsync(seleccionado.RolId);
+            conteoPermisos[seleccionado.RolId] = permisosAsignadosId.Count;
         }
         catch (Exception ex)
         {

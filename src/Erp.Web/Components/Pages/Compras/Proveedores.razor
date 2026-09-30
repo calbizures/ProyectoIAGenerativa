@@ -175,6 +175,13 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
     {
         try
         {
+            if (!Erp.Data.General.NitValidador.EsValido(nuevoProveedor.Nit))
+            {
+                mensaje = Erp.Data.General.NitValidador.MensajeInvalido(nuevoProveedor.Nit);
+                esMensajeError = true;
+                return;
+            }
+            nuevoProveedor.Nit = Erp.Data.General.NitValidador.Formatear(nuevoProveedor.Nit);
             var usuId = await ObtenerUsuIdActualAsync();
             await ProveedorRepository.InsertarAsync(
                 nuevoProveedor.Codigo, nuevoProveedor.NombreComercial, nuevoProveedor.Nit, nuevoProveedor.Contacto,
@@ -220,6 +227,13 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         if (seleccionado is null) return;
         try
         {
+            if (!Erp.Data.General.NitValidador.EsValido(edicionProveedor.Nit))
+            {
+                mensaje = Erp.Data.General.NitValidador.MensajeInvalido(edicionProveedor.Nit);
+                esMensajeError = true;
+                return;
+            }
+            edicionProveedor.Nit = Erp.Data.General.NitValidador.Formatear(edicionProveedor.Nit);
             var usuId = await ObtenerUsuIdActualAsync();
             await ProveedorRepository.ActualizarAsync(
                 seleccionado.PrvId, edicionProveedor.NombreComercial, edicionProveedor.Nit, edicionProveedor.Contacto,

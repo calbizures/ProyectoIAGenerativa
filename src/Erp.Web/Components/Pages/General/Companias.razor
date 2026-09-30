@@ -235,6 +235,13 @@ else if (pestanaActiva == "editar")
     {
         try
         {
+            if (!Erp.Data.General.NitValidador.EsValido(modelo.CiaNit) || Erp.Data.General.NitValidador.EsConsumidorFinal(modelo.CiaNit))
+            {
+                mensaje = Erp.Data.General.NitValidador.MensajeInvalido(modelo.CiaNit);
+                esMensajeError = true;
+                return;
+            }
+            modelo.CiaNit = Erp.Data.General.NitValidador.Formatear(modelo.CiaNit);
             var compania = modelo.ACompania();
             var id = await GeneralRepository.GuardarCompaniaAsync(compania, await ObtenerUsuIdActualAsync());
             mensaje = modelo.CiaId == 0 ? "Compañía creada correctamente." : "Cambios guardados.";

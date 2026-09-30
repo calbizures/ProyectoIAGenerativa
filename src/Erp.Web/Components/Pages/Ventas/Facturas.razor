@@ -18,6 +18,7 @@
 @inject Erp.Data.Cuentas.ICuentasRepository CuentasRepository
 @inject Erp.Web.Fel.FelService FelService
 @inject Erp.Data.Fel.IFelRepository FelRepository
+@inject Erp.Web.Fel.FelConsultaNitServicio ConsultaNit
 
 <PageTitle>Facturas</PageTitle>
 
@@ -64,7 +65,7 @@
         <div class="doc-card-header">
             <div>
                 <h2>Nueva factura</h2>
-                <p>Complete los datos generales, seleccione el cliente y agregue los productos.</p>
+                <p>Escanee o busque los productos; después del primero se pide el NIT del cliente (si no existe, se consulta al certificador y se registra).</p>
             </div>
             <Icono Nombre="receipt" Tamano="30" />
         </div>
@@ -121,9 +122,34 @@
 
                 @if (nuevaFactura.CliId is null)
                 {
+                    <div class="doc-nit">
+                        <div class="doc-nit-fila">
+                            <label for="fac-nit">NIT</label>
+                            <input id="fac-nit" @ref="campoNit" placeholder="NIT, CUI o C/F y Enter" aria-describedby="fac-nit-ayuda" maxlength="20" autocomplete="off"
+                                   @bind="textoNit" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await ConsultarNitAsync(); })" />
+                            <BotonIcono Icono="search" Tooltip="Buscar el NIT (base de datos y certificador)" Etiqueta="Buscar NIT" Variante="primario" Deshabilitado="consultandoNit" OnClick="ConsultarNitAsync" />
+                            <BotonIcono Icono="user" Tooltip="Consumidor final" Etiqueta="C/F" OnClick="ConsumidorFinalAsync" />
+                        </div>
+                        <small id="fac-nit-ayuda" class="@(nitError ? "texto-error" : "texto-ayuda")">
+                            @(nitMensaje ?? "Si el cliente no existe se consulta su nombre al certificador FEL y se registra automáticamente.")
+                        </small>
+                        @if (nitSinNombre is not null)
+                        {
+                            <div class="doc-alta-rapida">
+                                <p class="doc-alta-rapida-titulo">Registrar el NIT @nitSinNombre</p>
+                                <div class="doc-grid">
+                                    <div class="campo campo-ancho"><label for="fac-nit-nombre">Nombre o razón social</label><input id="fac-nit-nombre" @bind="nombreNitManual" maxlength="128" /></div>
+                                </div>
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="save" Tooltip="Registrar el cliente" Etiqueta="Registrar cliente" Variante="primario" OnClick="RegistrarNitManualAsync" />
+                                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => nitSinNombre = null" />
+                                </div>
+                            </div>
+                        }
+                    </div>
                     <div class="doc-buscador">
                         <div class="doc-buscador-fila">
-                            <input placeholder="Buscar cliente por código, nombre o NIT" aria-label="Buscar cliente por código, nombre o NIT" @bind="textoBusquedaCliente" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarClientesAsync(); })" />
+                            <input placeholder="O busque por código, nombre o NIT" aria-label="Buscar cliente por código, nombre o NIT" @bind="textoBusquedaCliente" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarClientesAsync(); })" />
                             <BotonIcono Icono="search" Tooltip="Buscar cliente" OnClick="BuscarClientesAsync" />
                             <BotonIcono Icono="plus" Tooltip="Cliente nuevo" OnClick="() => mostrarNuevoCliente = !mostrarNuevoCliente" />
                         </div>
@@ -179,7 +205,7 @@
 
                 <div class="doc-buscador">
                     <div class="doc-buscador-fila">
-                        <input placeholder="Buscar producto por código o descripción" aria-label="Buscar producto por código o descripción" @bind="textoBusquedaProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
+                        <input @ref="campoProducto" placeholder="Escanee o busque el producto por código o descripción" aria-label="Buscar producto por código o descripción" @bind="textoBusquedaProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
                         <BotonIcono Icono="search" Tooltip="Buscar producto" OnClick="BuscarProductosAsync" />
                         <BotonIcono Icono="plus" Tooltip="Agregar un servicio (sin producto)" Etiqueta="Agregar servicio" OnClick="AgregarServicio" />
                     </div>
@@ -732,6 +758,18 @@
 
     private string textoBusquedaCliente = "";
     private string textoBusquedaProducto = "";
+    // NIT del cliente: se pide después del primer producto.
+    private ElementReference campoNit;
+    private ElementReference campoProducto;
+    private bool enfocarNit;
+    private bool enfocarProducto;
+    private string textoNit = "";
+    private string? nitMensaje;
+    private bool nitError;
+    private bool consultandoNit;
+    private string? nitSinNombre;
+    private string nombreNitManual = "";
+    private int ciaIdSesion;
 
     private readonly NuevaFacturaModelo nuevaFactura = new();
     private readonly List<LineaCaptura> lineas = new();
@@ -764,6 +802,7 @@
     private readonly List<FormaPagoCaptura> formasPagoCapturadas = new();
     private readonly FormaPagoCaptura formaPagoNueva = new();
     private int pcaIdFactura;
+    private int? sucIdSesion;
     private int? pveIdUsuario;
 
     private decimal MontoAPagar => condicionPagoFactura == "credito" ? nuevaFactura.MontoEnganche : Total;
@@ -774,7 +813,10 @@
         int? sucIdParametros = null;
         if (AuthenticationStateTask is not null)
             sucIdParametros = (await AuthenticationStateTask).User.ObtenerSucId();
-        PorcentajeIva = (await GeneralRepository.ConsultarParametrosAsync(sucIdParametros)).CiaPorcIva;
+        var parametrosCompania = await GeneralRepository.ConsultarParametrosAsync(sucIdParametros);
+        PorcentajeIva = parametrosCompania.CiaPorcIva;
+        ciaIdSesion = parametrosCompania.CiaId;
+        sucIdSesion = sucIdParametros;
         monedas = await FacturaRepository.ConsultarMonedasAsync();
         bodegas = await BodegaRepository.ConsultarAsync(sucId: null, estado: "A");
         unidadesMedida = await BodegaRepository.ConsultarUnidadesAsync(soloActivas: false);
@@ -879,6 +921,14 @@
         productosEncontrados = Array.Empty<Producto>();
         mostrarNuevoCliente = false;
         mostrarNuevaFactura = true;
+        // Para empezar a escanear: la bodega de la sucursal de la sesión.
+        if (nuevaFactura.BodId == 0)
+            nuevaFactura.BodId = bodegas.Where(b => b.SucId == sucIdSesion).OrderBy(b => b.BodCodigo).FirstOrDefault()?.BodId ?? bodegas.FirstOrDefault()?.BodId ?? 0;
+        textoNit = "";
+        nitMensaje = null;
+        nitError = false;
+        nitSinNombre = null;
+        enfocarProducto = true;
         historialCliente = Array.Empty<FacturaEncabezado>();
         historialClienteExpandidoId = null;
         historialClienteDetalleExpandido = Array.Empty<FacturaDetalleLinea>();
@@ -944,6 +994,13 @@
             esMensajeError = true;
             return;
         }
+        if (!Erp.Data.General.NitValidador.EsValido(nuevoClienteRapido.Nit))
+        {
+            mensaje = Erp.Data.General.NitValidador.MensajeInvalido(nuevoClienteRapido.Nit);
+            esMensajeError = true;
+            return;
+        }
+        nuevoClienteRapido.Nit = Erp.Data.General.NitValidador.Formatear(nuevoClienteRapido.Nit);
 
         try
         {
@@ -994,11 +1051,17 @@
             .Select(g => g.First())
             .Take(20)
             .ToList();
+
+        // Código exacto (escáner): se agrega sin elegir de la lista.
+        var exacto = productosEncontrados.FirstOrDefault(p => p.ProCodigo.Equals(texto, StringComparison.OrdinalIgnoreCase));
+        if (exacto is not null)
+            await AgregarLineaAsync(exacto);
     }
 
     // Línea de servicio en blanco: se describe, se elige la unidad y se pone el precio.
     private void AgregarServicio()
     {
+        if (lineas.Count == 0 && nuevaFactura.CliId is null) enfocarNit = true;
         lineas.Add(new LineaCaptura
         {
             BienOServicio = "S",
@@ -1106,6 +1169,17 @@
         textoBusquedaProducto = "";
         if (precioVigente is null) return;
 
+        // El mismo bien escaneado otra vez suma una unidad a su línea.
+        var existente = lineas.FirstOrDefault(l => l.ProId == producto.ProId && l.BienOServicio == "B" && l.PprId == precioVigente.PprId);
+        if (existente is not null && producto.ProTipoItem == "B")
+        {
+            existente.Cantidad += 1;
+            mensaje = null;
+            enfocarProducto = true;
+            return;
+        }
+
+        var primera = lineas.Count == 0;
         lineas.Add(new LineaCaptura
         {
             ProId = producto.ProId,
@@ -1120,6 +1194,96 @@
             ManejaExistencia = producto.ProManejaExistencia
         });
         mensaje = null;
+        // Después del primer producto se pide el NIT; después, se sigue escaneando.
+        if (primera && nuevaFactura.CliId is null) enfocarNit = true;
+        else enfocarProducto = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (enfocarNit)
+        {
+            enfocarNit = false;
+            try { await campoNit.FocusAsync(); } catch (InvalidOperationException) { }
+        }
+        else if (enfocarProducto)
+        {
+            enfocarProducto = false;
+            try { await campoProducto.FocusAsync(); } catch (InvalidOperationException) { }
+        }
+    }
+
+    // NIT: 1) se valida; 2) se busca en la base; 3) si no existe, se consulta al
+    // certificador y se registra el cliente; si el certificador no responde, se
+    // pide el nombre y también se registra.
+    private async Task ConsultarNitAsync()
+    {
+        nitSinNombre = null;
+        var nit = textoNit.Trim();
+        if (nit.Length == 0) { nitMensaje = "Escriba el NIT, el CUI o C/F."; nitError = true; return; }
+        if (!Erp.Data.General.NitValidador.EsValido(nit)) { nitMensaje = Erp.Data.General.NitValidador.MensajeInvalido(nit); nitError = true; return; }
+        consultandoNit = true;
+        try
+        {
+            var existente = await ClienteRepository.BuscarPorNitAsync(nit);
+            if (existente is not null)
+            {
+                await SeleccionarClienteAsync(existente);
+                nitMensaje = $"Cliente {existente.CliCodigo}.";
+                nitError = false;
+                enfocarProducto = true;
+                return;
+            }
+            var consulta = await ConsultaNit.ConsultarAsync(ciaIdSesion, nit);
+            if (!consulta.Encontrado)
+            {
+                nitSinNombre = Erp.Data.General.NitValidador.Formatear(nit);
+                nombreNitManual = "";
+                nitMensaje = $"{consulta.Mensaje} Escriba el nombre para registrar el cliente.";
+                nitError = true;
+                return;
+            }
+            await RegistrarClienteNitAsync(nit, consulta.Nombre!, consulta.Mensaje);
+        }
+        catch (Exception ex)
+        {
+            nitMensaje = MensajesError.Traducir(ex);
+            nitError = true;
+        }
+        finally { consultandoNit = false; }
+    }
+
+    private async Task ConsumidorFinalAsync()
+    {
+        textoNit = "CF";
+        await ConsultarNitAsync();
+    }
+
+    private async Task RegistrarNitManualAsync()
+    {
+        if (string.IsNullOrWhiteSpace(nombreNitManual)) { nitMensaje = "Escriba el nombre del cliente."; nitError = true; return; }
+        try
+        {
+            await RegistrarClienteNitAsync(textoNit, nombreNitManual.Trim(), "Nombre escrito por el usuario.");
+            nitSinNombre = null;
+        }
+        catch (Exception ex)
+        {
+            nitMensaje = MensajesError.Traducir(ex);
+            nitError = true;
+        }
+    }
+
+    // Todo NIT que no existía queda registrado como cliente.
+    private async Task RegistrarClienteNitAsync(string nit, string nombre, string origen)
+    {
+        var (cliId, nuevo) = await ClienteRepository.RegistrarPorNitAsync(nit, nombre, null, await ObtenerUsuIdActualAsync());
+        var cliente = await ClienteRepository.ConsultarPorIdAsync(cliId);
+        if (cliente is null) return;
+        await SeleccionarClienteAsync(cliente);
+        nitMensaje = nuevo ? $"Cliente {cliente.CliCodigo} registrado: {cliente.NombreCompleto}. {origen}" : $"Cliente {cliente.CliCodigo}.";
+        nitError = false;
+        enfocarProducto = true;
     }
 
     private async Task GrabarFacturaAsync()

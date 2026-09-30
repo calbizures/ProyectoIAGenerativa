@@ -249,6 +249,13 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
     {
         try
         {
+            if (!Erp.Data.General.NitValidador.EsValido(nuevoCliente.Nit))
+            {
+                mensaje = Erp.Data.General.NitValidador.MensajeInvalido(nuevoCliente.Nit);
+                esMensajeError = true;
+                return;
+            }
+            nuevoCliente.Nit = Erp.Data.General.NitValidador.Formatear(nuevoCliente.Nit);
             var usuId = await ObtenerUsuIdActualAsync();
             await ClienteRepository.InsertarAsync(
                 nuevoCliente.Codigo, nuevoCliente.Nombres, nuevoCliente.Apellidos, nuevoCliente.Direccion,
@@ -295,6 +302,13 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         if (seleccionado is null) return;
         try
         {
+            if (!Erp.Data.General.NitValidador.EsValido(edicionCliente.Nit))
+            {
+                mensaje = Erp.Data.General.NitValidador.MensajeInvalido(edicionCliente.Nit);
+                esMensajeError = true;
+                return;
+            }
+            edicionCliente.Nit = Erp.Data.General.NitValidador.Formatear(edicionCliente.Nit);
             var usuId = await ObtenerUsuIdActualAsync();
             await ClienteRepository.ActualizarAsync(
                 seleccionado.CliId, edicionCliente.Nombres, edicionCliente.Apellidos, edicionCliente.Direccion,

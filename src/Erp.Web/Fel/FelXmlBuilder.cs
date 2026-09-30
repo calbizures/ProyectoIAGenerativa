@@ -22,6 +22,11 @@ public static class FelXmlBuilder
 	public static string Monto(decimal valor) => valor.ToString("0.00", CultureInfo.InvariantCulture);
 	private static string Cantidad(decimal valor) => valor.ToString("0.####", CultureInfo.InvariantCulture);
 	private static string Precio(decimal valor) => valor.ToString("0.######", CultureInfo.InvariantCulture);
+	// El CUI (13 dígitos) también es NIT desde 2025; en el DTE va como TipoEspecial="CUI".
+	private static string? TipoEspecial(FelEncabezado e) =>
+		!string.IsNullOrEmpty(e.TipoEspecial) ? e.TipoEspecial
+		: Erp.Data.General.NitValidador.EsCui(e.IdReceptor) && Erp.Data.General.NitValidador.EsCuiValido(e.IdReceptor) ? "CUI" : null;
+
 	public static string FechaHora(DateTime valor) => valor.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture) + ZonaHoraria;
 	private static string Fecha(DateTime valor) => valor.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
@@ -64,7 +69,7 @@ public static class FelXmlBuilder
 			string.IsNullOrWhiteSpace(e.CorreoReceptor) ? null : new XAttribute("CorreoReceptor", e.CorreoReceptor),
 			new XAttribute("IDReceptor", e.IdReceptor),
 			new XAttribute("NombreReceptor", string.IsNullOrWhiteSpace(e.NombreReceptor) ? "Consumidor final" : e.NombreReceptor),
-			string.IsNullOrEmpty(e.TipoEspecial) ? null : new XAttribute("TipoEspecial", e.TipoEspecial),
+			TipoEspecial(e) is { } tipoEspecial ? new XAttribute("TipoEspecial", tipoEspecial) : null,
 			Direccion(dte, "DireccionReceptor", e.DireccionReceptor, e.CodigoPostalReceptor, e.MunicipioReceptor, e.DepartamentoReceptor, e.PaisReceptor));
 
 		var frases = datos.Frases.Where(f => !esNota || f.AplicaNotas).ToList();

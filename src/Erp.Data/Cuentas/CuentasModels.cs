@@ -84,6 +84,17 @@ public sealed class CuotaPendienteProveedor
 
 public sealed record CuotaPagoProveedor(int PpgId, decimal Monto);
 
+// Proveedor con cuotas pendientes (lista de Pagos a proveedores).
+public sealed class ProveedorConSaldo
+{
+	public int PrvId { get; set; }
+	public string Codigo { get; set; } = "";
+	public string Nombre { get; set; } = "";
+	public decimal Saldo { get; set; }
+	public decimal Vencido { get; set; }
+	public int Facturas { get; set; }
+}
+
 // Factura y cuota que pagó una línea de un cheque.
 public sealed class ChequeDetalleLinea
 {

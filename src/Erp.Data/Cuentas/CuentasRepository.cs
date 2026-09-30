@@ -168,6 +168,9 @@ public sealed class CuentasRepository(IDbConnectionFactory connectionFactory) : 
 		return (bceId, numero ?? numeroCheque ?? "");
 	}
 
+	public Task<IReadOnlyList<ProveedorConSaldo>> ConsultarProveedoresConSaldoAsync() =>
+		ConsultarAsync<ProveedorConSaldo>("dbo.paCxpProveedoresConSaldoConsultar");
+
 	public Task<IReadOnlyList<ChequeDetalleLinea>> ConsultarChequeDetalleAsync(int bceId) =>
 		ConsultarAsync<ChequeDetalleLinea>("dbo.paCxpChequeDetalleConsultar", new { BceId = bceId });
 

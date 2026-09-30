@@ -387,6 +387,13 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_fel_documento_estado' 
 GO
 
 -- Valores iniciales (solo donde no hay nada configurado).
+-- Con el catálogo de certificadores del 44 (FK), al volver a correr después
+-- del 12 (que vacía las tablas) el catálogo está vacío: se deja la fila mínima
+-- del simulador y el 44 la completa.
+IF OBJECT_ID('dbo.fel_certificador', 'U') IS NOT NULL
+	EXEC (N'INSERT INTO dbo.fel_certificador (fce_codigo, fce_nombre)
+			SELECT ''SIMULADOR'', ''SIMULADOR'' WHERE NOT EXISTS (SELECT 1 FROM dbo.fel_certificador WHERE fce_codigo = ''SIMULADOR'');');
+
 INSERT INTO dbo.fel_configuracion (cia_id, fco_certificador, fco_activo, fco_ambiente, fco_url_certificacion, fco_url_anulacion)
 SELECT comp.cia_id, 'SIMULADOR', 1, 'PRUEBAS',
 	   'https://certificador.feel.com.gt/fel/procesounificado/transaccion/v2/xml',

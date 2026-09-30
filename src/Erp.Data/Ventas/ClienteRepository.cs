@@ -64,6 +64,23 @@ public sealed class ClienteRepository(IDbConnectionFactory connectionFactory) : 
 			"dbo.sp_cliente_consultar_por_id", new { cli_id = cliId }, commandType: CommandType.StoredProcedure);
 	}
 
+	public async Task<Cliente?> BuscarPorNitAsync(string nit)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		return await connection.QueryFirstOrDefaultAsync<Cliente>(
+			"dbo.paClienteBuscarPorNit", new { Nit = nit }, commandType: CommandType.StoredProcedure);
+	}
+
+	public async Task<(int CliId, bool Nuevo)> RegistrarPorNitAsync(string nit, string? nombre, string? direccion, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new DynamicParameters(new { Nit = nit, Nombre = nombre, Direccion = direccion, UsuId = usuarioAccionId });
+		parametros.Add("@CliId", dbType: DbType.Int32, direction: ParameterDirection.Output);
+		parametros.Add("@Nuevo", dbType: DbType.Boolean, direction: ParameterDirection.Output);
+		await connection.ExecuteAsync("dbo.paClienteRegistrarPorNit", parametros, commandType: CommandType.StoredProcedure);
+		return (parametros.Get<int>("@CliId"), parametros.Get<bool>("@Nuevo"));
+	}
+
 	public async Task<IReadOnlyList<FacturaCliente>> ConsultarFacturasAsync(int cliId)
 	{
 		using var connection = connectionFactory.CreateConnection();

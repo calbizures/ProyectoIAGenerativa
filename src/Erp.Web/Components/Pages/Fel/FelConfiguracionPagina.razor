@@ -7,6 +7,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IFelRepository FelRepository
 @inject IGeneralRepository GeneralRepository
+@inject Erp.Web.Fel.FelConsultaNitServicio ConsultaNit
 
 <PageTitle>Configuración FEL</PageTitle>
 
@@ -93,6 +94,68 @@
         </div>
         <div class="acciones-fila">
             <BotonIcono Icono="save" Tooltip="Guardar configuración" Etiqueta="Guardar" Variante="primario" OnClick="GuardarConfiguracionAsync" />
+        </div>
+    </section>
+}
+else if (pestana == "nit" && consultaNit is not null)
+{
+    <section class="tarjeta" aria-labelledby="t-nit">
+        <h2 id="t-nit">Consulta del NIT al certificador</h2>
+        <p class="texto-ayuda">Al facturar, si el NIT no está en la base, se pide el nombre al servicio del certificador de la compañía (<strong>@(consultaNit.NombreCertificador ?? consultaNit.Certificador)</strong>, ambiente @consultaNit.Ambiente.ToLowerInvariant()) y el cliente se graba solo. Si no responde, el cajero escribe el nombre.</p>
+        <div class="panel-formulario panel-ancho fel-formulario">
+            <label class="campo-checkbox"><input type="checkbox" @bind="consultaNitActiva" /> Consultar el NIT al certificador</label>
+            <div class="campo campo-ancho">
+                <label for="n-url">URL propia del servicio (opcional)</label>
+                <input id="n-url" maxlength="256" placeholder="@(consultaNit.Url ?? "Se usa la del catálogo")" @bind="consultaNitUrl" />
+                <span class="texto-ayuda">Déjela vacía para usar la del catálogo según el ambiente. Use {nit} donde va el número.</span>
+            </div>
+        </div>
+        <p class="texto-ayuda">Credenciales (no se guardan en la base): <code>Fel:Credenciales:@(consultaNit.NitEmisor):ConsultaNitUsuario</code> y <code>:ConsultaNitLlave</code>; si faltan, se usan el usuario de la API y <code>:LlaveApi</code>.</p>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar la consulta de NIT" Etiqueta="Guardar" Variante="primario" OnClick="GuardarConsultaNitAsync" />
+        </div>
+        <div class="fila-edicion">
+            <label for="n-prueba">Probar con un NIT</label>
+            <input id="n-prueba" maxlength="20" placeholder="Ej. 42932-5" @bind="nitPrueba" />
+            <BotonIcono Icono="search" Tooltip="Consultar ahora" Etiqueta="Probar" OnClick="ProbarNitAsync" />
+        </div>
+        @if (resultadoPrueba is not null)
+        {
+            <p class="@(resultadoPrueba.Encontrado ? "mensaje-ok" : "mensaje-error")" role="status">
+                @(resultadoPrueba.Encontrado ? $"{resultadoPrueba.Nombre} — {resultadoPrueba.Mensaje}" : resultadoPrueba.Mensaje)
+            </p>
+        }
+    </section>
+
+    <section class="tarjeta" aria-labelledby="t-cat">
+        <h2 id="t-cat">Certificadores autorizados por SAT</h2>
+        <p class="texto-ayuda">Cada certificador publica su propio servicio de consulta de NIT; se parametriza aquí (método, URL con {nit}, cuerpo, encabezado de la llave y campo del nombre en la respuesta) sin cambiar código. Los que dicen “Solicitar documentación” se completan con los datos que entrega el certificador al contratarlo.</p>
+        <div class="tabla-desplazable">
+            <table class="tabla-datos">
+                <thead><tr><th class="col-codigo">Código</th><th>Certificador</th><th>Servicio de consulta de NIT</th><th class="col-estado">Método</th><th>URL (pruebas / producción)</th><th class="col-estado">Estado</th></tr></thead>
+                <tbody>
+                    @foreach (var c in certificadores)
+                    {
+                        <tr class="@(c.Codigo == consultaNit.Certificador ? "fila-seleccionada" : "")">
+                            <td class="col-codigo">@c.Codigo</td>
+                            <td>@c.Nombre@(c.Nit is null ? "" : $" · NIT {c.Nit}")</td>
+                            <td>@c.ApiConsultaNit
+                                @if (!string.IsNullOrWhiteSpace(c.CampoNombre))
+                                {
+                                    <br /><span class="texto-tenue">Nombre en «@c.CampoNombre»@(string.IsNullOrWhiteSpace(c.Encabezado) ? "" : $", llave en «{c.Encabezado}»")</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(c.Notas))
+                                {
+                                    <br /><span class="texto-tenue">@c.Notas</span>
+                                }
+                            </td>
+                            <td class="col-estado">@c.Metodo</td>
+                            <td class="texto-url">@c.UrlPruebas@if (c.UrlProduccion is not null && c.UrlProduccion != c.UrlPruebas) { <br />@c.UrlProduccion }</td>
+                            <td class="col-estado"><span class="estado-badge @(c.Implementado ? "estado-badge-activo" : "estado-badge-pendiente")">@(c.Implementado ? "Configurado" : "Solicitar documentación")</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         </div>
     </section>
 }
@@ -267,7 +330,7 @@ else if (pestana == "unidades")
     {
         new PestanaItem("general", "Certificador y emisor"), new PestanaItem("frases", "Frases"),
         new PestanaItem("establecimientos", "Establecimientos"), new PestanaItem("tipos", "Tipos de documento"),
-        new PestanaItem("unidades", "Unidades de medida"),
+        new PestanaItem("unidades", "Unidades de medida"), new PestanaItem("nit", "Consulta de NIT"),
     };
     private static readonly string[] TiposDte = { "FACT", "FCAM", "FPEQ", "FCAP", "FESP", "NABN", "RDON", "RECI", "NDEB", "NCRE" };
 
@@ -287,6 +350,12 @@ else if (pestana == "unidades")
     private string codigoUnidad = "";
     private string? mensaje;
     private bool esMensajeError;
+    private IReadOnlyList<FelCertificador> certificadores = Array.Empty<FelCertificador>();
+    private FelConsultaNitConfiguracion? consultaNit;
+    private bool consultaNitActiva;
+    private string? consultaNitUrl;
+    private string nitPrueba = "";
+    private Erp.Web.Fel.ConsultaNitResultado? resultadoPrueba;
 
     protected override async Task OnInitializedAsync()
     {
@@ -313,6 +382,29 @@ else if (pestana == "unidades")
         establecimientos = await FelRepository.ConsultarEstablecimientosAsync(ciaId);
         tipos = await FelRepository.ConsultarTiposDocumentoAsync();
         unidades = await FelRepository.ConsultarUnidadesAsync();
+        certificadores = await FelRepository.ConsultarCertificadoresAsync();
+        consultaNit = await FelRepository.ConsultarConsultaNitAsync(ciaId);
+        consultaNitActiva = consultaNit?.Activa ?? false;
+        consultaNitUrl = consultaNit?.UrlPropia;
+        resultadoPrueba = null;
+    }
+
+    private async Task GuardarConsultaNitAsync()
+    {
+        try
+        {
+            await FelRepository.GuardarConsultaNitAsync(ciaId, consultaNitActiva, string.IsNullOrWhiteSpace(consultaNitUrl) ? null : consultaNitUrl.Trim(), await UsuIdAsync());
+            Ok("Consulta de NIT guardada.");
+            await CargarAsync();
+        }
+        catch (Exception ex) { Error(ex); }
+    }
+
+    private async Task ProbarNitAsync()
+    {
+        mensaje = null;
+        try { resultadoPrueba = await ConsultaNit.ConsultarAsync(ciaId, nitPrueba); }
+        catch (Exception ex) { Error(ex); }
     }
 
     private async Task CambiarCompaniaAsync(ChangeEventArgs e)

@@ -10,6 +10,10 @@ public sealed class Usuario
 	public bool UsuBloqueado { get; set; }
 	public DateTime? UsuUltimoLogin { get; set; }
 	public string UsuEstado { get; set; } = "A";
+	// Del empleado vinculado (nombre completo) y de su vendedor (código).
+	public int? IdEmpleado { get; set; }
+	public string? Empleado { get; set; }
+	public string? VendedorCodigo { get; set; }
 }
 
 public sealed class UsuarioRol

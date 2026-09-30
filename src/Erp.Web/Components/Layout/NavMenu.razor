@@ -41,7 +41,7 @@
             </Authorized>
         </AuthorizeView>
 
-        <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR,INVENTARIO_FISICO,INVENTARIO_CARGA_INICIAL">
+        <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR,INVENTARIO_FISICO,INVENTARIO_CARGA_INICIAL,INVENTARIO_TRASLADO_ENVIAR,INVENTARIO_TRASLADO_RECIBIR">
             <Authorized>
                 <SidebarNodo Titulo="Inventario" IconoNombre="package" Rutas="@(new[] { "productos", "caracteristicas", "tipos-caracteristica", "existencias", "precios", "bodegas", "unidades-medida", "inventario" })">
                     <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR" Context="productosContexto">
@@ -58,6 +58,11 @@
                     <AuthorizeView Policy="Permiso:INVENTARIO_FISICO" Context="fisicoContexto">
                         <Authorized>
                             <NavLink href="inventario/fisico" class="sidebar-hijo-link">Inventario físico</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:INVENTARIO_TRASLADO_ENVIAR,INVENTARIO_TRASLADO_RECIBIR" Context="trasladoContexto">
+                        <Authorized>
+                            <NavLink href="inventario/traslados" class="sidebar-hijo-link">Traslados entre bodegas</NavLink>
                         </Authorized>
                     </AuthorizeView>
                     <AuthorizeView Policy="Permiso:INVENTARIO_CARGA_INICIAL" Context="inicialContexto">
@@ -78,7 +83,11 @@
                         </Authorized>
                     </AuthorizeView>
                     <NavLink href="clientes" class="sidebar-hijo-link">Clientes</NavLink>
-                    <NavLink href="vendedores" class="sidebar-hijo-link">Vendedores</NavLink>
+                    <AuthorizeView Policy="Permiso:VENTAS_VENDEDOR_ADMIN" Context="vendedorContexto">
+                        <Authorized>
+                            <NavLink href="vendedores" class="sidebar-hijo-link">Vendedores</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
                     <NavLink href="ventas/antiguedad" class="sidebar-hijo-link">Antigüedad de saldos</NavLink>
                 </SidebarNodo>
             </Authorized>
@@ -112,7 +121,7 @@
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <AuthorizeView Policy="Permiso:BANCOS_CAJA_ADMIN,BANCOS_ADMIN">
+        <AuthorizeView Policy="Permiso:BANCOS_CAJA_ADMIN,BANCOS_ADMIN,BANCOS_CHEQUE_EMITIR">
             <Authorized>
                 <SidebarNodo Titulo="Caja y bancos" IconoNombre="landmark" Rutas="@(new[] { "caja", "bancos" })">
                     <AuthorizeView Policy="Permiso:BANCOS_CAJA_ADMIN" Context="cajaContexto">
@@ -120,9 +129,13 @@
                             <NavLink href="caja" class="sidebar-hijo-link">Caja</NavLink>
                         </Authorized>
                     </AuthorizeView>
-                    <AuthorizeView Policy="Permiso:BANCOS_ADMIN" Context="bancosContexto">
+                    <AuthorizeView Policy="Permiso:BANCOS_ADMIN,BANCOS_CHEQUE_EMITIR" Context="chequesContexto">
                         <Authorized>
                             <NavLink href="bancos/cheques" class="sidebar-hijo-link">Cheques</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:BANCOS_ADMIN" Context="bancosContexto">
+                        <Authorized>
                             <NavLink href="bancos/cuentas" class="sidebar-hijo-link">Cuentas y chequeras</NavLink>
                             <NavLink href="bancos/motivos" class="sidebar-hijo-link">Motivos de pago</NavLink>
                         </Authorized>
@@ -143,13 +156,22 @@
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <AuthorizeView Policy="Permiso:GENERAL_CONFIG_ADMIN">
+        <AuthorizeView Policy="Permiso:GENERAL_CONFIG_ADMIN,GENERAL_NIT_REVISION">
             <Authorized>
                 <SidebarNodo Titulo="General" IconoNombre="settings" Rutas="@(new[] { "general", "fel/configuracion" })">
-                    <NavLink href="general/companias" class="sidebar-hijo-link">Compañías</NavLink>
-                    <NavLink href="general/sucursales" class="sidebar-hijo-link">Sucursales y bodegas</NavLink>
-                    <NavLink href="general/entidades-financieras" class="sidebar-hijo-link">Entidades financieras</NavLink>
-                    <NavLink href="general/cuentas-poliza" class="sidebar-hijo-link">Cuentas de pólizas</NavLink>
+                    <AuthorizeView Policy="Permiso:GENERAL_CONFIG_ADMIN" Context="generalContexto">
+                        <Authorized>
+                            <NavLink href="general/companias" class="sidebar-hijo-link">Compañías</NavLink>
+                            <NavLink href="general/sucursales" class="sidebar-hijo-link">Sucursales y bodegas</NavLink>
+                            <NavLink href="general/entidades-financieras" class="sidebar-hijo-link">Entidades financieras</NavLink>
+                            <NavLink href="general/cuentas-poliza" class="sidebar-hijo-link">Cuentas de pólizas</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:GENERAL_CONFIG_ADMIN,GENERAL_NIT_REVISION" Context="nitContexto">
+                        <Authorized>
+                            <NavLink href="general/revision-nit" class="sidebar-hijo-link">Revisión de NIT</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
                     <AuthorizeView Policy="Permiso:FEL_ADMIN" Context="felContexto">
                         <Authorized>
                             <NavLink href="fel/configuracion" class="sidebar-hijo-link">Factura electrónica</NavLink>

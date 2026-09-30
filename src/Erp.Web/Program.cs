@@ -29,6 +29,7 @@ builder.Services.AddHttpClient("Fel");
 builder.Services.AddSingleton<IFelCertificador, SimuladorCertificador>();
 builder.Services.AddSingleton<IFelCertificador, InfileCertificador>();
 builder.Services.AddScoped<FelService>();
+builder.Services.AddScoped<FelConsultaNitServicio>();
 builder.Services.AddHostedService<FelReintentoServicio>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

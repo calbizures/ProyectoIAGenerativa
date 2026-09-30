@@ -1,6 +1,6 @@
 @page "/vendedores"
 @rendermode InteractiveServer
-@attribute [Authorize(Policy = "Permiso:VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR")]
+@attribute [Authorize(Policy = "Permiso:VENTAS_VENDEDOR_ADMIN")]
 @using System.ComponentModel.DataAnnotations
 @using Erp.Data.Ventas
 @using Erp.Web.Security

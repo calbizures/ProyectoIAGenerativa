@@ -1,0 +1,564 @@
+@page "/inventario/traslados"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:INVENTARIO_TRASLADO_ENVIAR,INVENTARIO_TRASLADO_RECIBIR")]
+@using Erp.Data.Inventario
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ITrasladoRepository TrasladoRepository
+@inject IBodegaRepository BodegaRepository
+
+<PageTitle>Traslados entre bodegas</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Traslados entre bodegas</h1>
+    <p>El envío genera la salida por traslado en la bodega de origen y deja la mercadería en tránsito. El ingreso por traslado se genera solo cuando la sucursal que recibe confirma lo que llegó; lo que falte se devuelve a origen o se registra como pérdida.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
+
+@if (pestanaActiva == "lista")
+{
+    <div class="barra-herramientas">
+        <select @bind="filtroSucId" @bind:after="BuscarAsync" aria-label="Sucursal">
+            <option value="">Todas las sucursales</option>
+            @foreach (var s in Sucursales)
+            {
+                <option value="@s.SucId">@s.Nombre</option>
+            }
+        </select>
+        <select @bind="filtroEstado" @bind:after="BuscarAsync" aria-label="Estado">
+            <option value="">Todos los estados</option>
+            <option value="E">En tránsito</option>
+            <option value="R">Recibidos</option>
+            <option value="P">Recibidos con diferencias</option>
+            <option value="X">Rechazados</option>
+            <option value="N">Cancelados</option>
+        </select>
+        <input type="date" aria-label="Desde" @bind="filtroDesde" @bind:after="BuscarAsync" />
+        <input type="date" aria-label="Hasta" @bind="filtroHasta" @bind:after="BuscarAsync" />
+        <span class="barra-herramientas-separador"></span>
+        <AuthorizeView Policy="Permiso:INVENTARIO_TRASLADO_ENVIAR" Context="permisoEnviar">
+            <BotonIcono Icono="plus" Tooltip="Enviar mercadería a otra bodega" Etiqueta="Nuevo traslado" Variante="primario" OnClick="IniciarNuevo" />
+        </AuthorizeView>
+    </div>
+
+    @if (PorRecibir.Any())
+    {
+        <p class="aviso-pendiente" role="status">
+            <Icono Nombre="truck" Tamano="16" />
+            Hay @PorRecibir.Count() @(PorRecibir.Count() == 1 ? "traslado" : "traslados") en tránsito hacia @(sucursalSesion ?? "su sucursal") por Q @PorRecibir.Sum(t => t.Valor).ToString("N2"): revise lo que llegó y confirme la recepción.
+        </p>
+    }
+
+    @if (traslados.Count == 0)
+    {
+        <p class="estado-vacio">No hay traslados con esos filtros.</p>
+    }
+    else
+    {
+        <table class="tabla-datos">
+            <thead><tr><th class="col-codigo">Número</th><th class="col-fecha">Fecha</th><th>Origen</th><th>Destino</th><th class="num col-estado">Unidades</th><th class="num col-monto">Valor</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+            <tbody>
+                @foreach (var t in traslados)
+                {
+                    var porRecibir = EsPorRecibir(t);
+                    <tr class="@(porRecibir ? "fila-por-recibir" : "") @(seleccionado?.TraId == t.TraId ? "fila-seleccionada" : "")">
+                        <td class="col-codigo">@t.Numero</td>
+                        <td class="col-fecha">@t.Fecha.ToString("dd/MM/yyyy")</td>
+                        <td>@t.BodegaOrigen<br /><span class="texto-tenue">@t.SucursalOrigen</span></td>
+                        <td>@t.BodegaDestino<br /><span class="texto-tenue">@t.SucursalDestino</span></td>
+                        <td class="num col-estado">@t.Unidades.ToString("#,##0.##")<br /><span class="texto-tenue">@t.Lineas @(t.Lineas == 1 ? "producto" : "productos")</span></td>
+                        <td class="num col-monto">@t.Valor.ToString("N2")</td>
+                        <td class="col-estado"><span class="estado-badge @ClaseEstado(t.Estado)">@t.EstadoTexto</span></td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="@(porRecibir ? "check-check" : "eye")" Tooltip="@(porRecibir ? "Recibir el traslado" : "Ver detalle")" OnClick="() => AbrirAsync(t)" />
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+else if (pestanaActiva == "nuevo")
+{
+    <section class="tarjeta" aria-labelledby="titulo-nuevo">
+        <h2 id="titulo-nuevo">Nuevo traslado</h2>
+        <div class="fel-formulario">
+            <div class="campo">
+                <label for="tra-origen">Bodega de origen</label>
+                <select id="tra-origen" @bind="nuevoOrigen" @bind:after="CambiarOrigenAsync">
+                    <option value="0">Seleccione…</option>
+                    @foreach (var b in BodegasActivas)
+                    {
+                        <option value="@b.BodId">@b.SucDescripcion · @b.BodDescripcion</option>
+                    }
+                </select>
+            </div>
+            <div class="campo">
+                <label for="tra-destino">Bodega de destino</label>
+                <select id="tra-destino" @bind="nuevoDestino">
+                    <option value="0">Seleccione…</option>
+                    @foreach (var b in BodegasActivas.Where(b => b.BodId != nuevoOrigen))
+                    {
+                        <option value="@b.BodId">@b.SucDescripcion · @b.BodDescripcion</option>
+                    }
+                </select>
+                @if (DestinoSeleccionado is { } destino && OrigenSeleccionado is { } origen)
+                {
+                    <span class="texto-ayuda">@(destino.SucId == origen.SucId ? "Traslado dentro de la misma sucursal." : $"Traslado a otra sucursal: lo recibe un usuario de {destino.SucDescripcion}.")</span>
+                }
+            </div>
+            <div class="campo campo-ancho">
+                <label for="tra-obs">Observaciones</label>
+                <input id="tra-obs" maxlength="250" @bind="nuevoObservaciones" />
+            </div>
+        </div>
+
+        @if (nuevoOrigen != 0)
+        {
+            <div class="barra-herramientas">
+                <input id="tra-buscar" placeholder="Escanee o busque por código o descripción" aria-label="Buscar producto en la bodega de origen"
+                       @bind="textoProducto" @bind:event="oninput" @onkeydown="TeclaBuscarAsync" />
+                <BotonIcono Icono="search" Tooltip="Buscar productos con existencia" Etiqueta="Buscar" OnClick="BuscarProductosAsync" />
+            </div>
+            @if (productos.Count > 0)
+            {
+                <table class="tabla-datos tabla-compacta">
+                    <thead><tr><th class="col-codigo">Código</th><th>Producto</th><th class="num col-monto">Existencia</th><th class="num col-monto">Costo</th><th class="col-acciones"><span class="sr-only">Agregar</span></th></tr></thead>
+                    <tbody>
+                        @foreach (var p in productos.Take(15))
+                        {
+                            <tr>
+                                <td class="col-codigo">@p.Codigo</td>
+                                <td>@p.Descripcion</td>
+                                <td class="num col-monto">@p.Existencia.ToString("#,##0.##") @p.Unidad</td>
+                                <td class="num col-monto">@p.CostoUnitario.ToString("N2")</td>
+                                <td class="col-acciones"><BotonIcono Icono="plus" Tooltip="Agregar al traslado" OnClick="() => Agregar(p)" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+
+        @if (lineasNuevas.Count == 0)
+        {
+            <p class="estado-vacio">Agregue los productos que va a enviar.</p>
+        }
+        else
+        {
+            <table class="tabla-datos">
+                <thead><tr><th class="col-codigo">Código</th><th>Producto</th><th class="num col-monto">Existencia</th><th class="num col-monto">Cantidad</th><th class="num col-monto">Costo</th><th class="num col-monto">Valor</th><th class="col-acciones"><span class="sr-only">Quitar</span></th></tr></thead>
+                <tbody>
+                    @foreach (var l in lineasNuevas)
+                    {
+                        <tr class="@(l.Cantidad > l.Producto.Existencia ? "fila-faltante" : "")">
+                            <td class="col-codigo">@l.Producto.Codigo</td>
+                            <td>@l.Producto.Descripcion</td>
+                            <td class="num col-monto">@l.Producto.Existencia.ToString("#,##0.##")</td>
+                            <td class="num col-monto">
+                                <input class="entrada-numero" type="number" min="0" step="any" aria-label="@($"Cantidad de {l.Producto.Codigo}")"
+                                       @bind="l.Cantidad" @bind:event="oninput" />
+                            </td>
+                            <td class="num col-monto">@l.Producto.CostoUnitario.ToString("N2")</td>
+                            <td class="num col-monto">@Math.Round(l.Cantidad * l.Producto.CostoUnitario, 2).ToString("N2")</td>
+                            <td class="col-acciones"><BotonIcono Icono="trash-2" Tooltip="Quitar" Variante="peligro" OnClick="() => lineasNuevas.Remove(l)" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="resumen-totales">
+                <span>Productos: <strong>@lineasNuevas.Count</strong></span>
+                <span>Unidades: <strong>@lineasNuevas.Sum(l => l.Cantidad).ToString("#,##0.##")</strong></span>
+                <span>Valor al costo: <strong>Q @ValorNuevo.ToString("N2")</strong></span>
+            </div>
+        }
+
+        <div class="acciones-fila">
+            <BotonIcono Icono="truck" Tooltip="Enviar el traslado" Etiqueta="Enviar traslado" Variante="primario"
+                        Confirmacion="@($"¿Enviar {lineasNuevas.Count} productos por Q {ValorNuevo:N2}? Sale de la bodega de origen y queda en tránsito hasta que lo reciban.")"
+                        Deshabilitado="guardando || nuevoOrigen == 0 || nuevoDestino == 0 || lineasNuevas.Count == 0" OnClick="EnviarAsync" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="VolverALista" />
+        </div>
+    </section>
+}
+else if (pestanaActiva == "detalle" && seleccionado is not null)
+{
+    var enTransito = seleccionado.Estado == "E";
+    <section class="tarjeta" aria-labelledby="titulo-traslado">
+        <div class="maestro-detalle-encabezado">
+            <h2 id="titulo-traslado">Traslado @seleccionado.Numero</h2>
+            <span class="estado-badge @ClaseEstado(seleccionado.Estado)">@seleccionado.EstadoTexto</span>
+        </div>
+        <div class="resumen-totales">
+            <span>Fecha: <strong>@seleccionado.Fecha.ToString("dd/MM/yyyy")</strong></span>
+            <span>De: <strong>@seleccionado.BodegaOrigen</strong> (@seleccionado.SucursalOrigen)</span>
+            <span>A: <strong>@seleccionado.BodegaDestino</strong> (@seleccionado.SucursalDestino)</span>
+            <span>Valor: <strong>Q @seleccionado.Valor.ToString("N2")</strong></span>
+            <span>Envió: <strong>@seleccionado.Envia</strong></span>
+            @if (seleccionado.Recibe is not null)
+            {
+                <span>@(seleccionado.Estado is "X" or "N" ? "Resolvió" : "Recibió"): <strong>@seleccionado.Recibe</strong> @seleccionado.FechaRecepcion?.ToString("dd/MM/yyyy HH:mm")</span>
+            }
+        </div>
+        @if (!string.IsNullOrWhiteSpace(seleccionado.Observaciones))
+        {
+            <p class="texto-tenue">Observaciones: @seleccionado.Observaciones</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(seleccionado.NotaRecepcion))
+        {
+            <p class="texto-tenue">Nota: @seleccionado.NotaRecepcion</p>
+        }
+
+        @if (enTransito)
+        {
+            <AuthorizeView Policy="Permiso:INVENTARIO_TRASLADO_RECIBIR" Context="permisoRecibir">
+                <p class="texto-ayuda">Cuente lo que llegó. Si todo está completo, confirme sin cambiar nada; si falta algo, corrija la cantidad recibida y elija qué hacer con la diferencia.</p>
+            </AuthorizeView>
+        }
+
+        <table class="tabla-datos">
+            <thead><tr><th class="col-codigo">Código</th><th>Producto</th><th class="num col-monto">Enviado</th><th class="num col-monto">Recibido</th><th class="num col-monto">Diferencia</th><th class="num col-monto">Costo</th><th class="num col-monto">Valor</th></tr></thead>
+            <tbody>
+                @foreach (var l in lineas)
+                {
+                    var recibida = RecibidaDe(l);
+                    var diferencia = recibida is null ? (decimal?)null : recibida.Value - l.Cantidad;
+                    <tr class="@(diferencia is < 0 ? "fila-faltante" : "")">
+                        <td class="col-codigo">@l.Codigo</td>
+                        <td>@l.Descripcion</td>
+                        <td class="num col-monto">@l.Cantidad.ToString("#,##0.##") @l.Unidad</td>
+                        <td class="num col-monto">
+                            @if (enTransito)
+                            {
+                                <input class="entrada-numero" type="number" min="0" max="@l.Cantidad" step="any" aria-label="@($"Cantidad recibida de {l.Codigo}")"
+                                       value="@recibida?.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture)" @onchange="e => CambiarRecibida(l, e)" />
+                            }
+                            else
+                            {
+                                @(recibida?.ToString("#,##0.##") ?? "—")
+                            }
+                        </td>
+                        <td class="num col-monto">@(diferencia is null or 0 ? "" : diferencia.Value.ToString("#,##0.##"))</td>
+                        <td class="num col-monto">@l.CostoUnitario.ToString("N2")</td>
+                        <td class="num col-monto">@l.Valor.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (enTransito)
+        {
+            <AuthorizeView Policy="Permiso:INVENTARIO_TRASLADO_RECIBIR" Context="permisoRecibir">
+                <div class="panel-formulario">
+                    <h3>Recepción</h3>
+                    @if (HayFaltante)
+                    {
+                        <fieldset class="grupo-opciones">
+                            <legend>Faltan @UnidadesFaltantes.ToString("#,##0.##") @(UnidadesFaltantes == 1 ? "unidad" : "unidades") (Q @ValorFaltante.ToString("N2")). ¿Qué hacer con la diferencia?</legend>
+                            <label class="casilla"><input type="radio" name="diferencia" checked="@(diferenciaRecepcion == "D")" @onchange="@(() => diferenciaRecepcion = "D")" /> Devolver a la bodega de origen (no salió)</label>
+                            <label class="casilla"><input type="radio" name="diferencia" checked="@(diferenciaRecepcion == "P")" @onchange="@(() => diferenciaRecepcion = "P")" /> Registrar como pérdida en tránsito</label>
+                        </fieldset>
+                    }
+                    <div class="campo"><label for="tra-nota">Nota de recepción</label><input id="tra-nota" maxlength="250" @bind="notaRecepcion" /></div>
+                    <div class="acciones-fila">
+                        <BotonIcono Icono="check-check" Tooltip="Confirmar lo recibido" Etiqueta="@(HayFaltante ? "Recibir con diferencias" : "Recibir completo")" Variante="primario"
+                                    Confirmacion="@(HayFaltante ? $"¿Recibir con {UnidadesFaltantes:#,##0.##} unidades de menos ({(diferenciaRecepcion == "P" ? "pérdida" : "devolución a origen")})?" : "¿Confirmar que llegó todo completo?")"
+                                    Deshabilitado="guardando" OnClick="RecibirAsync" />
+                    </div>
+                </div>
+                <div class="fila-edicion">
+                    <label for="motivo-rechazo">Rechazar el traslado (todo regresa a la bodega de origen)</label>
+                    <input id="motivo-rechazo" maxlength="200" placeholder="Motivo del rechazo" @bind="motivoRechazo" @bind:event="oninput" />
+                    <BotonIcono Icono="ban" Tooltip="Rechazar el traslado" Etiqueta="Rechazar" Variante="peligro" Deshabilitado="motivoRechazo.Trim().Length < 5 || guardando" OnClick="() => DevolverAsync(false)" />
+                </div>
+            </AuthorizeView>
+            <AuthorizeView Policy="Permiso:INVENTARIO_TRASLADO_ENVIAR" Context="permisoEnviar">
+                <div class="fila-edicion">
+                    <label for="motivo-cancelacion">Cancelar el envío (solo la sucursal de origen, mientras siga en tránsito)</label>
+                    <input id="motivo-cancelacion" maxlength="200" placeholder="Motivo de la cancelación" @bind="motivoCancelacion" @bind:event="oninput" />
+                    <BotonIcono Icono="ban" Tooltip="Cancelar el traslado" Etiqueta="Cancelar envío" Variante="peligro" Deshabilitado="motivoCancelacion.Trim().Length < 5 || guardando" OnClick="() => DevolverAsync(true)" />
+                </div>
+            </AuthorizeView>
+        }
+    </section>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private sealed class LineaNueva
+    {
+        public required ProductoTrasladable Producto { get; init; }
+        public decimal Cantidad { get; set; }
+    }
+
+    private IReadOnlyList<BodegaDetalle> bodegas = Array.Empty<BodegaDetalle>();
+    private IReadOnlyList<Traslado> traslados = Array.Empty<Traslado>();
+    private IReadOnlyList<TrasladoLinea> lineas = Array.Empty<TrasladoLinea>();
+    private IReadOnlyList<ProductoTrasladable> productos = Array.Empty<ProductoTrasladable>();
+    private readonly List<LineaNueva> lineasNuevas = new();
+    private readonly Dictionary<int, decimal> recibidas = new();
+    private Traslado? seleccionado;
+
+    private string pestanaActiva = "lista";
+    private int? sucIdSesion;
+    private string? sucursalSesion;
+    private int? filtroSucId;
+    private string filtroEstado = "";
+    private DateTime? filtroDesde;
+    private DateTime? filtroHasta;
+
+    private int nuevoOrigen;
+    private int nuevoDestino;
+    private string nuevoObservaciones = "";
+    private string textoProducto = "";
+
+    private string diferenciaRecepcion = "D";
+    private string notaRecepcion = "";
+    private string motivoRechazo = "";
+    private string motivoCancelacion = "";
+
+    private bool guardando;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private IReadOnlyList<PestanaItem> Pestanas
+    {
+        get
+        {
+            var lista = new List<PestanaItem> { new("lista", "Traslados") };
+            if (pestanaActiva == "nuevo") lista.Add(new("nuevo", "Nuevo traslado"));
+            if (seleccionado is not null) lista.Add(new("detalle", seleccionado.Numero));
+            return lista;
+        }
+    }
+
+    private IEnumerable<(int SucId, string Nombre)> Sucursales =>
+        bodegas.GroupBy(b => b.SucId).Select(g => (g.Key, g.First().SucDescripcion)).OrderBy(s => s.Item2);
+
+    private IEnumerable<BodegaDetalle> BodegasActivas =>
+        bodegas.Where(b => b.BodEstado == "A").OrderBy(b => b.SucDescripcion).ThenBy(b => b.BodCodigo);
+
+    private BodegaDetalle? OrigenSeleccionado => bodegas.FirstOrDefault(b => b.BodId == nuevoOrigen);
+    private BodegaDetalle? DestinoSeleccionado => bodegas.FirstOrDefault(b => b.BodId == nuevoDestino);
+    private decimal ValorNuevo => lineasNuevas.Sum(l => Math.Round(l.Cantidad * l.Producto.CostoUnitario, 2));
+
+    private bool EsPorRecibir(Traslado t) => t.Estado == "E" && sucIdSesion is not null && t.SucIdDestino == sucIdSesion;
+    private IEnumerable<Traslado> PorRecibir => traslados.Where(EsPorRecibir);
+
+    private decimal? RecibidaDe(TrasladoLinea l) =>
+        recibidas.TryGetValue(l.ProId, out var c) ? c : l.CantidadRecibida ?? (seleccionado?.Estado == "E" ? l.Cantidad : null);
+
+    private decimal UnidadesFaltantes => lineas.Sum(l => Math.Max(0, l.Cantidad - (RecibidaDe(l) ?? l.Cantidad)));
+    private decimal ValorFaltante => lineas.Sum(l => Math.Round(Math.Max(0, l.Cantidad - (RecibidaDe(l) ?? l.Cantidad)) * l.CostoUnitario, 2));
+    private bool HayFaltante => UnidadesFaltantes > 0;
+
+    private static string ClaseEstado(string estado) => estado switch
+    {
+        "E" => "estado-badge-pendiente",
+        "R" => "estado-badge-activo",
+        "P" => "estado-badge-pendiente",
+        _ => "estado-badge-inactivo"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            bodegas = await BodegaRepository.ConsultarDetalleAsync(null, soloActivas: false);
+            var usuario = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User;
+            sucIdSesion = usuario?.ObtenerSucId();
+            sucursalSesion = bodegas.FirstOrDefault(b => b.SucId == sucIdSesion)?.SucDescripcion;
+            filtroSucId = sucursalSesion is null ? null : sucIdSesion;
+            await BuscarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private void MostrarOk(string texto)
+    {
+        mensaje = texto;
+        esMensajeError = false;
+    }
+
+    private async Task BuscarAsync()
+    {
+        try
+        {
+            traslados = await TrasladoRepository.ConsultarAsync(filtroSucId, filtroEstado == "" ? null : filtroEstado, filtroDesde, filtroHasta);
+            if (seleccionado is not null) seleccionado = traslados.FirstOrDefault(t => t.TraId == seleccionado.TraId) ?? seleccionado;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void IniciarNuevo()
+    {
+        mensaje = null;
+        nuevoOrigen = BodegasActivas.FirstOrDefault(b => b.SucId == sucIdSesion)?.BodId ?? 0;
+        nuevoDestino = 0;
+        nuevoObservaciones = "";
+        textoProducto = "";
+        productos = Array.Empty<ProductoTrasladable>();
+        lineasNuevas.Clear();
+        pestanaActiva = "nuevo";
+    }
+
+    private void VolverALista() => pestanaActiva = "lista";
+
+    private async Task CambiarOrigenAsync()
+    {
+        if (nuevoDestino == nuevoOrigen) nuevoDestino = 0;
+        lineasNuevas.Clear();
+        productos = Array.Empty<ProductoTrasladable>();
+        if (textoProducto.Length > 0) await BuscarProductosAsync();
+    }
+
+    private async Task TeclaBuscarAsync(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or "NumpadEnter") await BuscarProductosAsync(agregarExacto: true);
+    }
+
+    private Task BuscarProductosAsync() => BuscarProductosAsync(agregarExacto: false);
+
+    // Con el lector de código de barras, un código exacto se agrega directo.
+    private async Task BuscarProductosAsync(bool agregarExacto)
+    {
+        if (nuevoOrigen == 0) return;
+        try
+        {
+            productos = await TrasladoRepository.ConsultarProductosAsync(nuevoOrigen, textoProducto);
+            var exacto = productos.FirstOrDefault(p => p.Codigo.Equals(textoProducto.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (agregarExacto && exacto is not null)
+            {
+                Agregar(exacto);
+                textoProducto = "";
+                productos = Array.Empty<ProductoTrasladable>();
+            }
+            else if (productos.Count == 0)
+            {
+                mensaje = "No hay productos con existencia en la bodega de origen que coincidan.";
+                esMensajeError = true;
+            }
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void Agregar(ProductoTrasladable producto)
+    {
+        mensaje = null;
+        var existente = lineasNuevas.FirstOrDefault(l => l.Producto.ProId == producto.ProId);
+        if (existente is not null)
+            existente.Cantidad += 1;
+        else
+            lineasNuevas.Add(new LineaNueva { Producto = producto, Cantidad = 1 });
+    }
+
+    private async Task EnviarAsync()
+    {
+        if (lineasNuevas.Any(l => l.Cantidad > l.Producto.Existencia))
+        {
+            mensaje = "Hay cantidades mayores a la existencia de la bodega de origen (en rojo).";
+            esMensajeError = true;
+            return;
+        }
+        guardando = true;
+        try
+        {
+            var id = await TrasladoRepository.EnviarAsync(nuevoOrigen, nuevoDestino, nuevoObservaciones,
+                lineasNuevas.Where(l => l.Cantidad > 0).Select(l => (l.Producto.ProId, l.Cantidad)).ToList(), await ObtenerUsuIdActualAsync());
+            lineasNuevas.Clear();
+            await BuscarAsync();
+            var traslado = traslados.FirstOrDefault(t => t.TraId == id)
+                ?? (await TrasladoRepository.ConsultarAsync(null, null, null, null)).FirstOrDefault(t => t.TraId == id);
+            if (traslado is not null) await AbrirAsync(traslado);
+            else pestanaActiva = "lista";
+            MostrarOk($"Traslado {traslado?.Numero} enviado: salió de la bodega de origen y queda en tránsito hasta que lo reciban.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task AbrirAsync(Traslado traslado)
+    {
+        seleccionado = traslado;
+        recibidas.Clear();
+        diferenciaRecepcion = "D";
+        notaRecepcion = "";
+        motivoRechazo = "";
+        motivoCancelacion = "";
+        pestanaActiva = "detalle";
+        try { lineas = await TrasladoRepository.ConsultarLineasAsync(traslado.TraId); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void CambiarRecibida(TrasladoLinea linea, ChangeEventArgs e)
+    {
+        if (decimal.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var valor))
+            recibidas[linea.ProId] = Math.Clamp(valor, 0, linea.Cantidad);
+        else
+            recibidas.Remove(linea.ProId);
+    }
+
+    private async Task RecibirAsync()
+    {
+        if (seleccionado is null) return;
+        guardando = true;
+        try
+        {
+            var cambios = recibidas.Where(r => lineas.Any(l => l.ProId == r.Key && l.Cantidad != r.Value)).Select(r => (r.Key, r.Value)).ToList();
+            var numero = seleccionado.Numero;
+            var faltante = HayFaltante;
+            var diferencia = diferenciaRecepcion;
+            await TrasladoRepository.RecibirAsync(seleccionado.TraId, cambios, diferencia, notaRecepcion, await ObtenerUsuIdActualAsync());
+            await RefrescarSeleccionadoAsync();
+            MostrarOk(faltante
+                ? $"Traslado {numero} recibido con diferencias: el ingreso por traslado registra lo que llegó y el resto quedó {(diferencia == "P" ? "como pérdida en tránsito" : "devuelto a la bodega de origen")}."
+                : $"Traslado {numero} recibido completo: se generó el ingreso por traslado en la bodega destino.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task DevolverAsync(bool esCancelacion)
+    {
+        if (seleccionado is null) return;
+        guardando = true;
+        try
+        {
+            var numero = seleccionado.Numero;
+            await TrasladoRepository.DevolverAsync(seleccionado.TraId, esCancelacion ? motivoCancelacion : motivoRechazo, esCancelacion, await ObtenerUsuIdActualAsync());
+            await RefrescarSeleccionadoAsync();
+            MostrarOk($"Traslado {numero} {(esCancelacion ? "cancelado" : "rechazado")}: la mercadería regresó a la bodega de origen.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task RefrescarSeleccionadoAsync()
+    {
+        if (seleccionado is null) return;
+        var id = seleccionado.TraId;
+        await BuscarAsync();
+        var actual = traslados.FirstOrDefault(t => t.TraId == id)
+            ?? (await TrasladoRepository.ConsultarAsync(null, null, null, null)).FirstOrDefault(t => t.TraId == id);
+        if (actual is not null) await AbrirAsync(actual);
+    }
+}

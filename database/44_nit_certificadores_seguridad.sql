@@ -377,6 +377,12 @@ USING (VALUES
 	 NULL, 'Pida al certificador el servicio de consulta de NIT.')
 ) src (codigo, nombre, nit, api, metodo, url_pruebas, url_prod, cuerpo, encabezado, campo, implementado, documentacion, notas)
 ON dest.fce_codigo = src.codigo
+-- Completa las filas mínimas (nombre = código) que deja el script 35 al volver a correr.
+WHEN MATCHED AND dest.fce_nombre = dest.fce_codigo THEN
+	UPDATE SET fce_nombre = src.nombre, fce_nit = src.nit, fce_api_consulta_nit = src.api, fce_nit_metodo = src.metodo,
+			   fce_nit_url_pruebas = src.url_pruebas, fce_nit_url_produccion = src.url_prod, fce_nit_cuerpo = src.cuerpo,
+			   fce_nit_encabezado = src.encabezado, fce_nit_campo_nombre = src.campo, fce_nit_implementado = src.implementado,
+			   fce_documentacion = src.documentacion, fce_notas = src.notas
 WHEN NOT MATCHED THEN
 	INSERT (fce_codigo, fce_nombre, fce_nit, fce_api_consulta_nit, fce_nit_metodo, fce_nit_url_pruebas, fce_nit_url_produccion,
 			fce_nit_cuerpo, fce_nit_encabezado, fce_nit_campo_nombre, fce_nit_implementado, fce_documentacion, fce_notas)

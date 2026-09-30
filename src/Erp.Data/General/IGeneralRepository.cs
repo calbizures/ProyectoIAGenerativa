@@ -4,6 +4,7 @@ namespace Erp.Data.General;
 
 public interface IGeneralRepository
 {
+	Task<IReadOnlyList<NitRevision>> ConsultarNitRevisionAsync();
 	// Compañía y parámetros de uso general
 	Task<IReadOnlyList<Compania>> ConsultarCompaniasAsync(bool soloActivas);
 	Task<int> GuardarCompaniaAsync(Compania compania, int? usuarioAccionId);

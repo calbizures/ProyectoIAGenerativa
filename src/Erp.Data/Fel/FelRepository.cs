@@ -17,6 +17,15 @@ public sealed class FelRepository(IDbConnectionFactory connectionFactory) : IFel
 		await connection.ExecuteAsync(procedimiento, parametros, commandType: CommandType.StoredProcedure);
 	}
 
+	public Task<IReadOnlyList<FelCertificador>> ConsultarCertificadoresAsync() =>
+		ConsultarAsync<FelCertificador>("dbo.paFelCertificadorConsultar");
+
+	public async Task<FelConsultaNitConfiguracion?> ConsultarConsultaNitAsync(int ciaId) =>
+		(await ConsultarAsync<FelConsultaNitConfiguracion>("dbo.paFelConsultaNitConfiguracion", new { CiaId = ciaId })).FirstOrDefault();
+
+	public Task GuardarConsultaNitAsync(int ciaId, bool activa, string? urlPropia, int? usuarioAccionId) =>
+		EjecutarAsync("dbo.paFelConsultaNitGuardar", new { CiaId = ciaId, Activa = activa, UrlPropia = urlPropia, UsuId = usuarioAccionId });
+
 	public async Task<FelDocumentoDatos?> ConsultarDatosDocumentoAsync(int encId)
 	{
 		using var connection = connectionFactory.CreateConnection();

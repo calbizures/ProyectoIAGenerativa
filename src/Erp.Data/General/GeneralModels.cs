@@ -87,3 +87,15 @@ public sealed class SucursalDetalle
 	public string SucEstado { get; set; } = "A";
 	public int CantidadBodegas { get; set; }
 }
+
+// NIT o DPI grabado que no pasa la validación (para corregirlo).
+public sealed class NitRevision
+{
+	public string Tipo { get; set; } = "";
+	public int Id { get; set; }
+	public string Codigo { get; set; } = "";
+	public string Nombre { get; set; } = "";
+	public string Dato { get; set; } = "";
+	public string? Valor { get; set; }
+	public string Pantalla { get; set; } = "";
+}

@@ -57,6 +57,8 @@
             <tr>
                 <th class="col-codigo">Código</th>
                 <th>Usuario</th>
+                <th>Empleado</th>
+                <th class="col-codigo">Vendedor</th>
                 <th>Email</th>
                 <th class="col-estado">Estado</th>
                 <th class="col-estado">Bloqueado</th>
@@ -69,6 +71,8 @@
                 <tr class="@(seleccionado?.UsuId == u.UsuId ? "fila-seleccionada" : "")">
                     <td class="col-codigo">@u.UsuCodigo</td>
                     <td>@u.UsuUsuario</td>
+                    <td>@(u.Empleado ?? "—")</td>
+                    <td class="col-codigo">@(u.VendedorCodigo ?? "—")</td>
                     <td>@u.UsuEmail</td>
                     <td class="col-estado"><span class="estado-badge @(u.UsuEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(u.UsuEstado == "A" ? "Activo" : "Inactivo")</span></td>
                     <td class="col-estado">@(u.UsuBloqueado ? "Sí" : "No")</td>

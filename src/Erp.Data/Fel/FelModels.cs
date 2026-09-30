@@ -163,6 +163,44 @@ public sealed class FelBitacora
 	public string? Usuario { get; set; }
 }
 
+// Certificador autorizado y su servicio de consulta de NIT (catálogo fel_certificador).
+public sealed class FelCertificador
+{
+	public string Codigo { get; set; } = "";
+	public string Nombre { get; set; } = "";
+	public string? Nit { get; set; }
+	public string? ApiConsultaNit { get; set; }
+	public string? Metodo { get; set; }
+	public string? UrlPruebas { get; set; }
+	public string? UrlProduccion { get; set; }
+	public string? Cuerpo { get; set; }
+	public string? Encabezado { get; set; }
+	public string? CampoNombre { get; set; }
+	public bool Implementado { get; set; }
+	public string? Documentacion { get; set; }
+	public string? Notas { get; set; }
+}
+
+// Lo necesario para consultar un NIT con el certificador de la compañía.
+public sealed class FelConsultaNitConfiguracion
+{
+	public int CiaId { get; set; }
+	public string NitEmisor { get; set; } = "";
+	public string Certificador { get; set; } = "SIMULADOR";
+	public string? NombreCertificador { get; set; }
+	public bool Activa { get; set; } = true;
+	public string Ambiente { get; set; } = "PRUEBAS";
+	public string? Url { get; set; }
+	public string? Metodo { get; set; }
+	public string? Cuerpo { get; set; }
+	public string? Encabezado { get; set; }
+	public string? CampoNombre { get; set; }
+	public bool Implementado { get; set; }
+	public string? UsuarioApi { get; set; }
+	public int TimeoutSegundos { get; set; } = 30;
+	public string? UrlPropia { get; set; }
+}
+
 public sealed class FelConfiguracion
 {
 	public int CiaId { get; set; }

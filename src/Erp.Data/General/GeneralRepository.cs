@@ -6,6 +6,12 @@ namespace Erp.Data.General;
 
 public sealed class GeneralRepository(IDbConnectionFactory connectionFactory) : IGeneralRepository
 {
+	public async Task<IReadOnlyList<NitRevision>> ConsultarNitRevisionAsync()
+	{
+		using var connection = connectionFactory.CreateConnection();
+		return (await connection.QueryAsync<NitRevision>("dbo.paNitRevisionConsultar", commandType: CommandType.StoredProcedure)).ToList();
+	}
+
 	public async Task<IReadOnlyList<Compania>> ConsultarCompaniasAsync(bool soloActivas)
 	{
 		using var connection = connectionFactory.CreateConnection();

@@ -29,6 +29,7 @@ public interface ICuentasRepository
 	Task<(int BceId, string Numero)> EmitirChequeAsync(int prvId, int cbcId, string? numeroCheque, int? bmpId, string? concepto,
 		IReadOnlyList<CuotaPagoProveedor> cuotas, int? usuarioAccionId);
 	Task<IReadOnlyList<ChequeDetalleLinea>> ConsultarChequeDetalleAsync(int bceId);
+	Task<IReadOnlyList<ProveedorConSaldo>> ConsultarProveedoresConSaldoAsync();
 	Task<IReadOnlyList<ChequeResumen>> ConsultarChequesAsync(int? prvId, DateTime? desde, DateTime? hasta);
 	Task AnularChequeAsync(int bceId, string motivo, int? usuarioAccionId);
 

@@ -58,28 +58,33 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 41_datos_sinteticos_productos_proveedor.sql   -- opcional: productos por proveedor a partir de las compras
 42_cxp_cheque_varias_cuotas.sql               -- pago a proveedores: un cheque por una factura completa o por el saldo de varias
 43_datos_sinteticos_cxp_pagos.sql             -- opcional: compras al crédito con varias cuotas y un cheque de varias facturas
+44_nit_certificadores_seguridad.sql           -- validación de NIT/CUI, consulta de NIT por certificador FEL, clientes por NIT, permisos
+45_traslados_bodegas.sql                      -- traslados entre bodegas: salida, tránsito e ingreso al recibir
+46_datos_sinteticos_traslados.sql             -- opcional: tercera bodega y dos traslados de prueba
 ```
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `43` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `46` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
-no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41` ni el `43`).
+no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40` y `42` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44` y `45` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `43`. Si vuelves a
-correr `12`, corre después `22` a `43` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `46`. Si vuelves a
+correr `12`, corre después `22` a `46` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
 vuelves a correr `23`, `29` o `36`, corre después el `40` (redefine el
 depósito de caja y el mantenimiento de cuentas bancarias). Si vuelves a
 correr `34` o `38`, corre después el `42` (redefine la consulta de cheques a
-proveedores y el tablero de compras).
+proveedores y el tablero de compras). Si vuelves a correr `10` o `38`,
+corre después el `44` (redefine la consulta de usuarios y la carga de
+empleados con la validación del NIT y el DPI).
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -1083,6 +1088,94 @@ GT* (PRV04) con cuotas vencidas y por vencer, y un cheque que paga la
 primera cuota de A-2201 y abona a la primera de A-2245.
 
 Errores `53701`-`53707`.
+
+## Validación de NIT, consulta al certificador y clientes por NIT (`44`)
+
+**Validación.** `fnNitValido` aplica el algoritmo de SAT (módulo 11): los
+dígitos del cuerpo se multiplican de derecha a izquierda por 2, 3, 4…; el
+verificador es `(11 − suma mod 11) mod 11` y 10 se escribe `K`
+(`42932-5`, `1009-K`). También acepta `C/F`, el CUI de 13 dígitos (válido
+como NIT desde 2025) y el NIT de 9 dígitos asignado con el CUI.
+`fnCuiValido` valida el DPI: correlativo de 8 dígitos con su verificador
+(pesos 2 a 9, módulo 11), departamento 01-22 y municipio dentro de los del
+departamento. `fnNitNormalizar` quita espacios, guiones, puntos y diagonales.
+
+Triggers en clientes, proveedores, compañías, empleados y documentos
+rechazan un NIT o DPI **nuevo o cambiado** que no sea válido (errores
+`53801`-`53807`). Los datos que ya estaban grabados se siguen pudiendo usar;
+`paNitRevisionConsultar` los lista y la pantalla **General › Revisión de
+NIT** lleva a corregirlos. Los clientes del extranjero (`EXT`) no se validan.
+La aplicación valida igual antes de grabar (`NitValidador`).
+
+**Consulta del NIT al certificador.** `fel_certificador` es el catálogo de
+certificadores autorizados con su servicio de consulta de NIT: método, URL de
+pruebas y de producción (con `{nit}`), cuerpo (`{nit}`, `{usuario}`,
+`{llave}`), encabezado que lleva la llave y campo del nombre en la
+respuesta. Vienen configurados **INFILE** (*Consulta de Receptores*, POST a
+`consultareceptores.feel.com.gt/rest/action`, campo `nombre`) y **DIGIFACT**
+(*RTU*, GET `api/RTU?NIT={nit}` con encabezado `Authorization`, campo
+`NOMBRE`); G4S, COFIDI, MEGAPRINT, AINNOVA, CCG, CARI y EDICOM quedan
+registrados para completar cuando entreguen su documentación, sin cambiar
+código. `fel_configuracion` suma `fco_consulta_nit_activa` y
+`fco_url_consulta_nit` (URL propia opcional); se cambian con
+`paFelConsultaNitGuardar` o en **Factura electrónica › Consulta de NIT**, que
+también permite probar un NIT. Las credenciales van en la configuración de la
+aplicación: `Fel:Credenciales:<NIT emisor>:ConsultaNitUsuario` y
+`:ConsultaNitLlave`.
+
+**Clientes por NIT.** Columna calculada `pos_cliente.cli_nit_normalizado`
+con índice. `paClienteBuscarPorNit` encuentra el cliente sin importar cómo se
+escribió el NIT; `paClienteRegistrarPorNit` graba el que no existe con el
+nombre que devolvió el certificador (formato de SAT
+`APELLIDO,APELLIDO,CASADA,NOMBRE,NOMBRE`) o el que escribió el cajero, con el
+siguiente código `CLI###`. En **Facturas** se escanea o busca el producto;
+tras el primero el foco pasa al NIT: Enter busca en la base, si no está
+consulta al certificador y registra al cliente (errores `53808`-`53810`).
+
+**Otros cambios.**
+
+- `paCxpProveedoresConSaldoConsultar`: solo proveedores con saldo, con lo
+  vencido y el número de facturas (lista de **Pagos a proveedores**).
+- `sp_usuario_consultar` devuelve el empleado (nombre completo) y el código
+  de vendedor. El nombre del vendedor vinculado a un empleado se toma del
+  empleado (triggers), para no tenerlo escrito dos veces.
+- Permisos nuevos: `COMPRAS_DOCUMENTO_ANULAR`, `VENTAS_VENDEDOR_ADMIN`,
+  `INVENTARIO_TRASLADO_ENVIAR`, `INVENTARIO_TRASLADO_RECIBIR` y
+  `GENERAL_NIT_REVISION` (el administrador los tiene todos; el contador anula
+  compras, revisa NIT y recibe traslados; el cajero recibe traslados).
+- La carga de empleados (`paRrhhEmpleadoCargaProcesar`) marca en su fila el
+  NIT o el DPI inválido.
+
+## Traslados entre bodegas (`45`)
+
+Entre bodegas de la misma sucursal o de otra. Buenas prácticas aplicadas:
+el origen no pierde el control de la mercadería hasta que el destino la
+recibe, y la contabilidad la muestra en tránsito.
+
+1. **Envío** (`paInvTrasladoEnviar`, permiso `INVENTARIO_TRASLADO_ENVIAR`):
+   genera la **salida por traslado** (`TRS`) en la bodega de origen al costo
+   promedio, deja el traslado *En tránsito* y la póliza Debe
+   `INVENTARIO EN TRANSITO` / Haber inventario.
+2. **Recepción** (`paInvTrasladoRecibir`, permiso
+   `INVENTARIO_TRASLADO_RECIBIR`, usuario asignado a la sucursal destino): se
+   confirma lo que llegó por línea. Genera el **ingreso por traslado**
+   (`TRE`) en la bodega destino al mismo costo y la póliza Debe inventario /
+   Haber tránsito. Si falta algo, lo que no llegó se **devuelve a origen**
+   (`D`, ingreso de devolución) o se registra como **pérdida** (`P`, a la cuenta de faltantes de inventario).
+3. **Rechazo o cancelación** (`paInvTrasladoDevolver`): el destino rechaza
+   todo o el origen cancela mientras siga en tránsito; la mercadería regresa
+   a la bodega de origen.
+
+El costo promedio no cambia (sale y entra al mismo costo unitario). Estados:
+`E` en tránsito, `R` recibido, `P` recibido con diferencias, `X`
+rechazado, `N` cancelado. Consultas: `paInvTrasladoConsultar`,
+`paInvTrasladoDetalleConsultar`, `paInvTrasladoProductosConsultar` y
+`paInvTransitoConsultar` (saldo en tránsito, que cuadra con la cuenta).
+Errores `53901`-`53914`. En la aplicación: **Inventario › Traslados entre
+bodegas**, con los pendientes de recibir de la sucursal resaltados.
+
+Datos de prueba (`46`): bodega `BOD03` en la casa matriz, un traslado
+BOD01 → BOD03 recibido y uno BOD01 → BOD02 (Mixco) en tránsito.
 
 ## Módulos nuevos
 

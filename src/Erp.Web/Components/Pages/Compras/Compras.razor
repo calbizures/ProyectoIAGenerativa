@@ -335,7 +335,9 @@
                             }
                             @if (c.EncEstado == "G")
                             {
-                                <BotonIcono Icono="ban" Tooltip="Anular compra" Variante="peligro" OnClick="() => { anulandoId = c.EncId; mensaje = null; }" />
+                                <AuthorizeView Policy="Permiso:COMPRAS_DOCUMENTO_ANULAR" Context="permisoAnular">
+                                    <BotonIcono Icono="ban" Tooltip="Anular compra" Variante="peligro" OnClick="() => { anulandoId = c.EncId; mensaje = null; }" />
+                                </AuthorizeView>
                             }
                         </div>
                     </td>
@@ -610,6 +612,13 @@
 
         try
         {
+            if (!Erp.Data.General.NitValidador.EsValido(nuevoProveedorRapido.Nit))
+            {
+                mensaje = Erp.Data.General.NitValidador.MensajeInvalido(nuevoProveedorRapido.Nit);
+                esMensajeError = true;
+                return;
+            }
+            nuevoProveedorRapido.Nit = Erp.Data.General.NitValidador.Formatear(nuevoProveedorRapido.Nit);
             var usuId = await ObtenerUsuIdActualAsync();
             var prvId = await ProveedorRepository.InsertarAsync(
                 nuevoProveedorRapido.Codigo, nuevoProveedorRapido.NombreComercial, nuevoProveedorRapido.Nit, null,

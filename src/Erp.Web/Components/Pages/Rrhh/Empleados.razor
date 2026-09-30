@@ -408,6 +408,9 @@ else if (pestanaActiva == "editar")
     {
         try
         {
+            if (!Erp.Data.General.NitValidador.EsValido(modelo.Nit) || Erp.Data.General.NitValidador.EsConsumidorFinal(modelo.Nit))
+                throw new InvalidOperationException(Erp.Data.General.NitValidador.MensajeInvalido(modelo.Nit));
+            modelo.Nit = Erp.Data.General.NitValidador.Formatear(modelo.Nit);
             var id = await RrhhRepository.GuardarEmpleadoAsync(modelo.AEmpleado(), await ObtenerUsuIdActualAsync());
             var eraNuevo = modelo.IdEmpleado == 0;
             await CargarPlazasAsync();

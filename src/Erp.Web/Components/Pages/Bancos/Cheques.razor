@@ -1,6 +1,6 @@
 @page "/bancos/cheques"
 @rendermode InteractiveServer
-@attribute [Authorize(Policy = "Permiso:BANCOS_ADMIN")]
+@attribute [Authorize(Policy = "Permiso:BANCOS_ADMIN,BANCOS_CHEQUE_EMITIR")]
 @using Erp.Data.Bancos
 @using Erp.Data.General
 @using Erp.Data.Rrhh
@@ -153,10 +153,12 @@
                         <td class="col-acciones">
                             @if (c.EstadoCheque == "E")
                             {
+                                <AuthorizeView Policy="Permiso:BANCOS_ADMIN" Context="permisoBancos">
                                 <div class="acciones-fila">
                                     <BotonIcono Icono="check-check" Tooltip="Marcar como cobrado" Confirmacion="¿El banco ya pagó este cheque?" OnClick="() => CobrarAsync(c)" />
                                     <BotonIcono Icono="ban" Tooltip="Anular cheque" Variante="peligro" OnClick="() => IniciarAnulacion(c)" />
                                 </div>
+                                </AuthorizeView>
                             }
                         </td>
                     </tr>
