@@ -1523,10 +1523,10 @@ BEGIN
 		FechaIngreso, IdTipoDocumentoIdentificacion, NumeroDocumento, NumeroAfiliacionIGSS, Email, IdPlaza, SalarioBase)
 	SELECT v.cod, @cia, v.n1, v.n2, v.a1, v.a2, v.g, v.nac, v.ing, @dpi, v.dpi, v.igss, v.mail, plaz.IdPlaza, v.sal
 	FROM (VALUES
-		('EMP001', 'Julio',   NULL,    'Pérez',     'Ramírez', 'M', CAST('1990-04-12' AS DATE), CAST('2023-02-01' AS DATE), '2456789010101', '100200300', 'jperez@siq.com.gt',     'Vendedor 1',       4500.00),
-		('EMP002', 'María',   'José',  'García',    'López',   'F', CAST('1994-09-30' AS DATE), CAST('2023-06-15' AS DATE), '2987654320101', '100200301', 'mgarcia@siq.com.gt',    'Cajero 1',         4000.00),
-		('EMP003', 'Luis',    'Fernando', 'Rodríguez', 'Mejía', 'M', CAST('1985-01-20' AS DATE), CAST('2022-01-10' AS DATE), '1876543210101', '100200302', 'lrodriguez@siq.com.gt', 'Contador general', 7500.00),
-		('EMP004', 'Ana',     'Lucía', 'Morales',   'Gómez',   'F', CAST('1997-11-05' AS DATE), DATEADD(DAY, 15, @inicioMes), '3012345670101', '100200303', NULL, 'Vendedor 2', 4500.00)
+		('EMP001', 'Julio',   NULL,    'Pérez',     'Ramírez', 'M', CAST('1990-04-12' AS DATE), CAST('2023-02-01' AS DATE), '2456789050101', '100200300', 'jperez@siq.com.gt',     'Vendedor 1',       4500.00),
+		('EMP002', 'María',   'José',  'García',    'López',   'F', CAST('1994-09-30' AS DATE), CAST('2023-06-15' AS DATE), '2987654380101', '100200301', 'mgarcia@siq.com.gt',    'Cajero 1',         4000.00),
+		('EMP003', 'Luis',    'Fernando', 'Rodríguez', 'Mejía', 'M', CAST('1985-01-20' AS DATE), CAST('2022-01-10' AS DATE), '1876543280101', '100200302', 'lrodriguez@siq.com.gt', 'Contador general', 7500.00),
+		('EMP004', 'Ana',     'Lucía', 'Morales',   'Gómez',   'F', CAST('1997-11-05' AS DATE), DATEADD(DAY, 15, @inicioMes), '3012345660101', '100200303', NULL, 'Vendedor 2', 4500.00)
 	) v(cod, n1, n2, a1, a2, g, nac, ing, dpi, igss, mail, plaza, sal)
 	INNER JOIN dbo.rrhhPlaza plaz ON plaz.Descripcion = v.plaza;
 

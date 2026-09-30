@@ -131,7 +131,7 @@ GO
 -- Compañía / sucursales / bancos
 ------------------------------------------------------------
 INSERT INTO dbo.gen_compania (cia_nombre_comercial, cia_direccion, cia_representante_legal, cia_nit, cia_telefono, cia_email) VALUES
-('Servicios Informáticos Quetzal, S.A.', '5a. Avenida 10-25 Zona 10, Ciudad de Guatemala', 'María Fernanda López Castillo', '1234567-8', '22334455', 'contacto@siq.com.gt');
+('Servicios Informáticos Quetzal, S.A.', '5a. Avenida 10-25 Zona 10, Ciudad de Guatemala', 'María Fernanda López Castillo', '1234567-9', '22334455', 'contacto@siq.com.gt');
 GO
 
 DECLARE @cia INT = (SELECT cia_id FROM dbo.gen_compania);
@@ -344,12 +344,12 @@ GO
 -- Proveedores
 ------------------------------------------------------------
 DECLARE @p1 INT, @p2 INT, @p3 INT, @p4 INT, @p5 INT, @p6 INT;
-EXEC dbo.sp_proveedor_insertar @prv_codigo='PRV01', @prv_nombre_comercial='TecnoDistribuciones, S.A.', @prv_nit='1122334-5', @prv_contacto='Roberto Aguilar', @prv_telefono_oficina='23456789', @prv_id=@p1 OUTPUT;
-EXEC dbo.sp_proveedor_insertar @prv_codigo='PRV02', @prv_nombre_comercial='Importadora de Cómputo Maya', @prv_nit='2233445-6', @prv_contacto='Sofía Ramírez', @prv_telefono_oficina='23456790', @prv_id=@p2 OUTPUT;
+EXEC dbo.sp_proveedor_insertar @prv_codigo='PRV01', @prv_nombre_comercial='TecnoDistribuciones, S.A.', @prv_nit='1122334-0', @prv_contacto='Roberto Aguilar', @prv_telefono_oficina='23456789', @prv_id=@p1 OUTPUT;
+EXEC dbo.sp_proveedor_insertar @prv_codigo='PRV02', @prv_nombre_comercial='Importadora de Cómputo Maya', @prv_nit='2233445-9', @prv_contacto='Sofía Ramírez', @prv_telefono_oficina='23456790', @prv_id=@p2 OUTPUT;
 EXEC dbo.sp_proveedor_insertar @prv_codigo='PRV03', @prv_nombre_comercial='Software Licencias Centroamérica', @prv_nit='3344556-7', @prv_contacto='Diego Herrera', @prv_telefono_oficina='23456791', @prv_id=@p3 OUTPUT;
-EXEC dbo.sp_proveedor_insertar @prv_codigo='PRV04', @prv_nombre_comercial='Redes y Conectividad GT', @prv_nit='4455667-8', @prv_contacto='Paola Castillo', @prv_telefono_oficina='23456792', @prv_id=@p4 OUTPUT;
-EXEC dbo.sp_proveedor_insertar @prv_codigo='PRV05', @prv_nombre_comercial='Suministros de Oficina El Pilar', @prv_nit='5566778-9', @prv_contacto='Manuel Ordóñez', @prv_telefono_oficina='23456793', @prv_id=@p5 OUTPUT;
-EXEC dbo.sp_proveedor_insertar @prv_codigo='PRV06', @prv_nombre_comercial='Servicios de Internet Fibra Óptica', @prv_nit='6677889-0', @prv_contacto='Karla Vásquez', @prv_telefono_oficina='23456794', @prv_id=@p6 OUTPUT;
+EXEC dbo.sp_proveedor_insertar @prv_codigo='PRV04', @prv_nombre_comercial='Redes y Conectividad GT', @prv_nit='4455667-5', @prv_contacto='Paola Castillo', @prv_telefono_oficina='23456792', @prv_id=@p4 OUTPUT;
+EXEC dbo.sp_proveedor_insertar @prv_codigo='PRV05', @prv_nombre_comercial='Suministros de Oficina El Pilar', @prv_nit='5566778-3', @prv_contacto='Manuel Ordóñez', @prv_telefono_oficina='23456793', @prv_id=@p5 OUTPUT;
+EXEC dbo.sp_proveedor_insertar @prv_codigo='PRV06', @prv_nombre_comercial='Servicios de Internet Fibra Óptica', @prv_nit='6677889-1', @prv_contacto='Karla Vásquez', @prv_telefono_oficina='23456794', @prv_id=@p6 OUTPUT;
 GO
 
 ------------------------------------------------------------
@@ -436,19 +436,19 @@ DECLARE @codigo VARCHAR(32), @nombres VARCHAR(64), @apellidos VARCHAR(64), @nit 
 
 DECLARE clientes_cur CURSOR LOCAL FAST_FORWARD FOR
 SELECT * FROM (VALUES
-	('CLI001','Carlos','Méndez López','1000011-2'), ('CLI002','María José','Suárez Pineda','1000022-3'),
-	('CLI003','Luis Fernando','García Mazariegos','1000033-4'), ('CLI004','Ana Gabriela','Ordóñez Ruiz','1000044-5'),
-	('CLI005','José Miguel','Barrios Cifuentes','1000055-6'), ('CLI006','Silvia Patricia','Reyes Monterroso','1000066-7'),
-	('CLI007','Édgar Rolando','Chacón Paredes','1000077-8'), ('CLI008','Claudia Verónica','Solórzano Guzmán','1000088-9'),
-	('CLI009','Byron Estuardo','Marroquín Ical','1000099-0'), ('CLI010','Wendy Carolina','Tzul Xico','1000100-1'),
-	('CLI011','Óscar Danilo','Pérez Castañeda','1000111-2'), ('CLI012','Heidy Lorena','Aguilar Ramírez','1000122-3'),
-	('CLI013','Jorge Mario','Velásquez Girón','1000133-4'), ('CLI014','Brenda Suceli','López Hernández','1000144-5'),
-	('CLI015','Fredy Armando','Chávez Morán','1000155-6'), ('CLI016','Gabriela Alejandra','Contreras Soto','1000166-7'),
-	('CLI017','Rudy Alfonso','Ixcot Batz','1000177-8'), ('CLI018','Cindy Marisol','Poou Caal','1000188-9'),
-	('CLI019','Estuardo José','Tojín Sactic','1000199-0'), ('CLI020','Paola Nineth','Recinos Cabrera','1000200-1'),
-	('CLI021','Mynor Vinicio','Salazar Pineda','1000211-2'), ('CLI022','Dora Lidia','Cabrera Estrada','1000222-3'),
-	('CLI023','Selvin Otoniel','Coy Chiquito','1000233-4'), ('CLI024','Ingrid Yesenia','Morán Batres','1000244-5'),
-	('CLI025','Alejandro','Villatoro Dubón','1000255-6')
+	('CLI001','Carlos','Méndez López','1000011-9'), ('CLI002','María José','Suárez Pineda','1000022-4'),
+	('CLI003','Luis Fernando','García Mazariegos','1000033-K'), ('CLI004','Ana Gabriela','Ordóñez Ruiz','1000044-5'),
+	('CLI005','José Miguel','Barrios Cifuentes','1000055-0'), ('CLI006','Silvia Patricia','Reyes Monterroso','1000066-6'),
+	('CLI007','Édgar Rolando','Chacón Paredes','1000077-1'), ('CLI008','Claudia Verónica','Solórzano Guzmán','1000088-7'),
+	('CLI009','Byron Estuardo','Marroquín Ical','1000099-2'), ('CLI010','Wendy Carolina','Tzul Xico','1000100-K'),
+	('CLI011','Óscar Danilo','Pérez Castañeda','1000111-5'), ('CLI012','Heidy Lorena','Aguilar Ramírez','1000122-0'),
+	('CLI013','Jorge Mario','Velásquez Girón','1000133-6'), ('CLI014','Brenda Suceli','López Hernández','1000144-1'),
+	('CLI015','Fredy Armando','Chávez Morán','1000155-7'), ('CLI016','Gabriela Alejandra','Contreras Soto','1000166-2'),
+	('CLI017','Rudy Alfonso','Ixcot Batz','1000177-8'), ('CLI018','Cindy Marisol','Poou Caal','1000188-3'),
+	('CLI019','Estuardo José','Tojín Sactic','1000199-9'), ('CLI020','Paola Nineth','Recinos Cabrera','1000200-6'),
+	('CLI021','Mynor Vinicio','Salazar Pineda','1000211-1'), ('CLI022','Dora Lidia','Cabrera Estrada','1000222-7'),
+	('CLI023','Selvin Otoniel','Coy Chiquito','1000233-2'), ('CLI024','Ingrid Yesenia','Morán Batres','1000244-8'),
+	('CLI025','Alejandro','Villatoro Dubón','1000255-3')
 ) v(cli_codigo, cli_nombres, cli_apellidos, cli_nit);
 
 OPEN clientes_cur;

@@ -94,7 +94,7 @@ BEGIN
 			@nuevo INT;
 	EXEC dbo.paRrhhEmpleadoGuardar @CodigoEmpleado = 'EMP005', @CiaId = @cia, @PrimerNombre = 'Pedro', @SegundoNombre = 'Antonio',
 		@PrimerApellido = 'Xol', @SegundoApellido = 'Caal', @Genero = 'M', @FechaNacimiento = '1998-03-14', @FechaIngreso = @ingreso,
-		@Direccion = 'Zona 7, Ciudad de Guatemala', @IdTipoDocumentoIdentificacion = @tdoc, @NumeroDocumento = '3124567890101',
+		@Direccion = 'Zona 7, Ciudad de Guatemala', @IdTipoDocumentoIdentificacion = @tdoc, @NumeroDocumento = '3124567860101',
 		@IdPlaza = @plaza, @SalarioBase = 4200.00, @UsuId = @usu, @IdResultado = @nuevo OUTPUT;
 	EXEC dbo.paRrhhEmpleadoPagoGuardar @IdEmpleado = @nuevo, @TipoNomina = 'S', @FormaPago = 'C', @UsuId = @usu;
 	PRINT 'Empleado EMP005: nómina semanal, pago con cheque.';
