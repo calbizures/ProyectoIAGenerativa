@@ -189,13 +189,13 @@ async function logoPng() {
   s.addNotes('Se abre una toma por bodega, se registra el conteo y al aplicarla las diferencias generan los documentos de sobrante y faltante con sus pólizas. Los productos sin conteo no se ajustan.');
 
   // 10. Caja ------------------------------------------------------------------
-  s = claro(); etiqueta(s, '08 · Proveedores y caja'); titulo(s, 'Caja cuadrada todos los días', 'Pagos con cheque, corte con conteo físico y depósitos.');
+  s = claro(); etiqueta(s, '08 · Proveedores y caja'); titulo(s, 'Caja cuadrada todos los días', 'Pagos a proveedores por factura o por saldo, corte con conteo físico y depósitos.');
   captura(s, 'caja_corte.png', 0.45, 1.45, 5.45);
   filaIcono(s, 6.2, 1.55, 3.4, ic.caja, 'Apertura por sucursal', 'Con monto inicial; no se abre un día nuevo sin cerrar el anterior.');
   filaIcono(s, 6.2, 2.45, 3.4, ic.check, 'Corte con cuadre', 'Esperado por forma de pago contra lo contado; la diferencia genera póliza.');
   filaIcono(s, 6.2, 3.35, 3.4, ic.banco, 'Depósitos', 'A una cuenta bancaria; la póliza carga su cuenta contable de depósitos.');
-  filaIcono(s, 6.2, 4.25, 3.4, ic.factura, 'Pagos con cheque', 'Por cuotas del proveedor; anulables con motivo.');
-  s.addNotes('Caja por sucursal: apertura, corte con conteo físico por denominación y forma de pago, cierre con faltante o sobrante contabilizado, y depósitos a una cuenta bancaria de la empresa.');
+  filaIcono(s, 6.2, 4.25, 3.4, ic.factura, 'Un cheque por factura o saldo', 'Aplicado a las cuotas más antiguas, concepto automático; anulable.');
+  s.addNotes('Caja por sucursal: apertura, corte con conteo físico por denominación y forma de pago, cierre con faltante o sobrante contabilizado, y depósitos a una cuenta bancaria de la empresa. A los proveedores se les paga con un solo cheque una factura completa o el saldo de varias: el monto se aplica a las cuotas más antiguas y la póliza lleva una línea por factura.');
 
   // 11. Bancos ----------------------------------------------------------------
   s = claro(); etiqueta(s, '09 · Bancos'); titulo(s, 'Cuentas, chequeras y cheques', 'Cada movimiento bancario con su cuenta contable y su póliza.');
@@ -272,7 +272,7 @@ async function logoPng() {
   });
   filaIcono(s, 0.5, 3.45, 4.3, ic.db, 'Transacciones completas', 'Documento, inventario, cartera y póliza se graban juntos o no se graba nada.');
   filaIcono(s, 5.2, 3.45, 4.3, ic.web, 'Accesible', 'Contraste AA, foco visible con teclado y uso en celular.');
-  s.addNotes('SQL Server con la lógica de negocio en procedimientos almacenados y una aplicación Blazor Server sobre .NET 8. La instalación son 42 scripts re-ejecutables (00 a 41).');
+  s.addNotes('SQL Server con la lógica de negocio en procedimientos almacenados y una aplicación Blazor Server sobre .NET 8. La instalación son 44 scripts re-ejecutables (00 a 43).');
 
   // 13. Cierre ----------------------------------------------------------------
   s = oscuro();

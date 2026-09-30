@@ -305,15 +305,33 @@ const secciones = {
 
   async caja() {
     await d.carta({ numero: '08 · Proveedores y caja', titulo: 'Pagos y caja', sub: 'El dinero que entra y sale, cuadrado todos los días.',
-      puntos: ['Pagos con cheque', 'Antigüedad de proveedores', 'Apertura, corte y cierre de caja', 'Depósitos a la cuenta bancaria'] }, 4200);
-    await d.ir('cxp/pagos');
+      puntos: ['Un cheque por factura o por saldo', 'Antigüedad de proveedores', 'Apertura, corte y cierre de caja', 'Depósitos a la cuenta bancaria'] }, 4200);
+    const [[prv]] = sql("SELECT prv_id FROM dbo.inv_proveedor WHERE prv_codigo = 'PRV04'");
+    await d.ir(`cxp/estado-cuenta?id=${prv}`);
     await d.sinCarta(1000);
-    await d.rotulo('08 · Proveedores y caja', 'Pagos con cheque',
-      'Se eligen las cuotas del proveedor y se emite el cheque con su póliza. Se puede anular con motivo mientras no se haya cobrado.', { pos: 'abajo-der', espera: false });
-    const idxPrv = await d.p.$$eval('main select >> nth=0', s => [...s[0].options].findIndex(o => o.textContent.includes('Tecno')));
-    await d.elegir('main select', { index: Math.max(1, idxPrv) }, 2600);
-    await d.espera(1600);
-    await d.desplazarA('text=Cheques emitidos', 'start', 1200); await d.espera(1600);
+    await d.rotulo('08 · Proveedores y caja', 'Estado de cuenta del proveedor',
+      'Tres compras al crédito con cuotas vencidas. Cada compra se puede pagar desde aquí, o todo el saldo con un solo cheque.', { pos: 'abajo-der', espera: false });
+    await d.resaltar('table.tabla-datos', 3600); await d.sinResalte();
+    await d.clic('a:has-text("Pagar saldo con cheque")', 2000);
+    await d.rotulo('08 · Proveedores y caja', 'Un cheque para varias facturas',
+      'También se llega desde la antigüedad de saldos, el historial de compras y los próximos pagos del tablero.', { pos: 'abajo-der', espera: 3400 });
+    await d.escribir('#pag-monto', '5000', 500);
+    await d.clic('button:has-text("Aplicar a las más antiguas")', 1400);
+    await d.rotulo('08 · Proveedores y caja', 'Aplicado a las más antiguas',
+      'El monto cancela la cuota más vencida y abona el resto a la siguiente; cada monto se puede ajustar o marcar otras cuotas.', { pos: 'arriba-der', espera: false });
+    await d.resaltar('.tabla-cuotas-cobro', 4200); await d.sinResalte();
+    await d.desplazarA('#titulo-cheque', 'start', 1200);
+    await d.rotulo('08 · Proveedores y caja', 'Concepto automático',
+      'Se arma con las facturas que paga y se puede editar. La póliza lleva una línea por factura contra la cuenta de abonos del banco.', { pos: 'arriba-der', espera: false });
+    await d.resaltar('#pag-concepto', 3800); await d.sinResalte(); await d.sinRotulo();
+    await d.clic('button:has-text("Emitir cheque Q")', 2000);
+    await d.desplazar(0, 900);
+    await d.resaltar('.tarjeta-exito', 2600); await d.sinResalte();
+    await d.desplazarA('#titulo-cheques', 'start', 1200);
+    await d.clic('.tarjeta:has(#titulo-cheques) tbody tr >> nth=0 >> button >> nth=0', 1400);
+    await d.rotulo('08 · Proveedores y caja', 'Qué pagó cada cheque',
+      'Facturas y cuotas, con abono o cancelación. Anularlo devuelve el saldo a cada cuota y anula su póliza.', { pos: 'arriba-der', espera: false });
+    await d.resaltar('.tabla-detalle-cheque', 4200); await d.sinResalte(); await d.sinRotulo();
     await d.ir('cxp/antiguedad');
     await d.rotulo('08 · Proveedores y caja', 'Antigüedad de proveedores',
       'Lo que se debe por rangos de vencimiento, por proveedor o por compra.', { pos: 'abajo-der', espera: 2600 });

@@ -3,8 +3,9 @@
 Generadores del video de demostración del ERP, de su guion y de la
 presentación. Todo se produce a partir de la aplicación real: un navegador
 automatizado (Playwright) recorre las pantallas; graba de verdad la factura, el
-cobro, la compra, una toma de inventario físico, un depósito, un cheque libre y
-el logotipo de la empresa, y cada paso lleva un rótulo que explica lo que se ve.
+cobro, la compra, una toma de inventario físico, un cheque a proveedor por
+varias facturas, un depósito, un cheque libre y el logotipo de la empresa, y
+cada paso lleva un rótulo que explica lo que se ve.
 
 | Archivo | Qué hace |
 |---|---|
@@ -21,7 +22,7 @@ el logotipo de la empresa, y cada paso lleva un rótulo que explica lo que se ve
 
 ## Requisitos
 
-- La base `erp_db` **recién instalada** (scripts `00` a `41`) en un contenedor
+- La base `erp_db` **recién instalada** (scripts `00` a `43`) en un contenedor
   Docker de SQL Server. La demo graba documentos y carga el logotipo, así que
   cada corrida debe empezar con la base limpia.
 - La aplicación corriendo (por defecto en `http://localhost:5273`).

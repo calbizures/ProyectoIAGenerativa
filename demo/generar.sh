@@ -2,7 +2,7 @@
 # Genera la demo completa: tomas del recorrido, música, video final (alta
 # calidad y versión liviana < 30 MB), guion y presentación.
 #
-# Requisitos (ver README.md): base erp_db recién instalada (00 a 41) en un
+# Requisitos (ver README.md): base erp_db recién instalada (00 a 43) en un
 # contenedor de SQL Server, la aplicación corriendo en ERP_URL, ffmpeg,
 # Node.js y Python 3 con numpy y scipy.
 #

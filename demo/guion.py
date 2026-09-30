@@ -48,7 +48,7 @@ for nombre, t0, datos in tomas:
             L.append(f"- `{t}` **Panel:** fragmento real del XML del DTE (GTDocumento 0.1) enviado al certificador.")
     L.append("")
 L += ["## Qué se ve en pantalla", "",
-      "- Todo es la aplicación real corriendo contra SQL Server con los datos de prueba (scripts 00 a 41): la factura, el cobro, la compra, la toma de inventario, el depósito, el cheque y el logotipo se graban de verdad durante la grabación.",
+      "- Todo es la aplicación real corriendo contra SQL Server con los datos de prueba (scripts 00 a 43): la factura, el cobro, la compra, la toma de inventario, el depósito, el cheque a proveedor por varias facturas, el cheque libre y el logotipo se graban de verdad durante la grabación.",
       "- La factura electrónica usa el **simulador** de certificación (UUID, serie y número de prueba, sin validez fiscal). Con INFILE el flujo es el mismo.",
       "- Usuario de la demo: `admin`, sucursal *Casa matriz Zona 10*.", "",
       "## Si se quiere agregar voz", "",
