@@ -92,7 +92,8 @@ IF EXISTS (SELECT 1 FROM dbo.inv_documento_det WHERE det_bien_o_servicio = 'S' A
 ELSE
 BEGIN
 	DECLARE @usu_vendedor INT = (SELECT usu_id FROM dbo.gen_usuario WHERE usu_usuario = 'jperez');
-	DECLARE @bod INT = (SELECT bod_id FROM dbo.inv_bodega WHERE bod_codigo = 'BOD01');
+	DECLARE @bod INT = (SELECT TOP 1 bode.bod_id FROM dbo.inv_bodega bode INNER JOIN dbo.gen_sucursal sucu ON sucu.suc_id = bode.suc_id
+				   WHERE bode.bod_codigo = 'BOD01' ORDER BY CASE sucu.suc_codigo WHEN 'SUC01' THEN 0 ELSE 1 END, sucu.cia_id, bode.bod_id);
 	DECLARE @tdo INT = (SELECT tdo_id FROM dbo.inv_documento_tipo WHERE tdo_codigo = 'FCAM');
 	DECLARE @cli INT = (SELECT TOP 1 cli_id FROM dbo.pos_cliente WHERE cli_estado = 'A' ORDER BY cli_id);
 	DECLARE @vend INT = (SELECT TOP 1 pve_id FROM dbo.pos_vendedor ORDER BY pve_id);

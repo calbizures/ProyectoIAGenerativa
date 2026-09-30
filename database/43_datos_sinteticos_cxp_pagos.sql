@@ -26,7 +26,8 @@ GO
 ------------------------------------------------------------
 DECLARE @usu INT = (SELECT usu_id FROM dbo.gen_usuario WHERE usu_usuario = 'admin');
 DECLARE @prv INT = (SELECT prv_id FROM dbo.inv_proveedor WHERE prv_codigo = 'PRV04');
-DECLARE @bod INT = (SELECT bod_id FROM dbo.inv_bodega WHERE bod_codigo = 'BOD01');
+DECLARE @bod INT = (SELECT TOP 1 bode.bod_id FROM dbo.inv_bodega bode INNER JOIN dbo.gen_sucursal sucu ON sucu.suc_id = bode.suc_id
+				   WHERE bode.bod_codigo = 'BOD01' ORDER BY CASE sucu.suc_codigo WHEN 'SUC01' THEN 0 ELSE 1 END, sucu.cia_id, bode.bod_id);
 DECLARE @tdo INT = (SELECT tdo_id FROM dbo.inv_documento_tipo WHERE tdo_codigo = 'COMP');
 DECLARE @hoy DATE = CAST(GETDATE() AS DATE);
 DECLARE @monitor INT = (SELECT pro_id FROM dbo.inv_producto WHERE pro_descripcion LIKE 'Monitor LG%');

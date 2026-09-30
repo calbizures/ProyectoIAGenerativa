@@ -20,10 +20,16 @@ SET QUOTED_IDENTIFIER ON;
 GO
 
 DECLARE @usu INT = (SELECT usu_id FROM dbo.gen_usuario WHERE usu_usuario = 'admin');
-DECLARE @bod1 INT = (SELECT bod_id FROM dbo.inv_bodega WHERE bod_codigo = 'BOD01');
-DECLARE @bod2 INT = (SELECT bod_id FROM dbo.inv_bodega WHERE bod_codigo = 'BOD02');
-DECLARE @bod3 INT = (SELECT bod_id FROM dbo.inv_bodega WHERE bod_codigo = 'BOD03');
+-- El código de bodega es único por sucursal (UQ_inv_bodega_suc_codigo): BOD01 se
+-- busca en la casa matriz (SUC01), BOD02 en Mixco (SUC02) y BOD03 en la misma
+-- sucursal que BOD01.
+DECLARE @bod1 INT = (SELECT TOP 1 bode.bod_id FROM dbo.inv_bodega bode INNER JOIN dbo.gen_sucursal sucu ON sucu.suc_id = bode.suc_id
+				   WHERE bode.bod_codigo = 'BOD01' ORDER BY CASE sucu.suc_codigo WHEN 'SUC01' THEN 0 ELSE 1 END, sucu.cia_id, bode.bod_id);
 DECLARE @suc1 INT = (SELECT suc_id FROM dbo.inv_bodega WHERE bod_id = @bod1);
+DECLARE @bod2 INT = (SELECT TOP 1 bode.bod_id FROM dbo.inv_bodega bode INNER JOIN dbo.gen_sucursal sucu ON sucu.suc_id = bode.suc_id
+				   WHERE bode.bod_codigo = 'BOD02' AND bode.suc_id <> @suc1
+				   ORDER BY CASE sucu.suc_codigo WHEN 'SUC02' THEN 0 ELSE 1 END, sucu.cia_id, bode.bod_id);
+DECLARE @bod3 INT = (SELECT bod_id FROM dbo.inv_bodega WHERE bod_codigo = 'BOD03' AND suc_id = @suc1);
 
 IF @bod3 IS NULL AND @suc1 IS NOT NULL
 	EXEC dbo.paBodegaGuardar @SucId = @suc1, @Codigo = 'BOD03', @Descripcion = 'Bodega de repuestos Zona 10', @UsuId = @usu, @IdResultado = @bod3 OUTPUT;

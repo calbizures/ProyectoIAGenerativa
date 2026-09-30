@@ -186,7 +186,8 @@ GO
 -- la corrección de arriba, que ya quedó aplicada.
 ------------------------------------------------------------------------------
 DECLARE @i INT = 1;
-DECLARE @bod1 INT = (SELECT bod_id FROM dbo.inv_bodega WHERE bod_codigo = 'BOD01');
+DECLARE @bod1 INT = (SELECT TOP 1 bode.bod_id FROM dbo.inv_bodega bode INNER JOIN dbo.gen_sucursal sucu ON sucu.suc_id = bode.suc_id
+				   WHERE bode.bod_codigo = 'BOD01' ORDER BY CASE sucu.suc_codigo WHEN 'SUC01' THEN 0 ELSE 1 END, sucu.cia_id, bode.bod_id);
 DECLARE @tdo_comp INT = (SELECT tdo_id FROM dbo.inv_documento_tipo WHERE tdo_codigo = 'COMP');
 DECLARE @compras_creadas INT = 0;
 

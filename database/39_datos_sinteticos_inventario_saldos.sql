@@ -46,7 +46,8 @@ GO
 -- 2. Inventario físico de la bodega principal
 ------------------------------------------------------------
 DECLARE @usu INT = (SELECT usu_id FROM dbo.gen_usuario WHERE usu_usuario = 'admin');
-DECLARE @bod INT = (SELECT bod_id FROM dbo.inv_bodega WHERE bod_codigo = 'BOD01');
+DECLARE @bod INT = (SELECT TOP 1 bode.bod_id FROM dbo.inv_bodega bode INNER JOIN dbo.gen_sucursal sucu ON sucu.suc_id = bode.suc_id
+				   WHERE bode.bod_codigo = 'BOD01' ORDER BY CASE sucu.suc_codigo WHEN 'SUC01' THEN 0 ELSE 1 END, sucu.cia_id, bode.bod_id);
 DECLARE @toma INT, @conteos dbo.inv_toma_conteo_type;
 
 IF EXISTS (SELECT 1 FROM dbo.inv_toma_fisica WHERE bod_id = @bod AND tfi_estado <> 'N')
