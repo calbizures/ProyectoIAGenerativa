@@ -10,6 +10,7 @@
 @using Erp.Web.Security
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IRrhhRepository RrhhRepository
+@inject IIgssRepository IgssRepository
 @inject IGeneralRepository GeneralRepository
 @inject IUsuarioRepository UsuarioRepository
 @inject IVendedorRepository VendedorRepository
@@ -220,6 +221,52 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
                     <option value="TP">Tiempo parcial</option>
                 </select>
             </div>
+            @if (igss is not null)
+            {
+                <div class="campo">
+                    <label for="emp-tipo-planilla">Tipo de planilla del IGSS</label>
+                    <select id="emp-tipo-planilla" @bind="igss.IdIgssTipoPlanilla">
+                        <option value="">(Sin asignar)</option>
+                        @foreach (var t in tiposPlanilla)
+                        {
+                            <option value="@t.IdTipoPlanilla">@t.Codigo · @t.Nombre</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="emp-condicion">Condición laboral</label>
+                    <select id="emp-condicion" @bind="igss.CondicionLaboral">
+                        <option value="P">Permanente</option>
+                        <option value="T">Temporal</option>
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="emp-tipo-salario">Tipo de salario (IGSS)</label>
+                    <select id="emp-tipo-salario" @bind="igss.IgssTipoSalario">
+                        @foreach (var t in catalogosIgss.TiposSalario)
+                        {
+                            <option value="@t.Codigo">@t.Texto</option>
+                        }
+                    </select>
+                </div>
+                @if (laboralTiempo == "TP")
+                {
+                    <div class="campo">
+                        <label for="emp-horas">Horas diarias (tiempo parcial)</label>
+                        <input id="emp-horas" type="number" min="0.5" max="24" step="0.5" @bind="igss.HorasDiarias" />
+                    </div>
+                }
+                <div class="campo campo-ancho">
+                    <label for="emp-ocupacion">Ocupación (CIUO-88)</label>
+                    <select id="emp-ocupacion" @bind="igss.IgssOcupacion">
+                        <option value="">@(igss.OcupacionPuesto is null ? "(Sin ocupación: asígnela al puesto)" : $"La del puesto: {igss.OcupacionPuesto} · {igss.OcupacionPuestoDescripcion}")</option>
+                        @foreach (var o in catalogosIgss.Ocupaciones)
+                        {
+                            <option value="@o.Codigo">@o.Texto</option>
+                        }
+                    </select>
+                </div>
+            }
             @if (seleccionado.FolioLibroSalarios is int folio)
             {
                 <div class="campo"><label>Folio del libro de salarios</label><span class="valor-detalle">@folio</span></div>
@@ -347,6 +394,10 @@ else if (pestanaActiva == "editar")
     private int? laboralSucId;
     private string laboralNacionalidad = "";
     private string laboralJornada = "D";
+    // Datos para la planilla del IGSS (script 55).
+    private EmpleadoIgss? igss;
+    private IgssCatalogos catalogosIgss = new();
+    private IReadOnlyList<IgssTipoPlanilla> tiposPlanilla = Array.Empty<IgssTipoPlanilla>();
     private string laboralTiempo = "TC";
 
     private string pestanaActiva = "lista";
@@ -432,6 +483,10 @@ else if (pestanaActiva == "editar")
             laboralJornada = empleado?.Jornada ?? "D";
             laboralTiempo = empleado?.TiempoContrato ?? "TC";
             centrosTrabajo = empleado is null ? Array.Empty<SucursalIgss>() : await RrhhRepository.ConsultarSucursalesIgssAsync(empleado.CiaId);
+            catalogosIgss = await IgssRepository.ConsultarCatalogosAsync();
+            igss = empleado is null ? null : (await IgssRepository.ConsultarEmpleadoAsync(empleado.IdEmpleado)).Empleado;
+            tiposPlanilla = empleado is null ? Array.Empty<IgssTipoPlanilla>()
+                : (await IgssRepository.ConsultarTiposPlanillaAsync(empleado.CiaId)).Where(t => t.Estado == "A" || t.IdTipoPlanilla == igss?.IdIgssTipoPlanilla).ToList();
             fechaBaja = DateTime.Today;
             pestanaActiva = empleado is null ? "lista" : "detalle";
         }
@@ -540,6 +595,11 @@ else if (pestanaActiva == "editar")
             await RrhhRepository.GuardarLaboralEmpleadoAsync(seleccionado.IdEmpleado, laboralSucId,
                 string.IsNullOrWhiteSpace(laboralNacionalidad) ? null : laboralNacionalidad.Trim(), laboralJornada, laboralTiempo,
                 await ObtenerUsuIdActualAsync());
+            if (igss is not null)
+            {
+                if (laboralTiempo != "TP") igss.HorasDiarias = null;
+                await IgssRepository.GuardarEmpleadoAsync(igss, await ObtenerUsuIdActualAsync());
+            }
             seleccionado.SucId = laboralSucId;
             seleccionado.Nacionalidad = string.IsNullOrWhiteSpace(laboralNacionalidad) ? null : laboralNacionalidad.Trim().ToUpperInvariant();
             seleccionado.Jornada = laboralJornada;

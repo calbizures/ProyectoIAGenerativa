@@ -3105,3 +3105,4 @@ label.boton-icono { cursor: pointer; position: relative; }
 .tabla-rotacion th.num { white-space: normal; min-width: 64px; max-width: 96px; line-height: 1.2; }
 .tabla-rotacion td:nth-child(3) { min-width: 230px; }
 .tabla-rotacion td:nth-child(13) { min-width: 150px; }
+.igss-vista { max-height: 420px; overflow: auto; padding: 0.8rem 1rem; background: #0f1b3d; color: #e6edf8; border-radius: 8px; font-size: 0.78rem; line-height: 1.45; white-space: pre; }

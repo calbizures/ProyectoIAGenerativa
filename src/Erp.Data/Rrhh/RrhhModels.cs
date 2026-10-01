@@ -27,6 +27,9 @@ public sealed class Puesto
 	public decimal? SalarioMinimo { get; set; }
 	public decimal? SalarioMaximo { get; set; }
 	public string Estado { get; set; } = "A";
+	// Ocupación CIUO-88 del puesto para la planilla del IGSS.
+	public string? IgssOcupacion { get; set; }
+	public string? IgssOcupacionDescripcion { get; set; }
 }
 
 public sealed class Plaza

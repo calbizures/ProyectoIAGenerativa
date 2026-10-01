@@ -8,6 +8,10 @@ public sealed class CompaniaRrhh
 	public int CiaId { get; set; }
 	public string? IgssNumeroPatronal { get; set; }
 	public string? LibroSalariosAutorizacion { get; set; }
+	// Correo al que el IGSS responde la validación del archivo (vacío: el de la compañía).
+	public string? IgssCorreo { get; set; }
+	public string? IgssActividad { get; set; }
+	public string? CorreoCompania { get; set; }
 }
 
 // Sucursal como centro de trabajo del IGSS. TasaIgssLaboral nula = la del
@@ -24,6 +28,16 @@ public sealed class SucursalIgss
 	public decimal TasaIrtra { get; set; } = 1m;
 	public decimal TasaIntecap { get; set; } = 1m;
 	public string Estado { get; set; } = "A";
+	// Datos del centro de trabajo para el archivo del IGSS.
+	public string? Direccion { get; set; }
+	public string? Telefono { get; set; }
+	public byte? Zona { get; set; }
+	public string? Fax { get; set; }
+	public string? Contacto { get; set; }
+	public string? Email { get; set; }
+	public string? Departamento { get; set; }
+	public string? Municipio { get; set; }
+	public string? Actividad { get; set; }
 }
 
 public sealed class LibroSalariosPatrono

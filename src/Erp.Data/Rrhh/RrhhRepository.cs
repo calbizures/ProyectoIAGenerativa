@@ -60,7 +60,7 @@ public sealed class RrhhRepository(IDbConnectionFactory connectionFactory) : IRr
 	public Task<IReadOnlyList<Puesto>> ConsultarPuestosAsync(bool soloActivos) =>
 		ConsultarAsync<Puesto>("dbo.paRrhhPuestoConsultar", new { SoloActivos = soloActivos });
 
-	public Task<int> GuardarPuestoAsync(Puesto puesto, int? usuarioAccionId)
+	public async Task<int> GuardarPuestoAsync(Puesto puesto, int? usuarioAccionId)
 	{
 		var parametros = new DynamicParameters(new
 		{
@@ -71,7 +71,9 @@ public sealed class RrhhRepository(IDbConnectionFactory connectionFactory) : IRr
 			puesto.Estado,
 			UsuId = usuarioAccionId
 		});
-		return GuardarConResultadoAsync("dbo.paRrhhPuestoGuardar", parametros);
+		var idPuesto = await GuardarConResultadoAsync("dbo.paRrhhPuestoGuardar", parametros);
+		await EjecutarAsync("dbo.paRrhhPuestoOcupacionGuardar", new { IdPuesto = idPuesto, Ocupacion = puesto.IgssOcupacion, UsuId = usuarioAccionId });
+		return idPuesto;
 	}
 
 	public Task<IReadOnlyList<Plaza>> ConsultarPlazasAsync(bool soloActivos) =>
@@ -276,6 +278,8 @@ public sealed class RrhhRepository(IDbConnectionFactory connectionFactory) : IRr
 			datos.CiaId,
 			datos.IgssNumeroPatronal,
 			datos.LibroSalariosAutorizacion,
+			datos.IgssCorreo,
+			datos.IgssActividad,
 			UsuId = usuarioAccionId
 		});
 
@@ -291,6 +295,13 @@ public sealed class RrhhRepository(IDbConnectionFactory connectionFactory) : IRr
 			sucursal.TasaIgssLaboral,
 			sucursal.TasaIrtra,
 			sucursal.TasaIntecap,
+			sucursal.Zona,
+			sucursal.Fax,
+			sucursal.Contacto,
+			sucursal.Email,
+			sucursal.Departamento,
+			sucursal.Municipio,
+			sucursal.Actividad,
 			UsuId = usuarioAccionId
 		});
 

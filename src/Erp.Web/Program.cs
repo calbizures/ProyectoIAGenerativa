@@ -222,6 +222,20 @@ app.MapGet("/reportes/rrhh/planilla-igss.xlsx", async (int cia, int anio, int me
 	return Results.File(archivo, TipoExcel, $"planilla-igss-{anio}-{mes:00}.xlsx");
 }).RequireAuthorization();
 
+// Archivo de la planilla del IGSS para "sistema propio" (formato 2.2.0).
+app.MapGet("/reportes/rrhh/planilla-igss.txt", async (int cia, int anio, int mes, bool? pruebas, bool? complementaria, string? nota,
+	HttpContext contexto, Erp.Data.Rrhh.IIgssRepository igss, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:RRHH_ADMIN")).Succeeded) return Results.Forbid();
+	var datos = await igss.ConsultarArchivoAsync(cia, anio, mes);
+	if (datos.Patrono is null) return Results.NotFound();
+	if (datos.TieneErrores)
+		return Results.BadRequest("El archivo no se puede generar: " + string.Join(" ", datos.Observaciones.Where(o => o.Nivel == "E").Select(o => o.Mensaje)));
+	var ahora = DateTime.Now;
+	var texto = ArchivoPlanillaIgss.Generar(datos, new ArchivoPlanillaIgss.Opciones(ahora, pruebas == true, complementaria == true, nota));
+	return Results.File(ArchivoPlanillaIgss.Codificacion.GetBytes(texto), "text/plain; charset=iso-8859-1", ArchivoPlanillaIgss.NombreArchivo(datos, ahora));
+}).RequireAuthorization();
+
 app.MapGet("/reportes/contabilidad/centros-costo.xlsx", async (DateTime desde, DateTime hasta, int? departamento, HttpContext contexto,
 	Erp.Data.Contabilidad.ICentroCostoRepository centros, IGeneralRepository general, IAuthorizationService autorizacion) =>
 {

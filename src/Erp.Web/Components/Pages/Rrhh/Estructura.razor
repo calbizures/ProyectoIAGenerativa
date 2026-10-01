@@ -6,6 +6,7 @@
 @using Erp.Data.Security
 @using Erp.Web.Security
 @using Microsoft.AspNetCore.Components.Authorization
+@inject IIgssRepository IgssRepository
 @inject IRrhhRepository RrhhRepository
 @inject ICajaRepository CajaRepository
 
@@ -107,6 +108,16 @@ else if (pestanaActiva == "puestos")
                 <label for="pue-estado">Estado</label>
                 <select id="pue-estado" @bind="puestoEdicion.Estado"><option value="A">Activo</option><option value="I">Inactivo</option></select>
             </div>
+            <div class="campo">
+                <label for="pue-ocupacion">Ocupación para el IGSS (CIUO-88)</label>
+                <select id="pue-ocupacion" @bind="puestoEdicion.IgssOcupacion">
+                    <option value="">(Sin ocupación)</option>
+                    @foreach (var o in ocupaciones)
+                    {
+                        <option value="@o.Codigo">@o.Texto</option>
+                    }
+                </select>
+            </div>
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarPuestoAsync" />
                 <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => puestoEdicion = null" />
@@ -114,16 +125,17 @@ else if (pestanaActiva == "puestos")
         </div>
     }
     <table class="tabla-datos">
-        <thead><tr><th>Puesto</th><th class="num col-monto">Salario mínimo</th><th class="num col-monto">Salario máximo</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+        <thead><tr><th>Puesto</th><th>Ocupación IGSS</th><th class="num col-monto">Salario mínimo</th><th class="num col-monto">Salario máximo</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
         <tbody>
             @if (!puestos.Any())
             {
-                <tr><td colspan="5" class="doc-tabla-vacia">Sin puestos registrados.</td></tr>
+                <tr><td colspan="6" class="doc-tabla-vacia">Sin puestos registrados.</td></tr>
             }
             @foreach (var p in puestos)
             {
                 <tr>
                     <td>@p.Descripcion</td>
+                    <td>@(p.IgssOcupacion is null ? "—" : $"{p.IgssOcupacion} · {p.IgssOcupacionDescripcion}")</td>
                     <td class="num col-monto">@(p.SalarioMinimo?.ToString("N2") ?? "—")</td>
                     <td class="num col-monto">@(p.SalarioMaximo?.ToString("N2") ?? "—")</td>
                     <td class="col-estado"><span class="estado-badge @(p.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(p.Estado == "A" ? "Activo" : "Inactivo")</span></td>
@@ -211,6 +223,7 @@ else if (pestanaActiva == "plazas")
     private string pestanaActiva = "unidades";
     private IReadOnlyList<Departamento> departamentos = Array.Empty<Departamento>();
     private IReadOnlyList<Puesto> puestos = Array.Empty<Puesto>();
+    private IReadOnlyList<IgssCodigo> ocupaciones = Array.Empty<IgssCodigo>();
     private IReadOnlyList<Plaza> plazas = Array.Empty<Plaza>();
     private IReadOnlyList<UnidadOrganizativaNodo> unidades = Array.Empty<UnidadOrganizativaNodo>();
     private IReadOnlyList<Sucursal> sucursales = Array.Empty<Sucursal>();
@@ -246,6 +259,7 @@ else if (pestanaActiva == "plazas")
     {
         departamentos = await RrhhRepository.ConsultarDepartamentosAsync(soloActivos: false);
         puestos = await RrhhRepository.ConsultarPuestosAsync(soloActivos: false);
+        ocupaciones = (await IgssRepository.ConsultarCatalogosAsync()).Ocupaciones;
         plazas = await RrhhRepository.ConsultarPlazasAsync(soloActivos: false);
     }
 
@@ -292,7 +306,8 @@ else if (pestanaActiva == "plazas")
         mensaje = null;
         puestoEdicion = new Puesto
         {
-            IdPuesto = p.IdPuesto, Descripcion = p.Descripcion, SalarioMinimo = p.SalarioMinimo, SalarioMaximo = p.SalarioMaximo, Estado = p.Estado
+            IdPuesto = p.IdPuesto, Descripcion = p.Descripcion, SalarioMinimo = p.SalarioMinimo, SalarioMaximo = p.SalarioMaximo, Estado = p.Estado,
+            IgssOcupacion = p.IgssOcupacion
         };
     }
 
