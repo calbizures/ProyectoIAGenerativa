@@ -66,21 +66,26 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 49_rrhh_libro_salarios_igss.sql               -- cuota patronal, aguinaldo y bono 14, libro de salarios y planilla del IGSS
 50_auditoria_robustez.sql                     -- auditoría: operaciones dobles, existencia no negativa, períodos cerrados, índices, integridad
 51_auditoria_saldos.sql                       -- auditoría completa: saldos de cuotas, notas y caja simultáneas, baja de empleado
+52_cotizaciones.sql                           -- cotizaciones con vigencia convertibles en factura; total de factura igual al de FEL
+53_ordenes_compra.sql                         -- órdenes de compra con aprobación y recepciones parciales como compra
+54_rotacion_reorden.sql                       -- rotación del inventario, punto de reorden y sugerencia de órdenes de compra
+55_planilla_igss_archivo.sql                  -- archivo TXT de la planilla del IGSS (sistema propio 2.2.0) y sus catálogos
+56_libro_salarios_otros_salarios.sql          -- libro de salarios: columna "otros salarios" del formato único del MINTRAB
 ```
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `51` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `56` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `51` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `56` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `51`. Si vuelves a
-correr `12`, corre después `22` a `51` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `56`. Si vuelves a
+correr `12`, corre después `22` a `56` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -1415,6 +1420,95 @@ En la aplicación:
   y Empleados en celular.
 - En pantallas táctiles crecen los controles pequeños (flechas del árbol,
   enlaces de tabla, casillas).
+
+## Cotizaciones con vigencia convertibles en factura (`52`)
+
+Errores `54401`-`54412`.
+
+- `ven_cotizacion_enc` / `ven_cotizacion_det`: precios **con IVA**, como
+  se ofrecen al cliente. La cotización vale `gen_compania.cia_cotizacion_vigencia_dias`
+  días (15 por defecto, se cambia en General › Compañías); vence el día
+  fecha + vigencia y ese día todavía es válida.
+- Estados: V vigente (X = vencida, se calcula), F facturada, A anulada.
+- `sp_ventas_crear_factura` recibe `@cot_id`: en la misma transacción de
+  la factura marca la cotización como facturada. Si venció, ya se facturó
+  o se anuló, la factura no se graba (54412). La cotización no aparta
+  existencia; se valida al facturar.
+- **Corrección**: el total de la factura se calcula como lo certifica FEL
+  (precio con IVA por unidad × cantidad). Antes, con cantidades mayores a
+  uno, podía quedar un centavo abajo del que ve el cliente y la factura de
+  contado se rechazaba porque el pago no cuadraba.
+- Permiso `VENTAS_COTIZACION`.
+
+## Órdenes de compra con aprobación e ingresos parciales (`53`)
+
+Errores `54501`-`54522`.
+
+- `cmp_orden_compra_enc` / `_det`, con costos **con IVA**, la bodega donde
+  se recibe y la entrega esperada. Estados guardados: B borrador, A
+  aprobada, C cerrada (se canceló lo pendiente), N anulada. "Recibida en
+  parte" y "Recibida" se **calculan** de las compras vigentes: si se anula
+  una compra que vino de la orden, lo que recibió vuelve a quedar pendiente.
+- `paOrdenCompraRecibir`: con la factura del proveedor se recibe todo o
+  parte de lo pendiente; crea la compra (COMP) con `sp_compras_crear_documento`
+  en la misma transacción (inventario, cuenta por pagar y póliza). No
+  acepta recibir más de lo pendiente (54521) ni una factura del proveedor
+  ya registrada (54522).
+- **Corrección**: el total de la compra es el de la factura del proveedor
+  (costo con IVA por unidad × cantidad), igual que en ventas.
+- Permisos `COMPRAS_ORDEN`, `COMPRAS_ORDEN_APROBAR` (solo Administrador) y
+  `COMPRAS_ORDEN_RECIBIR`.
+
+## Rotación del inventario y punto de reorden (`54`)
+
+`paInventarioRotacionConsultar` calcula por producto y bodega, en un
+período (90 días por defecto):
+
+| Dato | Cálculo |
+| --- | --- |
+| Vendidas | facturas − devoluciones (notas de crédito con producto) |
+| Inventario promedio | (existencia inicial + final del período) / 2, reconstruidas desde la existencia de hoy y los movimientos |
+| Rotación anual | vendidas / inventario promedio × 365 / días |
+| Días de inventario | días / rotación del período |
+| Punto de reorden | venta diaria × (días de entrega + días de seguridad), hacia arriba |
+| En tránsito | pendiente de órdenes de compra en borrador o aprobadas |
+| Sugerido | si existencia + tránsito ≤ punto de reorden: venta diaria × (entrega + seguridad + cobertura) − (existencia + tránsito) |
+
+Días de entrega: los del proveedor preferido del producto
+(`inv_producto_proveedor.ppp_dias_entrega`, en Compras › Productos por
+proveedor) o los de la compañía. La pantalla crea las órdenes en borrador,
+una por proveedor. Permiso `INVENTARIO_REORDEN`.
+
+## Planilla del IGSS para sistema propio, formato 2.2.0 (`55`)
+
+Errores `54701`-`54710`. Sigue el manual *GenerarArchivoPlanilla 2.2.0* y
+la plantilla oficial *SISTEMA_PROPIO_2.2.0.xls* del IGSS.
+
+- Catálogos oficiales tomados de la plantilla: 441 actividades económicas
+  (CIIU 3.1, 6 dígitos), 390 ocupaciones (CIUO-88, 4 dígitos), 22
+  departamentos y 332 municipios, 9 tipos de salario.
+- Patrono: correo para las respuestas del IGSS y actividad económica.
+  Centro de trabajo (sucursal): zona, fax, contacto, correo, departamento,
+  municipio y actividad. Tipos de planilla por compañía. Ocupación por
+  puesto; por empleado: tipo de planilla, condición (P/T), tipo de
+  salario, horas diarias si es a tiempo parcial y ocupación propia.
+  Suspensiones del IGSS y licencias sin goce (`rrhhIgssAusencia`).
+- `paRrhhPlanillaIgssArchivoConsultar` arma los bloques del mes y una lista
+  de observaciones; con errores no se genera el archivo.
+- Liquidaciones: una por tipo de planilla (por nómina si el tipo es semanal
+  o catorcenal), de las nóminas ordinarias aprobadas del mes.
+- El texto lo escribe la aplicación: mayúsculas sin tildes (la Ñ se
+  conserva), NIT sin guion, campos separados por `|`, CRLF, bloques
+  `[centros]` … `[finplanilla]` y cada registro terminado en `|` como en
+  la plantilla oficial; nombre `patronal-AAAAMM-ddmmyyyy-HHMM.txt`.
+
+## Libro de salarios: otros salarios (`56`)
+
+El formato único del Ministerio de Trabajo (Acuerdo Ministerial 124-2019)
+separa en el salario devengado el ordinario, el extraordinario, **otros
+salarios** (comisiones, destajo, producción), séptimos y asuetos y
+vacaciones. Se agrega la columna `OTROS_SALARIOS` y las comisiones pasan a
+ella; los promedios de aguinaldo y Bono 14 siguen contándolas.
 
 ## Módulos nuevos
 

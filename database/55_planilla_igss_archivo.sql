@@ -1363,9 +1363,17 @@ IF COL_LENGTH('dbo.rrhhEmpleado', 'IdIgssTipoPlanilla') IS NULL
 	ALTER TABLE dbo.rrhhEmpleado ADD
 		[IdIgssTipoPlanilla]	INT				NULL,
 		[CondicionLaboral]		CHAR(1)			NOT NULL CONSTRAINT [DF_rrhhEmpleado_CondicionLaboral] DEFAULT ('P'),
-		[IgssTipoSalario]		TINYINT			NOT NULL CONSTRAINT [DF_rrhhEmpleado_IgssTipoSalario] DEFAULT (1),
+		[IgssTipoSalario]		TINYINT			NULL,		-- vacío = 1, salario base mensual
 		[HorasDiarias]			NUMERIC(4, 1)	NULL,		-- tiempo parcial: horas que trabaja al día
 		[IgssOcupacion]			CHAR(4)			NULL;		-- si difiere de la del puesto
+GO
+-- Sin valor por defecto: 12_datos_sinteticos vacía todas las tablas (también
+-- este catálogo) y 25_rrhh vuelve a crear empleados antes de que este script
+-- repueble el catálogo; un 1 por defecto rompería la llave foránea.
+IF OBJECT_ID('dbo.DF_rrhhEmpleado_IgssTipoSalario', 'D') IS NOT NULL
+	ALTER TABLE dbo.rrhhEmpleado DROP CONSTRAINT [DF_rrhhEmpleado_IgssTipoSalario];
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.rrhhEmpleado') AND name = 'IgssTipoSalario' AND is_nullable = 0)
+	ALTER TABLE dbo.rrhhEmpleado ALTER COLUMN [IgssTipoSalario] TINYINT NULL;
 GO
 IF OBJECT_ID('dbo.FK_rrhhEmpleado_IgssTipoPlanilla', 'F') IS NULL
 	ALTER TABLE dbo.rrhhEmpleado ADD
@@ -1606,7 +1614,8 @@ CREATE OR ALTER PROCEDURE [dbo].[paRrhhEmpleadoIgssConsultar]
 AS
 BEGIN
 	SET NOCOUNT ON;
-	SELECT empl.IdEmpleado, empl.IdIgssTipoPlanilla, empl.CondicionLaboral, empl.IgssTipoSalario, empl.HorasDiarias, empl.IgssOcupacion,
+	SELECT empl.IdEmpleado, empl.IdIgssTipoPlanilla, empl.CondicionLaboral, ISNULL(empl.IgssTipoSalario, 1) AS IgssTipoSalario,
+		   empl.HorasDiarias, empl.IgssOcupacion,
 		   pues.IgssOcupacion AS OcupacionPuesto, ocup.Descripcion AS OcupacionPuestoDescripcion
 	FROM dbo.rrhhEmpleado empl
 	LEFT JOIN dbo.rrhhPlaza plaz ON plaz.IdPlaza = empl.IdPlaza
@@ -1801,7 +1810,7 @@ BEGIN
 		   CASE WHEN empl.FechaIngreso BETWEEN emps.Inicio AND emps.Fin THEN empl.FechaIngreso END AS FechaAlta,
 		   CASE WHEN empl.FechaBaja BETWEEN emps.Inicio AND emps.Fin THEN empl.FechaBaja END AS FechaBaja,
 		   sucu.suc_igss_centro_trabajo AS Centro, empl.Nit, COALESCE(empl.IgssOcupacion, pues.IgssOcupacion) AS Ocupacion,
-		   empl.CondicionLaboral AS Condicion, empl.IgssTipoSalario AS TipoSalario,
+		   empl.CondicionLaboral AS Condicion, ISNULL(empl.IgssTipoSalario, 1) AS TipoSalario,
 		   CASE WHEN empl.TiempoContrato = 'TP' AND empl.HorasDiarias IS NOT NULL THEN CEILING(emps.Dias * empl.HorasDiarias) END AS Horas,
 		   empl.TiempoContrato, emps.Dias
 	FROM #empl emps
