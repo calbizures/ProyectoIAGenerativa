@@ -890,7 +890,7 @@ SELECT v.* FROM (VALUES
 ('8269', N'Operadores de máquinas para fabricar productos textiles y artículos de piel y cuero, no clasificados bajo otros epígrafes'),
 ('8271', N'Operadores de máquinas para elaborar carne de pescado y mariscos'),
 ('8272', N'Operadores de máquinas para elaborar productos lácteos'),
-('7273', N'Operadores de máquinas para moler cereales y especies'),
+('7273', N'Operadores de máquinas para moler cereales y especies'),	-- así viene en la plantilla del IGSS (en CIUO-88 sería 8273)
 ('8274', N'Operadores de máquinas para elaborar cereales, productos de panadería, repostería y artículos de chocolate'),
 ('8275', N'Operadores de máquinas para elaborar frutos húmedos, secos y hortalizas'),
 ('8276', N'Operadores de máquinas para fabricar azúcares'),
