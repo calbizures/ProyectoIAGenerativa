@@ -480,9 +480,7 @@ BEGIN
 END;
 GO
 
-------------------------------------------------------------
--- 9. Cheque a proveedor: tipo, beneficiario y cuenta del banco
-------------------------------------------------------------
+-- Cheque a proveedor por una sola cuota (lo usan los datos de prueba).
 CREATE OR ALTER PROCEDURE [dbo].[sp_bancos_emitir_cheque_pago_proveedor]
 	@ppg_id				INT,
 	@cbc_id				INT,
@@ -689,9 +687,7 @@ GO
 ------------------------------------------------------------
 -- 6. Apertura y cierre de caja simultáneos
 ------------------------------------------------------------
-------------------------------------------------------------
--- Apertura de caja: monto inicial libre
-------------------------------------------------------------
+-- Apertura de caja: monto inicial libre.
 CREATE OR ALTER PROCEDURE [dbo].[sp_pos_caja_abrir]
 	@pcr_id				INT,
 	@usu_id				INT,
@@ -716,9 +712,7 @@ BEGIN
 END;
 GO
 
-------------------------------------------------------------
--- 3. Cierre de caja: faltante o sobrante dentro de la tolerancia
-------------------------------------------------------------
+-- Cierre de caja: faltante o sobrante dentro de la tolerancia.
 CREATE OR ALTER PROCEDURE [dbo].[sp_pos_caja_cerrar]
 	@pca_id	INT,
 	@usu_id	INT
