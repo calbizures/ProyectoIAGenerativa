@@ -43,7 +43,7 @@
       correr en cualquier momento (pólizas cuadradas, saldos de CxC y CxP
       contra sus pagos, existencias, pagos de nómina, pólizas faltantes).
 
- Requiere 34 a 49. Errores 54201-54210. Se puede volver a correr.
+ Requiere 34 a 49. Errores 54201-54209. Se puede volver a correr.
 ================================================================================
 */
 USE [erp_db];
