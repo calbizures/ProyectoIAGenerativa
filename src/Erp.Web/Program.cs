@@ -186,6 +186,19 @@ app.MapGet("/reportes/nomina/transferencias/{idNominaPago:int}.xlsx", async (int
 	return Results.File(archivo, TipoExcel, $"transferencias-nomina-{idNominaPago}.xlsx");
 }).RequireAuthorization();
 
+// Rotación del inventario y punto de reorden (bodega, o todas las de la sucursal).
+app.MapGet("/reportes/inventario/rotacion.xlsx", async (int? bodega, int? sucursal, int? dias, DateTime? hasta, HttpContext contexto,
+	Erp.Data.Inventario.IReordenRepository reorden, Erp.Data.Inventario.IBodegaRepository bodegas, IGeneralRepository general,
+	IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:INVENTARIO_REORDEN")).Succeeded) return Results.Forbid();
+	var filas = await reorden.ConsultarRotacionAsync(bodega, bodega is null ? sucursal : null, dias, hasta);
+	var ambito = bodega is int b ? (await bodegas.ConsultarAsync(null, null)).FirstOrDefault(x => x.BodId == b)?.BodDescripcion ?? $"Bodega {b}"
+		: "Todas las bodegas";
+	var archivo = ReportesExcel.Rotacion(filas, ambito, await CompaniaReporteAsync(contexto, general));
+	return Results.File(archivo, TipoExcel, $"rotacion-inventario-{(hasta ?? DateTime.Today):yyyyMMdd}.xlsx");
+}).RequireAuthorization();
+
 // Libro de salarios y planilla mensual del IGSS de una compañía.
 app.MapGet("/reportes/rrhh/libro-salarios.xlsx", async (int cia, int anio, int? empleado, HttpContext contexto,
 	Erp.Data.Rrhh.IRrhhRepository rrhh, IGeneralRepository general, IAuthorizationService autorizacion) =>

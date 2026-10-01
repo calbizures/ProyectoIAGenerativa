@@ -5,6 +5,7 @@
 @using Erp.Data.Inventario
 @using Erp.Web.Security
 @using Microsoft.AspNetCore.Components.Authorization
+@inject IReordenRepository ReordenRepository
 @inject IProductoProveedorRepository ProductoProveedorRepository
 @inject IProveedorRepository ProveedorRepository
 @inject IProductoRepository ProductoRepository
@@ -99,7 +100,7 @@ else
         <thead>
             <tr>
                 <th class="col-codigo">Código</th><th>Producto</th><th>Código del proveedor</th>
-                <th class="num col-monto">Último costo (sin IVA)</th><th class="col-fecha">Última compra</th>
+                <th class="num col-monto">Último costo (sin IVA)</th><th class="col-fecha">Última compra</th><th class="num">Días de entrega</th>
                 <th class="col-estado">Preferido</th><th class="col-acciones">Acciones</th>
             </tr>
         </thead>
@@ -114,6 +115,7 @@ else
                         <td><input maxlength="64" aria-label="Código del proveedor" @bind="codigoEdicion" /></td>
                         <td class="num col-monto">@(r.UltimoCosto?.ToString("N2") ?? "—")</td>
                         <td class="col-fecha">@(r.FechaUltimaCompra?.ToString("dd/MM/yyyy") ?? "—")</td>
+                        <td class="num"><input class="entrada-numero" type="number" min="0" max="365" placeholder="Compañía" aria-label="Días de entrega" @bind="diasEntregaEdicion" /></td>
                         <td class="col-estado"><input type="checkbox" aria-label="Preferido" @bind="preferidoEdicion" /></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
@@ -131,6 +133,7 @@ else
                         <td>@(r.CodigoProveedor ?? "—")</td>
                         <td class="num col-monto">@(r.UltimoCosto?.ToString("N2") ?? "—")</td>
                         <td class="col-fecha">@(r.FechaUltimaCompra?.ToString("dd/MM/yyyy") ?? "—")</td>
+                        <td class="num">@(r.DiasEntrega?.ToString() ?? "—")</td>
                         <td class="col-estado">
                             @if (r.Preferido)
                             {
@@ -153,7 +156,7 @@ else
             }
         </tbody>
     </table>
-    <p class="texto-ayuda">@relaciones.Count producto(s). El último costo se actualiza al grabar cada compra a este proveedor.</p>
+    <p class="texto-ayuda">@relaciones.Count producto(s). El último costo se actualiza al grabar cada compra a este proveedor. Los días de entrega alimentan el punto de reorden; vacío: los de la compañía.</p>
 }
 
 @code {
@@ -180,6 +183,7 @@ else
     private int? editandoId;
     private string? codigoEdicion;
     private bool preferidoEdicion;
+    private int? diasEntregaEdicion;
 
     private IReadOnlyList<ProductoProveedor> relacionesFiltradas => string.IsNullOrWhiteSpace(textoFiltro)
         ? relaciones
@@ -269,13 +273,17 @@ else
         editandoId = relacion.PppId;
         codigoEdicion = relacion.CodigoProveedor;
         preferidoEdicion = relacion.Preferido;
+        diasEntregaEdicion = relacion.DiasEntrega;
     }
 
     private async Task GuardarEdicionAsync(ProductoProveedor relacion)
     {
         try
         {
-            await ProductoProveedorRepository.GuardarAsync(relacion.PppId, relacion.PrvId, relacion.ProId, preferidoEdicion, codigoEdicion, await ObtenerUsuIdActualAsync());
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ProductoProveedorRepository.GuardarAsync(relacion.PppId, relacion.PrvId, relacion.ProId, preferidoEdicion, codigoEdicion, usuId);
+            if (diasEntregaEdicion != relacion.DiasEntrega)
+                await ReordenRepository.GuardarDiasEntregaAsync(relacion.PppId, diasEntregaEdicion, usuId);
             mensaje = "Cambios guardados.";
             esMensajeError = false;
             await CargarAsync();

@@ -20,4 +20,6 @@ public sealed class ProductoProveedor
 	// Costo unitario sin IVA de la última compra a este proveedor.
 	public decimal? UltimoCosto { get; set; }
 	public DateTime? FechaUltimaCompra { get; set; }
+	// Días que tarda en entregar (NULL: los de la compañía, para el punto de reorden).
+	public int? DiasEntrega { get; set; }
 }

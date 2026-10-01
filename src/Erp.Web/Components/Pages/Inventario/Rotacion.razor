@@ -1,0 +1,325 @@
+@page "/inventario/rotacion"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:INVENTARIO_REORDEN")]
+@using Erp.Data.Compras
+@using Erp.Data.Inventario
+@using Erp.Web.Reportes
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IReordenRepository ReordenRepository
+@inject IOrdenCompraRepository OrdenCompraRepository
+@inject IBodegaRepository BodegaRepository
+@inject Erp.Data.General.IGeneralRepository GeneralRepository
+
+<PageTitle>Rotación y punto de reorden</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Rotación y punto de reorden</h1>
+    <p>Cuántas veces se vende el inventario de cada producto y cuándo hay que volver a pedirlo. Punto de reorden = venta diaria × (días de entrega + días de seguridad).</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+@if (ordenesCreadas.Count > 0)
+{
+    <div class="doc-nota" role="status">
+        <Icono Nombre="clipboard-list" Tamano="15" />
+        <span>
+            Órdenes en borrador:
+            @foreach (var (id, numero, proveedor) in ordenesCreadas)
+            {
+                <a href="@($"compras/ordenes?id={id}")">@numero</a><span> (@proveedor) </span>
+            }
+            Revíselas y apruébelas en Compras › Órdenes de compra.
+        </span>
+    </div>
+}
+
+<div class="barra-herramientas">
+    <select aria-label="Bodega" @bind="bodId" @bind:after="AnalizarAsync">
+        <option value="0">Todas las bodegas de mi sucursal</option>
+        @foreach (var b in bodegas)
+        {
+            <option value="@b.BodId">@b.SucDescripcion · @b.BodDescripcion</option>
+        }
+    </select>
+    <select aria-label="Período de análisis" @bind="dias" @bind:after="AnalizarAsync">
+        @foreach (var d in OpcionesDias)
+        {
+            <option value="@d">Últimos @d días</option>
+        }
+    </select>
+    <label class="filtro-campo">Hasta <input type="date" @bind="hasta" @bind:after="AnalizarAsync" /></label>
+    <select aria-label="Mostrar" @bind="vista">
+        <option value="reorden">Bajo el punto de reorden</option>
+        <option value="todos">Todos</option>
+        <option value="A">Rotación alta</option>
+        <option value="M">Rotación media</option>
+        <option value="B">Rotación baja</option>
+        <option value="S">Sin ventas</option>
+    </select>
+    <input type="search" placeholder="Código, producto o proveedor" aria-label="Filtrar por código, producto o proveedor" @bind="texto" @bind:event="oninput" />
+    <span class="barra-herramientas-separador"></span>
+    <a class="boton-icono boton-icono-neutral boton-icono-con-etiqueta" href="@UrlExcel" download>
+        <Icono Nombre="download" Tamano="17" /><span class="boton-icono-etiqueta">Excel</span>
+    </a>
+    <BotonIcono Icono="settings" Tooltip="Parámetros del punto de reorden" Etiqueta="Parámetros" OnClick="() => mostrarParametros = !mostrarParametros" />
+</div>
+
+@if (mostrarParametros && parametros is not null)
+{
+    <section class="oc-recepcion" aria-labelledby="titulo-parametros">
+        <h3 id="titulo-parametros">Parámetros de la compañía</h3>
+        <p class="texto-ayuda">Los días de entrega de cada proveedor se indican en Compras › Productos por proveedor; si no tiene, se usan los de aquí.</p>
+        <div class="fel-formulario">
+            <div class="campo"><label for="par-analisis">Días de análisis</label><input id="par-analisis" type="number" min="7" max="730" @bind="parametros.DiasAnalisis" /></div>
+            <div class="campo"><label for="par-entrega">Días de entrega</label><input id="par-entrega" type="number" min="0" max="365" @bind="parametros.DiasEntrega" /></div>
+            <div class="campo"><label for="par-seguridad">Días de seguridad</label><input id="par-seguridad" type="number" min="0" max="365" @bind="parametros.DiasSeguridad" /></div>
+            <div class="campo"><label for="par-cobertura">Días de cobertura de cada pedido</label><input id="par-cobertura" type="number" min="1" max="365" @bind="parametros.DiasCobertura" /></div>
+        </div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar los parámetros" Etiqueta="Guardar" Variante="primario" OnClick="GuardarParametrosAsync" />
+        </div>
+    </section>
+}
+
+<div class="kpi-fila">
+    <div class="kpi"><span class="kpi-etiqueta">Productos analizados</span><span class="kpi-valor">@filas.Count</span></div>
+    <div class="kpi @(BajoReorden > 0 ? "kpi-alerta" : "")"><span class="kpi-etiqueta">Bajo el punto de reorden</span><span class="kpi-valor">@BajoReorden</span></div>
+    <div class="kpi"><span class="kpi-etiqueta">Sin ventas en el período</span><span class="kpi-valor">@filas.Count(f => f.Clase == "S")</span></div>
+    <div class="kpi"><span class="kpi-etiqueta">Valor del inventario (costo)</span><span class="kpi-valor">Q @filas.Sum(f => f.ValorInventario).ToString("N2")</span></div>
+    <div class="kpi"><span class="kpi-etiqueta">Rotación anual (a costo)</span><span class="kpi-valor">@RotacionGlobal</span></div>
+</div>
+
+<div class="tabla-desplazable" tabindex="0">
+    <table class="tabla-datos tabla-rotacion">
+        <thead>
+            <tr>
+                <th class="col-check"><span class="sr-only">Pedir</span></th>
+                <th class="col-codigo">Código</th><th>Producto</th>
+                <th class="num">Existencia</th><th class="num">En tránsito</th><th class="num">Vendidas</th><th class="num">Venta diaria</th>
+                <th class="num">Rotación anual</th><th class="num">Días de inventario</th><th class="num">Cobertura (días)</th>
+                <th class="num">Punto de reorden</th><th class="num col-monto">Pedir</th><th>Proveedor</th><th class="col-estado">Clase</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (cargando)
+            {
+                <tr><td colspan="14" class="doc-tabla-vacia">Analizando…</td></tr>
+            }
+            else if (!FilasVisibles.Any())
+            {
+                <tr><td colspan="14" class="doc-tabla-vacia">@(vista == "reorden" ? "Ningún producto está bajo su punto de reorden." : "No hay productos con ese filtro.")</td></tr>
+            }
+            @foreach (var f in FilasVisibles)
+            {
+                var clave = Clave(f);
+                <tr class="@(f.BajoReorden ? "fila-faltante" : "")">
+                    <td class="col-check"><input type="checkbox" aria-label="@($"Pedir {f.Descripcion}")" checked="@seleccion.ContainsKey(clave)" @onchange="e => Alternar(f, (bool)e.Value!)" /></td>
+                    <td class="col-codigo">@f.Codigo</td>
+                    <td>@f.Descripcion<br /><span class="texto-tenue">@f.Bodega@(f.UltimaVenta is null ? "" : $" · última venta {f.UltimaVenta:dd/MM/yyyy}")</span></td>
+                    <td class="num">@f.Existencia.ToString("#,##0.##")</td>
+                    <td class="num">@(f.Transito > 0 ? f.Transito.ToString("#,##0.##") : "—")</td>
+                    <td class="num">@f.Vendidas.ToString("#,##0.##")</td>
+                    <td class="num">@f.VentaDiaria.ToString("0.##")</td>
+                    <td class="num">@(f.RotacionAnual?.ToString("0.0") ?? (f.Vendidas > 0 ? "∞" : "—"))</td>
+                    <td class="num">@(f.DiasInventario?.ToString("#,##0") ?? "—")</td>
+                    <td class="num">@(f.DiasCobertura?.ToString("#,##0") ?? "—")</td>
+                    <td class="num" title="@($"{f.DiasEntrega} días de entrega + {f.DiasSeguridad} de seguridad")">@f.PuntoReorden</td>
+                    <td class="num col-monto">
+                        @if (seleccion.TryGetValue(clave, out var cantidad))
+                        {
+                            <input class="entrada-numero" type="number" min="1" step="1" aria-label="@($"Cantidad a pedir de {f.Descripcion}")"
+                                   value="@cantidad" @onchange="e => CambiarCantidad(clave, e.Value?.ToString())" />
+                        }
+                        else
+                        {
+                            @(f.Sugerido > 0 ? f.Sugerido.ToString() : "—")
+                        }
+                    </td>
+                    <td>@(f.Proveedor ?? "Sin proveedor")</td>
+                    <td class="col-estado"><span class="estado-badge @ClaseBadge(f.Clase)">@ReportesExcel.ClaseRotacion(f.Clase)</span></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="acciones-fila">
+    <AuthorizeView Policy="Permiso:COMPRAS_ORDEN" Context="permisoOrden">
+        <BotonIcono Icono="shopping-cart" Tooltip="Crear una orden en borrador por proveedor con los productos marcados"
+                    Etiqueta="@($"Crear órdenes de compra ({seleccion.Count})")" Variante="primario" Deshabilitado="seleccion.Count == 0 || generando" OnClick="GenerarOrdenesAsync" />
+    </AuthorizeView>
+    <span class="texto-ayuda">Se marcan solos los productos bajo el punto de reorden con lo sugerido: lo necesario para cubrir entrega + seguridad + @(parametros?.DiasCobertura ?? 30) días de venta.</span>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<RotacionInventarioFila> filas = Array.Empty<RotacionInventarioFila>();
+    private IReadOnlyList<Bodega> bodegas = Array.Empty<Bodega>();
+    private ReordenParametros? parametros;
+    // Producto|bodega -> cantidad a pedir.
+    private readonly Dictionary<string, int> seleccion = new();
+    private readonly List<(int Id, string Numero, string Proveedor)> ordenesCreadas = new();
+    private int bodId;
+    private int dias = 90;
+    private DateTime hasta = DateTime.Today;
+    private string vista = "reorden";
+    private string texto = "";
+    private int? sucIdSesion;
+    private decimal porcentajeIva = 12m;
+    private bool mostrarParametros;
+    private bool cargando = true;
+    private bool generando;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private IEnumerable<int> OpcionesDias => new[] { 30, 60, 90, 180, 365, parametros?.DiasAnalisis ?? 90 }.Distinct().Order();
+    private int BajoReorden => filas.Count(f => f.BajoReorden);
+    private static string Clave(RotacionInventarioFila f) => $"{f.ProId}|{f.BodId}";
+
+    private string UrlExcel => $"reportes/inventario/rotacion.xlsx?dias={dias}&hasta={hasta:yyyy-MM-dd}"
+        + (bodId > 0 ? $"&bodega={bodId}" : sucIdSesion is int suc ? $"&sucursal={suc}" : "");
+
+    private IEnumerable<RotacionInventarioFila> FilasVisibles => filas
+        .Where(f => vista switch { "reorden" => f.BajoReorden, "todos" => true, _ => f.Clase == vista })
+        .Where(f => string.IsNullOrWhiteSpace(texto)
+                    || $"{f.Codigo} {f.Descripcion} {f.Proveedor}".Contains(texto.Trim(), StringComparison.CurrentCultureIgnoreCase));
+
+    // Costo de lo vendido anualizado entre el valor del inventario a hoy.
+    private string RotacionGlobal
+    {
+        get
+        {
+            var valor = filas.Sum(f => f.ValorInventario);
+            var costo = filas.Sum(f => f.CostoVendido);
+            return valor <= 0 || dias <= 0 ? "—" : $"{costo * 365m / dias / valor:0.0} veces";
+        }
+    }
+
+    private static string ClaseBadge(string clase) => clase switch
+    {
+        "A" => "estado-badge-activo",
+        "M" => "estado-badge-grabada",
+        "B" => "estado-badge-pendiente",
+        _ => "estado-badge-inactivo"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            sucIdSesion = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerSucId();
+            var compania = await GeneralRepository.ConsultarParametrosAsync(sucIdSesion);
+            porcentajeIva = compania.CiaPorcIva;
+            if (compania.CiaId > 0) parametros = await ReordenRepository.ConsultarParametrosAsync(compania.CiaId);
+            dias = parametros?.DiasAnalisis ?? 90;
+            bodegas = (await BodegaRepository.ConsultarAsync(sucId: null, estado: "A"))
+                .OrderBy(b => b.SucId == sucIdSesion ? 0 : 1).ThenBy(b => b.SucDescripcion).ThenBy(b => b.BodCodigo).ToList();
+            await AnalizarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private async Task AnalizarAsync()
+    {
+        cargando = true;
+        try
+        {
+            filas = await ReordenRepository.ConsultarRotacionAsync(bodId > 0 ? bodId : null, bodId > 0 ? null : sucIdSesion, dias, hasta);
+            seleccion.Clear();
+            foreach (var f in filas.Where(f => f.BajoReorden && f.Sugerido > 0 && f.PrvId is not null))
+                seleccion[Clave(f)] = f.Sugerido;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { cargando = false; }
+    }
+
+    private void Alternar(RotacionInventarioFila fila, bool marcado)
+    {
+        var clave = Clave(fila);
+        if (marcado) seleccion[clave] = Math.Max(fila.Sugerido, 1);
+        else seleccion.Remove(clave);
+    }
+
+    private void CambiarCantidad(string clave, string? valor)
+    {
+        if (int.TryParse(valor, out var cantidad) && cantidad > 0) seleccion[clave] = cantidad;
+        else seleccion.Remove(clave);
+    }
+
+    private async Task GuardarParametrosAsync()
+    {
+        if (parametros is null) return;
+        try
+        {
+            await ReordenRepository.GuardarParametrosAsync(parametros, await ObtenerUsuIdActualAsync());
+            dias = parametros.DiasAnalisis;
+            await AnalizarAsync();
+            mensaje = "Parámetros guardados y análisis actualizado.";
+            esMensajeError = false;
+            mostrarParametros = false;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    // Una orden en borrador por proveedor preferido y bodega, con el último costo (con IVA).
+    private async Task GenerarOrdenesAsync()
+    {
+        var elegidas = filas.Where(f => seleccion.ContainsKey(Clave(f))).ToList();
+        var sinProveedor = elegidas.Where(f => f.PrvId is null).Select(f => f.Codigo).ToList();
+        if (sinProveedor.Count > 0)
+        {
+            mensaje = $"Sin proveedor: {string.Join(", ", sinProveedor)}. Relaciónelos en Compras › Productos por proveedor o desmárquelos.";
+            esMensajeError = true;
+            return;
+        }
+        generando = true;
+        ordenesCreadas.Clear();
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            foreach (var grupo in elegidas.GroupBy(f => (PrvId: f.PrvId!.Value, f.BodId)))
+            {
+                var orden = new NuevaOrdenCompra
+                {
+                    Fecha = DateTime.Today,
+                    FechaEntrega = DateTime.Today.AddDays(grupo.Max(f => f.DiasEntrega)),
+                    PrvId = grupo.Key.PrvId,
+                    BodId = grupo.Key.BodId,
+                    Observaciones = $"Sugerida por el punto de reorden ({dias} días de análisis al {hasta:dd/MM/yyyy})."
+                };
+                var lineas = grupo.Select(f => new NuevaLineaOrdenCompra
+                {
+                    ProId = f.ProId,
+                    Cantidad = seleccion[Clave(f)],
+                    CostoUnitario = Math.Round(f.CostoSinIva * (1 + porcentajeIva / 100m), 2)
+                }).ToList();
+                var (ocpId, numero) = await OrdenCompraRepository.GuardarAsync(orden, lineas, usuId);
+                ordenesCreadas.Add((ocpId, numero, grupo.First().Proveedor ?? ""));
+            }
+            mensaje = $"{ordenesCreadas.Count} {(ordenesCreadas.Count == 1 ? "orden de compra creada" : "órdenes de compra creadas")} en borrador.";
+            esMensajeError = false;
+            seleccion.Clear();
+        }
+        catch (Exception ex)
+        {
+            MostrarError(ex);
+            if (ordenesCreadas.Count > 0) mensaje += $" Se alcanzaron a crear {ordenesCreadas.Count}.";
+        }
+        finally { generando = false; }
+    }
+}

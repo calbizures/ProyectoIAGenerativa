@@ -41,7 +41,7 @@
             </Authorized>
         </AuthorizeView>
 
-        <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR,INVENTARIO_FISICO,INVENTARIO_CARGA_INICIAL,INVENTARIO_TRASLADO_ENVIAR,INVENTARIO_TRASLADO_RECIBIR">
+        <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR,INVENTARIO_FISICO,INVENTARIO_CARGA_INICIAL,INVENTARIO_TRASLADO_ENVIAR,INVENTARIO_TRASLADO_RECIBIR,INVENTARIO_REORDEN">
             <Authorized>
                 <SidebarNodo Titulo="Inventario" IconoNombre="package" Rutas="@(new[] { "productos", "caracteristicas", "tipos-caracteristica", "existencias", "precios", "bodegas", "unidades-medida", "inventario" })">
                     <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR" Context="productosContexto">
@@ -68,6 +68,11 @@
                     <AuthorizeView Policy="Permiso:INVENTARIO_CARGA_INICIAL" Context="inicialContexto">
                         <Authorized>
                             <NavLink href="inventario/carga-inicial" class="sidebar-hijo-link">Inventario inicial</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:INVENTARIO_REORDEN" Context="reordenContexto">
+                        <Authorized>
+                            <NavLink href="inventario/rotacion" class="sidebar-hijo-link">Rotación y reorden</NavLink>
                         </Authorized>
                     </AuthorizeView>
                 </SidebarNodo>
