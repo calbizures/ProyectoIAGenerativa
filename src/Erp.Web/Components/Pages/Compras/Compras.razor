@@ -27,8 +27,7 @@
 }
 
 <div class="barra-herramientas">
-    <label class="filtro-campo">Desde <input type="date" @bind="filtroFechaDesde" /></label>
-    <label class="filtro-campo">Hasta <input type="date" @bind="filtroFechaHasta" /></label>
+    <FiltroPeriodo @bind-Desde="filtroFechaDesde" @bind-Hasta="filtroFechaHasta" AlCambiar="BuscarAsync" />
     <select @bind="filtroEstado" aria-label="Estado">
         <option value="">Todas</option>
         <option value="G">Grabadas</option>
@@ -401,7 +400,7 @@
                         var subtotalConIva = d.DetSubTotal * (1 + (d.DetPorcIva ?? 0) / 100m);
                         <tr>
                             <td>@d.DetDescripcion</td>
-                            <td class="num">@d.DetCantidad</td>
+                            <td class="num">@d.DetCantidad.ToString("#,##0.##")</td>
                             <td class="num">@precioConIva.ToString("N2")</td>
                             <td class="num">@descuentoConIva.ToString("N2")</td>
                             <td class="num">@subtotalConIva.ToString("N2")</td>
@@ -863,8 +862,10 @@
         public string Descripcion { get; set; } = "";
         public string BienOServicio { get; set; } = "B";
         public int Cantidad { get; set; } = 1;
-        public decimal PrecioUnitario { get; set; }
-        public decimal ValorDescuento { get; set; }
+        public decimal PrecioUnitario { get => _precioUnitario; set => _precioUnitario = Montos.DosDecimales(value); }
+        private decimal _precioUnitario;
+        public decimal ValorDescuento { get => _valorDescuento; set => _valorDescuento = Montos.DosDecimales(value); }
+        private decimal _valorDescuento;
         public decimal SubTotal => Cantidad * PrecioUnitario;
         // El producto ya está relacionado con el proveedor de la compra.
         public bool Relacionado { get; set; }

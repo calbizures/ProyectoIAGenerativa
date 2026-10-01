@@ -34,8 +34,7 @@
 </div>
 
 <div class="barra-filtros">
-    <label class="filtro-campo" for="fel-desde">Desde <input id="fel-desde" type="date" @bind="desde" /></label>
-    <label class="filtro-campo" for="fel-hasta">Hasta <input id="fel-hasta" type="date" @bind="hasta" /></label>
+    <FiltroPeriodo @bind-Desde="desde" @bind-Hasta="hasta" AlCambiar="CargarAsync" />
     <BotonIcono Icono="search" Tooltip="Consultar" Etiqueta="Consultar" OnClick="CargarAsync" />
     <input type="search" placeholder="Filtrar por documento, cliente o autorización" aria-label="Filtrar por documento, cliente o autorización"
            @bind="texto" @bind:event="oninput" @bind:after="() => pagina = 1" />

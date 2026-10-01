@@ -39,8 +39,7 @@
             <option value="F">Facturadas</option>
             <option value="A">Anuladas</option>
         </select>
-        <input type="date" aria-label="Desde" @bind="filtroDesde" @bind:after="BuscarAsync" />
-        <input type="date" aria-label="Hasta" @bind="filtroHasta" @bind:after="BuscarAsync" />
+        <FiltroPeriodo @bind-Desde="filtroDesde" @bind-Hasta="filtroHasta" AlCambiar="BuscarAsync" />
         <input type="search" placeholder="Número, cliente o NIT" aria-label="Buscar por número, cliente o NIT" @bind="filtroTexto"
                @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
         <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
@@ -229,7 +228,7 @@ else if (pestanaActiva == "nueva")
                                     @l.Descripcion<br /><span class="texto-tenue">@l.Codigo</span>
                                 }
                             </td>
-                            <td class="num col-monto"><input class="entrada-numero" type="number" min="0" step="@(l.ManejaExistencia ? "1" : "any")" aria-label="Cantidad" @bind="l.Cantidad" @bind:event="oninput" /></td>
+                            <td class="num col-monto"><input class="entrada-numero" type="number" min="0" step="@(l.ManejaExistencia ? "1" : "0.01")" aria-label="Cantidad" @bind="l.Cantidad" @bind:event="oninput" /></td>
                             <td class="num col-monto"><input class="entrada-numero" type="number" min="0" step="0.01" aria-label="Precio con IVA" @bind="l.PrecioUnitario" @bind:event="oninput" /></td>
                             <td class="num col-monto"><input class="entrada-numero" type="number" min="0" step="0.01" aria-label="Descuento" @bind="l.Descuento" @bind:event="oninput" /></td>
                             <td class="num col-monto">@l.Total.ToString("N2")</td>
@@ -352,9 +351,12 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         public string? Codigo { get; set; }
         public string Descripcion { get; set; } = "";
         public bool ManejaExistencia { get; set; }
-        public decimal Cantidad { get; set; } = 1;
-        public decimal PrecioUnitario { get; set; }
-        public decimal Descuento { get; set; }
+        public decimal Cantidad { get => _cantidad; set => _cantidad = Montos.DosDecimales(value); }
+        private decimal _cantidad = 1;
+        public decimal PrecioUnitario { get => _precioUnitario; set => _precioUnitario = Montos.DosDecimales(value); }
+        private decimal _precioUnitario;
+        public decimal Descuento { get => _descuento; set => _descuento = Montos.DosDecimales(value); }
+        private decimal _descuento;
         public decimal Total => Math.Round(Cantidad * PrecioUnitario, 2) - Descuento;
     }
 

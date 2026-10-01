@@ -48,7 +48,8 @@ public static partial class ReportesExcel
 		var textos = new[]
 		{
 			"Cómo llenar la hoja \"Inventario inicial\"",
-			"• Sucursal y Bodega: códigos de la hoja Bodegas (la bodega debe ser de esa sucursal).",
+			"• Sucursal, Bodega, Tipo y Unidad se eligen de listas desplegables con los datos de la base; no se aceptan otros valores.",
+			"• Bodega: elija primero la sucursal; la lista muestra solo las bodegas de esa sucursal.",
 			"• Producto: código del producto. Si no existe se crea con la Descripción, el Tipo y la Unidad que indique.",
 			"• Si el producto ya existe, Descripción y Tipo se ignoran; la Unidad, si viene, debe ser la misma del producto.",
 			"• Cantidad: unidades en la bodega. Costo total: costo de todas esas unidades (el costo unitario = costo total / cantidad).",
@@ -60,13 +61,49 @@ public static partial class ReportesExcel
 		ayuda.Cell(1, 1).Style.Font.Bold = true;
 		ayuda.Column(1).Width = 110;
 
+		// Las bodegas van ordenadas por sucursal: la lista de la columna Bodega
+		// toma solo las de la sucursal elegida en la misma fila.
+		var activas = bodegas.Where(b => b.BodEstado == "A").OrderBy(b => b.SucCodigo).ThenBy(b => b.BodCodigo).ToList();
+		var sucursales = activas.GroupBy(b => b.SucCodigo).Select(g => g.First()).ToList();
+		var nSucursales = Catalogo(libro, "Sucursales", new[] { "Sucursal", "Nombre de la sucursal" },
+			sucursales.Select(b => new object[] { b.SucCodigo, b.SucDescripcion }));
 		Catalogo(libro, "Bodegas", new[] { "Sucursal", "Nombre de la sucursal", "Bodega", "Nombre de la bodega" },
-			bodegas.Where(b => b.BodEstado == "A").Select(b => new object[] { b.SucCodigo, b.SucDescripcion, b.BodCodigo, b.BodDescripcion }));
-		Catalogo(libro, "Tipos", new[] { "Tipo", "Descripción" }, tipos.Select(t => new object[] { t.PrtCodigo, t.PrtDescripcion }));
-		Catalogo(libro, "Unidades", new[] { "Unidad", "Descripción" },
+			activas.Select(b => new object[] { b.SucCodigo, b.SucDescripcion, b.BodCodigo, b.BodDescripcion }));
+		var nTipos = Catalogo(libro, "Tipos", new[] { "Tipo", "Descripción" }, tipos.Select(t => new object[] { t.PrtCodigo, t.PrtDescripcion }));
+		var nUnidades = Catalogo(libro, "Unidades", new[] { "Unidad", "Descripción" },
 			unidades.Where(u => u.UmeEstado == "A").Select(u => new object[] { u.UmeCodigo, u.UmeDescripcion }));
+
+		var ultima = fila + 500;
+		Lista(hoja.Range(fila, 1, ultima, 1), Columna("Sucursales", "A", nSucursales), "Sucursal",
+			"Elija la sucursal de la lista (hoja Sucursales).");
+		Lista(hoja.Range(fila, 2, ultima, 2),
+			$"OFFSET(Bodegas!$C$1,MATCH($A{fila},Bodegas!$A:$A,0)-1,0,MAX(1,COUNTIF(Bodegas!$A:$A,$A{fila})),1)", "Bodega",
+			"Elija primero la sucursal; la lista muestra solo sus bodegas (hoja Bodegas).");
+		Lista(hoja.Range(fila, 5, ultima, 5), Columna("Tipos", "A", nTipos), "Tipo",
+			"Elija el tipo de la lista (hoja Tipos). Solo se usa si el producto es nuevo.");
+		Lista(hoja.Range(fila, 6, ultima, 6), Columna("Unidades", "A", nUnidades), "Unidad",
+			"Elija la unidad de la lista (hoja Unidades).");
 		hoja.SetTabActive();
 		return Guardar(libro);
+	}
+
+	// Rango de una columna de una hoja de catálogo (títulos en la fila 1).
+	private static string Columna(string hoja, string columna, int filas) =>
+		$"'{hoja}'!${columna}$2:${columna}${Math.Max(2, filas + 1)}";
+
+	// Lista desplegable que solo admite los valores del catálogo.
+	private static void Lista(IXLRange rango, string formula, string titulo, string mensaje)
+	{
+		var validacion = rango.CreateDataValidation();
+		validacion.List(formula, true);
+		validacion.IgnoreBlanks = true;
+		validacion.ShowErrorMessage = true;
+		validacion.ErrorStyle = XLErrorStyle.Stop;
+		validacion.ErrorTitle = titulo;
+		validacion.ErrorMessage = "El valor no existe en la base de datos. " + mensaje;
+		validacion.ShowInputMessage = true;
+		validacion.InputTitle = titulo;
+		validacion.InputMessage = mensaje;
 	}
 
 	public static byte[] PlantillaEmpleados(IReadOnlyList<Plaza> plazas, IReadOnlyList<EntidadFinanciera> bancos,
@@ -100,10 +137,20 @@ public static partial class ReportesExcel
 		ayuda.Cell(1, 1).Style.Font.Bold = true;
 		ayuda.Column(1).Width = 120;
 
-		Catalogo(libro, "Plazas", new[] { "Plaza", "Puesto", "Departamento (centro de costo)", "Ocupada por" },
+		var nPlazas = Catalogo(libro, "Plazas", new[] { "Plaza", "Puesto", "Departamento (centro de costo)", "Ocupada por" },
 			plazas.Where(p => p.Estado == "A").Select(p => new object[] { p.Descripcion, p.Puesto, p.Departamento, p.EmpleadoOcupante ?? "" }));
-		Catalogo(libro, "Bancos", new[] { "Banco", "Nombre" }, bancos.Select(b => new object[] { b.GefCodigo, b.GefDescripcion }));
-		Catalogo(libro, "Tipos de documento", new[] { "Tipo documento" }, tiposDocumento.Select(t => new object[] { t.Descripcion }));
+		var nBancos = Catalogo(libro, "Bancos", new[] { "Banco", "Nombre" }, bancos.Select(b => new object[] { b.GefCodigo, b.GefDescripcion }));
+		var nDocumentos = Catalogo(libro, "Tipos de documento", new[] { "Tipo documento" }, tiposDocumento.Select(t => new object[] { t.Descripcion }));
+
+		var ultima = fila + 500;
+		Lista(hoja.Range(fila, 6, ultima, 6), "\"M,F\"", "Género", "M (masculino) o F (femenino).");
+		Lista(hoja.Range(fila, 9, ultima, 9), Columna("Tipos de documento", "A", nDocumentos), "Tipo documento",
+			"Elija el tipo de la lista (hoja Tipos de documento).");
+		Lista(hoja.Range(fila, 15, ultima, 15), Columna("Plazas", "A", nPlazas), "Plaza", "Elija la plaza de la lista (hoja Plazas).");
+		Lista(hoja.Range(fila, 17, ultima, 17), "\"S,Q,M\"", "Tipo nómina", "S semanal, Q quincenal o M mensual.");
+		Lista(hoja.Range(fila, 18, ultima, 18), "\"T,C\"", "Forma pago", "T transferencia o C cheque.");
+		Lista(hoja.Range(fila, 19, ultima, 19), Columna("Bancos", "A", nBancos), "Banco", "Elija el banco de la lista (hoja Bancos).");
+		Lista(hoja.Range(fila, 20, ultima, 20), "\"M,A\"", "Tipo cuenta", "M monetaria o A ahorro.");
 		hoja.SetTabActive();
 		return Guardar(libro);
 	}
@@ -180,7 +227,8 @@ public static partial class ReportesExcel
 		return Guardar(libro);
 	}
 
-	private static void Catalogo(XLWorkbook libro, string nombre, IList<string> columnas, IEnumerable<object[]> filas)
+	// Hoja de consulta con títulos en la fila 1; devuelve cuántas filas de datos tiene.
+	private static int Catalogo(XLWorkbook libro, string nombre, IList<string> columnas, IEnumerable<object[]> filas)
 	{
 		var hoja = libro.Worksheets.Add(nombre);
 		var fila = Titulos(hoja, 1, columnas);
@@ -190,5 +238,6 @@ public static partial class ReportesExcel
 			fila++;
 		}
 		hoja.Columns().AdjustToContents();
+		return fila - 2;
 	}
 }

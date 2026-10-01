@@ -148,15 +148,16 @@
                     </div>
                 </div>
             }
-            <table class="doc-tabla">
-                <thead><tr><th>Forma de pago</th><th class="num">Monto</th><th>Referencia</th><th></th></tr></thead>
+            <table class="doc-tabla tabla-formas-pago">
+                <thead><tr><th>Forma de pago</th><th class="num">Monto</th><th>Entidad financiera</th><th>No. de cheque o referencia</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var f in formas)
                     {
                         <tr>
                             <td>@NombreForma(f.PftId)</td>
                             <td class="num">Q@(f.Monto.ToString("N2"))</td>
-                            <td>@(f.NumeroCheque ?? f.NumeroTarjetaUlt4 ?? entidades.FirstOrDefault(e => e.GefId == f.GefId)?.GefDescripcion ?? "—")</td>
+                            <td>@(entidades.FirstOrDefault(e => e.GefId == f.GefId)?.GefDescripcion ?? "—")</td>
+                            <td>@(f.NumeroCheque ?? f.NumeroTarjetaUlt4 ?? "—")</td>
                             <td><BotonIcono Icono="trash-2" Tooltip="Quitar" Variante="peligro" OnClick="() => formas.Remove(f)" /></td>
                         </tr>
                     }
@@ -170,16 +171,8 @@
                                 }
                             </select>
                         </td>
-                        <td class="num"><input type="number" step="0.01" min="0" aria-label="Monto" @bind="formaNueva.Monto" /></td>
+                        <td class="num"><input class="entrada-monto" type="number" step="0.01" min="0" aria-label="Monto" @bind="formaNueva.Monto" /></td>
                         <td>
-                            @if (EsForma(formaNueva.PftId, "Cheque"))
-                            {
-                                <input placeholder="No. de cheque" aria-label="No. de cheque" @bind="formaNueva.NumeroCheque" />
-                            }
-                            else if (EsForma(formaNueva.PftId, "Tarjeta"))
-                            {
-                                <input placeholder="Últimos 4 dígitos" aria-label="Últimos 4 dígitos" maxlength="4" @bind="formaNueva.NumeroTarjetaUlt4" />
-                            }
                             @if (EsForma(formaNueva.PftId, "Cheque") || EsForma(formaNueva.PftId, "Transferencia") || EsForma(formaNueva.PftId, "Tarjeta"))
                             {
                                 <select aria-label="Entidad financiera" @bind="formaNueva.GefId">
@@ -189,6 +182,16 @@
                                         <option value="@e.GefId">@e.GefDescripcion</option>
                                     }
                                 </select>
+                            }
+                        </td>
+                        <td>
+                            @if (EsForma(formaNueva.PftId, "Cheque"))
+                            {
+                                <input class="entrada-referencia" placeholder="No. de cheque" aria-label="No. de cheque" @bind="formaNueva.NumeroCheque" />
+                            }
+                            else if (EsForma(formaNueva.PftId, "Tarjeta"))
+                            {
+                                <input class="entrada-referencia" placeholder="Últimos 4 dígitos" aria-label="Últimos 4 dígitos" maxlength="4" @bind="formaNueva.NumeroTarjetaUlt4" />
                             }
                         </td>
                         <td><BotonIcono Icono="plus" Tooltip="Agregar forma de pago" OnClick="AgregarForma" /></td>

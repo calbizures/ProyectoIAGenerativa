@@ -30,6 +30,7 @@ builder.Services.AddSingleton<IFelCertificador, SimuladorCertificador>();
 builder.Services.AddSingleton<IFelCertificador, InfileCertificador>();
 builder.Services.AddScoped<FelService>();
 builder.Services.AddScoped<Erp.Web.Components.Shared.AvisosServicio>();
+builder.Services.AddScoped<Erp.Web.Components.Shared.EdicionServicio>();
 builder.Services.AddScoped<FelConsultaNitServicio>();
 builder.Services.AddHostedService<FelReintentoServicio>();
 

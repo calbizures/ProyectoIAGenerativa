@@ -42,8 +42,7 @@
         <option value="C">Cobrados</option>
         <option value="A">Anulados</option>
     </select>
-    <label class="filtro-campo">Desde <input type="date" @bind="filtroDesde" @bind:after="ConsultarAsync" /></label>
-    <label class="filtro-campo">Hasta <input type="date" @bind="filtroHasta" @bind:after="ConsultarAsync" /></label>
+    <FiltroPeriodo @bind-Desde="filtroDesde" @bind-Hasta="filtroHasta" AlCambiar="ConsultarAsync" />
     <span class="barra-herramientas-separador"></span>
     <BotonIcono Icono="plus" Tooltip="Emitir un cheque libre" Etiqueta="Nuevo cheque" Variante="primario" OnClick="NuevoCheque" />
 </div>

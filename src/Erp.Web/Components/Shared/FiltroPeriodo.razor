@@ -1,0 +1,80 @@
+@* Filtro de período estándar de los listados: atajos Este día, Este mes y
+   Últimos 2 meses, más el rango manual Desde / Hasta. Al cambiar cualquiera
+   avisa con AlCambiar para que la pantalla vuelva a consultar. *@
+
+<span class="grupo-rango" role="group" aria-label="Período">
+    @foreach (var (clave, texto, ayuda) in Atajos)
+    {
+        <button type="button" class="boton-icono boton-icono-neutral boton-icono-con-etiqueta @(AtajoActivo == clave ? "activo" : "")"
+                title="@ayuda" aria-pressed="@(AtajoActivo == clave ? "true" : "false")" @onclick="() => AplicarAsync(clave)">@texto</button>
+    }
+</span>
+<label class="filtro-campo">Desde <input type="date" value="@Formato(Desde)" @onchange="CambiarDesdeAsync" /></label>
+<label class="filtro-campo">Hasta <input type="date" value="@Formato(Hasta)" @onchange="CambiarHastaAsync" /></label>
+
+@code {
+    [Parameter] public DateTime? Desde { get; set; }
+    [Parameter] public EventCallback<DateTime?> DesdeChanged { get; set; }
+    [Parameter] public DateTime? Hasta { get; set; }
+    [Parameter] public EventCallback<DateTime?> HastaChanged { get; set; }
+    [Parameter] public EventCallback AlCambiar { get; set; }
+
+    private static readonly (string Clave, string Texto, string Ayuda)[] Atajos =
+    {
+        ("dia", "Este día", "Solo hoy"),
+        ("mes", "Este mes", "Del día 1 del mes a hoy"),
+        ("dosmeses", "Últimos 2 meses", "Del día 1 del mes anterior a hoy")
+    };
+
+    public static (DateTime Desde, DateTime Hasta) Rango(string clave)
+    {
+        var hoy = DateTime.Today;
+        var inicioMes = new DateTime(hoy.Year, hoy.Month, 1);
+        return clave switch
+        {
+            "dia" => (hoy, hoy),
+            "dosmeses" => (inicioMes.AddMonths(-1), hoy),
+            _ => (inicioMes, hoy)
+        };
+    }
+
+    // El día 1 del mes, "Este día" y "Este mes" dan el mismo rango: se marca el que se pulsó.
+    private string? ultimoAtajo;
+
+    private bool Coincide(string clave) => Rango(clave) is var r && Desde?.Date == r.Desde && Hasta?.Date == r.Hasta;
+
+    private string? AtajoActivo => ultimoAtajo is not null && Coincide(ultimoAtajo)
+        ? ultimoAtajo
+        : Atajos.Select(a => a.Clave).FirstOrDefault(Coincide);
+
+    private static DateTime? Leer(ChangeEventArgs e) =>
+        DateTime.TryParseExact(e.Value?.ToString(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out var fecha) ? fecha : null;
+
+    private static string Formato(DateTime? fecha) => fecha?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ?? "";
+
+    private async Task AplicarAsync(string clave)
+    {
+        var (desde, hasta) = Rango(clave);
+        ultimoAtajo = clave;
+        Desde = desde;
+        Hasta = hasta;
+        await DesdeChanged.InvokeAsync(desde);
+        await HastaChanged.InvokeAsync(hasta);
+        await AlCambiar.InvokeAsync();
+    }
+
+    private async Task CambiarDesdeAsync(ChangeEventArgs e)
+    {
+        Desde = Leer(e);
+        await DesdeChanged.InvokeAsync(Desde);
+        await AlCambiar.InvokeAsync();
+    }
+
+    private async Task CambiarHastaAsync(ChangeEventArgs e)
+    {
+        Hasta = Leer(e);
+        await HastaChanged.InvokeAsync(Hasta);
+        await AlCambiar.InvokeAsync();
+    }
+}

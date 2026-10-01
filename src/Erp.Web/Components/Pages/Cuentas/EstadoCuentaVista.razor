@@ -17,8 +17,7 @@
     <div class="filtro-tercero">
         <SelectorTercero EsCliente="EsCliente" Seleccionado="tercero" SeleccionadoChanged="CambiarTerceroAsync" />
     </div>
-    <label class="filtro-campo" for="ec-desde">Desde <input id="ec-desde" type="date" @bind="desde" /></label>
-    <label class="filtro-campo" for="ec-hasta">Hasta <input id="ec-hasta" type="date" @bind="hasta" /></label>
+    <FiltroPeriodo @bind-Desde="desde" @bind-Hasta="hasta" AlCambiar="ConsultarAsync" />
     <BotonIcono Icono="search" Tooltip="Consultar" Etiqueta="Consultar" Variante="primario" Deshabilitado="tercero is null" OnClick="ConsultarAsync" />
     @if (tercero is not null)
     {

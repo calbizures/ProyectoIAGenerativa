@@ -40,8 +40,7 @@
             <option value="N">Anuladas</option>
             <option value="">Todas</option>
         </select>
-        <input type="date" aria-label="Desde" @bind="filtroDesde" @bind:after="BuscarAsync" />
-        <input type="date" aria-label="Hasta" @bind="filtroHasta" @bind:after="BuscarAsync" />
+        <FiltroPeriodo @bind-Desde="filtroDesde" @bind-Hasta="filtroHasta" AlCambiar="BuscarAsync" />
         <input type="search" placeholder="Número, proveedor o NIT" aria-label="Buscar por número, proveedor o NIT" @bind="filtroTexto"
                @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
         <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />

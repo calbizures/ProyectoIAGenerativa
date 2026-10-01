@@ -39,8 +39,7 @@
             <option value="X">Rechazados</option>
             <option value="N">Cancelados</option>
         </select>
-        <input type="date" aria-label="Desde" @bind="filtroDesde" @bind:after="BuscarAsync" />
-        <input type="date" aria-label="Hasta" @bind="filtroHasta" @bind:after="BuscarAsync" />
+        <FiltroPeriodo @bind-Desde="filtroDesde" @bind-Hasta="filtroHasta" AlCambiar="BuscarAsync" />
         <span class="barra-herramientas-separador"></span>
         <AuthorizeView Policy="Permiso:INVENTARIO_TRASLADO_ENVIAR" Context="permisoEnviar">
             <BotonIcono Icono="plus" Tooltip="Enviar mercadería a otra bodega" Etiqueta="Nuevo traslado" Variante="primario" OnClick="IniciarNuevo" />

@@ -8,8 +8,15 @@
    clics: un doble clic no graba dos veces la misma factura, pago o póliza.
    Si la acción lanza un error que la pantalla no atrapó, se muestra como aviso
    flotante y la pantalla sigue funcionando (sin esto la conexión se cerraba y
-   había que recargar la página). *@
+   había que recargar la página).
+   Un botón Guardar (ícono save) queda deshabilitado después de grabar, para no
+   grabar dos veces lo mismo. Se vuelve a habilitar al pulsar Editar o Nuevo
+   en la pantalla, al cambiar un campo del mismo formulario o si aparece un
+   mensaje de error (la grabación falló y se puede corregir y reintentar). *@
+@implements IAsyncDisposable
 @inject AvisosServicio Avisos
+@inject EdicionServicio Edicion
+@inject IJSRuntime JS
 @inject ILogger<BotonIcono> Bitacora
 @if (confirmando)
 {
@@ -21,10 +28,11 @@
 }
 else
 {
-    <button type="@TipoBoton"
+    <button type="@TipoBoton" @ref="boton"
+            title="@(guardado ? "Ya se guardó. Para volver a guardar pulse Editar o cambie algún dato." : null)"
             class="boton-icono boton-icono-@Variante @(string.IsNullOrEmpty(Etiqueta) ? "" : "boton-icono-con-etiqueta")"
             aria-label="@(string.IsNullOrEmpty(Etiqueta) ? Tooltip : null)"
-            disabled="@(Deshabilitado || ejecutando)"
+            disabled="@(Deshabilitado || ejecutando || guardado)"
             aria-busy="@(ejecutando ? "true" : null)"
             @onclick="ClicAsync">
         <Icono Nombre="@Icono" Tamano="@TamanoIcono" />
@@ -49,15 +57,40 @@ else
     [Parameter] public bool Deshabilitado { get; set; }
     [Parameter] public string? Confirmacion { get; set; }
     [Parameter] public EventCallback OnClick { get; set; }
+    // Por omisión solo los botones Guardar se bloquean después de grabar.
+    [Parameter] public bool? BloquearTrasGuardar { get; set; }
 
     private bool confirmando;
     private bool ejecutando;
     private bool enfocarSi;
     private ElementReference botonSi;
+    private ElementReference boton;
+    private bool guardado;
+    private bool vigilando;
+    private DotNetObjectReference<BotonIcono>? referencia;
+
+    private bool Bloquea => BloquearTrasGuardar ?? Icono == "save";
+    private bool Reabre => Icono is "pencil" or "plus";
+
+    protected override void OnInitialized()
+    {
+        if (Bloquea) Edicion.Reabierta += AlReabrir;
+    }
+
+    private void AlReabrir() => Desbloquear();
+
+    [JSInvokable]
+    public void Desbloquear()
+    {
+        if (!guardado) return;
+        guardado = false;
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     private async Task ClicAsync()
     {
-        if (ejecutando) return;
+        if (ejecutando || guardado) return;
+        if (Reabre) Edicion.Reabrir();
         if (string.IsNullOrEmpty(Confirmacion))
         {
             await EjecutarAsync();
@@ -79,7 +112,12 @@ else
     private async Task EjecutarAsync()
     {
         ejecutando = true;
-        try { await OnClick.InvokeAsync(); }
+        try
+        {
+            await OnClick.InvokeAsync();
+            // Si la pantalla muestra un error, guardado.js vuelve a habilitarlo.
+            if (Bloquea) guardado = true;
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Bitacora.LogError(ex, "Error no atrapado en la acción {Accion}", string.IsNullOrEmpty(Etiqueta) ? Tooltip : Etiqueta);
@@ -90,8 +128,26 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (Bloquea && !vigilando && !confirmando)
+        {
+            vigilando = true;
+            referencia ??= DotNetObjectReference.Create(this);
+            try { await JS.InvokeVoidAsync("erpGuardar.vigilar", boton, referencia); }
+            catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException or TaskCanceledException) { }
+        }
         if (!enfocarSi) return;
         enfocarSi = false;
         try { await botonSi.FocusAsync(); } catch (InvalidOperationException) { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Edicion.Reabierta -= AlReabrir;
+        if (vigilando)
+        {
+            try { await JS.InvokeVoidAsync("erpGuardar.olvidar", boton); }
+            catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException or TaskCanceledException) { }
+        }
+        referencia?.Dispose();
     }
 }

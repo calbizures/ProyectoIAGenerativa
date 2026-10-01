@@ -42,8 +42,7 @@
 }
 
 <div class="barra-herramientas">
-    <label class="filtro-campo">Desde <input type="date" @bind="filtroFechaDesde" /></label>
-    <label class="filtro-campo">Hasta <input type="date" @bind="filtroFechaHasta" /></label>
+    <FiltroPeriodo @bind-Desde="filtroFechaDesde" @bind-Hasta="filtroFechaHasta" AlCambiar="BuscarAsync" />
     <select @bind="filtroEstado" aria-label="Estado">
         <option value="">Todas</option>
         <option value="G">Grabadas</option>
@@ -107,13 +106,14 @@
                     </div>
                     <div class="campo">
                         <label for="facturas-factura-bodid">Bodega</label>
-                        <select id="facturas-factura-bodid" @bind="nuevaFactura.BodId">
+                        <select id="facturas-factura-bodid" @bind="nuevaFactura.BodId" @bind:after="AlCambiarBodegaEncabezado">
                             <option value="0">Seleccione...</option>
                             @foreach (var b in bodegas)
                             {
                                 <option value="@b.BodId">@b.BodDescripcion</option>
                             }
                         </select>
+                        <small class="texto-ayuda">Se propone en cada línea; una línea puede despachar de otra bodega de la sucursal.</small>
                     </div>
                     <div class="campo">
                         <label for="facturas-factura-monid">Moneda</label>
@@ -248,6 +248,7 @@
                             <th>Descripción</th>
                             <th class="num">Cantidad</th>
                             <th>Unidad</th>
+                            <th>Bodega</th>
                             <th class="num">Precio unit. (IVA incl.)</th>
                             <th class="num">Descuento</th>
                             <th class="num">Subtotal</th>
@@ -258,7 +259,7 @@
                         @if (lineas.Count == 0)
                         {
                             <tr>
-                                <td colspan="8">
+                                <td colspan="9">
                                     <div class="doc-tabla-vacia">
                                         <Icono Nombre="package" Tamano="26" />
                                         Busque un producto arriba o use «Agregar servicio» para una línea de servicio.
@@ -313,6 +314,23 @@
                                             <option value="@u.UmeId">@u.UmeCodigo</option>
                                         }
                                     </select>
+                                </td>
+                                <td class="col-bodega-linea">
+                                    @if (linea.BienOServicio == "B" && linea.ManejaExistencia && linea.ProId is int proIdLinea)
+                                    {
+                                        var existencia = Existencia(proIdLinea, linea.BodId);
+                                        <select aria-label="Bodega de despacho" value="@linea.BodId" @onchange="e => CambiarBodegaLinea(linea, e.Value?.ToString())">
+                                            @foreach (var b in BodegasDespacho(linea.BodId))
+                                            {
+                                                <option value="@b.BodId">@b.BodDescripcion</option>
+                                            }
+                                        </select>
+                                        <small class="@(existencia < linea.Cantidad ? "texto-error" : "texto-tenue")">Exist. @existencia.ToString("#,##0.##")</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="texto-tenue">—</span>
+                                    }
                                 </td>
                                 <td class="num"><input type="number" step="0.01" min="0" aria-label="Precio unitario" @bind="linea.PrecioUnitario" /></td>
                                 <td class="num"><input type="number" step="0.01" min="0" aria-label="Descuento" @bind="linea.ValorDescuento" /></td>
@@ -403,14 +421,15 @@
 
                         <p>Monto a pagar ahora: @MonedaSimbolo @MontoAPagar.ToString("N2")</p>
 
-                        <table class="doc-tabla">
-                            <thead><tr><th>Forma</th><th class="num">Monto</th><th>Referencia</th><th></th></tr></thead>
+                        <table class="doc-tabla tabla-formas-pago">
+                            <thead><tr><th>Forma</th><th class="num">Monto</th><th>Entidad financiera</th><th>No. de cheque o referencia</th><th></th></tr></thead>
                             <tbody>
                                 @foreach (var f in formasPagoCapturadas)
                                 {
                                     <tr>
                                         <td>@NombreFormaPago(f.PftId)</td>
                                         <td class="num">@MonedaSimbolo @f.Monto.ToString("N2")</td>
+                                        <td>@(entidadesFinancieras.FirstOrDefault(e => e.GefId == f.GefId)?.GefDescripcion ?? "—")</td>
                                         <td>@(f.NumeroCheque ?? f.NumeroTarjetaUlt4 ?? "—")</td>
                                         <td><BotonIcono Icono="trash-2" Tooltip="Quitar" Variante="peligro" OnClick="() => formasPagoCapturadas.Remove(f)" /></td>
                                     </tr>
@@ -425,25 +444,27 @@
                                             }
                                         </select>
                                     </td>
-                                    <td class="num"><input type="number" step="0.01" min="0" @bind="formaPagoNueva.Monto" aria-label="Monto" /></td>
+                                    <td class="num"><input class="entrada-monto" type="number" step="0.01" min="0" @bind="formaPagoNueva.Monto" aria-label="Monto" /></td>
                                     <td>
-                                        @if (EsCheque(formaPagoNueva.PftId))
+                                        @if (RequiereEntidadFinanciera(formaPagoNueva.PftId) || EsTarjeta(formaPagoNueva.PftId))
                                         {
-                                            <input placeholder="No. de cheque" aria-label="No. de cheque" @bind="formaPagoNueva.NumeroCheque" />
-                                        }
-                                        else if (EsTarjeta(formaPagoNueva.PftId))
-                                        {
-                                            <input placeholder="Últimos 4 dígitos" aria-label="Últimos 4 dígitos" maxlength="4" @bind="formaPagoNueva.NumeroTarjetaUlt4" />
-                                        }
-                                        else if (RequiereEntidadFinanciera(formaPagoNueva.PftId))
-                                        {
-                                            <select @bind="formaPagoNueva.GefId">
+                                            <select @bind="formaPagoNueva.GefId" aria-label="Entidad financiera">
                                                 <option value="0">Entidad...</option>
                                                 @foreach (var e in entidadesFinancieras)
                                                 {
                                                     <option value="@e.GefId">@e.GefDescripcion</option>
                                                 }
                                             </select>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (EsCheque(formaPagoNueva.PftId))
+                                        {
+                                            <input class="entrada-referencia" placeholder="No. de cheque" aria-label="No. de cheque" @bind="formaPagoNueva.NumeroCheque" />
+                                        }
+                                        else if (EsTarjeta(formaPagoNueva.PftId))
+                                        {
+                                            <input class="entrada-referencia" placeholder="Últimos 4 dígitos" aria-label="Últimos 4 dígitos" maxlength="4" @bind="formaPagoNueva.NumeroTarjetaUlt4" />
                                         }
                                     </td>
                                     <td><BotonIcono Icono="plus" Tooltip="Agregar forma de pago" OnClick="AgregarFormaPago" /></td>
@@ -504,7 +525,7 @@
                                                                 var precioConIva = d.DetPrecioUnitario * (1 + (d.DetPorcIva ?? 0) / 100m);
                                                                 <tr>
                                                                     <td>@d.DetDescripcion</td>
-                                                                    <td class="num">@d.DetCantidad.ToString("0.####")</td>
+                                                                    <td class="num">@d.DetCantidad.ToString("#,##0.##")</td>
                                                                     <td class="num">@precioConIva.ToString("N2")</td>
                                                                 </tr>
                                                             }
@@ -670,6 +691,7 @@
                             <th>Descripción</th>
                             <th class="num">Cantidad</th>
                             <th>Unidad</th>
+                            <th>Bodega</th>
                             <th class="num">Precio unit. (IVA incl.)</th>
                             <th class="num">Descuento</th>
                             <th class="num">Subtotal</th>
@@ -684,8 +706,9 @@
                             <tr>
                                 <td class="col-bs">@d.DetBienOServicio</td>
                                 <td>@d.DetDescripcion</td>
-                                <td class="num">@d.DetCantidad.ToString("0.####")</td>
+                                <td class="num">@d.DetCantidad.ToString("#,##0.##")</td>
                                 <td>@(unidadesMedida.FirstOrDefault(u => u.UmeId == d.UmeId)?.UmeCodigo ?? "—")</td>
+                                <td>@(d.DetBienOServicio == "B" && d.ProId is not null ? bodegas.FirstOrDefault(b => b.BodId == d.BodId)?.BodDescripcion ?? "—" : "—")</td>
                                 <td class="num">@precioConIva.ToString("N2")</td>
                                 <td class="num">@descuentoConIva.ToString("N2")</td>
                                 <td class="num">@subtotalConIva.ToString("N2")</td>
@@ -925,8 +948,10 @@
                     ValorDescuento = l.Descuento,
                     CostoUnitario = l.CostoUnitario,
                     PprId = l.PprId,
-                    ManejaExistencia = l.ManejaExistencia
+                    ManejaExistencia = l.ManejaExistencia,
+                    BodId = nuevaFactura.BodId
                 });
+                if (l.ManejaExistencia && l.ProId is int proIdCotizado) await CargarExistenciasAsync(proIdCotizado);
             }
 
             var cliente = cotizacion.CliId is int cliId ? await ClienteRepository.ConsultarPorIdAsync(cliId)
@@ -1032,6 +1057,7 @@
         formaPagoNueva.PftId = formasPagoTipo.FirstOrDefault(t => t.PftDescripcion == "Efectivo")?.PftId ?? 0;
         pcaIdFactura = cajasAbiertasSucursal.FirstOrDefault()?.PcaId ?? 0;
         lineas.Clear();
+        existencias.Clear();
         clientesEncontrados = Array.Empty<Cliente>();
         productosEncontrados = Array.Empty<Producto>();
         mostrarNuevoCliente = false;
@@ -1173,6 +1199,46 @@
             await AgregarLineaAsync(exacto);
     }
 
+    // Existencia de cada producto de la factura en las bodegas, para elegir de
+    // dónde se despacha cada línea.
+    private readonly Dictionary<(int ProId, int BodId), decimal> existencias = new();
+
+    private async Task CargarExistenciasAsync(int proId)
+    {
+        try
+        {
+            foreach (var e in await ProductoRepository.ConsultarExistenciasAsync(proId, null))
+                existencias[(e.ProId, e.BodId)] = e.Existencia;
+        }
+        catch (Exception ex)
+        {
+            Log.LogWarning(ex, "No se pudo consultar la existencia del producto {ProId}", proId);
+        }
+    }
+
+    private decimal Existencia(int proId, int bodId) => existencias.TryGetValue((proId, bodId), out var e) ? e : 0;
+
+    // Bodegas de la misma sucursal que la del encabezado (y la de la línea, si ya era otra).
+    private IEnumerable<Bodega> BodegasDespacho(int bodIdLinea)
+    {
+        var sucId = bodegas.FirstOrDefault(b => b.BodId == nuevaFactura.BodId)?.SucId;
+        return bodegas.Where(b => b.SucId == sucId || b.BodId == bodIdLinea).OrderBy(b => b.BodCodigo);
+    }
+
+    private void CambiarBodegaLinea(LineaCaptura linea, string? valor)
+    {
+        if (!int.TryParse(valor, out var bodId) || bodId == linea.BodId) return;
+        linea.BodId = bodId;
+        linea.BodegaManual = bodId != nuevaFactura.BodId;
+    }
+
+    // Las líneas que no se cambiaron a mano siguen a la bodega del encabezado.
+    private void AlCambiarBodegaEncabezado()
+    {
+        foreach (var linea in lineas.Where(l => !l.BodegaManual))
+            linea.BodId = nuevaFactura.BodId;
+    }
+
     // Línea de servicio en blanco: se describe, se elige la unidad y se pone el precio.
     private void AgregarServicio()
     {
@@ -1239,7 +1305,9 @@
         linea.PrecioUnitario = Math.Round(precio.PprPrecioUnitarioVenta, 2);
         linea.CostoUnitario = producto.ProCostoUnitario;
         linea.PprId = precio.PprId;
+        if (linea.BodId == 0) linea.BodId = nuevaFactura.BodId;
         if (linea.ManejaExistencia) linea.Cantidad = Math.Max(1, Math.Round(linea.Cantidad, 0));
+        if (linea.ManejaExistencia) await CargarExistenciasAsync(producto.ProId);
         linea.Resultados = Array.Empty<Producto>();
         linea.Busqueda = "";
         mensaje = null;
@@ -1285,7 +1353,8 @@
         if (precioVigente is null) return;
 
         // El mismo bien escaneado otra vez suma una unidad a su línea.
-        var existente = lineas.FirstOrDefault(l => l.ProId == producto.ProId && l.BienOServicio == "B" && l.PprId == precioVigente.PprId);
+        var existente = lineas.FirstOrDefault(l => l.ProId == producto.ProId && l.BienOServicio == "B" && l.PprId == precioVigente.PprId
+            && l.BodId == nuevaFactura.BodId);
         if (existente is not null && producto.ProTipoItem == "B")
         {
             existente.Cantidad += 1;
@@ -1306,8 +1375,10 @@
             ValorDescuento = 0,
             CostoUnitario = producto.ProCostoUnitario,
             PprId = precioVigente.PprId,
-            ManejaExistencia = producto.ProManejaExistencia
+            ManejaExistencia = producto.ProManejaExistencia,
+            BodId = nuevaFactura.BodId
         });
+        if (producto.ProManejaExistencia) await CargarExistenciasAsync(producto.ProId);
         mensaje = null;
         // Después del primer producto se pide el NIT; después, se sigue escaneando.
         if (primera && nuevaFactura.CliId is null) enfocarNit = true;
@@ -1519,7 +1590,7 @@
                     ValorDescuento = valorDescuentoNeto,
                     SubTotal = Math.Round(precioUnitarioNeto * l.Cantidad, 2),
                     PorcentajeIva = PorcentajeIva,
-                    BodId = nuevaFactura.BodId,
+                    BodId = l.BodId != 0 ? l.BodId : nuevaFactura.BodId,
                     CostoUnitario = l.CostoUnitario,
                     PprId = l.PprId
                 };
@@ -1678,14 +1749,20 @@
         public int? ProId { get; set; }			// obligatorio en bienes; en servicios, solo si viene del catálogo
         public string Descripcion { get; set; } = "";
         public string BienOServicio { get; set; } = "B";
-        public decimal Cantidad { get; set; } = 1;
+        public decimal Cantidad { get => _cantidad; set => _cantidad = Montos.DosDecimales(value); }
+        private decimal _cantidad = 1;
         public int UmeId { get; set; }
-        public decimal PrecioUnitario { get; set; }
-        public decimal ValorDescuento { get; set; }
+        public decimal PrecioUnitario { get => _precioUnitario; set => _precioUnitario = Montos.DosDecimales(value); }
+        private decimal _precioUnitario;
+        public decimal ValorDescuento { get => _valorDescuento; set => _valorDescuento = Montos.DosDecimales(value); }
+        private decimal _valorDescuento;
         public decimal SubTotal => Math.Round(Cantidad * PrecioUnitario, 2);
         public decimal? CostoUnitario { get; set; }
         public int? PprId { get; set; }
         public bool ManejaExistencia { get; set; }
+        // Bodega de despacho: la del encabezado, salvo que se cambie en la línea.
+        public int BodId { get; set; }
+        public bool BodegaManual { get; set; }
         // Búsqueda de producto dentro de la línea (bien sin producto todavía).
         public string Busqueda { get; set; } = "";
         public IReadOnlyList<Producto> Resultados { get; set; } = Array.Empty<Producto>();

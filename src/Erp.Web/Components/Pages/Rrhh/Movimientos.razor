@@ -26,8 +26,7 @@
             <option value="@e.IdEmpleado">@e.CodigoEmpleado — @e.NombreCompleto</option>
         }
     </select>
-    <label class="filtro-campo">Desde <input type="date" @bind="filtroDel" /></label>
-    <label class="filtro-campo">Hasta <input type="date" @bind="filtroAl" /></label>
+    <FiltroPeriodo @bind-Desde="filtroDel" @bind-Hasta="filtroAl" AlCambiar="BuscarAsync" />
     <label class="filtro-campo"><input type="checkbox" @bind="soloPendientes" /> Solo pendientes</label>
     <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
     <span class="barra-herramientas-separador"></span>

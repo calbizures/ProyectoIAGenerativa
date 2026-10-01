@@ -100,12 +100,7 @@ else if (pestanaActiva == "facturas" && seleccionado is not null)
     <div class="panel-detalle panel-ancho">
         <h2>Facturas de @seleccionado.PveNombres @seleccionado.PveApellidos</h2>
         <div class="barra-herramientas">
-            <span class="grupo-rango" role="group" aria-label="Rango rápido">
-                <button type="button" class="boton-icono boton-icono-neutral boton-icono-con-etiqueta @(rangoRapido == "hoy" ? "activo" : "")" @onclick="@(() => AplicarRangoAsync("hoy"))">Hoy</button>
-                <button type="button" class="boton-icono boton-icono-neutral boton-icono-con-etiqueta @(rangoRapido == "mes" ? "activo" : "")" @onclick="@(() => AplicarRangoAsync("mes"))">Este mes</button>
-            </span>
-            <label class="filtro-campo">Desde <input type="date" @bind="fechaDel" @bind:after="AlCambiarFechaManual" /></label>
-            <label class="filtro-campo">Hasta <input type="date" @bind="fechaAl" @bind:after="AlCambiarFechaManual" /></label>
+            <FiltroPeriodo @bind-Desde="fechaDel" @bind-Hasta="fechaAl" AlCambiar="CargarFacturasAsync" />
             <BotonIcono Icono="search" Tooltip="Consultar" Etiqueta="Consultar" OnClick="CargarFacturasAsync" />
         </div>
 
@@ -207,9 +202,8 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
 
     private IReadOnlyList<FacturaVendedor>? facturasVendedor;
     private ComisionVendedorResumen resumenComision = new();
-    private DateTime fechaDel = new(DateTime.Today.Year, DateTime.Today.Month, 1);
-    private DateTime fechaAl = DateTime.Today;
-    private string? rangoRapido = "mes";
+    private DateTime? fechaDel = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime? fechaAl = DateTime.Today;
 
     private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
         ? new[] { new PestanaItem("lista", "Lista") }
@@ -227,16 +221,6 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
 
     protected override async Task OnInitializedAsync() => await BuscarAsync();
 
-    private async Task AplicarRangoAsync(string rango)
-    {
-        rangoRapido = rango;
-        fechaAl = DateTime.Today;
-        fechaDel = rango == "hoy" ? DateTime.Today : new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-        await CargarFacturasAsync();
-    }
-
-    private void AlCambiarFechaManual() => rangoRapido = null;
-
     private async Task CargarFacturasAsync()
     {
         if (seleccionado is null) return;
@@ -248,7 +232,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
             {
                 sucId = (await AuthenticationStateTask).User.ObtenerSucId();
             }
-            var resultado = await VendedorRepository.ConsultarFacturasAsync(seleccionado.PveId, fechaDel, fechaAl, sucId);
+            var resultado = await VendedorRepository.ConsultarFacturasAsync(seleccionado.PveId, fechaDel ?? DateTime.Today, fechaAl ?? DateTime.Today, sucId);
             facturasVendedor = resultado.Facturas;
             resumenComision = resultado.Resumen;
         }

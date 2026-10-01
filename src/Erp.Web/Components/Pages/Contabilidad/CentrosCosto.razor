@@ -19,8 +19,7 @@
 }
 
 <div class="barra-herramientas">
-    <label class="filtro-campo">Desde <input type="date" @bind="desde" /></label>
-    <label class="filtro-campo">Hasta <input type="date" @bind="hasta" /></label>
+    <FiltroPeriodo @bind-Desde="desde" @bind-Hasta="hasta" />
     <select @bind="idDepartamento" aria-label="Centro de costo">
         <option value="">Todos los centros de costo</option>
         @foreach (var d in departamentos)
@@ -112,13 +111,15 @@ else
     private IReadOnlyList<Departamento> departamentos = Array.Empty<Departamento>();
     private IReadOnlyList<CentroCostoFila> filas = Array.Empty<CentroCostoFila>();
     private IReadOnlyList<CentroCostoLinea> lineas = Array.Empty<CentroCostoLinea>();
-    private DateTime desde = new(DateTime.Today.Year, 1, 1);
-    private DateTime hasta = DateTime.Today;
+    private DateTime? desde = new DateTime(DateTime.Today.Year, 1, 1);
+    private DateTime? hasta = DateTime.Today;
+    private DateTime Desde => desde ?? new DateTime(DateTime.Today.Year, 1, 1);
+    private DateTime Hasta => hasta ?? DateTime.Today;
     private int? idDepartamento;
     private (int Departamento, int Cuenta)? expandida;
     private string? mensaje;
 
-    private string UrlExcel => $"reportes/contabilidad/centros-costo.xlsx?desde={desde:yyyy-MM-dd}&hasta={hasta:yyyy-MM-dd}{(idDepartamento is null ? "" : $"&departamento={idDepartamento}")}";
+    private string UrlExcel => $"reportes/contabilidad/centros-costo.xlsx?desde={Desde:yyyy-MM-dd}&hasta={Hasta:yyyy-MM-dd}{(idDepartamento is null ? "" : $"&departamento={idDepartamento}")}";
 
     protected override async Task OnInitializedAsync()
     {
@@ -136,7 +137,7 @@ else
     {
         mensaje = null;
         expandida = null;
-        try { filas = await CentroCostoRepository.ConsultarAsync(desde, hasta, idDepartamento); }
+        try { filas = await CentroCostoRepository.ConsultarAsync(Desde, Hasta, idDepartamento); }
         catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
     }
 
@@ -145,7 +146,7 @@ else
         if (Expandida(f)) { expandida = null; return; }
         try
         {
-            lineas = await CentroCostoRepository.ConsultarDetalleAsync(desde, hasta, f.IdDepartamento, f.CtaId);
+            lineas = await CentroCostoRepository.ConsultarDetalleAsync(Desde, Hasta, f.IdDepartamento, f.CtaId);
             expandida = (f.IdDepartamento, f.CtaId);
         }
         catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
