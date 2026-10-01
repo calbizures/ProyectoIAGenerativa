@@ -65,21 +65,22 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 48_impresion_factura.sql                      -- impresión de la factura en carta o en impresora térmica
 49_rrhh_libro_salarios_igss.sql               -- cuota patronal, aguinaldo y bono 14, libro de salarios y planilla del IGSS
 50_auditoria_robustez.sql                     -- auditoría: operaciones dobles, existencia no negativa, períodos cerrados, índices, integridad
+51_auditoria_saldos.sql                       -- auditoría completa: saldos de cuotas, notas y caja simultáneas, baja de empleado
 ```
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `50` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `51` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `50` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `51` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `50`. Si vuelves a
-correr `12`, corre después `22` a `50` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `51`. Si vuelves a
+correr `12`, corre después `22` a `51` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -1370,6 +1371,50 @@ En la aplicación, el botón común (`BotonIcono`) queda deshabilitado mientras
 su acción está en curso e ignora los clics repetidos. Antes, **Grabar
 factura**, **Grabar compra**, **Registrar depósito** y otras acciones podían
 grabarse dos veces con un doble clic.
+
+## Auditoría completa: saldos y operaciones simultáneas (`51`)
+
+Auditoría de todo el sistema (`00` a `50` y las pantallas). Errores
+`54301`-`54303`.
+
+- **Saldos de cuotas**: `CK_pos_cliente_plan_pagos_saldo` (0 ≤ saldo ≤
+  valor) y `CK_inv_proveedor_plan_pago_saldo` (0 ≤ pagado ≤ valor). Una
+  nota, un cobro o un cheque simultáneo sobre el mismo documento ya no
+  deja una cuota en negativo ni pagada de más. Si la base tiene cuotas que
+  no cumplen, el script las lista y agrega la regla al volver a correrlo.
+- **Nota de crédito simultánea** a otra nota o a un cobro del mismo
+  documento: antes se grababa por su total aunque solo rebajara lo que
+  quedaba en las cuotas, y la póliza no cuadraba con la cartera. Ahora se
+  rechaza (54302). El control **13** de la pantalla de integridad muestra
+  las notas que ya se grabaron así.
+- **Cheque de una cuota** (`sp_bancos_emitir_cheque_pago_proveedor`, solo
+  lo usan los datos de prueba): ya no sobrescribe el pago de otro cheque
+  simultáneo (54303).
+- **Caja**: dos aperturas simultáneas de la misma caja quedaban activas las
+  dos, y dos cierres simultáneos grababan dos pólizas de diferencia.
+- **Baja de empleado** en una sola transacción. Un empleado ya de baja no
+  se vuelve a dar de baja (54301).
+- **Montos nunca negativos**: formas de pago, descuentos y subtotales,
+  totales y enganches, horas de nómina.
+
+En la aplicación:
+
+- Un error que una pantalla no atrapaba cerraba la conexión («Ocurrió un
+  error inesperado», había que recargar). Ahora el botón común lo muestra
+  como aviso flotante y la pantalla sigue funcionando.
+- Las etiquetas de los formularios quedaron asociadas a su campo: un clic
+  en la etiqueta enfoca el campo, y los lectores de pantalla lo anuncian.
+- Las tablas de los listados muestran un mensaje cuando la búsqueda no
+  encuentra nada.
+- En los buscadores de clientes, proveedores, productos, empleados,
+  usuarios y permisos, Enter busca.
+- Se pide confirmación antes de dar de baja a un empleado y antes de
+  inactivar una sucursal, una bodega o una unidad organizativa.
+- Se corrigieron desbordes de pantalla: la edición en fila de Precios y
+  Pólizas en escritorio, y Traslados, Inventario físico, Catálogos, Motivos
+  y Empleados en celular.
+- En pantallas táctiles crecen los controles pequeños (flechas del árbol,
+  enlaces de tabla, casillas).
 
 ## Módulos nuevos
 

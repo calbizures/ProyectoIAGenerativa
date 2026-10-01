@@ -20,7 +20,7 @@
 }
 
 <div class="barra-filtros">
-    <input placeholder="Filtrar por módulo" aria-label="Filtrar por módulo" @bind="filtroModulo" />
+    <input placeholder="Filtrar por módulo" aria-label="Filtrar por módulo" @bind="filtroModulo" type="search" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
     <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
     <BotonIcono Icono="plus" Tooltip="Nuevo permiso" Etiqueta="Nuevo permiso" Variante="primario" OnClick="() => mostrarNuevo = true" />
 </div>
@@ -30,9 +30,9 @@
     <EditForm Model="nuevoPermiso" OnValidSubmit="CrearPermisoAsync" class="panel-formulario">
         <DataAnnotationsValidator />
         <ResumenValidacion />
-        <div class="campo"><label>Módulo</label><InputText @bind-Value="nuevoPermiso.Modulo" /></div>
-        <div class="campo"><label>Código</label><InputText @bind-Value="nuevoPermiso.Codigo" /></div>
-        <div class="campo"><label>Descripción</label><InputText @bind-Value="nuevoPermiso.Descripcion" /></div>
+        <div class="campo"><label for="permisos-permiso-modulo">Módulo</label><InputText id="permisos-permiso-modulo" @bind-Value="nuevoPermiso.Modulo" /></div>
+        <div class="campo"><label for="permisos-permiso-codigo">Código</label><InputText id="permisos-permiso-codigo" @bind-Value="nuevoPermiso.Codigo" /></div>
+        <div class="campo"><label for="permisos-permiso-descripcion">Descripción</label><InputText id="permisos-permiso-descripcion" @bind-Value="nuevoPermiso.Descripcion" /></div>
         <div class="acciones-fila">
             <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
             <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
@@ -45,6 +45,10 @@
         <tr><th>Módulo</th><th>Código</th><th>Descripción</th><th>Estado</th></tr>
     </thead>
     <tbody>
+        @if (!permisos.Any())
+        {
+            <tr><td colspan="4" class="doc-tabla-vacia">Ningún permiso coincide con el filtro.</td></tr>
+        }
         @foreach (var permiso in permisos)
         {
             <tr>

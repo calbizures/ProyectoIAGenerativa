@@ -35,9 +35,9 @@
     <EditForm Model="nuevoTipo" OnValidSubmit="CrearTipoAsync" class="panel-formulario">
         <DataAnnotationsValidator />
         <ResumenValidacion />
-        <div class="campo"><label>Código</label><InputText @bind-Value="nuevoTipo.Codigo" /></div>
-        <div class="campo"><label>Descripción</label><InputText @bind-Value="nuevoTipo.Descripcion" /></div>
-        <div class="campo"><label>Orden</label><InputNumber @bind-Value="nuevoTipo.Orden" /></div>
+        <div class="campo"><label for="tipos-caracteristica-tipo-codigo">Código</label><InputText id="tipos-caracteristica-tipo-codigo" @bind-Value="nuevoTipo.Codigo" /></div>
+        <div class="campo"><label for="tipos-caracteristica-tipo-descripcion">Descripción</label><InputText id="tipos-caracteristica-tipo-descripcion" @bind-Value="nuevoTipo.Descripcion" /></div>
+        <div class="campo"><label for="tipos-caracteristica-tipo-orden">Orden</label><InputNumber id="tipos-caracteristica-tipo-orden" @bind-Value="nuevoTipo.Orden" /></div>
         <div class="acciones-fila">
             <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
             <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
@@ -59,9 +59,9 @@
             <tr>
                 @if (editandoId == t.PtcId)
                 {
-                    <td><input @bind="editCodigo" /></td>
-                    <td><input @bind="editDescripcion" /></td>
-                    <td class="col-estado"><input type="number" @bind="editOrden" /></td>
+                    <td><input @bind="editCodigo" aria-label="Código" /></td>
+                    <td><input @bind="editDescripcion" aria-label="Descripción" /></td>
+                    <td class="col-estado"><input type="number" @bind="editOrden" aria-label="Orden" /></td>
                     <td class="col-estado">@(t.PtcEstado == "A" ? "Vigente" : "Desactivado")</td>
                     <td class="col-acciones">
                         <div class="acciones-fila">

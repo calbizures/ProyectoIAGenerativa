@@ -116,7 +116,7 @@
     }
     else
     {
-        <div class="tabla-desplazable">
+        <div class="tabla-desplazable" tabindex="0">
         <table class="tabla-datos">
             <thead>
                 <tr><th>Descripción</th><th class="col-estado">Tipo</th><th>Período</th><th class="num col-estado">Empleados</th><th class="num col-monto">Ingresos</th><th class="num col-monto">Descuentos</th><th class="num col-monto">Líquido</th><th class="num col-monto" title="IGSS patronal + IRTRA + INTECAP">Cuota patronal</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
@@ -200,7 +200,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         }
         else
         {
-            <div class="tabla-desplazable">
+            <div class="tabla-desplazable" tabindex="0">
             <table class="tabla-datos">
                 <thead>
                     <tr><th class="col-codigo">Código</th><th>Empleado</th><th>Centro de costo</th><th class="num col-monto">@(seleccionada.Clase == "O" ? "Salario base" : "Salario promedio")</th><th class="num col-estado">Días</th><th class="num col-monto">Ingresos</th><th class="num col-monto">Descuentos</th><th class="num col-monto">Líquido</th><th>Pago</th><th class="col-acciones">Detalle</th></tr>

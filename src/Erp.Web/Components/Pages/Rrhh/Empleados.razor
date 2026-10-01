@@ -31,7 +31,7 @@
 @if (pestanaActiva == "lista")
 {
     <div class="barra-herramientas">
-        <input placeholder="Buscar por código o nombre" aria-label="Buscar por código o nombre" @bind="filtro" />
+        <input placeholder="Buscar por código o nombre" aria-label="Buscar por código o nombre" @bind="filtro" type="search" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
         <select @bind="filtroEstado" aria-label="Estado">
             <option value="A">Activos</option>
             <option value="B">De baja</option>
@@ -101,7 +101,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
             @if (seleccionado.Estado == "A")
             {
                 <label class="filtro-campo">Fecha de baja <input type="date" @bind="fechaBaja" /></label>
-                <BotonIcono Icono="ban" Tooltip="Dar de baja" Etiqueta="Dar de baja" Variante="peligro" OnClick="DarBajaAsync" />
+                <BotonIcono Icono="ban" Tooltip="Dar de baja" Etiqueta="Dar de baja" Variante="peligro" Confirmacion="@($"¿Dar de baja al empleado el {fechaBaja:dd/MM/yyyy}?")" OnClick="DarBajaAsync" />
             }
             else
             {
@@ -260,35 +260,35 @@ else if (pestanaActiva == "editar")
         <EditForm Model="modelo" OnValidSubmit="GuardarAsync">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label>Código de empleado</label><InputText @bind-Value="modelo.CodigoEmpleado" /></div>
+            <div class="campo"><label for="empleados-codigoempleado">Código de empleado</label><InputText id="empleados-codigoempleado" @bind-Value="modelo.CodigoEmpleado" /></div>
             <div class="campo">
-                <label>Compañía</label>
-                <InputSelect @bind-Value="modelo.CiaId">
+                <label for="empleados-ciaid">Compañía</label>
+                <InputSelect id="empleados-ciaid" @bind-Value="modelo.CiaId">
                     @foreach (var c in companias)
                     {
                         <option value="@c.CiaId">@c.CiaNombreComercial</option>
                     }
                 </InputSelect>
             </div>
-            <div class="campo"><label>Primer nombre</label><InputText @bind-Value="modelo.PrimerNombre" /></div>
-            <div class="campo"><label>Segundo nombre</label><InputText @bind-Value="modelo.SegundoNombre" /></div>
-            <div class="campo"><label>Primer apellido</label><InputText @bind-Value="modelo.PrimerApellido" /></div>
-            <div class="campo"><label>Segundo apellido</label><InputText @bind-Value="modelo.SegundoApellido" /></div>
-            <div class="campo"><label>Apellido de casada</label><InputText @bind-Value="modelo.ApellidoCasada" /></div>
+            <div class="campo"><label for="empleados-primernombre">Primer nombre</label><InputText id="empleados-primernombre" @bind-Value="modelo.PrimerNombre" /></div>
+            <div class="campo"><label for="empleados-segundonombre">Segundo nombre</label><InputText id="empleados-segundonombre" @bind-Value="modelo.SegundoNombre" /></div>
+            <div class="campo"><label for="empleados-primerapellido">Primer apellido</label><InputText id="empleados-primerapellido" @bind-Value="modelo.PrimerApellido" /></div>
+            <div class="campo"><label for="empleados-segundoapellido">Segundo apellido</label><InputText id="empleados-segundoapellido" @bind-Value="modelo.SegundoApellido" /></div>
+            <div class="campo"><label for="empleados-apellidocasada">Apellido de casada</label><InputText id="empleados-apellidocasada" @bind-Value="modelo.ApellidoCasada" /></div>
             <div class="campo">
-                <label>Género</label>
-                <InputSelect @bind-Value="modelo.Genero">
+                <label for="empleados-genero">Género</label>
+                <InputSelect id="empleados-genero" @bind-Value="modelo.Genero">
                     <option value="">(Sin indicar)</option>
                     <option value="M">Masculino</option>
                     <option value="F">Femenino</option>
                 </InputSelect>
             </div>
-            <div class="campo"><label>Fecha de nacimiento</label><InputDate @bind-Value="modelo.FechaNacimiento" /></div>
-            <div class="campo"><label>Fecha de ingreso</label><InputDate @bind-Value="modelo.FechaIngreso" /></div>
-            <div class="campo"><label>Dirección</label><InputText @bind-Value="modelo.Direccion" /></div>
+            <div class="campo"><label for="empleados-fechanacimiento">Fecha de nacimiento</label><InputDate id="empleados-fechanacimiento" @bind-Value="modelo.FechaNacimiento" /></div>
+            <div class="campo"><label for="empleados-fechaingreso">Fecha de ingreso</label><InputDate id="empleados-fechaingreso" @bind-Value="modelo.FechaIngreso" /></div>
+            <div class="campo"><label for="empleados-direccion">Dirección</label><InputText id="empleados-direccion" @bind-Value="modelo.Direccion" /></div>
             <div class="campo">
-                <label>Tipo de documento</label>
-                <InputSelect @bind-Value="modelo.IdTipoDocumentoIdentificacion">
+                <label for="empleados-idtipodocumentoidentificacion">Tipo de documento</label>
+                <InputSelect id="empleados-idtipodocumentoidentificacion" @bind-Value="modelo.IdTipoDocumentoIdentificacion">
                     <option value="">(Sin indicar)</option>
                     @foreach (var t in tiposDocumento)
                     {
@@ -296,13 +296,13 @@ else if (pestanaActiva == "editar")
                     }
                 </InputSelect>
             </div>
-            <div class="campo"><label>Número de documento</label><InputText @bind-Value="modelo.NumeroDocumento" /></div>
-            <div class="campo"><label>Afiliación IGSS</label><InputText @bind-Value="modelo.NumeroAfiliacionIGSS" /></div>
-            <div class="campo"><label>NIT</label><InputText @bind-Value="modelo.Nit" /></div>
-            <div class="campo"><label>Correo electrónico</label><InputText @bind-Value="modelo.Email" /></div>
+            <div class="campo"><label for="empleados-numerodocumento">Número de documento</label><InputText id="empleados-numerodocumento" @bind-Value="modelo.NumeroDocumento" /></div>
+            <div class="campo"><label for="empleados-numeroafiliacionigss">Afiliación IGSS</label><InputText id="empleados-numeroafiliacionigss" @bind-Value="modelo.NumeroAfiliacionIGSS" /></div>
+            <div class="campo"><label for="empleados-nit">NIT</label><InputText id="empleados-nit" @bind-Value="modelo.Nit" /></div>
+            <div class="campo"><label for="empleados-email">Correo electrónico</label><InputText id="empleados-email" @bind-Value="modelo.Email" /></div>
             <div class="campo">
-                <label>Plaza</label>
-                <InputSelect @bind-Value="modelo.IdPlaza">
+                <label for="empleados-idplaza">Plaza</label>
+                <InputSelect id="empleados-idplaza" @bind-Value="modelo.IdPlaza">
                     <option value="">(Sin plaza)</option>
                     @foreach (var p in plazas.Where(p => p.Estado == "A" && (p.IdEmpleadoOcupante is null || p.IdEmpleadoOcupante == modelo.IdEmpleado)))
                     {
@@ -310,7 +310,7 @@ else if (pestanaActiva == "editar")
                     }
                 </InputSelect>
             </div>
-            <div class="campo"><label>Salario base mensual</label><InputNumber @bind-Value="modelo.SalarioBase" step="0.01" /></div>
+            <div class="campo"><label for="empleados-salariobase">Salario base mensual</label><InputNumber id="empleados-salariobase" @bind-Value="modelo.SalarioBase" step="0.01" /></div>
             <p class="texto-ayuda">Cambiar la plaza o el salario cierra el registro vigente del historial y abre uno nuevo.</p>
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />

@@ -76,8 +76,8 @@
         {
             <div class="doc-grid">
                 <div class="campo">
-                    <label>Caja receptora</label>
-                    <select @bind="pcrIdParaAbrir">
+                    <label for="caja-pcridparaabrir">Caja receptora</label>
+                    <select id="caja-pcridparaabrir" @bind="pcrIdParaAbrir">
                         <option value="0">Seleccione...</option>
                         @foreach (var c in cajasDisponiblesParaAbrir)
                         {
@@ -86,8 +86,8 @@
                     </select>
                 </div>
                 <div class="campo">
-                    <label>Monto inicial</label>
-                    <input type="number" step="0.01" min="0" @bind="montoInicialApertura" />
+                    <label for="caja-montoinicialapertura">Monto inicial</label>
+                    <input id="caja-montoinicialapertura" type="number" step="0.01" min="0" @bind="montoInicialApertura" />
                 </div>
             </div>
             <div class="acciones-fila">
@@ -103,8 +103,8 @@ else if (pestanaActiva == "corte")
     <div class="tarjeta doc-seccion">
         <div class="doc-grid">
             <div class="campo">
-                <label>Caja abierta</label>
-                <select @bind="pcaIdSeleccionada" @bind:after="CargarCorteAsync">
+                <label for="caja-pcaidseleccionada">Caja abierta</label>
+                <select id="caja-pcaidseleccionada" @bind="pcaIdSeleccionada" @bind:after="CargarCorteAsync">
                     <option value="0">Seleccione...</option>
                     @foreach (var a in aperturasActivas)
                     {
@@ -213,8 +213,8 @@ else if (pestanaActiva == "depositos")
     <div class="tarjeta doc-seccion">
         <div class="doc-grid">
             <div class="campo">
-                <label>Apertura de caja</label>
-                <select @bind="pcaIdParaDeposito" @bind:after="CargarDepositosAsync">
+                <label for="caja-pcaidparadeposito">Apertura de caja</label>
+                <select id="caja-pcaidparadeposito" @bind="pcaIdParaDeposito" @bind:after="CargarDepositosAsync">
                     <option value="0">Seleccione...</option>
                     @foreach (var a in aperturasRecientes)
                     {
@@ -246,8 +246,8 @@ else if (pestanaActiva == "depositos")
             <p class="doc-seccion-titulo"><Icono Nombre="landmark" Tamano="15" /> Nuevo depósito</p>
             <div class="doc-grid">
                 <div class="campo">
-                    <label>Cuenta bancaria</label>
-                    <select @bind="nuevoDeposito.BcbId">
+                    <label for="caja-deposito-bcbid">Cuenta bancaria</label>
+                    <select id="caja-deposito-bcbid" @bind="nuevoDeposito.BcbId">
                         <option value="0">Seleccione...</option>
                         @foreach (var c in cuentasBancarias)
                         {
@@ -255,10 +255,10 @@ else if (pestanaActiva == "depositos")
                         }
                     </select>
                 </div>
-                <div class="campo"><label>Fecha</label><input type="date" @bind="nuevoDeposito.Fecha" /></div>
-                <div class="campo"><label>Valor</label><input type="number" step="0.01" min="0" @bind="nuevoDeposito.Valor" /></div>
-                <div class="campo"><label>Número de boleta</label><input @bind="nuevoDeposito.NumeroBoleta" /></div>
-                <div class="campo"><label>Observaciones</label><input @bind="nuevoDeposito.Observaciones" /></div>
+                <div class="campo"><label for="caja-deposito-fecha">Fecha</label><input id="caja-deposito-fecha" type="date" @bind="nuevoDeposito.Fecha" /></div>
+                <div class="campo"><label for="caja-deposito-valor">Valor</label><input id="caja-deposito-valor" type="number" step="0.01" min="0" @bind="nuevoDeposito.Valor" /></div>
+                <div class="campo"><label for="caja-deposito-numeroboleta">Número de boleta</label><input id="caja-deposito-numeroboleta" @bind="nuevoDeposito.NumeroBoleta" /></div>
+                <div class="campo"><label for="caja-deposito-observaciones">Observaciones</label><input id="caja-deposito-observaciones" @bind="nuevoDeposito.Observaciones" /></div>
             </div>
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="Registrar depósito" Etiqueta="Registrar depósito" Variante="primario" OnClick="RegistrarDepositoAsync" />
@@ -300,10 +300,10 @@ else if (pestanaActiva == "cajasreceptoras")
         <EditForm Model="modeloCajaReceptora" OnValidSubmit="GuardarCajaReceptoraAsync" class="panel-formulario">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label>Descripción</label><InputText @bind-Value="modeloCajaReceptora.Descripcion" /></div>
+            <div class="campo"><label for="caja-cajareceptora-descripcion">Descripción</label><InputText id="caja-cajareceptora-descripcion" @bind-Value="modeloCajaReceptora.Descripcion" /></div>
             <div class="campo">
-                <label>Sucursal</label>
-                <InputSelect @bind-Value="modeloCajaReceptora.SucId">
+                <label for="caja-cajareceptora-sucid">Sucursal</label>
+                <InputSelect id="caja-cajareceptora-sucid" @bind-Value="modeloCajaReceptora.SucId">
                     @foreach (var suc in sucursales)
                     {
                         <option value="@suc.SucId">@suc.SucDescripcion</option>

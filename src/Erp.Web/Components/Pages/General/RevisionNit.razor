@@ -42,6 +42,10 @@ else
     <table class="tabla-datos">
         <thead><tr><th class="col-estado">Tipo</th><th class="col-codigo">Código</th><th>Nombre</th><th class="col-estado">Dato</th><th class="col-codigo">Valor grabado</th><th class="col-acciones">Corregir</th></tr></thead>
         <tbody>
+            @if (!Visibles.Any())
+            {
+                <tr><td colspan="6" class="doc-tabla-vacia">Ningún registro coincide con el filtro.</td></tr>
+            }
             @foreach (var r in Visibles)
             {
                 <tr>

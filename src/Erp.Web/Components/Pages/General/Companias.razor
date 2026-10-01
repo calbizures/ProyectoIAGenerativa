@@ -160,24 +160,24 @@ else if (pestanaActiva == "editar")
             <DataAnnotationsValidator />
             <ResumenValidacion />
             <h3>Datos generales</h3>
-            <div class="campo"><label>Nombre comercial</label><InputText @bind-Value="modelo.CiaNombreComercial" /></div>
-            <div class="campo"><label>NIT</label><InputText @bind-Value="modelo.CiaNit" /></div>
-            <div class="campo"><label>Dirección</label><InputText @bind-Value="modelo.CiaDireccion" /></div>
-            <div class="campo"><label>Teléfono</label><InputText @bind-Value="modelo.CiaTelefono" /></div>
-            <div class="campo"><label>Correo electrónico</label><InputText @bind-Value="modelo.CiaEmail" /></div>
-            <div class="campo"><label>Representante legal</label><InputText @bind-Value="modelo.CiaRepresentanteLegal" /></div>
-            <div class="campo"><label>DPI del representante</label><InputText @bind-Value="modelo.CiaDpiRepresentanteLegal" /></div>
-            <div class="campo"><label>Fecha de nacimiento del representante</label><InputDate @bind-Value="modelo.CiaFechaNacimientoRepresentanteLegal" /></div>
+            <div class="campo"><label for="companias-cianombrecomercial">Nombre comercial</label><InputText id="companias-cianombrecomercial" @bind-Value="modelo.CiaNombreComercial" /></div>
+            <div class="campo"><label for="companias-cianit">NIT</label><InputText id="companias-cianit" @bind-Value="modelo.CiaNit" /></div>
+            <div class="campo"><label for="companias-ciadireccion">Dirección</label><InputText id="companias-ciadireccion" @bind-Value="modelo.CiaDireccion" /></div>
+            <div class="campo"><label for="companias-ciatelefono">Teléfono</label><InputText id="companias-ciatelefono" @bind-Value="modelo.CiaTelefono" /></div>
+            <div class="campo"><label for="companias-ciaemail">Correo electrónico</label><InputText id="companias-ciaemail" @bind-Value="modelo.CiaEmail" /></div>
+            <div class="campo"><label for="companias-ciarepresentantelegal">Representante legal</label><InputText id="companias-ciarepresentantelegal" @bind-Value="modelo.CiaRepresentanteLegal" /></div>
+            <div class="campo"><label for="companias-ciadpirepresentantelegal">DPI del representante</label><InputText id="companias-ciadpirepresentantelegal" @bind-Value="modelo.CiaDpiRepresentanteLegal" /></div>
+            <div class="campo"><label for="companias-ciafechanacimientorepresentantelegal">Fecha de nacimiento del representante</label><InputDate id="companias-ciafechanacimientorepresentantelegal" @bind-Value="modelo.CiaFechaNacimientoRepresentanteLegal" /></div>
 
             <h3>Parámetros de uso general</h3>
-            <div class="campo"><label>% IVA</label><InputNumber @bind-Value="modelo.CiaPorcIva" step="0.01" /></div>
+            <div class="campo"><label for="companias-ciaporciva">% IVA</label><InputNumber id="companias-ciaporciva" @bind-Value="modelo.CiaPorcIva" step="0.01" /></div>
             <div class="campo campo-checkbox">
                 <label><InputCheckbox @bind-Value="modelo.CiaPagaComision" /> Paga comisiones a vendedores</label>
             </div>
-            <div class="campo"><label>Tolerancia de cierre de caja (Q)</label><InputNumber @bind-Value="modelo.CiaToleranciaCierreCaja" step="0.01" /></div>
+            <div class="campo"><label for="companias-ciatoleranciacierrecaja">Tolerancia de cierre de caja (Q)</label><InputNumber id="companias-ciatoleranciacierrecaja" @bind-Value="modelo.CiaToleranciaCierreCaja" step="0.01" /></div>
             <div class="campo">
-                <label>Periodicidad de nómina</label>
-                <InputSelect @bind-Value="modelo.CiaPeriodicidadNomina">
+                <label for="companias-ciaperiodicidadnomina">Periodicidad de nómina</label>
+                <InputSelect id="companias-ciaperiodicidadnomina" @bind-Value="modelo.CiaPeriodicidadNomina">
                     <option value="M">Mensual</option>
                     <option value="Q">Quincenal</option>
                     <option value="S">Semanal</option>

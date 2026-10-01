@@ -47,6 +47,13 @@ public static partial class MensajesError
 					return "No hay existencia suficiente: la operación dejaría la bodega en negativo. Puede que otro usuario haya vendido o "
 						+ "trasladado la mercadería al mismo tiempo, o que la mercadería de la compra o carga que intenta anular ya se haya vendido.";
 				}
+				// Reglas del script 51: ninguna cuota queda con saldo negativo ni pagada de más.
+				if (sql.Message.Contains("CK_pos_cliente_plan_pagos_saldo", StringComparison.OrdinalIgnoreCase)
+					|| sql.Message.Contains("CK_inv_proveedor_plan_pago_saldo", StringComparison.OrdinalIgnoreCase))
+				{
+					return "La operación dejaría una cuota con saldo negativo o pagada de más. Puede que otro usuario haya aplicado un cobro, "
+						+ "pago o nota al mismo documento al mismo tiempo: vuelva a consultarlo e intente de nuevo.";
+				}
 				if (sql.Message.Contains("CHECK", StringComparison.OrdinalIgnoreCase))
 				{
 					return "Uno de los valores no cumple las reglas permitidas para este dato" + Detalle(sql.Message) + ".";

@@ -82,7 +82,7 @@ else
                             <BotonIcono Icono="pencil" Tooltip="Editar bodega" OnClick="() => Editar(b)" />
                             @if (b.BodEstado == "A")
                             {
-                                <BotonIcono Icono="ban" Tooltip="Inactivar bodega" Variante="peligro" OnClick='() => CambiarEstadoAsync(b, "I")' />
+                                <BotonIcono Icono="ban" Tooltip="Inactivar bodega" Variante="peligro" Confirmacion="¿Inactivar la bodega?" OnClick='() => CambiarEstadoAsync(b, "I")' />
                             }
                             else
                             {

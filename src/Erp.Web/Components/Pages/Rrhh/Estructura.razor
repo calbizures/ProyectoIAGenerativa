@@ -74,6 +74,10 @@ else if (pestanaActiva == "departamentos")
     <table class="tabla-datos">
         <thead><tr><th>Departamento</th><th>Unidad organizativa</th><th>Sucursal</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
         <tbody>
+            @if (!departamentos.Any())
+            {
+                <tr><td colspan="5" class="doc-tabla-vacia">Sin departamentos registrados.</td></tr>
+            }
             @foreach (var d in departamentos)
             {
                 <tr>
@@ -112,6 +116,10 @@ else if (pestanaActiva == "puestos")
     <table class="tabla-datos">
         <thead><tr><th>Puesto</th><th class="num col-monto">Salario mínimo</th><th class="num col-monto">Salario máximo</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
         <tbody>
+            @if (!puestos.Any())
+            {
+                <tr><td colspan="5" class="doc-tabla-vacia">Sin puestos registrados.</td></tr>
+            }
             @foreach (var p in puestos)
             {
                 <tr>
@@ -168,6 +176,10 @@ else if (pestanaActiva == "plazas")
     <table class="tabla-datos">
         <thead><tr><th>Plaza</th><th>Departamento</th><th>Puesto</th><th>Ocupada por</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
         <tbody>
+            @if (!plazas.Any())
+            {
+                <tr><td colspan="6" class="doc-tabla-vacia">Sin plazas registradas.</td></tr>
+            }
             @foreach (var p in plazas)
             {
                 <tr>

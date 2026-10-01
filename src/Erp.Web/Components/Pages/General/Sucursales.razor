@@ -70,7 +70,7 @@
                                         <BotonIcono Icono="pencil" Tooltip="Editar sucursal" OnClick="() => EditarSucursal(s)" />
                                         @if (s.SucEstado == "A")
                                         {
-                                            <BotonIcono Icono="ban" Tooltip="Inactivar sucursal" Variante="peligro" OnClick='() => CambiarEstadoSucursalAsync(s, "I")' />
+                                            <BotonIcono Icono="ban" Tooltip="Inactivar sucursal" Variante="peligro" Confirmacion="¿Inactivar la sucursal?" OnClick='() => CambiarEstadoSucursalAsync(s, "I")' />
                                         }
                                         else
                                         {
@@ -131,7 +131,7 @@
                                             <BotonIcono Icono="pencil" Tooltip="Editar bodega" OnClick="() => EditarBodega(b)" />
                                             @if (b.BodEstado == "A")
                                             {
-                                                <BotonIcono Icono="ban" Tooltip="Inactivar bodega" Variante="peligro" OnClick='() => CambiarEstadoBodegaAsync(b, "I")' />
+                                                <BotonIcono Icono="ban" Tooltip="Inactivar bodega" Variante="peligro" Confirmacion="¿Inactivar la bodega?" OnClick='() => CambiarEstadoBodegaAsync(b, "I")' />
                                             }
                                             else
                                             {

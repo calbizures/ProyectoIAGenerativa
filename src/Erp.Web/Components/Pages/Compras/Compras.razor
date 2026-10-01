@@ -57,12 +57,12 @@
             <div class="doc-seccion">
                 <p class="doc-seccion-titulo"><Icono Nombre="file-text" Tamano="15" /> Datos generales</p>
                 <div class="doc-grid">
-                    <div class="campo"><label>Fecha</label><input type="date" @bind="nuevaCompra.Fecha" /></div>
-                    <div class="campo"><label>Serie</label><input @bind="nuevaCompra.SerieDocumento" /></div>
-                    <div class="campo"><label>Número</label><input @bind="nuevaCompra.NumeroDocumento" /></div>
+                    <div class="campo"><label for="compras-compra-fecha">Fecha</label><input id="compras-compra-fecha" type="date" @bind="nuevaCompra.Fecha" /></div>
+                    <div class="campo"><label for="compras-compra-seriedocumento">Serie</label><input id="compras-compra-seriedocumento" @bind="nuevaCompra.SerieDocumento" /></div>
+                    <div class="campo"><label for="compras-compra-numerodocumento">Número</label><input id="compras-compra-numerodocumento" @bind="nuevaCompra.NumeroDocumento" /></div>
                     <div class="campo">
-                        <label>Tipo de documento</label>
-                        <select @bind="nuevaCompra.TdoId">
+                        <label for="compras-compra-tdoid">Tipo de documento</label>
+                        <select id="compras-compra-tdoid" @bind="nuevaCompra.TdoId">
                             @foreach (var t in tiposDocumento)
                             {
                                 <option value="@t.TdoId">@t.TdoDescripcion</option>
@@ -70,8 +70,8 @@
                         </select>
                     </div>
                     <div class="campo">
-                        <label>Bodega</label>
-                        <select @bind="nuevaCompra.BodId">
+                        <label for="compras-compra-bodid">Bodega</label>
+                        <select id="compras-compra-bodid" @bind="nuevaCompra.BodId">
                             <option value="0">Seleccione...</option>
                             @foreach (var b in bodegas)
                             {
@@ -80,8 +80,8 @@
                         </select>
                     </div>
                     <div class="campo">
-                        <label>Moneda</label>
-                        <select @bind="nuevaCompra.MonId">
+                        <label for="compras-compra-monid">Moneda</label>
+                        <select id="compras-compra-monid" @bind="nuevaCompra.MonId">
                             @foreach (var m in monedas)
                             {
                                 <option value="@m.MonId">@m.MonCodigo</option>
@@ -122,10 +122,10 @@
                             <div class="doc-alta-rapida">
                                 <p class="doc-alta-rapida-titulo">Proveedor nuevo</p>
                                 <div class="doc-grid">
-                                    <div class="campo"><label>Código</label><input @bind="nuevoProveedorRapido.Codigo" /></div>
-                                    <div class="campo"><label>Nombre comercial</label><input @bind="nuevoProveedorRapido.NombreComercial" /></div>
-                                    <div class="campo"><label>NIT</label><input @bind="nuevoProveedorRapido.Nit" /></div>
-                                    <div class="campo"><label>Teléfono</label><input @bind="nuevoProveedorRapido.Telefono" /></div>
+                                    <div class="campo"><label for="compras-proveedorrapido-codigo">Código</label><input id="compras-proveedorrapido-codigo" @bind="nuevoProveedorRapido.Codigo" /></div>
+                                    <div class="campo"><label for="compras-proveedorrapido-nombrecomercial">Nombre comercial</label><input id="compras-proveedorrapido-nombrecomercial" @bind="nuevoProveedorRapido.NombreComercial" /></div>
+                                    <div class="campo"><label for="compras-proveedorrapido-nit">NIT</label><input id="compras-proveedorrapido-nit" @bind="nuevoProveedorRapido.Nit" /></div>
+                                    <div class="campo"><label for="compras-proveedorrapido-telefono">Teléfono</label><input id="compras-proveedorrapido-telefono" @bind="nuevoProveedorRapido.Telefono" /></div>
                                 </div>
                                 <div class="acciones-fila">
                                     <BotonIcono Icono="save" Tooltip="Guardar proveedor" Etiqueta="Guardar proveedor" Variante="primario" OnClick="CrearProveedorRapidoAsync" />
@@ -256,17 +256,17 @@
                 <p class="doc-seccion-titulo"><Icono Nombre="credit-card" Tamano="15" /> Forma de pago</p>
                 <div class="doc-grid">
                     <div class="campo">
-                        <label>Condición</label>
-                        <select @bind="condicionPagoCompra">
+                        <label for="compras-condicionpagocompra">Condición</label>
+                        <select id="compras-condicionpagocompra" @bind="condicionPagoCompra">
                             <option value="contado">Contado</option>
                             <option value="credito">Crédito del proveedor</option>
                         </select>
                     </div>
                     @if (condicionPagoCompra == "credito")
                     {
-                        <div class="campo"><label>Enganche</label><input type="number" step="0.01" min="0" @bind="nuevaCompra.MontoEnganche" /></div>
-                        <div class="campo"><label>Número de cuotas</label><input type="number" min="1" @bind="nuevaCompra.NumeroCuotas" /></div>
-                        <div class="campo"><label>Fecha del primer pago</label><input type="date" @bind="nuevaCompra.FechaPrimerPago" /></div>
+                        <div class="campo"><label for="compras-compra-montoenganche">Enganche</label><input id="compras-compra-montoenganche" type="number" step="0.01" min="0" @bind="nuevaCompra.MontoEnganche" /></div>
+                        <div class="campo"><label for="compras-compra-numerocuotas">Número de cuotas</label><input id="compras-compra-numerocuotas" type="number" min="1" @bind="nuevaCompra.NumeroCuotas" /></div>
+                        <div class="campo"><label for="compras-compra-fechaprimerpago">Fecha del primer pago</label><input id="compras-compra-fechaprimerpago" type="date" @bind="nuevaCompra.FechaPrimerPago" /></div>
                     }
                 </div>
                 @if (condicionPagoCompra == "credito")

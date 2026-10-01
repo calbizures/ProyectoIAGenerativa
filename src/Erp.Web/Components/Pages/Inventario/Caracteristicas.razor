@@ -21,7 +21,7 @@
 }
 
 <div class="barra-herramientas">
-    <select @bind="filtroProId">
+    <select @bind="filtroProId" aria-label="Producto">
         <option value="0">Todos los productos</option>
         @foreach (var p in productos)
         {
@@ -47,8 +47,8 @@
         <DataAnnotationsValidator />
         <ResumenValidacion />
         <div class="campo">
-            <label>Producto</label>
-            <select @bind="nuevaCaracteristica.ProId">
+            <label for="caracteristicas-caracteristica-proid">Producto</label>
+            <select id="caracteristicas-caracteristica-proid" @bind="nuevaCaracteristica.ProId">
                 <option value="0">Seleccione...</option>
                 @foreach (var p in productos)
                 {
@@ -57,8 +57,8 @@
             </select>
         </div>
         <div class="campo">
-            <label>Tipo</label>
-            <select @bind="nuevaCaracteristica.PtcId">
+            <label for="caracteristicas-caracteristica-ptcid">Tipo</label>
+            <select id="caracteristicas-caracteristica-ptcid" @bind="nuevaCaracteristica.PtcId">
                 <option value="0">Seleccione...</option>
                 @foreach (var tipo in tiposCaracteristica)
                 {
@@ -66,8 +66,8 @@
                 }
             </select>
         </div>
-        <div class="campo"><label>Valor</label><InputText @bind-Value="nuevaCaracteristica.Valor" /></div>
-        <div class="campo"><label>Descripción</label><InputText @bind-Value="nuevaCaracteristica.Descripcion" /></div>
+        <div class="campo"><label for="caracteristicas-caracteristica-valor">Valor</label><InputText id="caracteristicas-caracteristica-valor" @bind-Value="nuevaCaracteristica.Valor" /></div>
+        <div class="campo"><label for="caracteristicas-caracteristica-descripcion">Descripción</label><InputText id="caracteristicas-caracteristica-descripcion" @bind-Value="nuevaCaracteristica.Descripcion" /></div>
         <div class="acciones-fila">
             <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
             <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />

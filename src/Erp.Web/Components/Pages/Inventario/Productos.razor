@@ -30,7 +30,7 @@
 {
     <div class="barra-filtros">
         <input placeholder="Buscar por código" aria-label="Buscar por código" @bind="filtroCodigo" />
-        <input placeholder="Buscar por descripción" aria-label="Buscar por descripción" @bind="filtroDescripcion" />
+        <input placeholder="Buscar por descripción" aria-label="Buscar por descripción" @bind="filtroDescripcion" type="search" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
         <select @bind="filtroEstado" aria-label="Estado">
             <option value="A">Activos</option>
             <option value="I">Inactivos</option>
@@ -50,11 +50,11 @@
         <EditForm Model="nuevoProducto" OnValidSubmit="CrearProductoAsync" class="panel-formulario">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label>Código</label><InputText @bind-Value="nuevoProducto.Codigo" /></div>
-            <div class="campo"><label>Descripción</label><InputText @bind-Value="nuevoProducto.Descripcion" /></div>
+            <div class="campo"><label for="productos-producto-codigo">Código</label><InputText id="productos-producto-codigo" @bind-Value="nuevoProducto.Codigo" /></div>
+            <div class="campo"><label for="productos-producto-descripcion">Descripción</label><InputText id="productos-producto-descripcion" @bind-Value="nuevoProducto.Descripcion" /></div>
             <div class="campo">
-                <label>Tipo de producto</label>
-                <select @bind="nuevoProducto.PrtId">
+                <label for="productos-producto-prtid">Tipo de producto</label>
+                <select id="productos-producto-prtid" @bind="nuevoProducto.PrtId">
                     <option value="0">Seleccione...</option>
                     @foreach (var tipo in tiposProducto)
                     {
@@ -63,15 +63,15 @@
                 </select>
             </div>
             <div class="campo">
-                <label>Clasificación</label>
-                <select @bind="nuevoProducto.TipoItem">
+                <label for="productos-producto-tipoitem">Clasificación</label>
+                <select id="productos-producto-tipoitem" @bind="nuevoProducto.TipoItem">
                     <option value="B">Bien</option>
                     <option value="S">Servicio</option>
                 </select>
             </div>
             <div class="campo">
-                <label>Unidad de medida</label>
-                <select @bind="nuevoProducto.UmeId">
+                <label for="productos-producto-umeid">Unidad de medida</label>
+                <select id="productos-producto-umeid" @bind="nuevoProducto.UmeId">
                     <option value="0">Según la clasificación</option>
                     @foreach (var u in unidadesMedida)
                     {
@@ -102,6 +102,10 @@
             </tr>
         </thead>
         <tbody>
+            @if (!productos.Any())
+            {
+                <tr><td colspan="7" class="doc-tabla-vacia">Ningún producto coincide con la búsqueda.</td></tr>
+            }
             @foreach (var p in productos)
             {
                 <tr class="@(seleccionado?.ProId == p.ProId ? "fila-seleccionada" : "")">
@@ -136,11 +140,11 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         <EditForm Model="edicionProducto" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label>Código</label><InputText @bind-Value="edicionProducto.Codigo" /></div>
-            <div class="campo"><label>Descripción</label><InputText @bind-Value="edicionProducto.Descripcion" /></div>
+            <div class="campo"><label for="productos-edicionproducto-codigo">Código</label><InputText id="productos-edicionproducto-codigo" @bind-Value="edicionProducto.Codigo" /></div>
+            <div class="campo"><label for="productos-edicionproducto-descripcion">Descripción</label><InputText id="productos-edicionproducto-descripcion" @bind-Value="edicionProducto.Descripcion" /></div>
             <div class="campo">
-                <label>Tipo de producto</label>
-                <select @bind="edicionProducto.PrtId">
+                <label for="productos-edicionproducto-prtid">Tipo de producto</label>
+                <select id="productos-edicionproducto-prtid" @bind="edicionProducto.PrtId">
                     @foreach (var tipo in tiposProducto)
                     {
                         <option value="@tipo.PrtId">@tipo.PrtDescripcion</option>
@@ -148,15 +152,15 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
                 </select>
             </div>
             <div class="campo">
-                <label>Clasificación</label>
-                <select @bind="edicionProducto.TipoItem">
+                <label for="productos-edicionproducto-tipoitem">Clasificación</label>
+                <select id="productos-edicionproducto-tipoitem" @bind="edicionProducto.TipoItem">
                     <option value="B">Bien</option>
                     <option value="S">Servicio</option>
                 </select>
             </div>
             <div class="campo">
-                <label>Unidad de medida</label>
-                <select @bind="edicionProducto.UmeId">
+                <label for="productos-edicionproducto-umeid">Unidad de medida</label>
+                <select id="productos-edicionproducto-umeid" @bind="edicionProducto.UmeId">
                     @foreach (var u in unidadesMedida.Where(u => u.UmeEstado == "A" || u.UmeId == edicionProducto.UmeId))
                     {
                         <option value="@u.UmeId">@u.UmeCodigo - @u.UmeDescripcion</option>
@@ -223,8 +227,8 @@ else if (pestanaActiva == "caracteristicas" && seleccionado is not null)
         {
             <div class="panel-formulario">
                 <div class="campo">
-                    <label>Tipo</label>
-                    <select @bind="nuevaCaracteristica.PtcId">
+                    <label for="productos-caracteristica-ptcid">Tipo</label>
+                    <select id="productos-caracteristica-ptcid" @bind="nuevaCaracteristica.PtcId">
                         <option value="0">Seleccione...</option>
                         @foreach (var tipo in tiposCaracteristica)
                         {
@@ -232,8 +236,8 @@ else if (pestanaActiva == "caracteristicas" && seleccionado is not null)
                         }
                     </select>
                 </div>
-                <div class="campo"><label>Valor</label><input @bind="nuevaCaracteristica.Valor" /></div>
-                <div class="campo"><label>Descripción</label><input @bind="nuevaCaracteristica.Descripcion" /></div>
+                <div class="campo"><label for="productos-caracteristica-valor">Valor</label><input id="productos-caracteristica-valor" @bind="nuevaCaracteristica.Valor" /></div>
+                <div class="campo"><label for="productos-caracteristica-descripcion">Descripción</label><input id="productos-caracteristica-descripcion" @bind="nuevaCaracteristica.Descripcion" /></div>
                 <div class="acciones-fila">
                     <BotonIcono Icono="save" Tooltip="Guardar característica" Etiqueta="Guardar" Variante="primario" OnClick="CrearCaracteristicaAsync" />
                     <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevaCaracteristica = false" />
@@ -292,8 +296,8 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
         {
             <div class="panel-formulario">
                 <div class="campo">
-                    <label>Bodega</label>
-                    <select @bind="nuevoPrecio.BodId">
+                    <label for="productos-precio-bodid">Bodega</label>
+                    <select id="productos-precio-bodid" @bind="nuevoPrecio.BodId">
                         <option value="0">Seleccione...</option>
                         @foreach (var bod in bodegasDisponibles)
                         {
@@ -302,8 +306,8 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
                     </select>
                 </div>
                 <div class="campo">
-                    <label>Moneda</label>
-                    <select @bind="nuevoPrecio.MonId">
+                    <label for="productos-precio-monid">Moneda</label>
+                    <select id="productos-precio-monid" @bind="nuevoPrecio.MonId">
                         <option value="0">Seleccione...</option>
                         @foreach (var mon in monedasDisponibles)
                         {
@@ -311,10 +315,10 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
                         }
                     </select>
                 </div>
-                <div class="campo"><label>Precio unitario de venta</label><input type="number" step="0.01" @bind="nuevoPrecio.PrecioUnitarioVenta" /></div>
-                <div class="campo"><label>Descripción</label><input @bind="nuevoPrecio.Descripcion" /></div>
-                <div class="campo"><label>Vigencia desde</label><input type="date" @bind="nuevoPrecio.VigenciaDesde" /></div>
-                <div class="campo"><label>Vigencia hasta</label><input type="date" @bind="nuevoPrecio.VigenciaHasta" /></div>
+                <div class="campo"><label for="productos-precio-preciounitarioventa">Precio unitario de venta</label><input id="productos-precio-preciounitarioventa" type="number" step="0.01" @bind="nuevoPrecio.PrecioUnitarioVenta" /></div>
+                <div class="campo"><label for="productos-precio-descripcion">Descripción</label><input id="productos-precio-descripcion" @bind="nuevoPrecio.Descripcion" /></div>
+                <div class="campo"><label for="productos-precio-vigenciadesde">Vigencia desde</label><input id="productos-precio-vigenciadesde" type="date" @bind="nuevoPrecio.VigenciaDesde" /></div>
+                <div class="campo"><label for="productos-precio-vigenciahasta">Vigencia hasta</label><input id="productos-precio-vigenciahasta" type="date" @bind="nuevoPrecio.VigenciaHasta" /></div>
                 <div class="acciones-fila">
                     <BotonIcono Icono="save" Tooltip="Guardar precio" Etiqueta="Guardar" Variante="primario" OnClick="CrearPrecioAsync" />
                     <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevoPrecio = false" />

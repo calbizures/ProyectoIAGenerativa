@@ -39,11 +39,11 @@
         <EditForm Model="nuevoVendedor" OnValidSubmit="CrearVendedorAsync" class="panel-formulario">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label>Código</label><InputText @bind-Value="nuevoVendedor.Codigo" /></div>
-            <div class="campo"><label>Nombres</label><InputText @bind-Value="nuevoVendedor.Nombres" /></div>
-            <div class="campo"><label>Apellidos</label><InputText @bind-Value="nuevoVendedor.Apellidos" /></div>
-            <div class="campo"><label>Fecha de ingreso</label><InputDate @bind-Value="nuevoVendedor.FechaIngreso" /></div>
-            <div class="campo"><label>% Comisión</label><InputNumber @bind-Value="nuevoVendedor.PorcentajeComision" step="0.01" /></div>
+            <div class="campo"><label for="vendedores-vendedor-codigo">Código</label><InputText id="vendedores-vendedor-codigo" @bind-Value="nuevoVendedor.Codigo" /></div>
+            <div class="campo"><label for="vendedores-vendedor-nombres">Nombres</label><InputText id="vendedores-vendedor-nombres" @bind-Value="nuevoVendedor.Nombres" /></div>
+            <div class="campo"><label for="vendedores-vendedor-apellidos">Apellidos</label><InputText id="vendedores-vendedor-apellidos" @bind-Value="nuevoVendedor.Apellidos" /></div>
+            <div class="campo"><label for="vendedores-vendedor-fechaingreso">Fecha de ingreso</label><InputDate id="vendedores-vendedor-fechaingreso" @bind-Value="nuevoVendedor.FechaIngreso" /></div>
+            <div class="campo"><label for="vendedores-vendedor-porcentajecomision">% Comisión</label><InputNumber id="vendedores-vendedor-porcentajecomision" @bind-Value="nuevoVendedor.PorcentajeComision" step="0.01" /></div>
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
                 <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
@@ -56,6 +56,10 @@
             <tr><th class="col-codigo">Código</th><th>Nombres</th><th>Apellidos</th><th class="num col-estado">% Comisión</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
         </thead>
         <tbody>
+            @if (!vendedores.Any())
+            {
+                <tr><td colspan="6" class="doc-tabla-vacia">Ningún vendedor coincide con la búsqueda.</td></tr>
+            }
             @foreach (var v in vendedores)
             {
                 <tr class="@(seleccionado?.PveId == v.PveId ? "fila-seleccionada" : "")">
@@ -170,10 +174,10 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         <EditForm Model="edicionVendedor" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label>Nombres</label><InputText @bind-Value="edicionVendedor.Nombres" /></div>
-            <div class="campo"><label>Apellidos</label><InputText @bind-Value="edicionVendedor.Apellidos" /></div>
-            <div class="campo"><label>Fecha de ingreso</label><InputDate @bind-Value="edicionVendedor.FechaIngreso" /></div>
-            <div class="campo"><label>% Comisión</label><InputNumber @bind-Value="edicionVendedor.PorcentajeComision" step="0.01" /></div>
+            <div class="campo"><label for="vendedores-edicionvendedor-nombres">Nombres</label><InputText id="vendedores-edicionvendedor-nombres" @bind-Value="edicionVendedor.Nombres" /></div>
+            <div class="campo"><label for="vendedores-edicionvendedor-apellidos">Apellidos</label><InputText id="vendedores-edicionvendedor-apellidos" @bind-Value="edicionVendedor.Apellidos" /></div>
+            <div class="campo"><label for="vendedores-edicionvendedor-fechaingreso">Fecha de ingreso</label><InputDate id="vendedores-edicionvendedor-fechaingreso" @bind-Value="edicionVendedor.FechaIngreso" /></div>
+            <div class="campo"><label for="vendedores-edicionvendedor-porcentajecomision">% Comisión</label><InputNumber id="vendedores-edicionvendedor-porcentajecomision" @bind-Value="edicionVendedor.PorcentajeComision" step="0.01" /></div>
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
                 <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />

@@ -75,12 +75,12 @@
             <div class="doc-seccion">
                 <p class="doc-seccion-titulo"><Icono Nombre="file-text" Tamano="15" /> Datos generales</p>
                 <div class="doc-grid">
-                    <div class="campo"><label>Fecha</label><input type="date" @bind="nuevaFactura.Fecha" /></div>
-                    <div class="campo"><label>Serie</label><input @bind="nuevaFactura.SerieDocumento" /></div>
-                    <div class="campo"><label>Número</label><input @bind="nuevaFactura.NumeroDocumento" /></div>
+                    <div class="campo"><label for="facturas-factura-fecha">Fecha</label><input id="facturas-factura-fecha" type="date" @bind="nuevaFactura.Fecha" /></div>
+                    <div class="campo"><label for="facturas-factura-seriedocumento">Serie</label><input id="facturas-factura-seriedocumento" @bind="nuevaFactura.SerieDocumento" /></div>
+                    <div class="campo"><label for="facturas-factura-numerodocumento">Número</label><input id="facturas-factura-numerodocumento" @bind="nuevaFactura.NumeroDocumento" /></div>
                     <div class="campo">
-                        <label>Vendedor</label>
-                        <select @bind="nuevaFactura.PveId">
+                        <label for="facturas-factura-pveid">Vendedor</label>
+                        <select id="facturas-factura-pveid" @bind="nuevaFactura.PveId">
                             <option value="">(Sin asignar)</option>
                             @foreach (var v in vendedores)
                             {
@@ -97,8 +97,8 @@
                         }
                     </div>
                     <div class="campo">
-                        <label>Bodega</label>
-                        <select @bind="nuevaFactura.BodId">
+                        <label for="facturas-factura-bodid">Bodega</label>
+                        <select id="facturas-factura-bodid" @bind="nuevaFactura.BodId">
                             <option value="0">Seleccione...</option>
                             @foreach (var b in bodegas)
                             {
@@ -107,8 +107,8 @@
                         </select>
                     </div>
                     <div class="campo">
-                        <label>Moneda</label>
-                        <select @bind="nuevaFactura.MonId">
+                        <label for="facturas-factura-monid">Moneda</label>
+                        <select id="facturas-factura-monid" @bind="nuevaFactura.MonId">
                             @foreach (var m in monedas)
                             {
                                 <option value="@m.MonId">@m.MonCodigo</option>
@@ -174,11 +174,11 @@
                             <div class="doc-alta-rapida">
                                 <p class="doc-alta-rapida-titulo">Cliente nuevo</p>
                                 <div class="doc-grid">
-                                    <div class="campo"><label>Código</label><input @bind="nuevoClienteRapido.Codigo" /></div>
-                                    <div class="campo"><label>Nombres</label><input @bind="nuevoClienteRapido.Nombres" /></div>
-                                    <div class="campo"><label>Apellidos</label><input @bind="nuevoClienteRapido.Apellidos" /></div>
-                                    <div class="campo"><label>NIT</label><input @bind="nuevoClienteRapido.Nit" /></div>
-                                    <div class="campo"><label>Teléfono</label><input @bind="nuevoClienteRapido.Telefono" /></div>
+                                    <div class="campo"><label for="facturas-clienterapido-codigo">Código</label><input id="facturas-clienterapido-codigo" @bind="nuevoClienteRapido.Codigo" /></div>
+                                    <div class="campo"><label for="facturas-clienterapido-nombres">Nombres</label><input id="facturas-clienterapido-nombres" @bind="nuevoClienteRapido.Nombres" /></div>
+                                    <div class="campo"><label for="facturas-clienterapido-apellidos">Apellidos</label><input id="facturas-clienterapido-apellidos" @bind="nuevoClienteRapido.Apellidos" /></div>
+                                    <div class="campo"><label for="facturas-clienterapido-nit">NIT</label><input id="facturas-clienterapido-nit" @bind="nuevoClienteRapido.Nit" /></div>
+                                    <div class="campo"><label for="facturas-clienterapido-telefono">Teléfono</label><input id="facturas-clienterapido-telefono" @bind="nuevoClienteRapido.Telefono" /></div>
                                 </div>
                                 <div class="acciones-fila">
                                     <BotonIcono Icono="save" Tooltip="Guardar cliente" Etiqueta="Guardar cliente" Variante="primario" OnClick="CrearClienteRapidoAsync" />
@@ -328,17 +328,17 @@
                 <p class="doc-seccion-titulo"><Icono Nombre="credit-card" Tamano="15" /> Forma de pago</p>
                 <div class="doc-grid">
                     <div class="campo">
-                        <label>Condición</label>
-                        <select @bind="condicionPagoFactura">
+                        <label for="facturas-condicionpagofactura">Condición</label>
+                        <select id="facturas-condicionpagofactura" @bind="condicionPagoFactura">
                             <option value="contado">Contado</option>
                             <option value="credito">Crédito</option>
                         </select>
                     </div>
                     @if (condicionPagoFactura == "credito")
                     {
-                        <div class="campo"><label>Enganche</label><input type="number" step="0.01" min="0" @bind="nuevaFactura.MontoEnganche" /></div>
-                        <div class="campo"><label>Número de cuotas</label><input type="number" min="1" @bind="nuevaFactura.NumeroCuotas" /></div>
-                        <div class="campo"><label>Fecha del primer pago</label><input type="date" @bind="nuevaFactura.FechaPrimerPago" /></div>
+                        <div class="campo"><label for="facturas-factura-montoenganche">Enganche</label><input id="facturas-factura-montoenganche" type="number" step="0.01" min="0" @bind="nuevaFactura.MontoEnganche" /></div>
+                        <div class="campo"><label for="facturas-factura-numerocuotas">Número de cuotas</label><input id="facturas-factura-numerocuotas" type="number" min="1" @bind="nuevaFactura.NumeroCuotas" /></div>
+                        <div class="campo"><label for="facturas-factura-fechaprimerpago">Fecha del primer pago</label><input id="facturas-factura-fechaprimerpago" type="date" @bind="nuevaFactura.FechaPrimerPago" /></div>
                     }
                 </div>
                 @if (condicionPagoFactura == "credito" && creditoCliente is not null)
@@ -378,8 +378,8 @@
                         @if (cajasAbiertasSucursal.Count > 1)
                         {
                             <div class="campo">
-                                <label>Caja receptora</label>
-                                <select @bind="pcaIdFactura">
+                                <label for="facturas-pcaidfactura">Caja receptora</label>
+                                <select id="facturas-pcaidfactura" @bind="pcaIdFactura">
                                     @foreach (var c in cajasAbiertasSucursal)
                                     {
                                         <option value="@c.PcaId">@c.PcrDescripcion</option>
@@ -404,7 +404,7 @@
                                 }
                                 <tr>
                                     <td>
-                                        <select @bind="formaPagoNueva.PftId">
+                                        <select @bind="formaPagoNueva.PftId" aria-label="Forma de pago">
                                             <option value="0">Seleccione...</option>
                                             @foreach (var t in formasPagoTipo)
                                             {
@@ -412,7 +412,7 @@
                                             }
                                         </select>
                                     </td>
-                                    <td class="num"><input type="number" step="0.01" min="0" @bind="formaPagoNueva.Monto" /></td>
+                                    <td class="num"><input type="number" step="0.01" min="0" @bind="formaPagoNueva.Monto" aria-label="Monto" /></td>
                                     <td>
                                         @if (EsCheque(formaPagoNueva.PftId))
                                         {

@@ -1,0 +1,43 @@
+@* Pila de avisos flotantes (abajo a la derecha). Un aviso de error queda hasta
+   que el usuario lo cierra; uno informativo se va solo a los 6 segundos. *@
+@implements IDisposable
+@inject AvisosServicio Servicio
+
+<div class="avisos-pila" aria-live="assertive">
+    @foreach (var a in avisos)
+    {
+        <div class="aviso @(a.EsError ? "aviso-error" : "aviso-ok")" role="@(a.EsError ? "alert" : "status")" @key="a.Id">
+            <Icono Nombre="@(a.EsError ? "alert-triangle" : "check-circle")" Tamano="18" />
+            <span class="aviso-texto">@a.Texto</span>
+            <button type="button" class="aviso-cerrar" aria-label="Cerrar aviso" @onclick="() => Quitar(a.Id)">✕</button>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<Aviso> avisos = new();
+
+    protected override void OnInitialized() => Servicio.Nuevo += Recibir;
+
+    private void Recibir(Aviso aviso)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            // El mismo error repetido (doble intento) no apila copias.
+            avisos.RemoveAll(a => a.Texto == aviso.Texto);
+            avisos.Add(aviso);
+            if (avisos.Count > 4) avisos.RemoveAt(0);
+            StateHasChanged();
+            if (!aviso.EsError)
+            {
+                await Task.Delay(6000);
+                Quitar(aviso.Id);
+                StateHasChanged();
+            }
+        });
+    }
+
+    private void Quitar(Guid id) => avisos.RemoveAll(a => a.Id == id);
+
+    public void Dispose() => Servicio.Nuevo -= Recibir;
+}

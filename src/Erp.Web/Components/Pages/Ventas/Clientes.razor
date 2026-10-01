@@ -24,7 +24,7 @@
 @if (pestanaActiva == "lista")
 {
     <div class="barra-herramientas">
-        <input placeholder="Buscar por código, nombre o NIT" aria-label="Buscar por código, nombre o NIT" @bind="textoBusqueda" />
+        <input placeholder="Buscar por código, nombre o NIT" aria-label="Buscar por código, nombre o NIT" @bind="textoBusqueda" type="search" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
         <select @bind="filtroEstado" aria-label="Estado">
             <option value="A">Activos</option>
             <option value="I">Inactivos</option>
@@ -40,14 +40,14 @@
         <EditForm Model="nuevoCliente" OnValidSubmit="CrearClienteAsync" class="panel-formulario">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label>Código</label><InputText @bind-Value="nuevoCliente.Codigo" /></div>
-            <div class="campo"><label>Nombres</label><InputText @bind-Value="nuevoCliente.Nombres" /></div>
-            <div class="campo"><label>Apellidos</label><InputText @bind-Value="nuevoCliente.Apellidos" /></div>
-            <div class="campo"><label>NIT</label><InputText @bind-Value="nuevoCliente.Nit" /></div>
-            <div class="campo"><label>Teléfono celular</label><InputText @bind-Value="nuevoCliente.TelefonoCelular" /></div>
-            <div class="campo"><label>Dirección</label><InputText @bind-Value="nuevoCliente.Direccion" /></div>
-            <div class="campo"><label>Email</label><InputText @bind-Value="nuevoCliente.Email" /></div>
-            <div class="campo"><label>Límite de crédito</label><InputNumber @bind-Value="nuevoCliente.LimiteCredito" step="0.01" /></div>
+            <div class="campo"><label for="clientes-cliente-codigo">Código</label><InputText id="clientes-cliente-codigo" @bind-Value="nuevoCliente.Codigo" /></div>
+            <div class="campo"><label for="clientes-cliente-nombres">Nombres</label><InputText id="clientes-cliente-nombres" @bind-Value="nuevoCliente.Nombres" /></div>
+            <div class="campo"><label for="clientes-cliente-apellidos">Apellidos</label><InputText id="clientes-cliente-apellidos" @bind-Value="nuevoCliente.Apellidos" /></div>
+            <div class="campo"><label for="clientes-cliente-nit">NIT</label><InputText id="clientes-cliente-nit" @bind-Value="nuevoCliente.Nit" /></div>
+            <div class="campo"><label for="clientes-cliente-telefonocelular">Teléfono celular</label><InputText id="clientes-cliente-telefonocelular" @bind-Value="nuevoCliente.TelefonoCelular" /></div>
+            <div class="campo"><label for="clientes-cliente-direccion">Dirección</label><InputText id="clientes-cliente-direccion" @bind-Value="nuevoCliente.Direccion" /></div>
+            <div class="campo"><label for="clientes-cliente-email">Email</label><InputText id="clientes-cliente-email" @bind-Value="nuevoCliente.Email" /></div>
+            <div class="campo"><label for="clientes-cliente-limitecredito">Límite de crédito</label><InputNumber id="clientes-cliente-limitecredito" @bind-Value="nuevoCliente.LimiteCredito" step="0.01" /></div>
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
                 <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
@@ -60,6 +60,10 @@
             <tr><th class="col-codigo">Código</th><th>Nombre</th><th class="col-codigo">NIT</th><th class="col-telefono">Teléfono</th><th class="num col-monto">Límite crédito</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
         </thead>
         <tbody>
+            @if (!clientes.Any())
+            {
+                <tr><td colspan="7" class="doc-tabla-vacia">Ningún cliente coincide con la búsqueda.</td></tr>
+            }
             @foreach (var c in clientes)
             {
                 <tr class="@(seleccionado?.CliId == c.CliId ? "fila-seleccionada" : "")">
@@ -148,13 +152,13 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         <EditForm Model="edicionCliente" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label>Nombres</label><InputText @bind-Value="edicionCliente.Nombres" /></div>
-            <div class="campo"><label>Apellidos</label><InputText @bind-Value="edicionCliente.Apellidos" /></div>
-            <div class="campo"><label>NIT</label><InputText @bind-Value="edicionCliente.Nit" /></div>
-            <div class="campo"><label>Teléfono celular</label><InputText @bind-Value="edicionCliente.TelefonoCelular" /></div>
-            <div class="campo"><label>Dirección</label><InputText @bind-Value="edicionCliente.Direccion" /></div>
-            <div class="campo"><label>Email</label><InputText @bind-Value="edicionCliente.Email" /></div>
-            <div class="campo"><label>Límite de crédito</label><InputNumber @bind-Value="edicionCliente.LimiteCredito" step="0.01" /></div>
+            <div class="campo"><label for="clientes-edicioncliente-nombres">Nombres</label><InputText id="clientes-edicioncliente-nombres" @bind-Value="edicionCliente.Nombres" /></div>
+            <div class="campo"><label for="clientes-edicioncliente-apellidos">Apellidos</label><InputText id="clientes-edicioncliente-apellidos" @bind-Value="edicionCliente.Apellidos" /></div>
+            <div class="campo"><label for="clientes-edicioncliente-nit">NIT</label><InputText id="clientes-edicioncliente-nit" @bind-Value="edicionCliente.Nit" /></div>
+            <div class="campo"><label for="clientes-edicioncliente-telefonocelular">Teléfono celular</label><InputText id="clientes-edicioncliente-telefonocelular" @bind-Value="edicionCliente.TelefonoCelular" /></div>
+            <div class="campo"><label for="clientes-edicioncliente-direccion">Dirección</label><InputText id="clientes-edicioncliente-direccion" @bind-Value="edicionCliente.Direccion" /></div>
+            <div class="campo"><label for="clientes-edicioncliente-email">Email</label><InputText id="clientes-edicioncliente-email" @bind-Value="edicionCliente.Email" /></div>
+            <div class="campo"><label for="clientes-edicioncliente-limitecredito">Límite de crédito</label><InputNumber id="clientes-edicioncliente-limitecredito" @bind-Value="edicionCliente.LimiteCredito" step="0.01" /></div>
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
                 <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />

@@ -14,14 +14,14 @@
 </div>
 
 <div class="barra-herramientas">
-    <select @bind="filtroProId">
+    <select @bind="filtroProId" aria-label="Producto">
         <option value="0">Todos los productos</option>
         @foreach (var p in productos)
         {
             <option value="@p.ProId">@p.ProCodigo - @p.ProDescripcion</option>
         }
     </select>
-    <select @bind="filtroBodId">
+    <select @bind="filtroBodId" aria-label="Bodega">
         <option value="0">Todas las bodegas</option>
         @foreach (var bod in bodegas)
         {

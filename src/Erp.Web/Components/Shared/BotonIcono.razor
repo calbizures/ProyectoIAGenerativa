@@ -5,7 +5,12 @@
    Para acciones que no se pueden deshacer (eliminar, anular) pasar Confirmacion con
    la pregunta: el primer clic la muestra junto al botón y la acción corre con "Sí".
    Mientras la acción está en curso el botón queda deshabilitado e ignora otros
-   clics: un doble clic no graba dos veces la misma factura, pago o póliza. *@
+   clics: un doble clic no graba dos veces la misma factura, pago o póliza.
+   Si la acción lanza un error que la pantalla no atrapó, se muestra como aviso
+   flotante y la pantalla sigue funcionando (sin esto la conexión se cerraba y
+   había que recargar la página). *@
+@inject AvisosServicio Avisos
+@inject ILogger<BotonIcono> Bitacora
 @if (confirmando)
 {
     <span class="confirmacion-en-linea" role="group" aria-label="@Confirmacion">
@@ -75,6 +80,11 @@ else
     {
         ejecutando = true;
         try { await OnClick.InvokeAsync(); }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Bitacora.LogError(ex, "Error no atrapado en la acción {Accion}", string.IsNullOrEmpty(Etiqueta) ? Tooltip : Etiqueta);
+            Avisos.MostrarError(MensajesError.Traducir(ex));
+        }
         finally { ejecutando = false; }
     }
 

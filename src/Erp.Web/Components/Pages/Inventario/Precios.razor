@@ -22,7 +22,7 @@
 }
 
 <div class="barra-herramientas">
-    <select @bind="filtroProId">
+    <select @bind="filtroProId" aria-label="Producto">
         <option value="0">Todos los productos</option>
         @foreach (var p in productos)
         {
@@ -53,8 +53,8 @@
         <DataAnnotationsValidator />
         <ResumenValidacion />
         <div class="campo">
-            <label>Producto</label>
-            <select @bind="nuevoPrecio.ProId">
+            <label for="precios-precio-proid">Producto</label>
+            <select id="precios-precio-proid" @bind="nuevoPrecio.ProId">
                 <option value="0">Seleccione...</option>
                 @foreach (var p in productos)
                 {
@@ -63,8 +63,8 @@
             </select>
         </div>
         <div class="campo">
-            <label>Bodega</label>
-            <select @bind="nuevoPrecio.BodId">
+            <label for="precios-precio-bodid">Bodega</label>
+            <select id="precios-precio-bodid" @bind="nuevoPrecio.BodId">
                 <option value="0">Seleccione...</option>
                 @foreach (var bod in bodegas)
                 {
@@ -73,8 +73,8 @@
             </select>
         </div>
         <div class="campo">
-            <label>Moneda</label>
-            <select @bind="nuevoPrecio.MonId">
+            <label for="precios-precio-monid">Moneda</label>
+            <select id="precios-precio-monid" @bind="nuevoPrecio.MonId">
                 <option value="0">Seleccione...</option>
                 @foreach (var mon in monedas)
                 {
@@ -82,10 +82,10 @@
                 }
             </select>
         </div>
-        <div class="campo"><label>Precio unitario de venta</label><InputNumber @bind-Value="nuevoPrecio.PrecioUnitarioVenta" step="0.01" /></div>
-        <div class="campo"><label>Descripción</label><InputText @bind-Value="nuevoPrecio.Descripcion" /></div>
-        <div class="campo"><label>Vigencia desde</label><InputDate @bind-Value="nuevoPrecio.VigenciaDesde" /></div>
-        <div class="campo"><label>Vigencia hasta</label><InputDate @bind-Value="nuevoPrecio.VigenciaHasta" /></div>
+        <div class="campo"><label for="precios-precio-preciounitarioventa">Precio unitario de venta</label><InputNumber id="precios-precio-preciounitarioventa" @bind-Value="nuevoPrecio.PrecioUnitarioVenta" step="0.01" /></div>
+        <div class="campo"><label for="precios-precio-descripcion">Descripción</label><InputText id="precios-precio-descripcion" @bind-Value="nuevoPrecio.Descripcion" /></div>
+        <div class="campo"><label for="precios-precio-vigenciadesde">Vigencia desde</label><InputDate id="precios-precio-vigenciadesde" @bind-Value="nuevoPrecio.VigenciaDesde" /></div>
+        <div class="campo"><label for="precios-precio-vigenciahasta">Vigencia hasta</label><InputDate id="precios-precio-vigenciahasta" @bind-Value="nuevoPrecio.VigenciaHasta" /></div>
         <div class="acciones-fila">
             <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
             <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
@@ -109,7 +109,7 @@
                 {
                     <td>@p.ProCodigo - @p.ProDescripcion</td>
                     <td>
-                        <select @bind="editBodId">
+                        <select @bind="editBodId" aria-label="Bodega">
                             @foreach (var bod in bodegas)
                             {
                                 <option value="@bod.BodId">@bod.BodDescripcion</option>
@@ -117,9 +117,9 @@
                         </select>
                     </td>
                     <td>@p.MonCodigo</td>
-                    <td class="num"><InputNumber @bind-Value="editPrecioUnitarioVenta" step="0.01" /></td>
-                    <td class="col-fecha"><InputDate @bind-Value="editVigenciaDesde" /></td>
-                    <td class="col-fecha"><InputDate @bind-Value="editVigenciaHasta" /></td>
+                    <td class="num"><InputNumber @bind-Value="editPrecioUnitarioVenta" step="0.01" aria-label="Precio" /></td>
+                    <td class="col-fecha"><InputDate @bind-Value="editVigenciaDesde" aria-label="Vigencia desde" /></td>
+                    <td class="col-fecha"><InputDate @bind-Value="editVigenciaHasta" aria-label="Vigencia hasta" /></td>
                     <td class="col-estado">@(p.PprEstado == "A" ? "Vigente" : "Desactivado")</td>
                     <td class="col-acciones">
                         <div class="acciones-fila">

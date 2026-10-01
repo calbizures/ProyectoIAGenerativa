@@ -26,7 +26,7 @@
 @if (pestanaActiva == "lista")
 {
     <div class="barra-filtros">
-        <input placeholder="Buscar por usuario" aria-label="Buscar por usuario" @bind="filtroUsuario" />
+        <input placeholder="Buscar por usuario" aria-label="Buscar por usuario" @bind="filtroUsuario" type="search" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
         <select @bind="filtroEstado" aria-label="Estado">
             <option value="A">Activos</option>
             <option value="I">Inactivos</option>
@@ -41,10 +41,10 @@
         <EditForm Model="nuevoUsuario" OnValidSubmit="CrearUsuarioAsync" class="panel-formulario">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label>Código</label><InputText @bind-Value="nuevoUsuario.Codigo" /></div>
-            <div class="campo"><label>Usuario</label><InputText @bind-Value="nuevoUsuario.Usuario" /></div>
-            <div class="campo"><label>Email</label><InputText @bind-Value="nuevoUsuario.Email" /></div>
-            <div class="campo"><label>Contraseña</label><InputText type="password" @bind-Value="nuevoUsuario.Password" /></div>
+            <div class="campo"><label for="usuarios-usuario-codigo">Código</label><InputText id="usuarios-usuario-codigo" @bind-Value="nuevoUsuario.Codigo" /></div>
+            <div class="campo"><label for="usuarios-usuario-usuario">Usuario</label><InputText id="usuarios-usuario-usuario" @bind-Value="nuevoUsuario.Usuario" /></div>
+            <div class="campo"><label for="usuarios-usuario-email">Email</label><InputText id="usuarios-usuario-email" @bind-Value="nuevoUsuario.Email" /></div>
+            <div class="campo"><label for="usuarios-usuario-password">Contraseña</label><InputText id="usuarios-usuario-password" type="password" @bind-Value="nuevoUsuario.Password" /></div>
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
                 <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
@@ -66,6 +66,10 @@
             </tr>
         </thead>
         <tbody>
+            @if (!usuarios.Any())
+            {
+                <tr><td colspan="8" class="doc-tabla-vacia">Ningún usuario coincide con la búsqueda.</td></tr>
+            }
             @foreach (var u in usuarios)
             {
                 <tr class="@(seleccionado?.UsuId == u.UsuId ? "fila-seleccionada" : "")">
@@ -109,8 +113,8 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         <EditForm Model="cambioPassword" OnValidSubmit="CambiarPasswordAsync">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label>Contraseña actual</label><InputText type="password" @bind-Value="cambioPassword.Actual" /></div>
-            <div class="campo"><label>Contraseña nueva</label><InputText type="password" @bind-Value="cambioPassword.Nueva" /></div>
+            <div class="campo"><label for="usuarios-cambiopassword-actual">Contraseña actual</label><InputText id="usuarios-cambiopassword-actual" type="password" @bind-Value="cambioPassword.Actual" /></div>
+            <div class="campo"><label for="usuarios-cambiopassword-nueva">Contraseña nueva</label><InputText id="usuarios-cambiopassword-nueva" type="password" @bind-Value="cambioPassword.Nueva" /></div>
             <BotonIcono Icono="save" Tooltip="Cambiar contraseña" Etiqueta="Cambiar contraseña" Variante="primario" TipoBoton="submit" />
         </EditForm>
 
@@ -175,8 +179,8 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         <EditForm Model="edicionUsuario" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label>Usuario</label><InputText @bind-Value="edicionUsuario.Usuario" /></div>
-            <div class="campo"><label>Email</label><InputText @bind-Value="edicionUsuario.Email" /></div>
+            <div class="campo"><label for="usuarios-edicionusuario-usuario">Usuario</label><InputText id="usuarios-edicionusuario-usuario" @bind-Value="edicionUsuario.Usuario" /></div>
+            <div class="campo"><label for="usuarios-edicionusuario-email">Email</label><InputText id="usuarios-edicionusuario-email" @bind-Value="edicionUsuario.Email" /></div>
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
                 <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicionAsync" />

@@ -24,7 +24,7 @@
 @if (pestanaActiva == "lista")
 {
     <div class="barra-herramientas">
-        <input placeholder="Buscar por código, nombre o NIT" aria-label="Buscar por código, nombre o NIT" @bind="textoBusqueda" />
+        <input placeholder="Buscar por código, nombre o NIT" aria-label="Buscar por código, nombre o NIT" @bind="textoBusqueda" type="search" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
         <select @bind="filtroEstado" aria-label="Estado">
             <option value="A">Activos</option>
             <option value="I">Inactivos</option>
@@ -40,13 +40,13 @@
         <EditForm Model="nuevoProveedor" OnValidSubmit="CrearProveedorAsync" class="panel-formulario">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label>Código</label><InputText @bind-Value="nuevoProveedor.Codigo" /></div>
-            <div class="campo"><label>Nombre comercial</label><InputText @bind-Value="nuevoProveedor.NombreComercial" /></div>
-            <div class="campo"><label>NIT</label><InputText @bind-Value="nuevoProveedor.Nit" /></div>
-            <div class="campo"><label>Contacto</label><InputText @bind-Value="nuevoProveedor.Contacto" /></div>
-            <div class="campo"><label>Teléfono oficina</label><InputText @bind-Value="nuevoProveedor.TelefonoOficina" /></div>
-            <div class="campo"><label>Dirección</label><InputText @bind-Value="nuevoProveedor.Direccion" /></div>
-            <div class="campo"><label>Email empresa</label><InputText @bind-Value="nuevoProveedor.EmailEmpresa" /></div>
+            <div class="campo"><label for="proveedores-proveedor-codigo">Código</label><InputText id="proveedores-proveedor-codigo" @bind-Value="nuevoProveedor.Codigo" /></div>
+            <div class="campo"><label for="proveedores-proveedor-nombrecomercial">Nombre comercial</label><InputText id="proveedores-proveedor-nombrecomercial" @bind-Value="nuevoProveedor.NombreComercial" /></div>
+            <div class="campo"><label for="proveedores-proveedor-nit">NIT</label><InputText id="proveedores-proveedor-nit" @bind-Value="nuevoProveedor.Nit" /></div>
+            <div class="campo"><label for="proveedores-proveedor-contacto">Contacto</label><InputText id="proveedores-proveedor-contacto" @bind-Value="nuevoProveedor.Contacto" /></div>
+            <div class="campo"><label for="proveedores-proveedor-telefonooficina">Teléfono oficina</label><InputText id="proveedores-proveedor-telefonooficina" @bind-Value="nuevoProveedor.TelefonoOficina" /></div>
+            <div class="campo"><label for="proveedores-proveedor-direccion">Dirección</label><InputText id="proveedores-proveedor-direccion" @bind-Value="nuevoProveedor.Direccion" /></div>
+            <div class="campo"><label for="proveedores-proveedor-emailempresa">Email empresa</label><InputText id="proveedores-proveedor-emailempresa" @bind-Value="nuevoProveedor.EmailEmpresa" /></div>
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
                 <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
@@ -59,6 +59,10 @@
             <tr><th class="col-codigo">Código</th><th>Nombre comercial</th><th class="col-codigo">NIT</th><th>Contacto</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
         </thead>
         <tbody>
+            @if (!proveedores.Any())
+            {
+                <tr><td colspan="6" class="doc-tabla-vacia">Ningún proveedor coincide con la búsqueda.</td></tr>
+            }
             @foreach (var p in proveedores)
             {
                 <tr class="@(seleccionado?.PrvId == p.PrvId ? "fila-seleccionada" : "")">
@@ -105,12 +109,12 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         <EditForm Model="edicionProveedor" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label>Nombre comercial</label><InputText @bind-Value="edicionProveedor.NombreComercial" /></div>
-            <div class="campo"><label>NIT</label><InputText @bind-Value="edicionProveedor.Nit" /></div>
-            <div class="campo"><label>Contacto</label><InputText @bind-Value="edicionProveedor.Contacto" /></div>
-            <div class="campo"><label>Teléfono oficina</label><InputText @bind-Value="edicionProveedor.TelefonoOficina" /></div>
-            <div class="campo"><label>Dirección</label><InputText @bind-Value="edicionProveedor.Direccion" /></div>
-            <div class="campo"><label>Email empresa</label><InputText @bind-Value="edicionProveedor.EmailEmpresa" /></div>
+            <div class="campo"><label for="proveedores-edicionproveedor-nombrecomercial">Nombre comercial</label><InputText id="proveedores-edicionproveedor-nombrecomercial" @bind-Value="edicionProveedor.NombreComercial" /></div>
+            <div class="campo"><label for="proveedores-edicionproveedor-nit">NIT</label><InputText id="proveedores-edicionproveedor-nit" @bind-Value="edicionProveedor.Nit" /></div>
+            <div class="campo"><label for="proveedores-edicionproveedor-contacto">Contacto</label><InputText id="proveedores-edicionproveedor-contacto" @bind-Value="edicionProveedor.Contacto" /></div>
+            <div class="campo"><label for="proveedores-edicionproveedor-telefonooficina">Teléfono oficina</label><InputText id="proveedores-edicionproveedor-telefonooficina" @bind-Value="edicionProveedor.TelefonoOficina" /></div>
+            <div class="campo"><label for="proveedores-edicionproveedor-direccion">Dirección</label><InputText id="proveedores-edicionproveedor-direccion" @bind-Value="edicionProveedor.Direccion" /></div>
+            <div class="campo"><label for="proveedores-edicionproveedor-emailempresa">Email empresa</label><InputText id="proveedores-edicionproveedor-emailempresa" @bind-Value="edicionProveedor.EmailEmpresa" /></div>
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
                 <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />

@@ -89,6 +89,10 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @if (!Visibles.Any())
+                    {
+                        <tr><td colspan="8" class="doc-tabla-vacia">Ningún proveedor con saldo coincide con el filtro.</td></tr>
+                    }
                     @foreach (var c in Visibles)
                     {
                         var marcada = aplicar.ContainsKey(c.PpgId);

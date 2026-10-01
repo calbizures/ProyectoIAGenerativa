@@ -143,6 +143,10 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
         <table class="tabla-datos">
             <thead><tr><th class="col-codigo">Código</th><th>Producto</th><th class="col-estado">Unidad</th><th class="num col-monto">Existencia</th><th class="num col-monto">Conteo</th><th class="num col-monto">Diferencia</th><th class="num col-monto">Costo</th><th class="num col-monto">Valor</th></tr></thead>
             <tbody>
+                @if (!LineasVisibles.Any())
+                {
+                    <tr><td colspan="8" class="doc-tabla-vacia">Ningún producto coincide con el filtro.</td></tr>
+                }
                 @foreach (var l in LineasVisibles)
                 {
                     var conteo = ConteoDe(l);

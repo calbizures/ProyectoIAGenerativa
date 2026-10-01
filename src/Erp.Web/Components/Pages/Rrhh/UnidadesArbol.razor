@@ -125,7 +125,7 @@
                 <BotonIcono Icono="upload" Tooltip="Mover" Etiqueta="Mover" OnClick="IniciarMover" />
                 @if (seleccionado.Estado == "A")
                 {
-                    <BotonIcono Icono="ban" Tooltip="Inactivar" Etiqueta="Inactivar" Variante="peligro" OnClick='() => CambiarEstadoAsync("I")' />
+                    <BotonIcono Icono="ban" Tooltip="Inactivar" Etiqueta="Inactivar" Variante="peligro" Confirmacion="¿Inactivar la unidad?" OnClick='() => CambiarEstadoAsync("I")' />
                 }
                 else
                 {

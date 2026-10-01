@@ -32,8 +32,8 @@
             <EditForm Model="nuevoRol" OnValidSubmit="CrearRolAsync" class="panel-formulario">
                 <DataAnnotationsValidator />
                 <ResumenValidacion />
-                <div class="campo"><label>Código</label><InputText @bind-Value="nuevoRol.Codigo" /></div>
-                <div class="campo"><label>Nombre</label><InputText @bind-Value="nuevoRol.Nombre" /></div>
+                <div class="campo"><label for="roles-rol-codigo">Código</label><InputText id="roles-rol-codigo" @bind-Value="nuevoRol.Codigo" /></div>
+                <div class="campo"><label for="roles-rol-nombre">Nombre</label><InputText id="roles-rol-nombre" @bind-Value="nuevoRol.Nombre" /></div>
                 <div class="acciones-fila">
                     <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
                     <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />

@@ -101,7 +101,13 @@
         // mostrar el mismo formulario, ahora pidiendo la sucursal.
         if (!modelo.UsuId.HasValue)
         {
-            var resultado = await AuthRepository.LoginAsync(modelo.Usuario, modelo.Password);
+            Erp.Data.Security.LoginResultado resultado;
+            try { resultado = await AuthRepository.LoginAsync(modelo.Usuario, modelo.Password); }
+            catch (Exception ex)
+            {
+                mensajeError = MensajesError.Traducir(ex);
+                return;
+            }
             if (!resultado.EsExitoso || resultado.UsuId is null)
             {
                 mensajeError = resultado.Mensaje;

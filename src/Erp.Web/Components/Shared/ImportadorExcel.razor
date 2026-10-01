@@ -9,8 +9,8 @@
     </div>
 
     <div class="campo">
-        <label>Archivo Excel (.xlsx)</label>
-        <InputFile OnChange="OnArchivoSeleccionadoAsync" accept=".xlsx" />
+        <label for="@idArchivo">Archivo Excel (.xlsx)</label>
+        <InputFile id="@idArchivo" OnChange="OnArchivoSeleccionadoAsync" accept=".xlsx" />
     </div>
 
     @if (error is not null)
@@ -28,6 +28,7 @@
 </div>
 
 @code {
+    private readonly string idArchivo = "archivo-excel-" + Guid.NewGuid().ToString("N")[..8];
     [Parameter] public string Titulo { get; set; } = "Importar desde Excel";
     [Parameter] public string[] Columnas { get; set; } = Array.Empty<string>();
     [Parameter] public EventCallback<IReadOnlyList<Dictionary<string, string>>> OnImportar { get; set; }
