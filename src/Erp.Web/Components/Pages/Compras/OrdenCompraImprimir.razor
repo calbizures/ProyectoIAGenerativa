@@ -1,6 +1,6 @@
 @page "/compras/ordenes/{OcpId:int}/imprimir"
 @layout Erp.Web.Components.Layout.ReporteLayout
-@attribute [Authorize(Policy = "Permiso:COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR")]
+@attribute [Authorize(Policy = "Permiso:COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR_BODEGA,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR")]
 @using Erp.Data.Compras
 @using Erp.Web.Reportes
 @inject IOrdenCompraRepository OrdenCompraRepository
@@ -109,7 +109,8 @@ else
 
         <section class="oc-firmas">
             <div><span class="oc-firma-linea"></span>Elaboró: @enc.Usuario</div>
-            <div><span class="oc-firma-linea"></span>Aprobó: @(enc.Aprobo is null ? "" : $"{enc.Aprobo} · {enc.FechaAprobacion:dd/MM/yyyy}")</div>
+            <div><span class="oc-firma-linea"></span>Visto bueno (jefe de bodega): @(enc.VistoBueno is null ? "" : $"{enc.VistoBueno} · {enc.FechaVistoBueno:dd/MM/yyyy}")</div>
+            <div><span class="oc-firma-linea"></span>Aprobó (contador general): @(enc.Aprobo is null ? "" : $"{enc.Aprobo} · {enc.FechaAprobacion:dd/MM/yyyy}")</div>
         </section>
 
         <footer class="fac-final">

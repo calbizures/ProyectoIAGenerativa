@@ -42,14 +42,22 @@ FROM (VALUES ('TRS', 'Salida por traslado', '-'),
 WHERE NOT EXISTS (SELECT 1 FROM dbo.inv_documento_tipo tipo WHERE tipo.tdo_codigo = v.c);
 GO
 
-IF OBJECT_ID('dbo.CK_cont_asiento_enc_origen', 'C') IS NOT NULL
-	ALTER TABLE dbo.cont_asiento_enc DROP CONSTRAINT [CK_cont_asiento_enc_origen];
-ALTER TABLE dbo.cont_asiento_enc ADD CONSTRAINT [CK_cont_asiento_enc_origen]
-	CHECK ([asi_origen] IN ('MANUAL','VENTA','COMPRA','PAGO_CLIENTE','PAGO_PROVEEDOR','DEPOSITO','CIERRE_CAJA','NOMINA',
-							'NOTA_CREDITO','NOTA_DEBITO',		-- 32
-							'CHEQUE','PAGO_NOMINA',				-- 36
-							'AJUSTE_INVENTARIO','APERTURA',		-- 38
-							'TRASLADO'));						-- 45
+-- La lista es la misma en todos los scripts que la tocan (36, 38, 45, 58);
+-- si ya tiene el último origen agregado no se vuelve a crear, así correr de
+-- nuevo un script anterior no la deja sin los orígenes nuevos.
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_cont_asiento_enc_origen' AND definition LIKE '%CIERRE_ANUAL%')
+BEGIN
+	IF OBJECT_ID('dbo.CK_cont_asiento_enc_origen', 'C') IS NOT NULL
+		ALTER TABLE dbo.cont_asiento_enc DROP CONSTRAINT [CK_cont_asiento_enc_origen];
+	ALTER TABLE dbo.cont_asiento_enc ADD CONSTRAINT [CK_cont_asiento_enc_origen]
+		CHECK ([asi_origen] IN ('MANUAL','VENTA','COMPRA','PAGO_CLIENTE','PAGO_PROVEEDOR','DEPOSITO','CIERRE_CAJA','NOMINA',
+								'NOTA_CREDITO','NOTA_DEBITO',		-- 32
+								'CHEQUE','PAGO_NOMINA',				-- 36
+								'AJUSTE_INVENTARIO','APERTURA',		-- 38
+								'TRASLADO',							-- 45
+								'PAGO_TRANSFERENCIA',				-- 58
+								'CAJA_CHICA','DEPRECIACION','ACTIVO_FIJO','CIERRE_ANUAL'));	-- 60 en adelante
+END
 GO
 
 -- Cuenta hermana de la de inventario (mismo padre), si no existe.

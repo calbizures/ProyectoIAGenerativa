@@ -54,6 +54,20 @@ public sealed class OrdenCompraRepository(IDbConnectionFactory connectionFactory
 		return (parametros.Get<int>("@OcpId"), parametros.Get<string>("@Numero"));
 	}
 
+	public async Task AprobarBodegaAsync(int ocpId, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		await connection.ExecuteAsync("dbo.paOrdenCompraAprobarBodega", new { OcpId = ocpId, UsuId = usuarioAccionId },
+			commandType: CommandType.StoredProcedure);
+	}
+
+	public async Task DevolverAsync(int ocpId, string motivo, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		await connection.ExecuteAsync("dbo.paOrdenCompraDevolver", new { OcpId = ocpId, Motivo = motivo, UsuId = usuarioAccionId },
+			commandType: CommandType.StoredProcedure);
+	}
+
 	public async Task AprobarAsync(int ocpId, int? usuarioAccionId)
 	{
 		using var connection = connectionFactory.CreateConnection();

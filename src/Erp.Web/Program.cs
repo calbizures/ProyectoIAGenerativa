@@ -187,6 +187,23 @@ app.MapGet("/reportes/nomina/transferencias/{idNominaPago:int}.xlsx", async (int
 	return Results.File(archivo, TipoExcel, $"transferencias-nomina-{idNominaPago}.xlsx");
 }).RequireAuthorization();
 
+// Archivo de transferencias para el banco, con el formato elegido:
+// tipo "lote" (pago a proveedores) o "nomina" (pago de una nómina).
+app.MapGet("/bancos/archivo/{tipo}/{id:int}", async (string tipo, int id, int formato, HttpContext contexto,
+	Erp.Data.Pagos.IPagosRepository pagos, IAuthorizationService autorizacion) =>
+{
+	if (tipo is not ("lote" or "nomina")) return Results.NotFound();
+	var politica = tipo == "lote" ? "Permiso:CXP_PAGO_PROGRAMADO" : "Permiso:BANCOS_ADMIN,RRHH_ADMIN";
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, politica)).Succeeded) return Results.Forbid();
+	var formatoArchivo = (await pagos.ConsultarFormatosAsync(formato, soloActivos: false)).FirstOrDefault();
+	if (formatoArchivo is null) return Results.NotFound();
+	var datos = tipo == "lote" ? await pagos.ConsultarArchivoLoteAsync(id) : await pagos.ConsultarArchivoNominaAsync(id);
+	var resultado = ArchivoBanco.Generar(formatoArchivo, datos);
+	if (!resultado.Valido) return Results.BadRequest("El archivo no se puede generar: " + string.Join(" ", resultado.Errores));
+	var tipoContenido = formatoArchivo.Extension.Equals("csv", StringComparison.OrdinalIgnoreCase) ? "text/csv" : "text/plain";
+	return Results.File(resultado.Contenido!, $"{tipoContenido}; charset={(formatoArchivo.Codificacion == "UTF-8" ? "utf-8" : "iso-8859-1")}", resultado.NombreArchivo);
+}).RequireAuthorization();
+
 // Rotación del inventario y punto de reorden (bodega, o todas las de la sucursal).
 app.MapGet("/reportes/inventario/rotacion.xlsx", async (int? bodega, int? sucursal, int? dias, DateTime? hasta, HttpContext contexto,
 	Erp.Data.Inventario.IReordenRepository reorden, Erp.Data.Inventario.IBodegaRepository bodegas, IGeneralRepository general,

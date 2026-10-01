@@ -1,6 +1,6 @@
 @page "/compras/ordenes"
 @rendermode InteractiveServer
-@attribute [Authorize(Policy = "Permiso:COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR")]
+@attribute [Authorize(Policy = "Permiso:COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR_BODEGA,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR")]
 @using Erp.Data.Compras
 @using Erp.Data.Inventario
 @using Erp.Web.Security
@@ -32,7 +32,9 @@
     <div class="barra-herramientas">
         <select @bind="filtroEstado" @bind:after="BuscarAsync" aria-label="Estado">
             <option value="X">Por recibir</option>
+            <option value="F">Pendientes de firma</option>
             <option value="B">Borradores</option>
+            <option value="V">Con visto bueno de bodega</option>
             <option value="A">Aprobadas</option>
             <option value="P">Recibidas en parte</option>
             <option value="R">Recibidas</option>
@@ -211,7 +213,15 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         </div>
         @if (o.Estado == "B")
         {
-            <p class="doc-nota" role="status"><Icono Nombre="info" Tamano="15" /><span>Borrador: se puede editar. Debe aprobarse antes de enviarla al proveedor y recibir la mercadería.</span></p>
+            <p class="doc-nota" role="status"><Icono Nombre="info" Tamano="15" /><span>Borrador: se puede editar. Necesita el visto bueno del jefe de bodega y la aprobación del contador general antes de enviarla al proveedor y recibir la mercadería.</span></p>
+            @if (!string.IsNullOrWhiteSpace(o.MotivoDevolucion))
+            {
+                <p class="doc-nota doc-nota-aviso" role="status"><Icono Nombre="alert-triangle" Tamano="15" /><span>Devuelta para corregir: @o.MotivoDevolucion</span></p>
+            }
+        }
+        else if (o.Estado == "V")
+        {
+            <p class="doc-nota" role="status"><Icono Nombre="info" Tamano="15" /><span>Visto bueno de bodega: @o.VistoBueno (@o.FechaVistoBueno?.ToString("dd/MM/yyyy HH:mm")). Falta la aprobación del contador general, que debe darla otro usuario.</span></p>
         }
         else if (o.Estado is "C" or "N")
         {
@@ -227,7 +237,8 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             <span>Fecha: <strong>@o.Fecha.ToString("dd/MM/yyyy")</strong></span>
             <span>Entrega: <strong>@(o.FechaEntrega?.ToString("dd/MM/yyyy") ?? "—")</strong></span>
             <span>Bodega: <strong>@o.Bodega</strong></span>
-            @if (o.Aprobo is not null) { <span>Aprobó: <strong>@o.Aprobo</strong> (@o.FechaAprobacion?.ToString("dd/MM/yyyy HH:mm"))</span> }
+            @if (o.VistoBueno is not null) { <span>Visto bueno de bodega: <strong>@o.VistoBueno</strong> (@o.FechaVistoBueno?.ToString("dd/MM/yyyy HH:mm"))</span> }
+            @if (o.Aprobo is not null) { <span>Aprobó (contador general): <strong>@o.Aprobo</strong> (@o.FechaAprobacion?.ToString("dd/MM/yyyy HH:mm"))</span> }
         </div>
 
         <div class="tabla-desplazable" tabindex="0">
@@ -267,8 +278,16 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
                 <AuthorizeView Policy="Permiso:COMPRAS_ORDEN" Context="permisoEditar">
                     <BotonIcono Icono="pencil" Tooltip="Editar el borrador" Etiqueta="Editar" OnClick="EditarAsync" />
                 </AuthorizeView>
+                <AuthorizeView Policy="Permiso:COMPRAS_ORDEN_APROBAR_BODEGA" Context="permisoVistoBueno">
+                    <BotonIcono Icono="check-circle" Tooltip="Primera firma: visto bueno del jefe de bodega" Etiqueta="Visto bueno de bodega" Variante="primario"
+                                Confirmacion="¿Dar el visto bueno? La orden ya no se podrá editar." OnClick="AprobarBodegaAsync" />
+                </AuthorizeView>
+            }
+            @if (o.Estado == "V")
+            {
                 <AuthorizeView Policy="Permiso:COMPRAS_ORDEN_APROBAR" Context="permisoAprobar">
-                    <BotonIcono Icono="check-circle" Tooltip="Aprobar la orden" Etiqueta="Aprobar" Variante="primario" Confirmacion="¿Aprobar la orden? Ya no se podrá editar." OnClick="AprobarAsync" />
+                    <BotonIcono Icono="check-circle" Tooltip="Segunda firma: aprobación del contador general" Etiqueta="Aprobar" Variante="primario"
+                                Confirmacion="¿Aprobar la orden de compra?" OnClick="AprobarAsync" />
                 </AuthorizeView>
             }
             @if (o.PorRecibir && !mostrarRecepcion)
@@ -355,7 +374,19 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             }
         }
 
-        @if (o.Estado is "B" or "A" or "P")
+        @if (o.Estado == "V")
+        {
+            <AuthorizeView Policy="Permiso:COMPRAS_ORDEN_APROBAR_BODEGA,COMPRAS_ORDEN_APROBAR" Context="permisoDevolver">
+                <div class="fila-edicion">
+                    <label for="oc-devolver">Devolver a borrador para corregir</label>
+                    <input id="oc-devolver" maxlength="256" placeholder="Qué debe corregirse" @bind="motivoDevolucion" @bind:event="oninput" />
+                    <BotonIcono Icono="rotate-ccw" Tooltip="Devolver la orden al bodeguero" Etiqueta="Devolver" Deshabilitado="motivoDevolucion.Trim().Length < 3"
+                                Confirmacion="¿Devolver la orden a borrador? Se borra el visto bueno." OnClick="DevolverAsync" />
+                </div>
+            </AuthorizeView>
+        }
+
+        @if (o.Estado is "B" or "V" or "A" or "P")
         {
             <AuthorizeView Policy="Permiso:COMPRAS_ORDEN" Context="permisoAnular">
                 <div class="fila-edicion">
@@ -453,6 +484,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
     private static string ClaseEstado(string estado) => estado switch
     {
         "B" => "estado-badge-pendiente",
+        "V" => "estado-badge-pendiente",
         "A" => "estado-badge-activo",
         "P" => "estado-badge-pendiente",
         "R" => "estado-badge-grabada",
@@ -463,6 +495,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
     private static string TextoEstado(string estado) => estado switch
     {
         "B" => "Borrador",
+        "V" => "Visto bueno de bodega",
         "A" => "Aprobada",
         "P" => "Recibida en parte",
         "R" => "Recibida",
@@ -679,13 +712,38 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         MostrarOk(texto);
     }
 
+    private async Task AprobarBodegaAsync()
+    {
+        if (seleccionada is null) return;
+        try
+        {
+            await OrdenCompraRepository.AprobarBodegaAsync(seleccionada.OcpId, await ObtenerUsuIdActualAsync());
+            await RefrescarAsync($"Orden {seleccionada.Numero} con visto bueno de bodega. Falta la aprobación del contador general.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
     private async Task AprobarAsync()
     {
         if (seleccionada is null) return;
         try
         {
             await OrdenCompraRepository.AprobarAsync(seleccionada.OcpId, await ObtenerUsuIdActualAsync());
-            await RefrescarAsync($"Orden {seleccionada.Numero} aprobada. Ya se puede imprimir para el proveedor y recibir.");
+            await RefrescarAsync($"Orden {seleccionada.Numero} aprobada con las dos firmas. Ya se puede imprimir para el proveedor y recibir.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private string motivoDevolucion = "";
+
+    private async Task DevolverAsync()
+    {
+        if (seleccionada is null) return;
+        try
+        {
+            await OrdenCompraRepository.DevolverAsync(seleccionada.OcpId, motivoDevolucion.Trim(), await ObtenerUsuIdActualAsync());
+            motivoDevolucion = "";
+            await RefrescarAsync($"Orden {seleccionada.Numero} devuelta a borrador para corregir.");
         }
         catch (Exception ex) { MostrarError(ex); }
     }

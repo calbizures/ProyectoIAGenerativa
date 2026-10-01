@@ -349,6 +349,8 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
                                                 @if (p.Tipo == "T" && p.Estado == "A")
                                                 {
                                                     <a class="boton-icono boton-icono-con-etiqueta" href="reportes/nomina/transferencias/@(p.IdNominaPago).xlsx" download title="Listado de transferencias por banco (Excel)"><Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Listado</span></a>
+                                                    <BotonIcono Icono="file-text" Tooltip="@(archivoPagoId == p.IdNominaPago ? "Ocultar el archivo" : "Archivo para el banco")" Etiqueta="Archivo banco"
+                                                                OnClick="() => archivoPagoId = archivoPagoId == p.IdNominaPago ? null : p.IdNominaPago" />
                                                 }
                                                 @if (p.Estado == "A")
                                                 {
@@ -357,6 +359,12 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
                                             </div>
                                         </td>
                                     </tr>
+                                    @if (archivoPagoId == p.IdNominaPago && p.Estado == "A")
+                                    {
+                                        <tr class="fila-subdetalle">
+                                            <td colspan="8"><ArchivoBancoPanel Tipo="nomina" Id="p.IdNominaPago" /></td>
+                                        </tr>
+                                    }
                                     @if (anulandoPago?.IdNominaPago == p.IdNominaPago)
                                     {
                                         <tr class="fila-subdetalle">
@@ -382,6 +390,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
 }
 
 @code {
+    private int? archivoPagoId;
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 

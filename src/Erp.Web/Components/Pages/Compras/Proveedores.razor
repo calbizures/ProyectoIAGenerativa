@@ -6,6 +6,8 @@
 @using Erp.Web.Security
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IProveedorRepository ProveedorRepository
+@inject Erp.Data.Pagos.IPagosRepository PagosRepository
+@inject Erp.Data.General.IGeneralRepository GeneralRepository
 
 <PageTitle>Proveedores</PageTitle>
 
@@ -100,6 +102,55 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         <div class="acciones-fila">
             <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
         </div>
+
+        <h3 id="titulo-datos-pago">Datos de pago</h3>
+        @if (pagoEdicion is null)
+        {
+            <div class="campo"><label>Forma de pago</label><span class="valor-detalle">@(datosPago?.FormaPago == "T" ? "Transferencia" : "Cheque")</span></div>
+            <div class="campo"><label>Banco</label><span class="valor-detalle">@(datosPago?.Banco ?? "—")</span></div>
+            <div class="campo"><label>Cuenta</label><span class="valor-detalle">@(datosPago?.NumeroCuenta is null ? "—" : $"{(datosPago.TipoCuenta == "A" ? "Ahorro" : "Monetaria")} {datosPago.NumeroCuenta}")</span></div>
+            <div class="campo"><label>A nombre de</label><span class="valor-detalle">@(datosPago?.Titular ?? seleccionado.PrvNombreComercial)</span></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="pencil" Tooltip="Editar los datos de pago" Etiqueta="Editar datos de pago" OnClick="IniciarEdicionPago" />
+            </div>
+        }
+        else
+        {
+            <div class="panel-formulario">
+                <div class="campo">
+                    <label for="prv-forma-pago">Forma de pago</label>
+                    <select id="prv-forma-pago" @bind="pagoEdicion.FormaPago">
+                        <option value="C">Cheque</option>
+                        <option value="T">Transferencia</option>
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="prv-banco">Banco</label>
+                    <select id="prv-banco" value="@(pagoEdicion.GefId?.ToString() ?? "")" @onchange="e => pagoEdicion.GefId = int.TryParse(e.Value?.ToString(), out var g) ? g : null">
+                        <option value="">(Ninguno)</option>
+                        @foreach (var b in bancos)
+                        {
+                            <option value="@b.GefId">@b.GefDescripcion</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="prv-tipo-cuenta">Tipo de cuenta</label>
+                    <select id="prv-tipo-cuenta" value="@(pagoEdicion.TipoCuenta ?? "")" @onchange="e => pagoEdicion.TipoCuenta = e.Value?.ToString() is { Length: > 0 } v ? v : null">
+                        <option value="">(Ninguno)</option>
+                        <option value="M">Monetaria</option>
+                        <option value="A">Ahorro</option>
+                    </select>
+                </div>
+                <div class="campo"><label for="prv-cuenta">Número de cuenta</label><input id="prv-cuenta" maxlength="30" inputmode="numeric" @bind="pagoEdicion.NumeroCuenta" /></div>
+                <div class="campo"><label for="prv-titular">Nombre de la cuenta</label><input id="prv-titular" maxlength="150" placeholder="Si difiere del nombre comercial" @bind="pagoEdicion.Titular" /></div>
+                <p class="texto-ayuda">Para pagar por transferencia se necesitan el banco, el tipo y el número de cuenta. La forma de pago se propone al emitir la contraseña.</p>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Guardar los datos de pago" Etiqueta="Guardar" Variante="primario" OnClick="GuardarPagoAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => pagoEdicion = null" />
+                </div>
+            </div>
+        }
     </div>
 }
 else if (pestanaActiva == "editar" && seleccionado is not null)
@@ -145,6 +196,9 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
 
     private readonly ProveedorModelo nuevoProveedor = new();
     private readonly ProveedorModelo edicionProveedor = new();
+    private Erp.Data.Pagos.ProveedorPago? datosPago;
+    private Erp.Data.Pagos.ProveedorPago? pagoEdicion;
+    private IReadOnlyList<Erp.Data.Caja.EntidadFinanciera> bancos = Array.Empty<Erp.Data.Caja.EntidadFinanciera>();
 
     protected override async Task OnInitializedAsync() => await BuscarAsync();
 
@@ -202,11 +256,48 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
     }
 
-    private void SeleccionarAsync(Proveedor proveedor)
+    private async Task SeleccionarAsync(Proveedor proveedor)
     {
         seleccionado = proveedor;
         pestanaActiva = "detalle";
         mensaje = null;
+        pagoEdicion = null;
+        try { datosPago = await PagosRepository.ConsultarProveedorPagoAsync(proveedor.PrvId); }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); esMensajeError = true; }
+    }
+
+    private async Task IniciarEdicionPago()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            if (bancos.Count == 0)
+            {
+                var tipoBanco = (await GeneralRepository.ConsultarTiposEntidadAsync()).FirstOrDefault(t => t.GeftDescripcion == "Banco");
+                if (tipoBanco is not null) bancos = await GeneralRepository.ConsultarEntidadesAsync(tipoBanco.GeftId, soloActivas: true);
+            }
+            pagoEdicion = new Erp.Data.Pagos.ProveedorPago
+            {
+                PrvId = seleccionado.PrvId, FormaPago = datosPago?.FormaPago ?? "C", GefId = datosPago?.GefId, TipoCuenta = datosPago?.TipoCuenta,
+                NumeroCuenta = datosPago?.NumeroCuenta, Titular = datosPago?.Titular
+            };
+            mensaje = null;
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); esMensajeError = true; }
+    }
+
+    private async Task GuardarPagoAsync()
+    {
+        if (pagoEdicion is null) return;
+        try
+        {
+            await PagosRepository.GuardarProveedorPagoAsync(pagoEdicion, await ObtenerUsuIdActualAsync());
+            datosPago = await PagosRepository.ConsultarProveedorPagoAsync(pagoEdicion.PrvId);
+            pagoEdicion = null;
+            mensaje = "Datos de pago guardados.";
+            esMensajeError = false;
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); esMensajeError = true; }
     }
 
     private void IniciarEdicion()

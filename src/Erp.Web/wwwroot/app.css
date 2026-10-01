@@ -1783,6 +1783,7 @@ a.modulo-card:focus-visible {
 
 .maestro-detalle > .tarjeta {
     padding: 1rem;
+    min-width: 0;
 }
 
 .maestro-detalle-encabezado {
@@ -3097,7 +3098,8 @@ label.boton-icono { cursor: pointer; position: relative; }
 .tabla-datos td input.entrada-numero { text-align: right; min-width: 80px; }
 .tabla-compacta { margin-bottom: 0.75rem; }
 .tabla-compacta td, .tabla-compacta th { padding-block: 0.3rem; }
-.oc-firmas { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6in; margin: 0.45in 0 0.15in; font-size: 8.5pt; color: #34405a; }
+.oc-firmas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4in; margin: 0.45in 0 0.15in; font-size: 8.5pt; color: #34405a; }
+.oc-firmas-2 { grid-template-columns: repeat(2, 1fr); max-width: 6in; }
 .oc-firma-linea { display: block; border-top: 1px solid #0d1b4c; margin-bottom: 4px; }
 .oc-recepcion { margin: 1rem 0; padding: 1rem 1.1rem; border: 1px solid #dce7f5; border-left: 4px solid var(--si-blue-500); border-radius: 10px; background: #f8fbff; }
 .oc-recepcion h3 { margin-top: 0; }
@@ -3117,3 +3119,20 @@ label.boton-icono { cursor: pointer; position: relative; }
 .tabla-formas-pago select { max-width: 13rem; }
 .tabla-formas-pago .entrada-monto { width: 8rem; }
 .tabla-formas-pago .entrada-referencia { width: 9rem; }
+
+/* Archivo de transferencias para el banco (58) */
+fieldset.sin-borde { border: 0; padding: 0; margin: 0; min-width: 0; }
+.archivo-banco { display: flex; flex-direction: column; gap: 0.5rem; }
+.archivo-banco-fila { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem; }
+.archivo-banco-fila .campo { margin-bottom: 0; min-width: 14rem; }
+.archivo-banco-vista summary { cursor: pointer; color: var(--si-navy-700, #34405a); }
+.archivo-banco-vista pre, .archivo-banco-vista-pre {
+    margin: 0.5rem 0 0; padding: 0.75rem; max-width: 100%; overflow-x: auto; background: #f4f6fa; border: 1px solid #d9dee8;
+    border-radius: 6px; font: 0.8rem/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre;
+}
+.tabla-formato-columnas select, .tabla-formato-columnas input:not([type=checkbox]) { width: 100%; min-width: 5.5rem; }
+.tabla-formato-columnas .entrada-monto { min-width: 4rem; max-width: 5.5rem; }
+.formato-resumen { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; margin: 0 0 1rem; }
+.formato-resumen dt { font-weight: 600; color: var(--si-navy-700, #34405a); }
+.formato-resumen dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 640px) { .formato-resumen { grid-template-columns: 1fr; } .formato-resumen dd { margin-bottom: 0.4rem; } }

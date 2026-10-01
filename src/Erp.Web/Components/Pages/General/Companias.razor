@@ -6,6 +6,7 @@
 @using Erp.Web.Security
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IGeneralRepository GeneralRepository
+@inject Erp.Data.Pagos.IPagosRepository PagosRepository
 
 <PageTitle>Compañías</PageTitle>
 
@@ -154,6 +155,27 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             </div>
             <p class="texto-ayuda">En la impresora térmica, configure en el diálogo de impresión el papel del rollo y márgenes "Ninguno". En carta, papel tamaño carta y escala 100 %.</p>
         }
+
+        <h3>Pago a proveedores</h3>
+        <div class="panel-formulario panel-ancho">
+            <div class="campo">
+                <label for="cia-dia-pago">Día de pago</label>
+                <select id="cia-dia-pago" value="@(diaPago?.ToString() ?? "")" @onchange="e => diaPago = int.TryParse(e.Value?.ToString(), out var d) ? d : null">
+                    <option value="">Cualquier día</option>
+                    <option value="1">Lunes</option>
+                    <option value="2">Martes</option>
+                    <option value="3">Miércoles</option>
+                    <option value="4">Jueves</option>
+                    <option value="5">Viernes</option>
+                    <option value="6">Sábado</option>
+                    <option value="7">Domingo</option>
+                </select>
+            </div>
+        </div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar el día de pago" Etiqueta="Guardar" Variante="primario" OnClick="GuardarDiaPagoAsync" />
+        </div>
+        <p class="texto-ayuda">La contraseña de pago propone como fecha de pago el primer día de pago a partir del vencimiento más lejano de sus facturas.</p>
     </div>
 }
 else if (pestanaActiva == "editar")
@@ -244,13 +266,18 @@ else if (pestanaActiva == "editar")
     }
 
     private CompaniaImpresion? impresion;
+    private int? diaPago;
 
     private async Task Seleccionar(Compania compania)
     {
         seleccionada = compania;
         mensaje = null;
         pestanaActiva = "detalle";
-        try { impresion = await GeneralRepository.ConsultarImpresionAsync(compania.CiaId) ?? new CompaniaImpresion { CiaId = compania.CiaId }; }
+        try
+        {
+            impresion = await GeneralRepository.ConsultarImpresionAsync(compania.CiaId) ?? new CompaniaImpresion { CiaId = compania.CiaId };
+            diaPago = await PagosRepository.ConsultarDiaPagoAsync(compania.CiaId);
+        }
         catch (Exception ex) { impresion = null; mensaje = MensajesError.Traducir(ex); esMensajeError = true; }
     }
 
@@ -261,6 +288,24 @@ else if (pestanaActiva == "editar")
         {
             await GeneralRepository.GuardarImpresionAsync(impresion, await ObtenerUsuIdActualAsync());
             mensaje = $"Configuración guardada: factura en {(impresion.Impresora == "T" ? $"térmica de {impresion.AnchoTermica} mm" : "carta")}, cotizaciones válidas por {impresion.VigenciaCotizacion} días.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private static readonly string[] Dias = ["", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
+
+    private async Task GuardarDiaPagoAsync()
+    {
+        if (seleccionada is null) return;
+        try
+        {
+            await PagosRepository.GuardarDiaPagoAsync(seleccionada.CiaId, diaPago, await ObtenerUsuIdActualAsync());
+            mensaje = diaPago is int d ? $"Día de pago a proveedores: {Dias[d]}." : "Los proveedores se pueden pagar cualquier día.";
             esMensajeError = false;
         }
         catch (Exception ex)

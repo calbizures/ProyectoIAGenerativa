@@ -7,6 +7,7 @@ using Erp.Data.Cuentas;
 using Erp.Data.Fel;
 using Erp.Data.General;
 using Erp.Data.Inventario;
+using Erp.Data.Pagos;
 using Erp.Data.Rrhh;
 using Erp.Data.Security;
 using Erp.Data.Tableros;
@@ -56,6 +57,7 @@ public static class DependencyInjection
 		services.AddScoped<IInventarioFisicoRepository, InventarioFisicoRepository>();
 		services.AddScoped<ITrasladoRepository, TrasladoRepository>();
 		services.AddScoped<ICargasRepository, CargasRepository>();
+		services.AddScoped<IPagosRepository, PagosRepository>();
 		return services;
 	}
 }

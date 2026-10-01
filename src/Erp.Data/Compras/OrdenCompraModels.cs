@@ -51,6 +51,10 @@ public sealed class OrdenCompraEncabezado
 	public string? Usuario { get; set; }
 	public string? Aprobo { get; set; }
 	public DateTime? FechaAprobacion { get; set; }
+	// Primera firma (jefe de bodega) y motivo si se devolvió a borrador.
+	public string? VistoBueno { get; set; }
+	public DateTime? FechaVistoBueno { get; set; }
+	public string? MotivoDevolucion { get; set; }
 	public int Ordenado { get; set; }
 	public int Recibido { get; set; }
 	public int CiaId { get; set; }

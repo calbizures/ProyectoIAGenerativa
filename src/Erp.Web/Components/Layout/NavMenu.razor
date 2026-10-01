@@ -105,7 +105,7 @@
         <AuthorizeView Policy="Permiso:COMPRAS_DOCUMENTO_CREAR,COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR">
             <Authorized>
                 <SidebarNodo Titulo="Compras" IconoNombre="shopping-cart" Rutas="@(new[] { "compras", "proveedores" })">
-                    <AuthorizeView Policy="Permiso:COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR" Context="ordenContexto">
+                    <AuthorizeView Policy="Permiso:COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR_BODEGA,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR" Context="ordenContexto">
                         <Authorized>
                             <NavLink href="compras/ordenes" class="sidebar-hijo-link">Órdenes de compra</NavLink>
                         </Authorized>
@@ -130,17 +130,35 @@
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <AuthorizeView Policy="Permiso:CXP_ADMIN">
+        <AuthorizeView Policy="Permiso:CXP_ADMIN,CXP_CONTRASENA,CXP_PAGO_PROGRAMADO">
             <Authorized>
                 <SidebarNodo Titulo="Cuentas por pagar" IconoNombre="banknote" Rutas="@(new[] { "cxp" })">
-                    <NavLink href="cxp/estado-cuenta" class="sidebar-hijo-link">Estado de cuenta</NavLink>
-                    <NavLink href="cxp/pagos" class="sidebar-hijo-link">Pagos a proveedores</NavLink>
-                    <NavLink href="cxp/notas" class="sidebar-hijo-link">Notas de crédito y débito</NavLink>
-                    <NavLink href="cxp/antiguedad" class="sidebar-hijo-link">Antigüedad de saldos</NavLink>
+                    <AuthorizeView Policy="Permiso:CXP_ADMIN" Context="cxpContexto">
+                        <Authorized>
+                            <NavLink href="cxp/estado-cuenta" class="sidebar-hijo-link">Estado de cuenta</NavLink>
+                            <NavLink href="cxp/pagos" class="sidebar-hijo-link">Pagos a proveedores</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CXP_CONTRASENA" Context="contrasenaContexto">
+                        <Authorized>
+                            <NavLink href="cxp/contrasenas" class="sidebar-hijo-link">Contraseñas de pago</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CXP_PAGO_PROGRAMADO" Context="programadoContexto">
+                        <Authorized>
+                            <NavLink href="cxp/pagos-programados" class="sidebar-hijo-link">Pagos programados</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CXP_ADMIN" Context="cxpNotasContexto">
+                        <Authorized>
+                            <NavLink href="cxp/notas" class="sidebar-hijo-link">Notas de crédito y débito</NavLink>
+                            <NavLink href="cxp/antiguedad" class="sidebar-hijo-link">Antigüedad de saldos</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <AuthorizeView Policy="Permiso:BANCOS_CAJA_ADMIN,BANCOS_ADMIN,BANCOS_CHEQUE_EMITIR">
+        <AuthorizeView Policy="Permiso:BANCOS_CAJA_ADMIN,BANCOS_ADMIN,BANCOS_CHEQUE_EMITIR,BANCOS_FORMATO_ARCHIVO">
             <Authorized>
                 <SidebarNodo Titulo="Caja y bancos" IconoNombre="landmark" Rutas="@(new[] { "caja", "bancos" })">
                     <AuthorizeView Policy="Permiso:BANCOS_CAJA_ADMIN" Context="cajaContexto">
@@ -157,6 +175,11 @@
                         <Authorized>
                             <NavLink href="bancos/cuentas" class="sidebar-hijo-link">Cuentas y chequeras</NavLink>
                             <NavLink href="bancos/motivos" class="sidebar-hijo-link">Motivos de pago</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:BANCOS_FORMATO_ARCHIVO" Context="formatoContexto">
+                        <Authorized>
+                            <NavLink href="bancos/formatos" class="sidebar-hijo-link">Formatos de archivo</NavLink>
                         </Authorized>
                     </AuthorizeView>
                 </SidebarNodo>
