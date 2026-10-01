@@ -85,12 +85,22 @@ FROM (VALUES (1, N'Salario base mensual'), (2, N'Salario base mensual + extraord
 WHERE NOT EXISTS (SELECT 1 FROM dbo.rrhhIgssTipoSalario t WHERE t.Codigo = v.Codigo);
 GO
 
--- Una primera versión de este script cargó un código mal formado.
-DELETE FROM dbo.rrhhIgssActividadEconomica
- WHERE Codigo = '00000.'
-   AND NOT EXISTS (SELECT 1 FROM dbo.gen_compania WHERE cia_igss_actividad = '00000.')
-   AND NOT EXISTS (SELECT 1 FROM dbo.gen_sucursal WHERE suc_igss_actividad = '00000.')
-   AND NOT EXISTS (SELECT 1 FROM dbo.rrhhIgssTipoPlanilla WHERE Actividad = '00000.');
+-- Una primera versión de este script cargó un código mal formado. En una
+-- instalación limpia las columnas que lo referencian aún no existen (se crean
+-- en las secciones 2 y 3), por eso la verificación se ejecuta dinámicamente.
+IF COL_LENGTH('dbo.gen_compania', 'cia_igss_actividad') IS NULL
+   AND COL_LENGTH('dbo.gen_sucursal', 'suc_igss_actividad') IS NULL
+   AND OBJECT_ID('dbo.rrhhIgssTipoPlanilla', 'U') IS NULL
+    DELETE FROM dbo.rrhhIgssActividadEconomica WHERE Codigo = '00000.';
+ELSE IF COL_LENGTH('dbo.gen_compania', 'cia_igss_actividad') IS NOT NULL
+   AND COL_LENGTH('dbo.gen_sucursal', 'suc_igss_actividad') IS NOT NULL
+   AND OBJECT_ID('dbo.rrhhIgssTipoPlanilla', 'U') IS NOT NULL
+    EXEC sys.sp_executesql N'
+    DELETE FROM dbo.rrhhIgssActividadEconomica
+     WHERE Codigo = ''00000.''
+       AND NOT EXISTS (SELECT 1 FROM dbo.gen_compania WHERE cia_igss_actividad = ''00000.'')
+       AND NOT EXISTS (SELECT 1 FROM dbo.gen_sucursal WHERE suc_igss_actividad = ''00000.'')
+       AND NOT EXISTS (SELECT 1 FROM dbo.rrhhIgssTipoPlanilla WHERE Actividad = ''00000.'');';
 GO
 INSERT INTO dbo.rrhhIgssActividadEconomica (Codigo, Descripcion, Categoria)
 SELECT v.* FROM (VALUES
