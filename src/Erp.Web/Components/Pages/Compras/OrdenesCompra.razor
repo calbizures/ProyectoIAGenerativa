@@ -1,0 +1,760 @@
+@page "/compras/ordenes"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR")]
+@using Erp.Data.Compras
+@using Erp.Data.Inventario
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IOrdenCompraRepository OrdenCompraRepository
+@inject ICompraRepository CompraRepository
+@inject IProductoRepository ProductoRepository
+@inject IProductoProveedorRepository ProductoProveedorRepository
+@inject IBodegaRepository BodegaRepository
+@inject Erp.Data.General.IGeneralRepository GeneralRepository
+@inject ILogger<OrdenesCompra> Log
+
+<PageTitle>Órdenes de compra</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Órdenes de compra</h1>
+    <p>Pedidos a proveedores. Una orden aprobada se recibe en la bodega, completa o por partes: cada recepción graba la compra con la factura del proveedor (inventario, cuenta por pagar y póliza).</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
+
+@if (pestanaActiva == "lista")
+{
+    <div class="barra-herramientas">
+        <select @bind="filtroEstado" @bind:after="BuscarAsync" aria-label="Estado">
+            <option value="X">Por recibir</option>
+            <option value="B">Borradores</option>
+            <option value="A">Aprobadas</option>
+            <option value="P">Recibidas en parte</option>
+            <option value="R">Recibidas</option>
+            <option value="C">Cerradas</option>
+            <option value="N">Anuladas</option>
+            <option value="">Todas</option>
+        </select>
+        <input type="date" aria-label="Desde" @bind="filtroDesde" @bind:after="BuscarAsync" />
+        <input type="date" aria-label="Hasta" @bind="filtroHasta" @bind:after="BuscarAsync" />
+        <input type="search" placeholder="Número, proveedor o NIT" aria-label="Buscar por número, proveedor o NIT" @bind="filtroTexto"
+               @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
+        <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+        <span class="barra-herramientas-separador"></span>
+        <AuthorizeView Policy="Permiso:COMPRAS_ORDEN" Context="permisoOrden">
+            <BotonIcono Icono="plus" Tooltip="Nueva orden de compra" Etiqueta="Nueva orden" Variante="primario" OnClick="IniciarNueva" />
+        </AuthorizeView>
+    </div>
+
+    <div class="tabla-desplazable" tabindex="0">
+        <table class="tabla-datos">
+            <thead>
+                <tr><th class="col-codigo">Número</th><th class="col-fecha">Fecha</th><th>Proveedor</th><th class="col-fecha">Entrega</th><th class="num">Recibido</th><th class="num col-monto">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+            </thead>
+            <tbody>
+                @if (!ordenes.Any())
+                {
+                    <tr><td colspan="8" class="doc-tabla-vacia">No hay órdenes de compra con esos filtros.</td></tr>
+                }
+                @foreach (var o in ordenes)
+                {
+                    <tr class="@(seleccionada?.OcpId == o.OcpId ? "fila-seleccionada" : "")">
+                        <td class="col-codigo">@o.Numero</td>
+                        <td class="col-fecha">@o.Fecha.ToString("dd/MM/yyyy")</td>
+                        <td>@o.Proveedor<br /><span class="texto-tenue">@o.Bodega</span></td>
+                        <td class="col-fecha">@(o.FechaEntrega?.ToString("dd/MM/yyyy") ?? "—")@if (o.Atrasada) { <br /><span class="texto-error">Atrasada</span> }</td>
+                        <td class="num">@o.Recibido / @o.Ordenado</td>
+                        <td class="num col-monto">@o.Simbolo @o.Total.ToString("N2")</td>
+                        <td class="col-estado"><span class="estado-badge @ClaseEstado(o.Estado)">@TextoEstado(o.Estado)</span></td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="eye" Tooltip="Ver la orden" OnClick="() => AbrirAsync(o.OcpId)" />
+                                <a class="boton-icono boton-icono-neutral" href="@($"compras/ordenes/{o.OcpId}/imprimir")" target="_blank" aria-label="Imprimir la orden">
+                                    <Icono Nombre="printer" Tamano="17" /><span class="boton-icono-tip" aria-hidden="true">Imprimir</span>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else if (pestanaActiva == "orden")
+{
+    <section class="tarjeta" aria-labelledby="titulo-orden">
+        <h2 id="titulo-orden">@(orden.OcpId is null ? "Nueva orden de compra" : $"Editar {numeroEditando}")</h2>
+        <p class="texto-ayuda">Queda en borrador hasta que se aprueba; solo una orden aprobada se puede recibir. Los costos incluyen IVA, como los cotiza el proveedor.</p>
+
+        <div class="fel-formulario">
+            <div class="campo">
+                <label for="oc-proveedor">Proveedor</label>
+                <select id="oc-proveedor" @bind="orden.PrvId" @bind:after="CargarProductosProveedorAsync">
+                    <option value="0">Seleccione…</option>
+                    @foreach (var p in proveedores)
+                    {
+                        <option value="@p.PrvId">@p.PrvCodigo · @p.PrvNombreComercial</option>
+                    }
+                </select>
+            </div>
+            <div class="campo">
+                <label for="oc-bodega">Recibir en la bodega</label>
+                <select id="oc-bodega" @bind="orden.BodId">
+                    <option value="0">Seleccione…</option>
+                    @foreach (var b in bodegas)
+                    {
+                        <option value="@b.BodId">@b.SucDescripcion · @b.BodDescripcion</option>
+                    }
+                </select>
+            </div>
+            <div class="campo">
+                <label for="oc-fecha">Fecha</label>
+                <input id="oc-fecha" type="date" @bind="orden.Fecha" />
+            </div>
+            <div class="campo">
+                <label for="oc-entrega">Entrega esperada</label>
+                <input id="oc-entrega" type="date" @bind="orden.FechaEntrega" />
+            </div>
+            <div class="campo campo-ancho">
+                <label for="oc-condiciones">Condiciones (forma de pago, plazo, flete)</label>
+                <input id="oc-condiciones" maxlength="256" @bind="orden.Condiciones" />
+            </div>
+            <div class="campo campo-ancho">
+                <label for="oc-obs">Observaciones</label>
+                <input id="oc-obs" maxlength="500" @bind="orden.Observaciones" />
+            </div>
+        </div>
+
+        <h3>Productos</h3>
+        @if (productosProveedor.Count > 0)
+        {
+            <div class="barra-herramientas">
+                <select aria-label="Productos del proveedor" @bind="proIdProveedor">
+                    <option value="0">Productos de este proveedor (@productosProveedor.Count)…</option>
+                    @foreach (var r in productosProveedor)
+                    {
+                        <option value="@r.ProId">@r.ProCodigo · @r.ProDescripcion@(r.UltimoCosto is decimal u ? $" · último costo Q {ConIva(u):N2}" : "")</option>
+                    }
+                </select>
+                <BotonIcono Icono="plus" Tooltip="Agregar el producto elegido" Etiqueta="Agregar" Deshabilitado="proIdProveedor == 0" OnClick="AgregarDelProveedor" />
+            </div>
+        }
+        <div class="barra-herramientas">
+            <input type="search" placeholder="Buscar cualquier producto por código o descripción" aria-label="Buscar producto por código o descripción" @bind="textoProducto"
+                   @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
+            <BotonIcono Icono="search" Tooltip="Buscar producto" Etiqueta="Buscar" OnClick="BuscarProductosAsync" />
+        </div>
+        @if (productosEncontrados.Count > 0)
+        {
+            <table class="tabla-datos tabla-compacta">
+                <thead><tr><th class="col-codigo">Código</th><th>Producto</th><th class="col-acciones"><span class="sr-only">Agregar</span></th></tr></thead>
+                <tbody>
+                    @foreach (var p in productosEncontrados.Take(15))
+                    {
+                        <tr>
+                            <td class="col-codigo">@p.ProCodigo</td>
+                            <td>@p.ProDescripcion</td>
+                            <td class="col-acciones"><BotonIcono Icono="plus" Tooltip="Agregar a la orden" OnClick="() => AgregarProducto(p.ProId, p.ProCodigo, p.ProDescripcion, null, p.ProCostoUnitario)" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <div class="tabla-desplazable" tabindex="0">
+            <table class="tabla-datos">
+                <thead>
+                    <tr><th class="col-codigo">Código</th><th>Descripción</th><th class="num col-monto">Cantidad</th><th class="num col-monto">Costo con IVA</th><th class="num col-monto">Total</th><th class="col-acciones"><span class="sr-only">Quitar</span></th></tr>
+                </thead>
+                <tbody>
+                    @if (lineas.Count == 0)
+                    {
+                        <tr><td colspan="6" class="doc-tabla-vacia">Agregue los productos a pedir.</td></tr>
+                    }
+                    @foreach (var l in lineas)
+                    {
+                        <tr>
+                            <td class="col-codigo">@l.Codigo</td>
+                            <td>@l.Descripcion@if (l.CodigoProveedor is not null) { <br /><span class="texto-tenue">Código del proveedor: @l.CodigoProveedor</span> }</td>
+                            <td class="num col-monto"><input class="entrada-numero" type="number" min="1" step="1" aria-label="Cantidad" @bind="l.Cantidad" @bind:event="oninput" /></td>
+                            <td class="num col-monto"><input class="entrada-numero" type="number" min="0" step="0.01" aria-label="Costo con IVA" @bind="l.CostoUnitario" @bind:event="oninput" /></td>
+                            <td class="num col-monto">@l.Total.ToString("N2")</td>
+                            <td class="col-acciones"><BotonIcono Icono="trash-2" Tooltip="Quitar" Variante="peligro" OnClick="() => lineas.Remove(l)" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="resumen-totales">
+            <span>Unidades: <strong>@lineas.Sum(l => l.Cantidad)</strong></span>
+            <span>IVA incluido: <strong>Q @Math.Round(TotalOrden * porcentajeIva / (100 + porcentajeIva), 2).ToString("N2")</strong></span>
+            <span>Total: <strong>Q @TotalOrden.ToString("N2")</strong></span>
+        </div>
+
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Grabar la orden en borrador" Etiqueta="Grabar borrador" Variante="primario" Deshabilitado="lineas.Count == 0" OnClick="GrabarAsync" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarFormulario" />
+        </div>
+    </section>
+}
+else if (pestanaActiva == "detalle" && seleccionada is not null)
+{
+    var o = seleccionada;
+    <section class="tarjeta" aria-labelledby="titulo-detalle">
+        <div class="maestro-detalle-encabezado">
+            <h2 id="titulo-detalle">Orden de compra @o.Numero</h2>
+            <span class="estado-badge @ClaseEstado(o.Estado)">@TextoEstado(o.Estado)</span>
+        </div>
+        @if (o.Estado == "B")
+        {
+            <p class="doc-nota" role="status"><Icono Nombre="info" Tamano="15" /><span>Borrador: se puede editar. Debe aprobarse antes de enviarla al proveedor y recibir la mercadería.</span></p>
+        }
+        else if (o.Estado is "C" or "N")
+        {
+            <p class="doc-nota doc-nota-aviso" role="status"><Icono Nombre="ban" Tamano="15" /><span>@(o.Estado == "C" ? "Cerrada" : "Anulada"): @o.MotivoCierre</span></p>
+        }
+        else if (o.FechaEntrega < DateTime.Today && o.PorRecibir)
+        {
+            <p class="doc-nota doc-nota-aviso" role="status"><Icono Nombre="alert-triangle" Tamano="15" /><span>La entrega se esperaba el @o.FechaEntrega?.ToString("dd/MM/yyyy") y todavía hay producto pendiente.</span></p>
+        }
+
+        <div class="resumen-totales">
+            <span>Proveedor: <strong>@o.Proveedor</strong>@(string.IsNullOrWhiteSpace(o.Nit) ? "" : $" · NIT {o.Nit}")</span>
+            <span>Fecha: <strong>@o.Fecha.ToString("dd/MM/yyyy")</strong></span>
+            <span>Entrega: <strong>@(o.FechaEntrega?.ToString("dd/MM/yyyy") ?? "—")</strong></span>
+            <span>Bodega: <strong>@o.Bodega</strong></span>
+            @if (o.Aprobo is not null) { <span>Aprobó: <strong>@o.Aprobo</strong> (@o.FechaAprobacion?.ToString("dd/MM/yyyy HH:mm"))</span> }
+        </div>
+
+        <div class="tabla-desplazable" tabindex="0">
+            <table class="tabla-datos">
+                <thead><tr><th class="num">#</th><th>Producto</th><th class="num">Pedido</th><th class="num">Recibido</th><th class="num">Pendiente</th><th class="num col-monto">Costo con IVA</th><th class="num col-monto">Total</th><th class="num">Existencia hoy</th></tr></thead>
+                <tbody>
+                    @foreach (var l in lineasDetalle)
+                    {
+                        <tr>
+                            <td class="num">@l.Item</td>
+                            <td>@l.Descripcion<br /><span class="texto-tenue">@l.Codigo@(l.CodigoProveedor is null ? "" : $" · proveedor {l.CodigoProveedor}")</span></td>
+                            <td class="num">@l.Cantidad</td>
+                            <td class="num">@l.Recibido</td>
+                            <td class="num">@(l.Pendiente > 0 && o.PorRecibir ? l.Pendiente.ToString() : "—")</td>
+                            <td class="num col-monto">@l.CostoUnitario.ToString("N2")</td>
+                            <td class="num col-monto">@l.Total.ToString("N2")</td>
+                            <td class="num">@((l.Existencia ?? 0).ToString("#,##0"))</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="resumen-totales">
+            <span>Avance: <strong>@o.Recibido de @o.Ordenado unidades</strong></span>
+            <span>IVA incluido: <strong>@o.Simbolo @o.IvaIncluido.ToString("N2")</strong></span>
+            <span>Total: <strong>@o.Simbolo @o.Total.ToString("N2")</strong></span>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(o.Condiciones)) { <p class="texto-ayuda">Condiciones: @o.Condiciones</p> }
+        @if (!string.IsNullOrWhiteSpace(o.Observaciones)) { <p class="texto-ayuda">Observaciones: @o.Observaciones</p> }
+
+        <div class="acciones-fila">
+            <a class="boton-icono boton-icono-neutral boton-icono-con-etiqueta" href="@($"compras/ordenes/{o.OcpId}/imprimir")" target="_blank">
+                <Icono Nombre="printer" Tamano="17" /><span class="boton-icono-etiqueta">Imprimir</span>
+            </a>
+            @if (o.Estado == "B")
+            {
+                <AuthorizeView Policy="Permiso:COMPRAS_ORDEN" Context="permisoEditar">
+                    <BotonIcono Icono="pencil" Tooltip="Editar el borrador" Etiqueta="Editar" OnClick="EditarAsync" />
+                </AuthorizeView>
+                <AuthorizeView Policy="Permiso:COMPRAS_ORDEN_APROBAR" Context="permisoAprobar">
+                    <BotonIcono Icono="check-circle" Tooltip="Aprobar la orden" Etiqueta="Aprobar" Variante="primario" Confirmacion="¿Aprobar la orden? Ya no se podrá editar." OnClick="AprobarAsync" />
+                </AuthorizeView>
+            }
+            @if (o.PorRecibir && !mostrarRecepcion)
+            {
+                <AuthorizeView Policy="Permiso:COMPRAS_ORDEN_RECIBIR" Context="permisoRecibir">
+                    <BotonIcono Icono="truck" Tooltip="Recibir la mercadería con la factura del proveedor" Etiqueta="Recibir mercadería" Variante="primario" OnClick="IniciarRecepcion" />
+                </AuthorizeView>
+            }
+        </div>
+
+        @if (mostrarRecepcion && o.PorRecibir)
+        {
+            <section class="oc-recepcion" aria-labelledby="titulo-recepcion">
+                <h3 id="titulo-recepcion">Recibir con la factura del proveedor</h3>
+                <p class="texto-ayuda">Indique lo que llegó; lo que falte queda pendiente para otra recepción. Se graba una compra en @o.Bodega con su cuenta por pagar y su póliza.</p>
+                <div class="fel-formulario">
+                    <div class="campo"><label for="rec-fecha">Fecha de la factura</label><input id="rec-fecha" type="date" @bind="recepcion.Fecha" /></div>
+                    <div class="campo"><label for="rec-serie">Serie</label><input id="rec-serie" maxlength="32" @bind="recepcion.Serie" /></div>
+                    <div class="campo"><label for="rec-numero">Número</label><input id="rec-numero" maxlength="32" @bind="recepcion.NumeroDocumento" /></div>
+                    <div class="campo"><label for="rec-autorizacion">Autorización FEL</label><input id="rec-autorizacion" maxlength="64" @bind="recepcion.Autorizacion" /></div>
+                    <div class="campo">
+                        <label for="rec-condicion">Condición de pago</label>
+                        <select id="rec-condicion" @bind="condicionRecepcion">
+                            <option value="contado">Contado</option>
+                            <option value="credito">Crédito</option>
+                        </select>
+                    </div>
+                    @if (condicionRecepcion == "credito")
+                    {
+                        <div class="campo"><label for="rec-cuotas">Cuotas</label><input id="rec-cuotas" type="number" min="1" @bind="recepcion.NumeroCuotas" /></div>
+                        <div class="campo"><label for="rec-primer">Primer pago</label><input id="rec-primer" type="date" @bind="fechaPrimerPago" /></div>
+                    }
+                </div>
+                <div class="tabla-desplazable" tabindex="0">
+                    <table class="tabla-datos">
+                        <thead><tr><th>Producto</th><th class="num">Pendiente</th><th class="num col-monto">Recibido ahora</th><th class="num col-monto">Costo con IVA</th><th class="num col-monto">Total</th></tr></thead>
+                        <tbody>
+                            @foreach (var r in lineasRecepcion)
+                            {
+                                <tr>
+                                    <td>@r.Descripcion<br /><span class="texto-tenue">@r.Codigo</span></td>
+                                    <td class="num">@r.Pendiente</td>
+                                    <td class="num col-monto"><input class="entrada-numero" type="number" min="0" max="@r.Pendiente" step="1" aria-label="@($"Cantidad recibida de {r.Descripcion}")" @bind="r.Cantidad" @bind:event="oninput" /></td>
+                                    <td class="num col-monto"><input class="entrada-numero" type="number" min="0" step="0.01" aria-label="@($"Costo con IVA de {r.Descripcion}")" @bind="r.CostoUnitario" @bind:event="oninput" /></td>
+                                    <td class="num col-monto">@Math.Round(r.Cantidad * r.CostoUnitario, 2).ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="resumen-totales">
+                    <span>Unidades: <strong>@lineasRecepcion.Sum(r => r.Cantidad)</strong></span>
+                    <span>Total de la factura: <strong>Q @lineasRecepcion.Sum(r => Math.Round(r.Cantidad * r.CostoUnitario, 2)).ToString("N2")</strong></span>
+                </div>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Grabar la compra y el ingreso a bodega" Etiqueta="Grabar recepción" Variante="primario" OnClick="RecibirAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarRecepcion = false" />
+                </div>
+            </section>
+        }
+
+        @if (recepciones.Count > 0)
+        {
+            <h3>Recepciones</h3>
+            <table class="tabla-datos tabla-compacta">
+                <thead><tr><th class="col-fecha">Fecha</th><th>Factura del proveedor</th><th class="num">Unidades</th><th class="num col-monto">Total</th><th class="col-estado">Compra</th><th>Usuario</th></tr></thead>
+                <tbody>
+                    @foreach (var r in recepciones)
+                    {
+                        <tr class="@(r.EstadoCompra == "A" ? "fila-anulada" : "")">
+                            <td class="col-fecha">@r.Fecha.ToString("dd/MM/yyyy")</td>
+                            <td>@r.Documento</td>
+                            <td class="num">@r.Unidades</td>
+                            <td class="num col-monto">@r.Total.ToString("N2")</td>
+                            <td class="col-estado"><span class="estado-badge @(r.EstadoCompra == "A" ? "estado-badge-anulada" : "estado-badge-grabada")">@(r.EstadoCompra == "A" ? "Anulada" : "Grabada")</span></td>
+                            <td>@r.Usuario</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (recepciones.Any(r => r.EstadoCompra == "A"))
+            {
+                <p class="texto-ayuda">Lo recibido en una compra anulada vuelve a quedar pendiente.</p>
+            }
+        }
+
+        @if (o.Estado is "B" or "A" or "P")
+        {
+            <AuthorizeView Policy="Permiso:COMPRAS_ORDEN" Context="permisoAnular">
+                <div class="fila-edicion">
+                    <label for="oc-motivo">@(o.Estado == "P" ? "Cerrar la orden (cancelar lo pendiente)" : "Anular la orden")</label>
+                    <input id="oc-motivo" maxlength="256" placeholder="Motivo" @bind="motivo" @bind:event="oninput" />
+                    @if (o.Estado == "P")
+                    {
+                        <BotonIcono Icono="ban" Tooltip="Cerrar: lo pendiente ya no se espera" Etiqueta="Cerrar" Variante="peligro" Deshabilitado="motivo.Trim().Length < 3"
+                                    Confirmacion="¿Cerrar la orden? Lo pendiente ya no se recibirá." OnClick="CerrarAsync" />
+                    }
+                    else
+                    {
+                        <BotonIcono Icono="ban" Tooltip="Anular la orden" Etiqueta="Anular" Variante="peligro" Deshabilitado="motivo.Trim().Length < 3"
+                                    Confirmacion="¿Anular la orden de compra?" OnClick="AnularAsync" />
+                    }
+                </div>
+            </AuthorizeView>
+        }
+    </section>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    // ?id=N abre una orden (por ejemplo, las que genera el punto de reorden).
+    [SupplyParameterFromQuery(Name = "id")]
+    public int? OrdenId { get; set; }
+
+    private sealed class LineaOrden
+    {
+        public int ProId { get; set; }
+        public string Codigo { get; set; } = "";
+        public string? CodigoProveedor { get; set; }
+        public string Descripcion { get; set; } = "";
+        public int Cantidad { get; set; } = 1;
+        public decimal CostoUnitario { get; set; }
+        public decimal Total => Math.Round(Cantidad * CostoUnitario, 2);
+    }
+
+    private sealed class LineaRecepcion
+    {
+        public int OcdId { get; set; }
+        public string Codigo { get; set; } = "";
+        public string Descripcion { get; set; } = "";
+        public int Pendiente { get; set; }
+        public int Cantidad { get; set; }
+        public decimal CostoUnitario { get; set; }
+    }
+
+    private IReadOnlyList<OrdenCompraResumen> ordenes = Array.Empty<OrdenCompraResumen>();
+    private OrdenCompraEncabezado? seleccionada;
+    private IReadOnlyList<OrdenCompraLinea> lineasDetalle = Array.Empty<OrdenCompraLinea>();
+    private IReadOnlyList<OrdenCompraRecepcion> recepciones = Array.Empty<OrdenCompraRecepcion>();
+    private IReadOnlyList<Proveedor> proveedores = Array.Empty<Proveedor>();
+    private IReadOnlyList<Bodega> bodegas = Array.Empty<Bodega>();
+    private IReadOnlyList<ProductoProveedor> productosProveedor = Array.Empty<ProductoProveedor>();
+    private IReadOnlyList<Producto> productosEncontrados = Array.Empty<Producto>();
+    private readonly List<LineaOrden> lineas = new();
+    private readonly List<LineaRecepcion> lineasRecepcion = new();
+    private NuevaOrdenCompra orden = new();
+    private RecepcionOrdenCompra recepcion = new();
+    private string condicionRecepcion = "contado";
+    private DateTime? fechaPrimerPago;
+    private bool mostrarRecepcion;
+    private string? numeroEditando;
+    private int proIdProveedor;
+
+    private string pestanaActiva = "lista";
+    private string filtroEstado = "X";
+    private DateTime? filtroDesde;
+    private DateTime? filtroHasta;
+    private string filtroTexto = "";
+    private string textoProducto = "";
+    private string motivo = "";
+    private decimal porcentajeIva = 12m;
+    private int? sucIdSesion;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private decimal TotalOrden => lineas.Sum(l => l.Total);
+    private decimal ConIva(decimal sinIva) => Math.Round(sinIva * (1 + porcentajeIva / 100m), 2);
+
+    private IReadOnlyList<PestanaItem> Pestanas
+    {
+        get
+        {
+            var lista = new List<PestanaItem> { new("lista", "Órdenes") };
+            if (seleccionada is not null) lista.Add(new("detalle", seleccionada.Numero));
+            if (pestanaActiva == "orden") lista.Add(new("orden", orden.OcpId is null ? "Nueva orden" : "Editar"));
+            return lista;
+        }
+    }
+
+    private static string ClaseEstado(string estado) => estado switch
+    {
+        "B" => "estado-badge-pendiente",
+        "A" => "estado-badge-activo",
+        "P" => "estado-badge-pendiente",
+        "R" => "estado-badge-grabada",
+        "N" => "estado-badge-anulada",
+        _ => "estado-badge-inactivo"
+    };
+
+    private static string TextoEstado(string estado) => estado switch
+    {
+        "B" => "Borrador",
+        "A" => "Aprobada",
+        "P" => "Recibida en parte",
+        "R" => "Recibida",
+        "C" => "Cerrada",
+        "N" => "Anulada",
+        _ => estado
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            sucIdSesion = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerSucId();
+            porcentajeIva = (await GeneralRepository.ConsultarParametrosAsync(sucIdSesion)).CiaPorcIva;
+            proveedores = await CompraRepository.ConsultarProveedoresAsync(null, "A");
+            bodegas = await BodegaRepository.ConsultarAsync(sucId: null, estado: "A");
+            if (OrdenId is int id)
+            {
+                filtroEstado = "";
+                await BuscarAsync();
+                await AbrirAsync(id);
+            }
+            else
+                await BuscarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private void MostrarError(string texto)
+    {
+        mensaje = texto;
+        esMensajeError = true;
+    }
+
+    private void MostrarOk(string texto)
+    {
+        mensaje = texto;
+        esMensajeError = false;
+    }
+
+    private async Task BuscarAsync()
+    {
+        try
+        {
+            ordenes = await OrdenCompraRepository.ConsultarAsync(filtroEstado, null, filtroDesde, filtroHasta,
+                string.IsNullOrWhiteSpace(filtroTexto) ? null : filtroTexto.Trim());
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void IniciarNueva()
+    {
+        mensaje = null;
+        orden = new NuevaOrdenCompra
+        {
+            Fecha = DateTime.Today,
+            FechaEntrega = DateTime.Today.AddDays(7),
+            BodId = bodegas.Where(b => b.SucId == sucIdSesion).OrderBy(b => b.BodCodigo).FirstOrDefault()?.BodId ?? bodegas.FirstOrDefault()?.BodId ?? 0
+        };
+        numeroEditando = null;
+        lineas.Clear();
+        productosProveedor = Array.Empty<ProductoProveedor>();
+        productosEncontrados = Array.Empty<Producto>();
+        proIdProveedor = 0;
+        pestanaActiva = "orden";
+    }
+
+    private async Task EditarAsync()
+    {
+        if (seleccionada is null) return;
+        var o = seleccionada;
+        mensaje = null;
+        orden = new NuevaOrdenCompra
+        {
+            OcpId = o.OcpId,
+            Fecha = o.Fecha,
+            FechaEntrega = o.FechaEntrega,
+            PrvId = o.PrvId,
+            BodId = o.BodId,
+            MonId = o.MonId,
+            Condiciones = o.Condiciones,
+            Observaciones = o.Observaciones
+        };
+        numeroEditando = o.Numero;
+        lineas.Clear();
+        lineas.AddRange(lineasDetalle.Select(l => new LineaOrden
+        {
+            ProId = l.ProId,
+            Codigo = l.Codigo,
+            CodigoProveedor = l.CodigoProveedor,
+            Descripcion = l.Descripcion,
+            Cantidad = l.Cantidad,
+            CostoUnitario = l.CostoUnitario
+        }));
+        productosEncontrados = Array.Empty<Producto>();
+        await CargarProductosProveedorAsync();
+        pestanaActiva = "orden";
+    }
+
+    private void CancelarFormulario()
+    {
+        lineas.Clear();
+        pestanaActiva = seleccionada is null ? "lista" : "detalle";
+    }
+
+    private async Task CargarProductosProveedorAsync()
+    {
+        proIdProveedor = 0;
+        if (orden.PrvId == 0) { productosProveedor = Array.Empty<ProductoProveedor>(); return; }
+        try
+        {
+            productosProveedor = (await ProductoProveedorRepository.ConsultarAsync(orden.PrvId, null))
+                .Where(r => r.ProTipoItem == "B" && r.ProEstado == "A").OrderByDescending(r => r.Preferido).ThenBy(r => r.ProDescripcion).ToList();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void AgregarDelProveedor()
+    {
+        var r = productosProveedor.FirstOrDefault(p => p.ProId == proIdProveedor);
+        if (r is null) return;
+        AgregarProducto(r.ProId, r.ProCodigo, r.ProDescripcion, r.CodigoProveedor, r.UltimoCosto ?? r.ProCostoUnitario);
+        proIdProveedor = 0;
+    }
+
+    // costoSinIva: último costo con el proveedor o costo promedio; se propone con IVA.
+    private void AgregarProducto(int proId, string codigo, string descripcion, string? codigoProveedor, decimal costoSinIva)
+    {
+        var existente = lineas.FirstOrDefault(l => l.ProId == proId);
+        if (existente is not null) existente.Cantidad += 1;
+        else
+            lineas.Add(new LineaOrden
+            {
+                ProId = proId,
+                Codigo = codigo,
+                CodigoProveedor = codigoProveedor ?? productosProveedor.FirstOrDefault(p => p.ProId == proId)?.CodigoProveedor,
+                Descripcion = descripcion,
+                CostoUnitario = ConIva(costoSinIva)
+            });
+        productosEncontrados = Array.Empty<Producto>();
+        textoProducto = "";
+        mensaje = null;
+    }
+
+    private async Task BuscarProductosAsync()
+    {
+        var texto = textoProducto.Trim();
+        if (texto.Length == 0) return;
+        try
+        {
+            var porCodigo = await ProductoRepository.ConsultarAsync(texto, null, prtId: null, estado: "A", pagina: 1, tamanioPagina: 20);
+            var porDescripcion = await ProductoRepository.ConsultarAsync(null, texto, prtId: null, estado: "A", pagina: 1, tamanioPagina: 20);
+            productosEncontrados = porCodigo.Concat(porDescripcion).DistinctBy(p => p.ProId).Where(p => p.ProTipoItem == "B").Take(20).ToList();
+            var exacto = productosEncontrados.FirstOrDefault(p => p.ProCodigo.Equals(texto, StringComparison.OrdinalIgnoreCase));
+            if (exacto is not null)
+            {
+                var relacion = productosProveedor.FirstOrDefault(r => r.ProId == exacto.ProId);
+                AgregarProducto(exacto.ProId, exacto.ProCodigo, exacto.ProDescripcion, relacion?.CodigoProveedor, relacion?.UltimoCosto ?? exacto.ProCostoUnitario);
+            }
+            else if (productosEncontrados.Count == 0) MostrarError("No se encontraron productos con ese texto.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task GrabarAsync()
+    {
+        if (orden.PrvId == 0) { MostrarError("Elija el proveedor."); return; }
+        if (orden.BodId == 0) { MostrarError("Elija la bodega donde se recibirá."); return; }
+        var sinCosto = lineas.FirstOrDefault(l => l.Cantidad <= 0 || l.CostoUnitario <= 0);
+        if (sinCosto is not null) { MostrarError($"Indique la cantidad y el costo de {sinCosto.Descripcion}."); return; }
+        if (orden.FechaEntrega < orden.Fecha) { MostrarError("La entrega no puede ser antes de la fecha de la orden."); return; }
+        try
+        {
+            var (ocpId, numero) = await OrdenCompraRepository.GuardarAsync(orden,
+                lineas.Select(l => new NuevaLineaOrdenCompra { ProId = l.ProId, Cantidad = l.Cantidad, CostoUnitario = l.CostoUnitario }).ToList(),
+                await ObtenerUsuIdActualAsync());
+            lineas.Clear();
+            filtroEstado = "B";
+            await BuscarAsync();
+            await AbrirAsync(ocpId);
+            MostrarOk($"Orden {numero} grabada en borrador. Apruébela para enviarla al proveedor.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task AbrirAsync(int ocpId)
+    {
+        try
+        {
+            (seleccionada, lineasDetalle, recepciones) = await OrdenCompraRepository.ConsultarPorIdAsync(ocpId);
+            motivo = "";
+            mostrarRecepcion = false;
+            mensaje = null;
+            pestanaActiva = seleccionada is null ? "lista" : "detalle";
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task RefrescarAsync(string texto)
+    {
+        if (seleccionada is null) return;
+        var id = seleccionada.OcpId;
+        await BuscarAsync();
+        await AbrirAsync(id);
+        MostrarOk(texto);
+    }
+
+    private async Task AprobarAsync()
+    {
+        if (seleccionada is null) return;
+        try
+        {
+            await OrdenCompraRepository.AprobarAsync(seleccionada.OcpId, await ObtenerUsuIdActualAsync());
+            await RefrescarAsync($"Orden {seleccionada.Numero} aprobada. Ya se puede imprimir para el proveedor y recibir.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task AnularAsync()
+    {
+        if (seleccionada is null) return;
+        try
+        {
+            await OrdenCompraRepository.AnularAsync(seleccionada.OcpId, motivo.Trim(), await ObtenerUsuIdActualAsync());
+            await RefrescarAsync("Orden anulada.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task CerrarAsync()
+    {
+        if (seleccionada is null) return;
+        try
+        {
+            await OrdenCompraRepository.CerrarAsync(seleccionada.OcpId, motivo.Trim(), await ObtenerUsuIdActualAsync());
+            await RefrescarAsync("Orden cerrada: lo pendiente ya no se espera.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void IniciarRecepcion()
+    {
+        recepcion = new RecepcionOrdenCompra { Fecha = DateTime.Today };
+        condicionRecepcion = "contado";
+        fechaPrimerPago = DateTime.Today.AddMonths(1);
+        lineasRecepcion.Clear();
+        lineasRecepcion.AddRange(lineasDetalle.Where(l => l.Pendiente > 0).Select(l => new LineaRecepcion
+        {
+            OcdId = l.OcdId,
+            Codigo = l.Codigo,
+            Descripcion = l.Descripcion,
+            Pendiente = l.Pendiente,
+            Cantidad = l.Pendiente,
+            CostoUnitario = l.CostoUnitario
+        }));
+        mensaje = null;
+        mostrarRecepcion = true;
+    }
+
+    private async Task RecibirAsync()
+    {
+        if (seleccionada is null) return;
+        if (string.IsNullOrWhiteSpace(recepcion.NumeroDocumento)) { MostrarError("Escriba el número de la factura del proveedor."); return; }
+        if (lineasRecepcion.All(r => r.Cantidad <= 0)) { MostrarError("Indique la cantidad recibida de al menos un producto."); return; }
+        var excedida = lineasRecepcion.FirstOrDefault(r => r.Cantidad < 0 || r.Cantidad > r.Pendiente);
+        if (excedida is not null) { MostrarError($"De {excedida.Descripcion} se pueden recibir de 0 a {excedida.Pendiente} unidades."); return; }
+        if (lineasRecepcion.Any(r => r.CostoUnitario < 0)) { MostrarError("El costo no puede ser negativo."); return; }
+        recepcion.FechaPrimerPago = condicionRecepcion == "credito" ? fechaPrimerPago : null;
+        if (recepcion.FechaPrimerPago is null && condicionRecepcion == "credito") { MostrarError("Indique la fecha del primer pago."); return; }
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            var encId = await OrdenCompraRepository.RecibirAsync(seleccionada.OcpId, recepcion,
+                lineasRecepcion.Where(r => r.Cantidad > 0).Select(r => new LineaRecepcionOrdenCompra { OcdId = r.OcdId, Cantidad = r.Cantidad, CostoUnitario = r.CostoUnitario }).ToList(),
+                usuId);
+            // Igual que en Compras: último costo con el proveedor y relación producto-proveedor.
+            try { await ProductoProveedorRepository.RegistrarCompraAsync(encId, true, usuId); }
+            catch (Exception ex) { Log.LogWarning(ex, "La compra {EncId} se grabó pero no se actualizó el último costo por proveedor", encId); }
+            var unidades = lineasRecepcion.Sum(r => r.Cantidad);
+            var documento = string.IsNullOrWhiteSpace(recepcion.Serie) ? recepcion.NumeroDocumento : $"{recepcion.Serie}-{recepcion.NumeroDocumento}";
+            await RefrescarAsync($"Recepción grabada: {unidades} unidades ingresaron a {seleccionada.Bodega} con la compra {documento}.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

@@ -97,12 +97,21 @@
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <AuthorizeView Policy="Permiso:COMPRAS_DOCUMENTO_CREAR">
+        <AuthorizeView Policy="Permiso:COMPRAS_DOCUMENTO_CREAR,COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR">
             <Authorized>
                 <SidebarNodo Titulo="Compras" IconoNombre="shopping-cart" Rutas="@(new[] { "compras", "proveedores" })">
-                    <NavLink href="compras" Match="NavLinkMatch.All" class="sidebar-hijo-link">Compras</NavLink>
-                    <NavLink href="proveedores" class="sidebar-hijo-link">Proveedores</NavLink>
-                    <NavLink href="compras/productos-proveedor" class="sidebar-hijo-link">Productos por proveedor</NavLink>
+                    <AuthorizeView Policy="Permiso:COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR" Context="ordenContexto">
+                        <Authorized>
+                            <NavLink href="compras/ordenes" class="sidebar-hijo-link">Órdenes de compra</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:COMPRAS_DOCUMENTO_CREAR" Context="compraContexto">
+                        <Authorized>
+                            <NavLink href="compras" Match="NavLinkMatch.All" class="sidebar-hijo-link">Compras</NavLink>
+                            <NavLink href="proveedores" class="sidebar-hijo-link">Proveedores</NavLink>
+                            <NavLink href="compras/productos-proveedor" class="sidebar-hijo-link">Productos por proveedor</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>

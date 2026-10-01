@@ -247,6 +247,10 @@
                 <div class="doc-totales">
                     <div class="doc-totales-fila"><span>Subtotal</span><span>@MonedaSimbolo @Subtotal.ToString("N2")</span></div>
                     <div class="doc-totales-fila"><span>Descuento</span><span>@MonedaSimbolo @TotalDescuento.ToString("N2")</span></div>
+                    @if (AjusteRedondeo != 0)
+                    {
+                        <div class="doc-totales-fila"><span>Redondeo del IVA</span><span>@MonedaSimbolo @AjusteRedondeo.ToString("N2")</span></div>
+                    }
                     <div class="doc-totales-total"><span>Total</span><span>@MonedaSimbolo @Total.ToString("N2")</span></div>
                     <div class="doc-totales-nota">IVA incluido (@PorcentajeIvaTexto%): @MonedaSimbolo @IvaIncluido.ToString("N2")</div>
                 </div>
@@ -459,7 +463,15 @@
 
     private decimal Subtotal => lineas.Sum(l => l.SubTotal);
     private decimal TotalDescuento => lineas.Sum(l => l.ValorDescuento);
-    private decimal Total => Subtotal - TotalDescuento;
+    // Total que grabará sp_compras_crear_documento: el costo se guarda sin IVA a
+    // centavos y el total vuelve a sumarle el IVA por unidad, así que puede
+    // diferir un centavo de la suma de los costos con IVA.
+    private decimal Total => lineas.Sum(TotalLineaDocumento);
+    private decimal AjusteRedondeo => Total - (Subtotal - TotalDescuento);
+    private decimal SinIva(decimal conIva) => Math.Round(conIva / (1 + PorcentajeIva / 100m), 2, MidpointRounding.AwayFromZero);
+    private decimal ConIva(decimal sinIva) => Math.Round(sinIva * (1 + PorcentajeIva / 100m), 2, MidpointRounding.AwayFromZero);
+    private decimal TotalLineaDocumento(LineaCaptura l) =>
+        Math.Round(ConIva(SinIva(l.PrecioUnitario)) * l.Cantidad, 2, MidpointRounding.AwayFromZero) - ConIva(SinIva(l.ValorDescuento));
     private decimal IvaIncluido => Math.Round(Total * PorcentajeIva / (100m + PorcentajeIva), 2);
     private string MonedaSimbolo => monedas.FirstOrDefault(m => m.MonId == nuevaCompra.MonId)?.MonSimbolo ?? "Q";
     private string condicionPagoCompra = "contado";
@@ -725,8 +737,8 @@
 
             var detalle = lineas.Select(l =>
             {
-                var precioUnitarioNeto = Math.Round(l.PrecioUnitario / (1 + PorcentajeIva / 100m), 2);
-                var valorDescuentoNeto = Math.Round(l.ValorDescuento / (1 + PorcentajeIva / 100m), 2);
+                var precioUnitarioNeto = SinIva(l.PrecioUnitario);
+                var valorDescuentoNeto = SinIva(l.ValorDescuento);
                 return new NuevaLineaCompra
                 {
                     ProId = l.ProId,

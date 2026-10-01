@@ -3097,3 +3097,7 @@ label.boton-icono { cursor: pointer; position: relative; }
 .tabla-datos td input.entrada-numero { text-align: right; min-width: 80px; }
 .tabla-compacta { margin-bottom: 0.75rem; }
 .tabla-compacta td, .tabla-compacta th { padding-block: 0.3rem; }
+.oc-firmas { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6in; margin: 0.45in 0 0.15in; font-size: 8.5pt; color: #34405a; }
+.oc-firma-linea { display: block; border-top: 1px solid #0d1b4c; margin-bottom: 4px; }
+.oc-recepcion { margin: 1rem 0; padding: 1rem 1.1rem; border: 1px solid #dce7f5; border-left: 4px solid var(--si-blue-500); border-radius: 10px; background: #f8fbff; }
+.oc-recepcion h3 { margin-top: 0; }
