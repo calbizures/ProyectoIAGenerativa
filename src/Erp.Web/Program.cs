@@ -185,6 +185,29 @@ app.MapGet("/reportes/nomina/transferencias/{idNominaPago:int}.xlsx", async (int
 	return Results.File(archivo, TipoExcel, $"transferencias-nomina-{idNominaPago}.xlsx");
 }).RequireAuthorization();
 
+// Libro de salarios y planilla mensual del IGSS de una compañía.
+app.MapGet("/reportes/rrhh/libro-salarios.xlsx", async (int cia, int anio, int? empleado, HttpContext contexto,
+	Erp.Data.Rrhh.IRrhhRepository rrhh, IGeneralRepository general, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:RRHH_ADMIN")).Succeeded) return Results.Forbid();
+	var libro = await rrhh.ConsultarLibroSalariosAsync(cia, anio, empleado);
+	if (libro.Patrono is null) return Results.NotFound();
+	var logo = await general.ConsultarLogoAsync(cia, null, soloVersion: false);
+	var archivo = ReportesExcel.LibroSalarios(libro, new CompaniaReporte(libro.Patrono.NombreComercial, logo?.Logo));
+	return Results.File(archivo, TipoExcel, $"libro-salarios-{anio}{(empleado is int e ? $"-{e}" : "")}.xlsx");
+}).RequireAuthorization();
+
+app.MapGet("/reportes/rrhh/planilla-igss.xlsx", async (int cia, int anio, int mes, HttpContext contexto,
+	Erp.Data.Rrhh.IRrhhRepository rrhh, IGeneralRepository general, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:RRHH_ADMIN")).Succeeded) return Results.Forbid();
+	var planilla = await rrhh.ConsultarPlanillaIgssAsync(cia, anio, mes);
+	if (planilla.Resumen is null) return Results.NotFound();
+	var logo = await general.ConsultarLogoAsync(cia, null, soloVersion: false);
+	var archivo = ReportesExcel.PlanillaIgss(planilla, new CompaniaReporte(planilla.Resumen.NombreComercial, logo?.Logo));
+	return Results.File(archivo, TipoExcel, $"planilla-igss-{anio}-{mes:00}.xlsx");
+}).RequireAuthorization();
+
 app.MapGet("/reportes/contabilidad/centros-costo.xlsx", async (DateTime desde, DateTime hasta, int? departamento, HttpContext contexto,
 	Erp.Data.Contabilidad.ICentroCostoRepository centros, IGeneralRepository general, IAuthorizationService autorizacion) =>
 {

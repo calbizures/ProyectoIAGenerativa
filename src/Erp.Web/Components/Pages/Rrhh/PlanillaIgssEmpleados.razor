@@ -1,0 +1,58 @@
+@* Planilla del IGSS: un renglón por trabajador y centro de trabajo. *@
+@using Erp.Data.Rrhh
+
+<div class="tabla-desplazable">
+    <table class="tabla-datos">
+        <thead>
+            <tr>
+                <th>Afiliación</th><th>Trabajador</th><th>DPI</th><th>Centro</th><th class="col-estado">Contrato</th><th>Novedad</th>
+                <th class="num col-estado">Días</th><th class="num col-monto">Salario afecto</th><th class="num col-monto">Cuota laboral</th>
+                <th class="num col-monto">IGSS patronal</th><th class="num col-monto">IRTRA</th><th class="num col-monto">INTECAP</th><th class="num col-monto">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var e in Empleados)
+            {
+                <tr>
+                    <td>@(e.NumeroAfiliacionIGSS ?? "Falta")</td>
+                    <td>@e.CodigoEmpleado — @e.Nombre<br /><span class="texto-tenue">@e.Puesto</span></td>
+                    <td>@e.Dpi</td>
+                    <td>@(e.CentroTrabajo ?? e.Sucursal)</td>
+                    <td class="col-estado">@e.TiempoContrato</td>
+                    <td>
+                        @if (e.FechaAlta is DateTime alta)
+                        {
+                            <span>Alta @alta.ToString("dd/MM/yyyy")</span>
+                        }
+                        @if (e.FechaBaja is DateTime baja)
+                        {
+                            <span>Baja @baja.ToString("dd/MM/yyyy")</span>
+                        }
+                    </td>
+                    <td class="num col-estado">@e.Dias.ToString("0.##")</td>
+                    <td class="num col-monto">@e.SalarioAfecto.ToString("N2")</td>
+                    <td class="num col-monto">@e.CuotaLaboral.ToString("N2")</td>
+                    <td class="num col-monto">@e.CuotaPatronal.ToString("N2")</td>
+                    <td class="num col-monto">@e.Irtra.ToString("N2")</td>
+                    <td class="num col-monto">@e.Intecap.ToString("N2")</td>
+                    <td class="num col-monto"><strong>@e.Total.ToString("N2")</strong></td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="7">Total</td>
+                <td class="num col-monto">@Empleados.Sum(e => e.SalarioAfecto).ToString("N2")</td>
+                <td class="num col-monto">@Empleados.Sum(e => e.CuotaLaboral).ToString("N2")</td>
+                <td class="num col-monto">@Empleados.Sum(e => e.CuotaPatronal).ToString("N2")</td>
+                <td class="num col-monto">@Empleados.Sum(e => e.Irtra).ToString("N2")</td>
+                <td class="num col-monto">@Empleados.Sum(e => e.Intecap).ToString("N2")</td>
+                <td class="num col-monto">@Empleados.Sum(e => e.Total).ToString("N2")</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PlanillaIgssEmpleado> Empleados { get; set; } = Array.Empty<PlanillaIgssEmpleado>();
+}

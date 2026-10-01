@@ -2901,3 +2901,129 @@ label.boton-icono { cursor: pointer; position: relative; }
     .fac-marca { color: rgba(179, 38, 30, 0.14); }
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* Libro de salarios (RRHH): un folio por trabajador. */
+.libro-folio {
+    background: var(--superficie, #fff);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    padding: 0.9rem 1rem;
+    margin-bottom: 1.2rem;
+}
+
+.libro-folio-encabezado {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+    border-bottom: 1px solid var(--borde);
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.6rem;
+}
+
+.libro-folio-numero {
+    font-size: 1rem;
+    white-space: nowrap;
+}
+
+.libro-trabajador {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 0.35rem 1rem;
+    margin: 0 0 0.75rem;
+    font-size: 0.85rem;
+}
+
+.libro-trabajador dt {
+    color: var(--texto-tenue);
+    font-size: 0.75rem;
+}
+
+.libro-trabajador dd {
+    margin: 0;
+    font-weight: 600;
+}
+
+.libro-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+}
+
+.libro-tabla th,
+.libro-tabla td {
+    border: 1px solid var(--borde);
+    padding: 0.25rem 0.35rem;
+    white-space: nowrap;
+}
+
+.libro-tabla thead th {
+    background: var(--si-navy-700);
+    color: #fff;
+    text-align: center;
+    font-weight: 600;
+}
+
+.libro-tabla tfoot td {
+    font-weight: 700;
+    background: var(--fondo-suave, #f4f6fa);
+}
+
+.libro-tabla .num {
+    text-align: right;
+}
+
+.libro-firma {
+    min-width: 90px;
+}
+
+@media print {
+    .libro-hoja {
+        break-after: page;
+    }
+
+    .libro-hoja:last-child {
+        break-after: auto;
+    }
+
+    .libro-folio {
+        border: none;
+        padding: 0;
+    }
+
+    .libro-hoja .tabla-desplazable {
+        overflow: visible;
+    }
+
+    .libro-tabla {
+        font-size: 6.4pt;
+        table-layout: auto;
+    }
+
+    .libro-tabla th,
+    .libro-tabla td {
+        padding: 1.5pt 2pt;
+        white-space: normal;
+    }
+
+    .libro-tabla td.num {
+        white-space: nowrap;
+    }
+
+    .libro-tabla thead th {
+        background: #e5e9f2 !important;
+        color: #000;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .libro-tabla td.libro-firma {
+        height: 18pt;
+    }
+
+    .libro-trabajador {
+        grid-template-columns: repeat(5, 1fr);
+        font-size: 7.5pt;
+    }
+}

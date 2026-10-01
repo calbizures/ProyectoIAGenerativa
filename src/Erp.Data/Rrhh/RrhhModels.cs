@@ -92,6 +92,13 @@ public sealed class Empleado
 	public int? GefId { get; set; }
 	public string? TipoCuenta { get; set; }
 	public string? NumeroCuenta { get; set; }
+	// Datos laborales para el IGSS y el libro de salarios (script 49).
+	// SucId = centro de trabajo; Jornada D/M/N; TiempoContrato TC/TP.
+	public int? SucId { get; set; }
+	public string? Nacionalidad { get; set; }
+	public string Jornada { get; set; } = "D";
+	public string TiempoContrato { get; set; } = "TC";
+	public int? FolioLibroSalarios { get; set; }
 	public string NombreCompleto => string.Join(" ", new[] { PrimerNombre, SegundoNombre, PrimerApellido, SegundoApellido }.Where(p => !string.IsNullOrWhiteSpace(p)));
 }
 
@@ -122,6 +129,8 @@ public sealed class TipoMovimientoNomina
 	public string? CtaCodigo { get; set; }
 	public string? CtaNombre { get; set; }
 	public string Estado { get; set; } = "A";
+	// Columna del libro de salarios (ORDINARIO, EXTRAORDINARIO, IGSS...).
+	public string? ColumnaLibro { get; set; }
 }
 
 public sealed class MovimientoNomina
@@ -139,6 +148,7 @@ public sealed class MovimientoNomina
 	public int? IdNomina { get; set; }
 	public string? Nomina { get; set; }
 	public string Estado { get; set; } = "A";
+	public decimal? Horas { get; set; }
 }
 
 public sealed class Nomina
@@ -149,12 +159,16 @@ public sealed class Nomina
 	public string Descripcion { get; set; } = "";
 	// S = semanal, Q = quincenal, M = mensual
 	public string TipoPeriodo { get; set; } = "M";
+	// O = ordinaria, A = aguinaldo, B = bono 14
+	public string Clase { get; set; } = "O";
 	public DateTime FechaDel { get; set; }
 	public DateTime FechaAl { get; set; }
 	public DateTime? FechaPago { get; set; }
 	public decimal TotalIngresos { get; set; }
 	public decimal TotalDescuentos { get; set; }
 	public decimal TotalLiquido { get; set; }
+	// IGSS patronal + IRTRA + INTECAP
+	public decimal TotalPatronal { get; set; }
 	// B = borrador, C = calculada, A = aprobada, N = anulada
 	public string Estado { get; set; } = "B";
 	public DateTime? FechaCalculo { get; set; }
@@ -184,6 +198,13 @@ public sealed class NominaEmpleado
 	public string? NumeroCheque { get; set; }
 	public string? TipoPago { get; set; }
 	public DateTime? FechaPago { get; set; }
+	public string? CentroTrabajo { get; set; }
+	public decimal BaseIgss { get; set; }
+	public decimal IgssPatronal { get; set; }
+	public decimal Irtra { get; set; }
+	public decimal Intecap { get; set; }
+	public decimal ProvAguinaldo { get; set; }
+	public decimal ProvBono14 { get; set; }
 }
 
 public sealed class PeriodoSugerido
@@ -233,6 +254,7 @@ public sealed class NominaDetalle
 	public string Naturaleza { get; set; } = "I";
 	public string? Descripcion { get; set; }
 	public decimal Monto { get; set; }
+	public decimal? Horas { get; set; }
 }
 
 public sealed class UnidadOrganizativaNodo

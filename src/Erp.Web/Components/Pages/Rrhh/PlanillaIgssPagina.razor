@@ -1,0 +1,278 @@
+@page "/rrhh/planilla-igss"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:RRHH_ADMIN")]
+@using Erp.Data.General
+@using Erp.Data.Rrhh
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IRrhhRepository RrhhRepository
+@inject IGeneralRepository GeneralRepository
+
+<PageTitle>Planilla del IGSS</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Planilla del IGSS</h1>
+    <p>Lo que se reporta y se paga al IGSS cada mes: salario afecto de cada trabajador, cuota laboral (descontada al trabajador) y cuotas patronales del IGSS, IRTRA e INTECAP, por centro de trabajo, con las altas y bajas del mes. Sale de las nóminas ordinarias aprobadas cuya fecha final cae en el mes.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<BarraPestanas Pestanas="pestanas" @bind-PestanaActiva="pestanaActiva" />
+
+<div class="barra-herramientas">
+    <select @bind="ciaId" @bind:after="CambiarCompaniaAsync" aria-label="Compañía">
+        @foreach (var c in companias)
+        {
+            <option value="@c.CiaId">@c.CiaNombreComercial</option>
+        }
+    </select>
+    @if (pestanaActiva == "planilla")
+    {
+        <select @bind="mes" @bind:after="ConsultarAsync" aria-label="Mes">
+            @for (var m = 1; m <= 12; m++)
+            {
+                <option value="@m">@NombreMes(m)</option>
+            }
+        </select>
+        <label class="filtro-campo">Año <input type="number" min="2000" max="2100" @bind="anio" @bind:after="ConsultarAsync" /></label>
+        <span class="barra-herramientas-separador"></span>
+        @if (planilla?.Empleados.Count > 0)
+        {
+            <a class="boton-icono boton-icono-con-etiqueta" href="@($"reportes/rrhh/planilla-igss.xlsx?cia={ciaId}&anio={anio}&mes={mes}")" download title="Planilla en Excel: centros de trabajo y trabajadores"><Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Excel</span></a>
+            <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@($"rrhh/planilla-igss/imprimir?cia={ciaId}&anio={anio}&mes={mes}")" target="_blank" title="Planilla para imprimir o guardar en PDF"><Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span></a>
+        }
+    }
+</div>
+
+@if (pestanaActiva == "planilla")
+{
+    @if (planilla?.Resumen is { } resumen)
+    {
+        @if (string.IsNullOrWhiteSpace(resumen.IgssNumeroPatronal))
+        {
+            <p class="aviso-pendiente" role="status">La compañía no tiene número patronal del IGSS. Regístrelo en la pestaña Patrono y centros de trabajo.</p>
+        }
+        @if (resumen.NominasPendientes > 0)
+        {
+            <p class="aviso-pendiente" role="status">Hay @resumen.NominasPendientes nómina(s) de @NombreMes(mes).ToLowerInvariant() sin aprobar: no entran en la planilla hasta que se aprueben.</p>
+        }
+        @if (SinAfiliacion.Count > 0)
+        {
+            <p class="aviso-pendiente" role="status">Sin número de afiliación al IGSS: @string.Join(", ", SinAfiliacion.Select(e => $"{e.CodigoEmpleado} {e.Nombre}")). Complételo en RRHH &gt; Empleados.</p>
+        }
+
+        @if (planilla.Empleados.Count == 0)
+        {
+            <p class="estado-vacio">No hay nóminas ordinarias aprobadas en @NombreMes(mes).ToLowerInvariant() de @anio.</p>
+        }
+        else
+        {
+            <div class="resumen-totales">
+                <span>No. patronal: <strong>@(resumen.IgssNumeroPatronal ?? "—")</strong></span>
+                <span>Trabajadores: <strong>@resumen.Empleados</strong></span>
+                <span>Salario afecto: <strong>Q @resumen.SalarioAfecto.ToString("N2")</strong></span>
+                <span>Cuota laboral: <strong>Q @resumen.CuotaLaboral.ToString("N2")</strong></span>
+                <span>Cuota patronal IGSS: <strong>Q @resumen.CuotaPatronal.ToString("N2")</strong></span>
+                <span>IRTRA: <strong>Q @resumen.Irtra.ToString("N2")</strong></span>
+                <span>INTECAP: <strong>Q @resumen.Intecap.ToString("N2")</strong></span>
+                <span>Total a pagar al IGSS: <strong>Q @resumen.TotalPagar.ToString("N2")</strong></span>
+            </div>
+
+            <h2>Por centro de trabajo</h2>
+            <PlanillaIgssCentros Centros="planilla.Centros" />
+
+            <h2>Trabajadores</h2>
+            <PlanillaIgssEmpleados Empleados="planilla.Empleados" />
+
+            <p class="texto-ayuda">
+                El archivo de carga (.TXT) del sistema de Planilla Electrónica del IGSS se agregará cuando se tenga el manual oficial del formato
+                (GenerarArchivoPlanilla 2.2.0, en servicios.igssgt.org &gt; Descargas). Mientras tanto, el Excel trae todos los datos para la plantilla del IGSS.
+            </p>
+        }
+    }
+}
+else
+{
+    <section class="tarjeta" aria-labelledby="titulo-patrono">
+        <h2 id="titulo-patrono">Patrono</h2>
+        <div class="panel-formulario">
+            <div class="campo">
+                <label for="igss-patronal">Número patronal del IGSS</label>
+                <input id="igss-patronal" maxlength="20" inputmode="numeric" @bind="datosPatrono.IgssNumeroPatronal" />
+            </div>
+            <div class="campo">
+                <label for="igss-libro">Autorización del libro de salarios</label>
+                <input id="igss-libro" maxlength="60" placeholder="Número de autorización o registro del Ministerio de Trabajo" @bind="datosPatrono.LibroSalariosAutorizacion" />
+                <small class="texto-ayuda">Aparece en el encabezado de cada folio del libro de salarios.</small>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar datos del patrono" Etiqueta="Guardar" Variante="primario" OnClick="GuardarPatronoAsync" />
+            </div>
+        </div>
+    </section>
+
+    <section class="tarjeta" aria-labelledby="titulo-centros">
+        <h2 id="titulo-centros">Centros de trabajo</h2>
+        <p class="texto-ayuda">Cada sucursal es un centro de trabajo del IGSS. Las tasas por defecto son las de la ciudad de Guatemala; cámbielas si el centro está en un departamento con otras. La cuota laboral en blanco usa la del tipo de movimiento IGSS_LABORAL (4.83 %). Los cambios se aplican a las nóminas que se calculen desde ahora.</p>
+        <div class="tabla-desplazable">
+            <table class="tabla-datos">
+                <thead>
+                    <tr><th class="col-codigo">Sucursal</th><th>Nombre</th><th>Centro de trabajo</th><th class="num">IGSS patronal %</th><th class="num">IGSS laboral %</th><th class="num">IRTRA %</th><th class="num">INTECAP %</th><th class="col-acciones">Acciones</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in centros)
+                    {
+                        @if (centroEdicion?.SucId == c.SucId)
+                        {
+                            <tr class="fila-seleccionada">
+                                <td class="col-codigo">@c.Codigo</td>
+                                <td>@c.Descripcion</td>
+                                <td><input aria-label="Número de centro de trabajo" maxlength="10" inputmode="numeric" @bind="centroEdicion.CentroTrabajo" /></td>
+                                <td class="num"><input aria-label="Tasa IGSS patronal" type="number" step="0.01" min="0" max="100" @bind="centroEdicion.TasaIgssPatronal" /></td>
+                                <td class="num"><input aria-label="Tasa IGSS laboral" type="number" step="0.01" min="0" max="100" placeholder="4.83" @bind="centroEdicion.TasaIgssLaboral" /></td>
+                                <td class="num"><input aria-label="Tasa IRTRA" type="number" step="0.01" min="0" max="100" @bind="centroEdicion.TasaIrtra" /></td>
+                                <td class="num"><input aria-label="Tasa INTECAP" type="number" step="0.01" min="0" max="100" @bind="centroEdicion.TasaIntecap" /></td>
+                                <td class="col-acciones">
+                                    <div class="acciones-fila">
+                                        <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="GuardarCentroAsync" />
+                                        <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => centroEdicion = null" />
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            <tr>
+                                <td class="col-codigo">@c.Codigo</td>
+                                <td>@c.Descripcion@(c.Estado == "A" ? "" : " (inactiva)")</td>
+                                <td>@(c.CentroTrabajo ?? "—")</td>
+                                <td class="num">@c.TasaIgssPatronal.ToString("0.###")</td>
+                                <td class="num">@(c.TasaIgssLaboral?.ToString("0.###") ?? "del tipo")</td>
+                                <td class="num">@c.TasaIrtra.ToString("0.###")</td>
+                                <td class="num">@c.TasaIntecap.ToString("0.###")</td>
+                                <td class="col-acciones"><div class="acciones-fila"><BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => EditarCentro(c)" /></div></td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    [SupplyParameterFromQuery(Name = "pestana")] public string? PestanaInicial { get; set; }
+
+    private static readonly IReadOnlyList<PestanaItem> pestanas =
+        [new("planilla", "Planilla del mes"), new("patrono", "Patrono y centros de trabajo")];
+
+    private IReadOnlyList<Compania> companias = Array.Empty<Compania>();
+    private PlanillaIgss? planilla;
+    private IReadOnlyList<SucursalIgss> centros = Array.Empty<SucursalIgss>();
+    private SucursalIgss? centroEdicion;
+    private CompaniaRrhh datosPatrono = new();
+    private string pestanaActiva = "planilla";
+    private int ciaId;
+    // Por defecto el mes anterior: la planilla se presenta y paga el mes siguiente.
+    private int anio = DateTime.Today.AddMonths(-1).Year;
+    private int mes = DateTime.Today.AddMonths(-1).Month;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private List<PlanillaIgssEmpleado> SinAfiliacion =>
+        planilla?.Empleados.Where(e => string.IsNullOrWhiteSpace(e.NumeroAfiliacionIGSS)).ToList() ?? new();
+
+    private static string NombreMes(int m) =>
+        System.Globalization.CultureInfo.GetCultureInfo("es-GT").DateTimeFormat.GetMonthName(m) is var n && n.Length > 0
+            ? char.ToUpperInvariant(n[0]) + n[1..] : m.ToString();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (PestanaInicial == "patrono") pestanaActiva = "patrono";
+        try
+        {
+            companias = await GeneralRepository.ConsultarCompaniasAsync(soloActivas: true);
+            ciaId = companias.FirstOrDefault()?.CiaId ?? 0;
+            await CambiarCompaniaAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private async Task CambiarCompaniaAsync()
+    {
+        if (ciaId <= 0) return;
+        centroEdicion = null;
+        try
+        {
+            datosPatrono = await RrhhRepository.ConsultarCompaniaRrhhAsync(ciaId) ?? new CompaniaRrhh { CiaId = ciaId };
+            centros = await RrhhRepository.ConsultarSucursalesIgssAsync(ciaId);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        await ConsultarAsync();
+    }
+
+    private async Task ConsultarAsync()
+    {
+        if (ciaId <= 0 || anio is < 2000 or > 2100) return;
+        mensaje = null;
+        try
+        {
+            planilla = await RrhhRepository.ConsultarPlanillaIgssAsync(ciaId, anio, mes);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task GuardarPatronoAsync()
+    {
+        try
+        {
+            datosPatrono.CiaId = ciaId;
+            datosPatrono.IgssNumeroPatronal = datosPatrono.IgssNumeroPatronal?.Trim();
+            await RrhhRepository.GuardarCompaniaRrhhAsync(datosPatrono, await ObtenerUsuIdActualAsync());
+            await ConsultarAsync();
+            mensaje = "Datos del patrono guardados.";
+            esMensajeError = false;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void EditarCentro(SucursalIgss c)
+    {
+        mensaje = null;
+        centroEdicion = new SucursalIgss
+        {
+            SucId = c.SucId, CiaId = c.CiaId, Codigo = c.Codigo, Descripcion = c.Descripcion, CentroTrabajo = c.CentroTrabajo,
+            TasaIgssPatronal = c.TasaIgssPatronal, TasaIgssLaboral = c.TasaIgssLaboral, TasaIrtra = c.TasaIrtra, TasaIntecap = c.TasaIntecap, Estado = c.Estado
+        };
+    }
+
+    private async Task GuardarCentroAsync()
+    {
+        if (centroEdicion is null) return;
+        try
+        {
+            centroEdicion.CentroTrabajo = string.IsNullOrWhiteSpace(centroEdicion.CentroTrabajo) ? null : centroEdicion.CentroTrabajo.Trim();
+            await RrhhRepository.GuardarSucursalIgssAsync(centroEdicion, await ObtenerUsuIdActualAsync());
+            centroEdicion = null;
+            centros = await RrhhRepository.ConsultarSucursalesIgssAsync(ciaId);
+            mensaje = "Centro de trabajo guardado. Las nóminas que se calculen desde ahora usan estas tasas.";
+            esMensajeError = false;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

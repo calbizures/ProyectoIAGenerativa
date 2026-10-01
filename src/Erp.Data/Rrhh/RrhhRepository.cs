@@ -162,6 +162,7 @@ public sealed class RrhhRepository(IDbConnectionFactory connectionFactory) : IRr
 			tipo.Orden,
 			tipo.CtaId,
 			tipo.Estado,
+			tipo.ColumnaLibro,
 			UsuId = usuarioAccionId
 		});
 		return GuardarConResultadoAsync("dbo.paRrhhTipoMovimientoNominaGuardar", parametros);
@@ -171,7 +172,7 @@ public sealed class RrhhRepository(IDbConnectionFactory connectionFactory) : IRr
 		ConsultarAsync<MovimientoNomina>("dbo.paRrhhMovimientoNominaConsultar",
 			new { IdEmpleado = idEmpleado, FechaDel = fechaDel?.Date, FechaAl = fechaAl?.Date, SoloPendientes = soloPendientes });
 
-	public Task<int> GuardarMovimientoAsync(int? idMovimiento, int idEmpleado, int idTipoMovimiento, string? descripcion, decimal monto, DateTime fechaAplicacion, int? usuarioAccionId)
+	public Task<int> GuardarMovimientoAsync(int? idMovimiento, int idEmpleado, int idTipoMovimiento, string? descripcion, decimal monto, DateTime fechaAplicacion, decimal? horas, int? usuarioAccionId)
 	{
 		var parametros = new DynamicParameters(new
 		{
@@ -181,6 +182,7 @@ public sealed class RrhhRepository(IDbConnectionFactory connectionFactory) : IRr
 			Descripcion = descripcion,
 			Monto = monto,
 			FechaAplicacion = fechaAplicacion.Date,
+			Horas = horas,
 			UsuId = usuarioAccionId
 		});
 		return GuardarConResultadoAsync("dbo.paRrhhMovimientoNominaGuardar", parametros);
@@ -260,6 +262,70 @@ public sealed class RrhhRepository(IDbConnectionFactory connectionFactory) : IRr
 
 	public Task<IReadOnlyList<TransferenciaNomina>> ConsultarListadoTransferenciasAsync(int idNominaPago) =>
 		ConsultarAsync<TransferenciaNomina>("dbo.paRrhhNominaTransferenciaListado", new { IdNominaPago = idNominaPago });
+
+	public Task<int> CrearNominaPrestacionAsync(int ciaId, string clase, int anio, DateTime? fechaPago, int? usuarioAccionId) =>
+		GuardarConResultadoAsync("dbo.paRrhhNominaPrestacionCrear",
+			new DynamicParameters(new { CiaId = ciaId, Clase = clase, Anio = anio, FechaPago = fechaPago?.Date, UsuId = usuarioAccionId }));
+
+	public async Task<CompaniaRrhh?> ConsultarCompaniaRrhhAsync(int ciaId) =>
+		(await ConsultarAsync<CompaniaRrhh>("dbo.paCompaniaRrhhConsultar", new { CiaId = ciaId })).FirstOrDefault();
+
+	public Task GuardarCompaniaRrhhAsync(CompaniaRrhh datos, int? usuarioAccionId) =>
+		EjecutarAsync("dbo.paCompaniaRrhhGuardar", new
+		{
+			datos.CiaId,
+			datos.IgssNumeroPatronal,
+			datos.LibroSalariosAutorizacion,
+			UsuId = usuarioAccionId
+		});
+
+	public Task<IReadOnlyList<SucursalIgss>> ConsultarSucursalesIgssAsync(int? ciaId) =>
+		ConsultarAsync<SucursalIgss>("dbo.paSucursalIgssConsultar", new { CiaId = ciaId });
+
+	public Task GuardarSucursalIgssAsync(SucursalIgss sucursal, int? usuarioAccionId) =>
+		EjecutarAsync("dbo.paSucursalIgssGuardar", new
+		{
+			sucursal.SucId,
+			sucursal.CentroTrabajo,
+			sucursal.TasaIgssPatronal,
+			sucursal.TasaIgssLaboral,
+			sucursal.TasaIrtra,
+			sucursal.TasaIntecap,
+			UsuId = usuarioAccionId
+		});
+
+	public Task GuardarLaboralEmpleadoAsync(int idEmpleado, int? sucId, string? nacionalidad, string jornada, string tiempoContrato, int? usuarioAccionId) =>
+		EjecutarAsync("dbo.paRrhhEmpleadoLaboralGuardar", new
+		{
+			IdEmpleado = idEmpleado,
+			SucId = sucId,
+			Nacionalidad = nacionalidad,
+			Jornada = jornada,
+			TiempoContrato = tiempoContrato,
+			UsuId = usuarioAccionId
+		});
+
+	public async Task<LibroSalarios> ConsultarLibroSalariosAsync(int ciaId, int anio, int? idEmpleado)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		using var multi = await connection.QueryMultipleAsync("dbo.paRrhhLibroSalariosConsultar",
+			new { CiaId = ciaId, Anio = anio, IdEmpleado = idEmpleado }, commandType: CommandType.StoredProcedure);
+		var patrono = await multi.ReadFirstOrDefaultAsync<LibroSalariosPatrono>();
+		var trabajadores = (await multi.ReadAsync<LibroSalariosTrabajador>()).ToList();
+		var renglones = (await multi.ReadAsync<LibroSalariosRenglon>()).ToList();
+		return new LibroSalarios(patrono, trabajadores, renglones);
+	}
+
+	public async Task<PlanillaIgss> ConsultarPlanillaIgssAsync(int ciaId, int anio, int mes)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		using var multi = await connection.QueryMultipleAsync("dbo.paRrhhPlanillaIgssConsultar",
+			new { CiaId = ciaId, Anio = anio, Mes = mes }, commandType: CommandType.StoredProcedure);
+		var resumen = await multi.ReadFirstOrDefaultAsync<PlanillaIgssResumen>();
+		var centros = (await multi.ReadAsync<PlanillaIgssCentro>()).ToList();
+		var empleados = (await multi.ReadAsync<PlanillaIgssEmpleado>()).ToList();
+		return new PlanillaIgss(resumen, centros, empleados);
+	}
 
 	public Task<IReadOnlyList<UnidadOrganizativaNodo>> ConsultarUnidadesArbolAsync() =>
 		ConsultarAsync<UnidadOrganizativaNodo>("dbo.paRrhhUnidadArbolConsultar");

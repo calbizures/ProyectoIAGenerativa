@@ -37,7 +37,7 @@ public interface IRrhhRepository
 	Task<IReadOnlyList<TipoMovimientoNomina>> ConsultarTiposMovimientoAsync(bool soloActivos);
 	Task<int> GuardarTipoMovimientoAsync(TipoMovimientoNomina tipo, int? usuarioAccionId);
 	Task<IReadOnlyList<MovimientoNomina>> ConsultarMovimientosAsync(int? idEmpleado, DateTime? fechaDel, DateTime? fechaAl, bool soloPendientes);
-	Task<int> GuardarMovimientoAsync(int? idMovimiento, int idEmpleado, int idTipoMovimiento, string? descripcion, decimal monto, DateTime fechaAplicacion, int? usuarioAccionId);
+	Task<int> GuardarMovimientoAsync(int? idMovimiento, int idEmpleado, int idTipoMovimiento, string? descripcion, decimal monto, DateTime fechaAplicacion, decimal? horas, int? usuarioAccionId);
 	Task AnularMovimientoAsync(int idMovimiento, int? usuarioAccionId);
 
 	// Nómina
@@ -56,4 +56,14 @@ public interface IRrhhRepository
 	Task<int> EmitirChequesNominaAsync(int idNomina, int cbcId, DateTime fecha, int? usuarioAccionId);
 	Task AnularPagoNominaAsync(int idNominaPago, string motivo, int? usuarioAccionId);
 	Task<IReadOnlyList<TransferenciaNomina>> ConsultarListadoTransferenciasAsync(int idNominaPago);
+
+	// Cumplimiento laboral: prestaciones, IGSS y libro de salarios
+	Task<int> CrearNominaPrestacionAsync(int ciaId, string clase, int anio, DateTime? fechaPago, int? usuarioAccionId);
+	Task<CompaniaRrhh?> ConsultarCompaniaRrhhAsync(int ciaId);
+	Task GuardarCompaniaRrhhAsync(CompaniaRrhh datos, int? usuarioAccionId);
+	Task<IReadOnlyList<SucursalIgss>> ConsultarSucursalesIgssAsync(int? ciaId);
+	Task GuardarSucursalIgssAsync(SucursalIgss sucursal, int? usuarioAccionId);
+	Task GuardarLaboralEmpleadoAsync(int idEmpleado, int? sucId, string? nacionalidad, string jornada, string tiempoContrato, int? usuarioAccionId);
+	Task<LibroSalarios> ConsultarLibroSalariosAsync(int ciaId, int anio, int? idEmpleado);
+	Task<PlanillaIgss> ConsultarPlanillaIgssAsync(int ciaId, int anio, int mes);
 }

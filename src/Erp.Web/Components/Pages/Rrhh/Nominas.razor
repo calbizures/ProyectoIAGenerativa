@@ -14,7 +14,7 @@
 
 <div class="pagina-encabezado">
     <h1>Nóminas</h1>
-    <p>Abra el período (semanal, quincenal o mensual), calcule, revise, apruebe y pague por transferencia o cheque. Cada empleado entra solo en las nóminas de su tipo.</p>
+    <p>Abra el período (semanal, quincenal o mensual), calcule, revise, apruebe y pague por transferencia o cheque. Cada empleado entra solo en las nóminas de su tipo. Al calcular se obtiene también la cuota patronal (IGSS, IRTRA e INTECAP) y la provisión de aguinaldo y bono 14.</p>
 </div>
 
 @if (mensaje is not null)
@@ -35,8 +35,47 @@
             }
         </select>
         <span class="barra-herramientas-separador"></span>
+        <BotonIcono Icono="calendar" Tooltip="Nómina de aguinaldo o de bono 14" Etiqueta="Aguinaldo / Bono 14" OnClick="IniciarPrestacion" />
         <BotonIcono Icono="plus" Tooltip="Nueva nómina" Etiqueta="Nueva nómina" Variante="primario" OnClick="IniciarNueva" />
     </div>
+
+    @if (mostrarPrestacion)
+    {
+        <div class="panel-formulario">
+            <h2>Aguinaldo o bono 14</h2>
+            <div class="campo">
+                <label for="pre-cia">Compañía</label>
+                <select id="pre-cia" @bind="nuevaCiaId">
+                    @foreach (var c in companias)
+                    {
+                        <option value="@c.CiaId">@c.CiaNombreComercial</option>
+                    }
+                </select>
+            </div>
+            <div class="campo">
+                <label for="pre-clase">Prestación</label>
+                <select id="pre-clase" @bind="prestacionClase" @bind:after="SugerirPrestacion">
+                    <option value="A">Aguinaldo (Decreto 76-78)</option>
+                    <option value="B">Bono 14 (Decreto 42-92)</option>
+                </select>
+            </div>
+            <div class="campo">
+                <label for="pre-anio">Año</label>
+                <input id="pre-anio" type="number" min="2000" max="2100" @bind="prestacionAnio" @bind:after="SugerirPrestacion" />
+                <small class="texto-ayuda">@PeriodoPrestacion</small>
+            </div>
+            <div class="campo">
+                <label for="pre-pago">Fecha de pago</label>
+                <input id="pre-pago" type="date" @bind="prestacionFechaPago" />
+                <small class="texto-ayuda">@(prestacionClase == "A" ? "La ley pide pagarlo en la primera quincena de diciembre (o 50 % en diciembre y 50 % en enero)." : "La ley pide pagarlo en la primera quincena de julio.")</small>
+            </div>
+            <p class="texto-ayuda">Cada empleado recibe su salario ordinario promedio del período por los días que trabajó en él, menos lo que ya se le haya pagado por ese concepto. El pago carga la provisión que acumulan las nóminas ordinarias.</p>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Crear la nómina de la prestación" Etiqueta="Crear" Variante="primario" OnClick="CrearPrestacionAsync" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarPrestacion = false" />
+            </div>
+        </div>
+    }
 
     @if (mostrarNueva)
     {
@@ -79,20 +118,21 @@
     {
         <table class="tabla-datos">
             <thead>
-                <tr><th>Descripción</th><th class="col-estado">Período</th><th class="col-fecha">Del</th><th class="col-fecha">Al</th><th class="num col-estado">Empleados</th><th class="num col-monto">Ingresos</th><th class="num col-monto">Descuentos</th><th class="num col-monto">Líquido</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+                <tr><th>Descripción</th><th class="col-estado">Período</th><th class="col-fecha">Del</th><th class="col-fecha">Al</th><th class="num col-estado">Empleados</th><th class="num col-monto">Ingresos</th><th class="num col-monto">Descuentos</th><th class="num col-monto">Líquido</th><th class="num col-monto" title="IGSS patronal + IRTRA + INTECAP">Cuota patronal</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
             </thead>
             <tbody>
                 @foreach (var n in nominas)
                 {
                     <tr class="@(seleccionada?.IdNomina == n.IdNomina ? "fila-seleccionada" : "")">
                         <td>@n.Descripcion</td>
-                        <td class="col-estado">@NombrePeriodo(n.TipoPeriodo)</td>
+                        <td class="col-estado">@(n.Clase == "O" ? NombrePeriodo(n.TipoPeriodo) : NombreClase(n.Clase))</td>
                         <td class="col-fecha">@n.FechaDel.ToString("dd/MM/yyyy")</td>
                         <td class="col-fecha">@n.FechaAl.ToString("dd/MM/yyyy")</td>
                         <td class="num col-estado">@n.CantidadEmpleados</td>
                         <td class="num col-monto">@n.TotalIngresos.ToString("N2")</td>
                         <td class="num col-monto">@n.TotalDescuentos.ToString("N2")</td>
                         <td class="num col-monto">@n.TotalLiquido.ToString("N2")</td>
+                        <td class="num col-monto">@(n.Clase == "O" ? n.TotalPatronal.ToString("N2") : "—")</td>
                         <td class="col-estado"><span class="estado-badge @(n.Estado is "A" or "C" ? "estado-badge-activo" : "estado-badge-inactivo")">@NombreEstado(n.Estado)</span></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
@@ -131,6 +171,11 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             <span>Ingresos: <strong>Q @seleccionada.TotalIngresos.ToString("N2")</strong></span>
             <span>Descuentos: <strong>Q @seleccionada.TotalDescuentos.ToString("N2")</strong></span>
             <span>Líquido a pagar: <strong>Q @seleccionada.TotalLiquido.ToString("N2")</strong></span>
+            @if (seleccionada.Clase == "O" && seleccionada.Estado != "B")
+            {
+                <span title="IGSS patronal + IRTRA + INTECAP, con las tasas de cada centro de trabajo">Cuota patronal: <strong>Q @seleccionada.TotalPatronal.ToString("N2")</strong></span>
+                <span>Provisión aguinaldo y bono 14: <strong>Q @empleadosNomina.Sum(e => e.ProvAguinaldo + e.ProvBono14).ToString("N2")</strong></span>
+            }
             @if (seleccionada.Estado == "A")
             {
                 <span>Pagado: <strong>Q @seleccionada.TotalPagado.ToString("N2")</strong></span>
@@ -156,7 +201,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         {
             <table class="tabla-datos">
                 <thead>
-                    <tr><th class="col-codigo">Código</th><th>Empleado</th><th>Centro de costo</th><th class="num col-monto">Salario base</th><th class="num col-estado">Días</th><th class="num col-monto">Ingresos</th><th class="num col-monto">Descuentos</th><th class="num col-monto">Líquido</th><th>Pago</th><th class="col-acciones">Detalle</th></tr>
+                    <tr><th class="col-codigo">Código</th><th>Empleado</th><th>Centro de costo</th><th class="num col-monto">@(seleccionada.Clase == "O" ? "Salario base" : "Salario promedio")</th><th class="num col-estado">Días</th><th class="num col-monto">Ingresos</th><th class="num col-monto">Descuentos</th><th class="num col-monto">Líquido</th><th>Pago</th><th class="col-acciones">Detalle</th></tr>
                 </thead>
                 <tbody>
                     @foreach (var e in empleadosNomina)
@@ -202,13 +247,21 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
                                             {
                                                 <tr>
                                                     <td>@d.Codigo</td>
-                                                    <td>@d.Descripcion</td>
+                                                    <td>@d.Descripcion@(d.Horas is decimal h ? $" ({h:0.##} h)" : "")</td>
                                                     <td class="num">@(d.Naturaleza == "I" ? d.Monto.ToString("N2") : "")</td>
                                                     <td class="num">@(d.Naturaleza == "D" ? d.Monto.ToString("N2") : "")</td>
                                                 </tr>
                                             }
                                         </tbody>
                                     </table>
+                                    @if (seleccionada.Clase == "O")
+                                    {
+                                        <p class="texto-tenue">
+                                            Centro de trabajo: @(e.CentroTrabajo ?? "—") · Salario afecto al IGSS: Q @e.BaseIgss.ToString("N2") ·
+                                            A cargo de la empresa: IGSS Q @e.IgssPatronal.ToString("N2"), IRTRA Q @e.Irtra.ToString("N2"), INTECAP Q @e.Intecap.ToString("N2") ·
+                                            Provisión: aguinaldo Q @e.ProvAguinaldo.ToString("N2"), bono 14 Q @e.ProvBono14.ToString("N2")
+                                        </p>
+                                    }
                                 </td>
                             </tr>
                         }
@@ -339,6 +392,10 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
     private string pestanaActiva = "lista";
     private int? filtroCiaId;
     private bool mostrarNueva;
+    private bool mostrarPrestacion;
+    private string prestacionClase = "A";
+    private int prestacionAnio = DateTime.Today.Year;
+    private DateTime? prestacionFechaPago;
     private int nuevaCiaId;
     private string nuevoTipoPeriodo = "M";
     private DateTime nuevaFechaDel;
@@ -368,6 +425,12 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         empleadosNomina.Where(e => e.IdNominaPago is null && e.Liquido > 0 && e.FormaPago == "T").ToList();
     private List<NominaEmpleado> PendientesCheque =>
         empleadosNomina.Where(e => e.IdNominaPago is null && e.Liquido > 0 && e.FormaPago == "C").ToList();
+
+    private static string NombreClase(string clase) => clase switch { "A" => "Aguinaldo", "B" => "Bono 14", _ => "Ordinaria" };
+
+    private string PeriodoPrestacion => prestacionClase == "A"
+        ? $"Período de cómputo: 01/12/{prestacionAnio - 1} al 30/11/{prestacionAnio}"
+        : $"Período de cómputo: 01/07/{prestacionAnio - 1} al 30/06/{prestacionAnio}";
 
     private static string NombrePeriodo(string tipo) => tipo switch { "S" => "Semanal", "Q" => "Quincenal", _ => "Mensual" };
 
@@ -417,9 +480,46 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         catch (Exception ex) { MostrarError(ex); }
     }
 
+    private void IniciarPrestacion()
+    {
+        mensaje = null;
+        mostrarNueva = false;
+        nuevaCiaId = filtroCiaId ?? companias.FirstOrDefault()?.CiaId ?? 0;
+        // Propone la prestación que toca: bono 14 hasta julio, aguinaldo después.
+        prestacionClase = DateTime.Today.Month <= 7 ? "B" : "A";
+        prestacionAnio = DateTime.Today.Year;
+        SugerirPrestacion();
+        mostrarPrestacion = true;
+    }
+
+    private void SugerirPrestacion() =>
+        prestacionFechaPago = prestacionAnio is < 2000 or > 2100 ? null
+            : new DateTime(prestacionAnio, prestacionClase == "A" ? 12 : 7, 15);
+
+    private async Task CrearPrestacionAsync()
+    {
+        if (nuevaCiaId <= 0)
+        {
+            mensaje = "Seleccione la compañía.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            var id = await RrhhRepository.CrearNominaPrestacionAsync(nuevaCiaId, prestacionClase, prestacionAnio, prestacionFechaPago, await ObtenerUsuIdActualAsync());
+            mostrarPrestacion = false;
+            await BuscarAsync();
+            var nomina = nominas.FirstOrDefault(n => n.IdNomina == id);
+            MostrarOk($"Nómina de {NombreClase(prestacionClase).ToLowerInvariant()} {prestacionAnio} creada. Calcúlela para ver el monto de cada empleado.");
+            if (nomina is not null) await SeleccionarAsync(nomina);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
     private async Task IniciarNueva()
     {
         mensaje = null;
+        mostrarPrestacion = false;
         nuevaCiaId = filtroCiaId ?? companias.FirstOrDefault()?.CiaId ?? 0;
         await AlCambiarCompania();
         mostrarNueva = true;

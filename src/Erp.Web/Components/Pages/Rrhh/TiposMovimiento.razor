@@ -70,6 +70,17 @@
             </select>
         </div>
         <div class="campo">
+            <label for="tmn-libro">Columna del libro de salarios</label>
+            <select id="tmn-libro" @bind="edicion.ColumnaLibro">
+                <option value="">@(edicion.Naturaleza == "I" ? "(Otras bonificaciones)" : "(Otras deducciones)")</option>
+                @foreach (var c in ColumnasLibroSalarios.Todas.Where(c => c.Naturaleza == edicion.Naturaleza))
+                {
+                    <option value="@c.Codigo">@c.Nombre</option>
+                }
+            </select>
+            <small class="texto-ayuda">Dónde aparece este concepto en el libro de salarios del Ministerio de Trabajo.</small>
+        </div>
+        <div class="campo">
             <label for="tmn-estado">Estado</label>
             <select id="tmn-estado" @bind="edicion.Estado"><option value="A">Activo</option><option value="I">Inactivo</option></select>
         </div>
@@ -83,7 +94,7 @@
 
 <table class="tabla-datos">
     <thead>
-        <tr><th class="col-codigo">Código</th><th>Descripción</th><th class="col-estado">Naturaleza</th><th>Cálculo</th><th class="col-estado">Automático</th><th class="col-estado">Base</th><th>Cuenta</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+        <tr><th class="col-codigo">Código</th><th>Descripción</th><th class="col-estado">Naturaleza</th><th>Cálculo</th><th class="col-estado">Automático</th><th class="col-estado">Base</th><th>Libro de salarios</th><th>Cuenta</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
     </thead>
     <tbody>
         @foreach (var t in tipos.Where(t => string.IsNullOrEmpty(filtroNaturaleza) || t.Naturaleza == filtroNaturaleza))
@@ -95,6 +106,7 @@
                 <td>@DescribirCalculo(t)</td>
                 <td class="col-estado">@(t.EsAutomatico ? "Sí" : "No")</td>
                 <td class="col-estado">@(t.EsBaseCalculo ? "Sí" : "No")</td>
+                <td>@ColumnasLibroSalarios.Nombre(t.ColumnaLibro ?? (t.Naturaleza == "I" ? "OTRAS_BONIF" : "OTRAS_DEDUCCIONES"))</td>
                 <td>@t.CtaCodigo</td>
                 <td class="col-estado"><span class="estado-badge @(t.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(t.Estado == "A" ? "Activo" : "Inactivo")</span></td>
                 <td class="col-acciones"><div class="acciones-fila"><BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => Editar(t)" /></div></td>
@@ -145,7 +157,7 @@
         {
             IdTipoMovimientoNomina = t.IdTipoMovimientoNomina, Codigo = t.Codigo, Descripcion = t.Descripcion,
             Naturaleza = t.Naturaleza, FormaCalculo = t.FormaCalculo, Valor = t.Valor, EsAutomatico = t.EsAutomatico,
-            EsBaseCalculo = t.EsBaseCalculo, Orden = t.Orden, CtaId = t.CtaId, Estado = t.Estado
+            EsBaseCalculo = t.EsBaseCalculo, Orden = t.Orden, CtaId = t.CtaId, Estado = t.Estado, ColumnaLibro = t.ColumnaLibro
         };
     }
 
@@ -156,6 +168,7 @@
         if (edicion.FormaCalculo == "M") edicion.EsAutomatico = false;
         if (edicion.Naturaleza == "D") edicion.EsBaseCalculo = false;
         if (edicion.FormaCalculo is "S" or "M") edicion.Valor = 0;
+        if (ColumnasLibroSalarios.Todas.All(c => c.Codigo != edicion.ColumnaLibro || c.Naturaleza != edicion.Naturaleza)) edicion.ColumnaLibro = null;
         try
         {
             int? usuId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();

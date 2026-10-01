@@ -1,0 +1,143 @@
+@* Un folio del libro de salarios (Acuerdo Ministerial 124-2019): datos del
+   patrono y del trabajador y un renglón por período pagado. Se usa en la
+   pantalla y en la vista imprimible. *@
+@using Erp.Data.Rrhh
+
+<section class="libro-folio">
+    <div class="libro-folio-encabezado">
+        <div>
+            <strong>@Patrono.NombreComercial</strong> · NIT @Patrono.Nit
+            @if (!string.IsNullOrWhiteSpace(Patrono.IgssNumeroPatronal))
+            {
+                <span> · No. patronal IGSS @Patrono.IgssNumeroPatronal</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Patrono.LibroSalariosAutorizacion))
+            {
+                <br /><span>Autorización del libro de salarios: @Patrono.LibroSalariosAutorizacion</span>
+            }
+        </div>
+        <div class="libro-folio-numero">Folio <strong>@Trabajador.Folio</strong> · Año @Patrono.Anio</div>
+    </div>
+
+    <dl class="libro-trabajador">
+        <div><dt>Nombre del trabajador</dt><dd>@Trabajador.NombreCompleto</dd></div>
+        <div><dt>Edad</dt><dd>@(Trabajador.Edad?.ToString() ?? "—")</dd></div>
+        <div><dt>Sexo</dt><dd>@(Trabajador.Genero switch { "M" => "Masculino", "F" => "Femenino", _ => "—" })</dd></div>
+        <div><dt>Nacionalidad</dt><dd>@Trabajador.Nacionalidad</dd></div>
+        <div><dt>@(Trabajador.TipoDocumento ?? "Documento")</dt><dd>@(Trabajador.NumeroDocumento ?? "—")</dd></div>
+        <div><dt>Afiliación IGSS</dt><dd>@(Trabajador.NumeroAfiliacionIGSS ?? "—")</dd></div>
+        <div><dt>Ocupación</dt><dd>@(Trabajador.Puesto ?? "—")</dd></div>
+        <div><dt>Jornada</dt><dd>@Trabajador.NombreJornada@(Trabajador.TiempoContrato == "TP" ? ", tiempo parcial" : "")</dd></div>
+        <div><dt>Fecha de ingreso</dt><dd>@Trabajador.FechaIngreso.ToString("dd/MM/yyyy")</dd></div>
+        <div><dt>Fecha de retiro</dt><dd>@(Trabajador.FechaBaja?.ToString("dd/MM/yyyy") ?? "—")</dd></div>
+    </dl>
+
+    <div class="tabla-desplazable">
+        <table class="libro-tabla">
+            <thead>
+                <tr>
+                    <th rowspan="2">No.</th>
+                    <th rowspan="2">Período de trabajo</th>
+                    <th rowspan="2" class="num">Salario (base)</th>
+                    <th rowspan="2" class="num">Días trab.</th>
+                    <th colspan="2">Horas trabajadas</th>
+                    <th colspan="5">Salario devengado</th>
+                    <th colspan="3">Deducciones</th>
+                    <th colspan="5">Bonificaciones y prestaciones</th>
+                    <th rowspan="2" class="num">Líquido a recibir</th>
+                    @if (ConFirma)
+                    {
+                        <th rowspan="2" class="libro-firma">Firma</th>
+                    }
+                </tr>
+                <tr>
+                    <th class="num">Ordin.</th>
+                    <th class="num">Extra</th>
+                    <th class="num">Ordinario</th>
+                    <th class="num">Extraordinario</th>
+                    <th class="num">Séptimos y asuetos</th>
+                    <th class="num">Vacaciones</th>
+                    <th class="num">Total</th>
+                    <th class="num">IGSS</th>
+                    <th class="num">Otras</th>
+                    <th class="num">Total</th>
+                    <th class="num">Bono 14</th>
+                    <th class="num">Aguinaldo</th>
+                    <th class="num">Bonif. incentivo</th>
+                    <th class="num">Otras</th>
+                    <th class="num">Indemniz.</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ var numero = 0; }
+                @foreach (var r in Renglones)
+                {
+                    numero++;
+                    <tr>
+                        <td>@numero</td>
+                        <td>@r.Periodo</td>
+                        <td class="num">@r.SalarioBase.ToString("N2")</td>
+                        <td class="num">@r.DiasLaborados.ToString("0.##")</td>
+                        <td class="num">@(r.HorasOrdinarias == 0 ? "" : r.HorasOrdinarias.ToString())</td>
+                        <td class="num">@Cifra(r.HorasExtra, "0.##")</td>
+                        <td class="num">@Cifra(r.Ordinario)</td>
+                        <td class="num">@Cifra(r.Extraordinario)</td>
+                        <td class="num">@Cifra(r.Septimos)</td>
+                        <td class="num">@Cifra(r.Vacaciones)</td>
+                        <td class="num">@Cifra(r.SalarioTotal)</td>
+                        <td class="num">@Cifra(r.Igss)</td>
+                        <td class="num">@Cifra(r.OtrasDeducciones)</td>
+                        <td class="num">@Cifra(r.TotalDeducciones)</td>
+                        <td class="num">@Cifra(r.Bono14)</td>
+                        <td class="num">@Cifra(r.Aguinaldo)</td>
+                        <td class="num">@Cifra(r.Bonificacion)</td>
+                        <td class="num">@Cifra(r.OtrasBonificaciones)</td>
+                        <td class="num">@Cifra(r.Indemnizacion)</td>
+                        <td class="num"><strong>@r.Liquido.ToString("N2")</strong></td>
+                        @if (ConFirma)
+                        {
+                            <td class="libro-firma"></td>
+                        }
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3">Totales del año</td>
+                    <td class="num">@Renglones.Sum(r => r.DiasLaborados).ToString("0.##")</td>
+                    <td class="num">@Renglones.Sum(r => r.HorasOrdinarias)</td>
+                    <td class="num">@Renglones.Sum(r => r.HorasExtra).ToString("0.##")</td>
+                    <td class="num">@Renglones.Sum(r => r.Ordinario).ToString("N2")</td>
+                    <td class="num">@Renglones.Sum(r => r.Extraordinario).ToString("N2")</td>
+                    <td class="num">@Renglones.Sum(r => r.Septimos).ToString("N2")</td>
+                    <td class="num">@Renglones.Sum(r => r.Vacaciones).ToString("N2")</td>
+                    <td class="num">@Renglones.Sum(r => r.SalarioTotal).ToString("N2")</td>
+                    <td class="num">@Renglones.Sum(r => r.Igss).ToString("N2")</td>
+                    <td class="num">@Renglones.Sum(r => r.OtrasDeducciones).ToString("N2")</td>
+                    <td class="num">@Renglones.Sum(r => r.TotalDeducciones).ToString("N2")</td>
+                    <td class="num">@Renglones.Sum(r => r.Bono14).ToString("N2")</td>
+                    <td class="num">@Renglones.Sum(r => r.Aguinaldo).ToString("N2")</td>
+                    <td class="num">@Renglones.Sum(r => r.Bonificacion).ToString("N2")</td>
+                    <td class="num">@Renglones.Sum(r => r.OtrasBonificaciones).ToString("N2")</td>
+                    <td class="num">@Renglones.Sum(r => r.Indemnizacion).ToString("N2")</td>
+                    <td class="num">@Renglones.Sum(r => r.Liquido).ToString("N2")</td>
+                    @if (ConFirma)
+                    {
+                        <td></td>
+                    }
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public LibroSalariosPatrono Patrono { get; set; } = default!;
+    [Parameter, EditorRequired] public LibroSalariosTrabajador Trabajador { get; set; } = default!;
+    [Parameter, EditorRequired] public IReadOnlyList<LibroSalariosRenglon> Renglones { get; set; } = Array.Empty<LibroSalariosRenglon>();
+    // En el impreso cada renglón lleva espacio para la firma del trabajador.
+    [Parameter] public bool ConFirma { get; set; }
+
+    // Los ceros se dejan en blanco para que el folio se lea mejor.
+    private static string Cifra(decimal valor, string formato = "N2") => valor == 0 ? "" : valor.ToString(formato);
+}

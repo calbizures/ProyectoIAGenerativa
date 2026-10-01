@@ -188,6 +188,47 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
             </div>
         </div>
 
+        <h3>IGSS y libro de salarios</h3>
+        <p class="texto-ayuda">El centro de trabajo fija las tasas del IGSS, IRTRA e INTECAP y la planilla en la que se reporta. Si no se indica, se toma la sucursal del departamento del empleado.</p>
+        <div class="panel-formulario panel-ancho">
+            <div class="campo">
+                <label for="emp-centro">Centro de trabajo (IGSS)</label>
+                <select id="emp-centro" @bind="laboralSucId">
+                    <option value="">(La sucursal de su departamento)</option>
+                    @foreach (var c in centrosTrabajo)
+                    {
+                        <option value="@c.SucId">@c.Codigo — @c.Descripcion@(c.CentroTrabajo is null ? "" : $" · centro {c.CentroTrabajo}")</option>
+                    }
+                </select>
+            </div>
+            <div class="campo">
+                <label for="emp-nacionalidad">Nacionalidad</label>
+                <input id="emp-nacionalidad" maxlength="40" placeholder="GUATEMALTECA" @bind="laboralNacionalidad" />
+            </div>
+            <div class="campo">
+                <label for="emp-jornada">Jornada</label>
+                <select id="emp-jornada" @bind="laboralJornada">
+                    <option value="D">Diurna (48 horas semanales)</option>
+                    <option value="M">Mixta (42 horas semanales)</option>
+                    <option value="N">Nocturna (36 horas semanales)</option>
+                </select>
+            </div>
+            <div class="campo">
+                <label for="emp-tiempo">Contrato</label>
+                <select id="emp-tiempo" @bind="laboralTiempo">
+                    <option value="TC">Tiempo completo</option>
+                    <option value="TP">Tiempo parcial</option>
+                </select>
+            </div>
+            @if (seleccionado.FolioLibroSalarios is int folio)
+            {
+                <div class="campo"><label>Folio del libro de salarios</label><span class="valor-detalle">@folio</span></div>
+            }
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar datos laborales" Etiqueta="Guardar datos laborales" Variante="primario" OnClick="GuardarLaboralAsync" />
+            </div>
+        </div>
+
         <h3>Historial de plazas y salario</h3>
         @if (historial.Count == 0)
         {
@@ -302,6 +343,11 @@ else if (pestanaActiva == "editar")
     private string pagoTipoCuenta = "";
     private string pagoNumeroCuenta = "";
     private DateTime fechaBaja = DateTime.Today;
+    private IReadOnlyList<SucursalIgss> centrosTrabajo = Array.Empty<SucursalIgss>();
+    private int? laboralSucId;
+    private string laboralNacionalidad = "";
+    private string laboralJornada = "D";
+    private string laboralTiempo = "TC";
 
     private string pestanaActiva = "lista";
     private string filtro = "";
@@ -381,6 +427,11 @@ else if (pestanaActiva == "editar")
             pagoGefId = empleado?.GefId;
             pagoTipoCuenta = empleado?.TipoCuenta ?? "";
             pagoNumeroCuenta = empleado?.NumeroCuenta ?? "";
+            laboralSucId = empleado?.SucId;
+            laboralNacionalidad = empleado?.Nacionalidad ?? "";
+            laboralJornada = empleado?.Jornada ?? "D";
+            laboralTiempo = empleado?.TiempoContrato ?? "TC";
+            centrosTrabajo = empleado is null ? Array.Empty<SucursalIgss>() : await RrhhRepository.ConsultarSucursalesIgssAsync(empleado.CiaId);
             fechaBaja = DateTime.Today;
             pestanaActiva = empleado is null ? "lista" : "detalle";
         }
@@ -477,6 +528,23 @@ else if (pestanaActiva == "editar")
                 await ObtenerUsuIdActualAsync());
             await BuscarAsync();
             MostrarOk("Datos de pago de nómina guardados.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task GuardarLaboralAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            await RrhhRepository.GuardarLaboralEmpleadoAsync(seleccionado.IdEmpleado, laboralSucId,
+                string.IsNullOrWhiteSpace(laboralNacionalidad) ? null : laboralNacionalidad.Trim(), laboralJornada, laboralTiempo,
+                await ObtenerUsuIdActualAsync());
+            seleccionado.SucId = laboralSucId;
+            seleccionado.Nacionalidad = string.IsNullOrWhiteSpace(laboralNacionalidad) ? null : laboralNacionalidad.Trim().ToUpperInvariant();
+            seleccionado.Jornada = laboralJornada;
+            seleccionado.TiempoContrato = laboralTiempo;
+            MostrarOk("Datos laborales guardados.");
         }
         catch (Exception ex) { MostrarError(ex); }
     }

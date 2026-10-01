@@ -63,21 +63,22 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 46_datos_sinteticos_traslados.sql             -- opcional: tercera bodega y dos traslados de prueba
 47_reparar_opciones_set.sql                   -- repara objetos creados con QUOTED_IDENTIFIER/ANSI_NULLS en OFF y prueba grabar una factura
 48_impresion_factura.sql                      -- impresión de la factura en carta o en impresora térmica
+49_rrhh_libro_salarios_igss.sql               -- cuota patronal, aguinaldo y bono 14, libro de salarios y planilla del IGSS
 ```
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `48` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `49` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45`, `47` y `48` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `49` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `48`. Si vuelves a
-correr `12`, corre después `22` a `48` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `49`. Si vuelves a
+correr `12`, corre después `22` a `49` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -1227,6 +1228,93 @@ del certificador (tomados del XML certificado) y un código QR con el número
 de autorización para verificarla en el portal de la SAT. Si el documento
 está anulado o no se ha certificado, lo indica con un aviso y una marca de
 agua. En térmica, el largo del papel se ajusta al contenido.
+
+## Libro de salarios, cuota patronal, aguinaldo, bono 14 y planilla del IGSS (`49`)
+
+Requiere `25`, `28`, `29` y `36`; redefine el cálculo, la aprobación y las
+consultas de la nómina, así que si vuelves a correr `36` corre después `49`.
+Errores `54101`-`54118`.
+
+**Patrono y centros de trabajo** (**RRHH › Planilla del IGSS › Patrono y
+centros de trabajo**):
+
+- `gen_compania.cia_igss_numero_patronal` y
+  `cia_libro_salarios_autorizacion` (número de autorización del libro de
+  salarios del Ministerio de Trabajo).
+- Cada sucursal es un centro de trabajo del IGSS (`suc_igss_centro_trabajo`)
+  con sus tasas: `suc_tasa_igss_patronal` 10.67 %, `suc_tasa_irtra` 1 % y
+  `suc_tasa_intecap` 1 % por defecto (ciudad de Guatemala).
+  `suc_tasa_igss_laboral` vacía usa la del tipo de movimiento `IGSS_LABORAL`
+  (4.83 %).
+- Empleado: centro de trabajo (`suc_id`; si no tiene, la sucursal de su
+  departamento y, si tampoco, la primera de la compañía, en
+  `fnRrhhEmpleadoSucursal`), nacionalidad, jornada (diurna, mixta,
+  nocturna), contrato a tiempo completo o parcial (`TC`/`TP`) y folio del
+  libro. Se editan en **RRHH › Empleados › IGSS y libro de salarios**.
+
+**Cuota patronal y provisiones.** Al calcular una nómina ordinaria, sobre el
+salario afecto (los ingresos con `EsBaseCalculo`: sueldo, horas extra,
+comisiones, vacaciones, séptimos; no la bonificación incentivo, el aguinaldo,
+el bono 14 ni la indemnización) se calcula IGSS patronal, IRTRA e INTECAP
+con las tasas del centro de trabajo, y se provisiona 1/12 del salario
+ordinario para el aguinaldo y otro 1/12 para el bono 14. Todo queda por
+empleado en `rrhhNominaEmpleado` (`BaseIgss`, tasas, `IgssPatronal`,
+`Irtra`, `Intecap`, `ProvAguinaldo`, `ProvBono14`) y el total en
+`rrhhNomina.TotalPatronal`. La póliza de la nómina agrega:
+
+| Cuenta | Debe | Haber |
+|---|---|---|
+| 5110008 Cuota patronal IGSS, 5110072 IRTRA, 5110073 INTECAP (por departamento) | cuotas | |
+| 2110016 Cuotas patronales IGSS, IRTRA e INTECAP por pagar | | total |
+| 5110005 Aguinaldo y 5110004 Bono 14 (por departamento) | provisión | |
+| 2110017 Provisión aguinaldo y 2110018 Provisión bono 14 | | provisión |
+
+Las cuentas se cambian en los conceptos `NOMINA_IGSS_PATRONAL_GASTO`,
+`NOMINA_IRTRA_GASTO`, `NOMINA_INTECAP_GASTO`, `NOMINA_PATRONAL_POR_PAGAR`,
+`NOMINA_AGUINALDO_GASTO`, `NOMINA_BONO14_GASTO`,
+`NOMINA_PROVISION_AGUINALDO` y `NOMINA_PROVISION_BONO14`. Las nóminas
+aprobadas antes del script reciben estos cálculos (para el libro y la
+planilla) sin cambiar su póliza.
+
+**Aguinaldo (Decreto 76-78) y bono 14 (Decreto 42-92).** Botón
+**Aguinaldo / Bono 14** en **RRHH › Nóminas** (`paRrhhNominaPrestacionCrear`):
+nómina de clase `A` o `B` (`rrhhNomina.Clase`; las ordinarias son `O`) con
+el período de la ley: aguinaldo del 1 de diciembre al 30 de noviembre, bono
+14 del 1 de julio al 30 de junio. Monto por empleado = salario ordinario
+promedio mensual de las nóminas aprobadas del período (si no hay, el
+salario base) × días laborados en el período / días del período, menos lo
+ya pagado por ese concepto en el período. Entran los empleados activos al
+cierre del período. Se calcula, aprueba y paga como cualquier nómina; su
+póliza carga la provisión. Tipos de movimiento nuevos (manuales):
+`SEPTIMOS`, `VACACIONES`, `AGUINALDO`, `BONO14` e `INDEMNIZACION`.
+
+**Libro de salarios** (**RRHH › Libro de salarios**,
+`paRrhhLibroSalariosConsultar`; Código de Trabajo art. 102 y Acuerdo
+Ministerial 124-2019): un folio por trabajador (número fijo, asignado la
+primera vez que aparece) con nombre, edad, sexo, nacionalidad, DPI,
+afiliación al IGSS, ocupación, jornada y fechas de ingreso y retiro; y por
+cada nómina aprobada del año: período, salario, días, horas ordinarias
+(días × jornada semanal / 7) y extraordinarias, salario ordinario,
+extraordinario, séptimos y asuetos, vacaciones, salario total, cuota
+laboral del IGSS, otras deducciones, bono 14, aguinaldo, bonificación
+incentivo, otras bonificaciones, indemnización y líquido. Cada tipo de
+movimiento indica su columna del libro (`rrhhTipoMovimientoNomina.ColumnaLibro`,
+editable en **RRHH › Tipos de movimiento**). Las horas extra se capturan
+con su número de horas (`rrhhMovimientoNomina.Horas`, obligatorio para los
+tipos de la columna de salario extraordinario). Sale en pantalla, en Excel
+(una hoja por folio) y en un impreso en carta horizontal, un trabajador por
+hoja, con columna de firma.
+
+**Planilla del IGSS** (**RRHH › Planilla del IGSS**,
+`paRrhhPlanillaIgssConsultar`): por mes, de las nóminas ordinarias
+aprobadas cuya fecha final cae en él. Totales por centro de trabajo y, por
+trabajador, afiliación, nombres y apellidos separados, DPI, NIT, centro,
+contrato, alta o baja del mes, días, salario afecto, cuota laboral, IGSS
+patronal, IRTRA, INTECAP y total. Avisa si falta el número patronal, si hay
+trabajadores sin afiliación o nóminas del mes sin aprobar. Se descarga en
+Excel y se imprime. **Pendiente:** el archivo `.TXT` de carga del sistema
+de Planilla Electrónica del IGSS (formato 2.2.0) se agregará con el manual
+oficial `GenerarArchivoPlanilla_2.2.0.pdf`.
 
 ## Módulos nuevos
 

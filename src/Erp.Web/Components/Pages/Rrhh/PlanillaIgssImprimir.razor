@@ -1,0 +1,59 @@
+@page "/rrhh/planilla-igss/imprimir"
+@layout Erp.Web.Components.Layout.ReporteLayout
+@attribute [Authorize(Policy = "Permiso:RRHH_ADMIN")]
+@using Erp.Data.Rrhh
+@inject IRrhhRepository RrhhRepository
+
+<PageTitle>Planilla del IGSS @Mes/@Anio</PageTitle>
+
+<div class="reporte-acciones">
+    <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
+        <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir o guardar PDF</span>
+    </button>
+</div>
+
+@if (error is not null)
+{
+    <p class="mensaje-error" role="alert">@error</p>
+}
+else if (planilla?.Resumen is { } resumen)
+{
+    <div class="reporte-encabezado">
+        <div>
+            <LogoCompania CiaId="resumen.CiaId" Clase="reporte-logo" />
+            <div class="reporte-compania">@resumen.NombreComercial · NIT @resumen.Nit</div>
+            <h1>Planilla de seguridad social · @NombreMes @resumen.Anio</h1>
+        </div>
+        <div class="reporte-meta">
+            Número patronal: <strong>@(resumen.IgssNumeroPatronal ?? "sin registrar")</strong><br />
+            Trabajadores: @resumen.Empleados · Salario afecto: Q @resumen.SalarioAfecto.ToString("N2")<br />
+            Total a pagar: <strong>Q @resumen.TotalPagar.ToString("N2")</strong>
+        </div>
+    </div>
+    <h2>Por centro de trabajo</h2>
+    <PlanillaIgssCentros Centros="planilla.Centros" />
+    <h2>Trabajadores</h2>
+    <PlanillaIgssEmpleados Empleados="planilla.Empleados" />
+    <p class="reporte-pie">Generado el @DateTime.Now.ToString("dd/MM/yyyy HH:mm"). Nóminas ordinarias aprobadas con fecha final en el mes.</p>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "cia")] public int Cia { get; set; }
+    [SupplyParameterFromQuery] public int Anio { get; set; }
+    [SupplyParameterFromQuery] public int Mes { get; set; }
+
+    private PlanillaIgss? planilla;
+    private string? error;
+
+    private string NombreMes => Mes is >= 1 and <= 12
+        ? System.Globalization.CultureInfo.GetCultureInfo("es-GT").DateTimeFormat.GetMonthName(Mes) : "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            planilla = await RrhhRepository.ConsultarPlanillaIgssAsync(Cia, Anio, Mes);
+        }
+        catch (Exception ex) { error = MensajesError.Traducir(ex); }
+    }
+}
