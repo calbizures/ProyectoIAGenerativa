@@ -3,6 +3,7 @@ using Erp.Data.Caja;
 using Erp.Data.Cargas;
 using Erp.Data.Compras;
 using Erp.Data.Contabilidad;
+using Erp.Data.Correo;
 using Erp.Data.Cuentas;
 using Erp.Data.Fel;
 using Erp.Data.General;
@@ -58,6 +59,7 @@ public static class DependencyInjection
 		services.AddScoped<ITrasladoRepository, TrasladoRepository>();
 		services.AddScoped<ICargasRepository, CargasRepository>();
 		services.AddScoped<IPagosRepository, PagosRepository>();
+		services.AddScoped<ICorreoRepository, CorreoRepository>();
 		return services;
 	}
 }

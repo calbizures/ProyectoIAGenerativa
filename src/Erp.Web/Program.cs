@@ -29,6 +29,8 @@ builder.Services.AddHttpClient("Fel");
 builder.Services.AddSingleton<IFelCertificador, SimuladorCertificador>();
 builder.Services.AddSingleton<IFelCertificador, InfileCertificador>();
 builder.Services.AddScoped<FelService>();
+builder.Services.AddScoped<Erp.Web.Correo.CorreoServicio>();
+builder.Services.AddScoped<Erp.Web.Correo.EstadoCuentaCorreo>();
 builder.Services.AddScoped<Erp.Web.Components.Shared.AvisosServicio>();
 builder.Services.AddScoped<Erp.Web.Components.Shared.EdicionServicio>();
 builder.Services.AddScoped<FelConsultaNitServicio>();
@@ -185,6 +187,15 @@ app.MapGet("/reportes/nomina/transferencias/{idNominaPago:int}.xlsx", async (int
 	if (filas.Count == 0) return Results.NotFound();
 	var archivo = ReportesExcel.TransferenciasNomina(filas, await CompaniaReporteAsync(contexto, general));
 	return Results.File(archivo, TipoExcel, $"transferencias-nomina-{idNominaPago}.xlsx");
+}).RequireAuthorization();
+
+// Estado de cuenta del cliente en PDF (el mismo que se envía por correo).
+app.MapGet("/reportes/cxc/estado-cuenta.pdf", async (int id, DateTime? desde, DateTime? hasta, HttpContext contexto,
+	Erp.Web.Correo.EstadoCuentaCorreo estadoCuenta, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:CXC_ADMIN")).Succeeded) return Results.Forbid();
+	var documento = await estadoCuenta.GenerarAsync(id, desde, hasta, contexto.User.ObtenerSucId());
+	return documento is null ? Results.NotFound() : Results.File(documento.Pdf, "application/pdf", documento.NombreArchivo);
 }).RequireAuthorization();
 
 // Archivo de transferencias para el banco, con el formato elegido:

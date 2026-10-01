@@ -219,4 +219,11 @@ public sealed class CuentasRepository(IDbConnectionFactory connectionFactory) : 
 		}
 		return tabla;
 	}
+
+	public async Task<ClienteEstadoCuenta?> ConsultarDatosEstadoCuentaClienteAsync(int cliId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		return await connection.QueryFirstOrDefaultAsync<ClienteEstadoCuenta>("dbo.paClienteEstadoCuentaDatos", new { CliId = cliId },
+			commandType: CommandType.StoredProcedure);
+	}
 }

@@ -2,6 +2,10 @@
 @using Erp.Data.Cuentas
 @using Erp.Data.Ventas
 @inject ICuentasRepository CuentasRepository
+@inject Erp.Web.Correo.EstadoCuentaCorreo EstadoCuentaCorreo
+@inject Erp.Data.Correo.ICorreoRepository CorreoRepository
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
 
 <div class="pagina-encabezado">
     <h1>Estado de cuenta de @(EsCliente ? "clientes" : "proveedores")</h1>
@@ -28,6 +32,13 @@
         <a class="boton-icono boton-icono-con-etiqueta" href="@UrlImprimir" target="_blank" rel="noopener" title="Abrir el estado de cuenta para imprimir">
             <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
         </a>
+        @if (EsCliente)
+        {
+            <a class="boton-icono boton-icono-con-etiqueta" href="@($"reportes/cxc/estado-cuenta.pdf?{Filtros}")" download title="Descargar el estado de cuenta en PDF (el mismo que se envía por correo)">
+                <Icono Nombre="file-text" Tamano="16" /><span class="boton-icono-etiqueta">PDF</span>
+            </a>
+            <BotonIcono Icono="mail" Tooltip="Enviar el estado de cuenta al correo del cliente" Etiqueta="Enviar por correo" Variante="primario" OnClick="AbrirCorreoAsync" />
+        }
         @if (!EsCliente && consultado && documentos.Sum(d => d.Saldo) > 0)
         {
             <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@($"cxp/pagos?prv={tercero.Id}&todo=1")" title="Pagar todo el saldo del proveedor con un cheque">
@@ -85,6 +96,61 @@
 }
 else if (consultado)
 {
+    @if (avisoCorreo is not null)
+    {
+        <p class="@(avisoCorreoError ? "mensaje-error" : "mensaje-ok")" role="@(avisoCorreoError ? "alert" : "status")">@avisoCorreo</p>
+    }
+    @if (correo is not null)
+    {
+        <section class="tarjeta" aria-labelledby="titulo-correo">
+            <h2 id="titulo-correo">Enviar el estado de cuenta por correo</h2>
+            <p class="texto-tenue">
+                Saldo Q@(correo.Datos.Cliente.Saldo.ToString("N2")) · vencido Q@(correo.Datos.Cliente.Vencido.ToString("N2"))
+                · límite @(correo.Datos.Cliente.Limite > 0 ? $"Q{correo.Datos.Cliente.Limite:N2}" : "sin límite")
+                · disponible @(correo.Datos.Cliente.Disponible is decimal disp ? $"Q{disp:N2}" : "—").
+                Se adjunta <a href="@($"reportes/cxc/estado-cuenta.pdf?{Filtros}")" download>@correo.NombreArchivo</a> con el detalle.
+            </p>
+            <div class="panel-formulario panel-ancho">
+                <div class="campo campo-ancho">
+                    <label for="ec-para">Para</label>
+                    <input id="ec-para" type="email" multiple maxlength="300" @bind="correoPara" placeholder="correo@cliente.com" />
+                    @if (string.IsNullOrWhiteSpace(correo.Datos.Cliente.Correo))
+                    {
+                        <small class="texto-ayuda" role="alert">El cliente no tiene correo registrado: escríbalo aquí o regístrelo en Ventas › Clientes.</small>
+                    }
+                </div>
+                <div class="campo campo-ancho"><label for="ec-copia">Copia</label><input id="ec-copia" maxlength="300" @bind="correoCopia" placeholder="Opcional; varios separados por coma" /></div>
+                <div class="campo campo-ancho"><label for="ec-asunto">Asunto</label><input id="ec-asunto" maxlength="200" @bind="correoAsunto" /></div>
+                <div class="campo campo-ancho">
+                    <label for="ec-mensaje">Mensaje adicional</label>
+                    <textarea id="ec-mensaje" rows="3" maxlength="1000" @bind="correoMensaje" placeholder="Opcional: se agrega al texto del correo"></textarea>
+                </div>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="send" Tooltip="Enviar el correo con el PDF adjunto" Etiqueta="Enviar" Variante="primario"
+                            Deshabilitado="enviando || string.IsNullOrWhiteSpace(correoPara)" OnClick="EnviarCorreoAsync" />
+                <BotonIcono Icono="x" Tooltip="Cerrar" Etiqueta="Cerrar" OnClick="() => correo = null" />
+            </div>
+            @if (envios.Count > 0)
+            {
+                <h3>Envíos anteriores a este cliente</h3>
+                <table class="tabla-datos">
+                    <thead><tr><th class="col-fecha">Fecha</th><th>Para</th><th>Usuario</th><th class="col-estado">Resultado</th></tr></thead>
+                    <tbody>
+                        @foreach (var e in envios)
+                        {
+                            <tr>
+                                <td class="col-fecha">@e.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@e.Destinatario@(e.Copia is null ? "" : $" (copia: {e.Copia})")</td>
+                                <td>@e.Usuario</td>
+                                <td class="col-estado"><span class="estado-badge @(e.Estado == "E" ? "estado-badge-activo" : "estado-badge-anulada")" title="@e.Error">@(e.Estado == "E" ? "Enviado" : "Falló")</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+    }
     <div class="kpi-fila">
         <div class="kpi"><span class="kpi-etiqueta">Saldo pendiente</span><span class="kpi-valor">Q@(documentos.Sum(d => d.Saldo).ToString("N2"))</span></div>
         <div class="kpi"><span class="kpi-etiqueta">Documentos con saldo</span><span class="kpi-valor">@documentos.Count</span></div>
@@ -112,6 +178,9 @@ else if (consultado)
 }
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
     [Parameter] public bool EsCliente { get; set; } = true;
     // Tercero con el que abre la pantalla (p. ej. desde la antigüedad de saldos).
     [Parameter] public int? TerceroId { get; set; }
@@ -134,6 +203,15 @@ else if (consultado)
     private IReadOnlyList<CuotaProveedor> cuotasProveedor = Array.Empty<CuotaProveedor>();
     private string? mensaje;
     private List<AntiguedadGrupo> cartera = new();
+    private Erp.Web.Correo.EstadoCuentaCorreo.Documento? correo;
+    private IReadOnlyList<Erp.Data.Correo.CorreoEnviado> envios = Array.Empty<Erp.Data.Correo.CorreoEnviado>();
+    private string correoPara = "";
+    private string correoCopia = "";
+    private string correoAsunto = "";
+    private string correoMensaje = "";
+    private bool enviando;
+    private string? avisoCorreo;
+    private bool avisoCorreoError;
 
     private string Modulo => EsCliente ? "cxc" : "cxp";
     private string Filtros => $"id={tercero?.Id}{(desde is null ? "" : $"&desde={desde:yyyy-MM-dd}")}{(hasta is null ? "" : $"&hasta={hasta:yyyy-MM-dd}")}";
@@ -155,9 +233,50 @@ else if (consultado)
         if (inicial is not null) await CambiarTerceroAsync(new TerceroSeleccion(inicial.Id, inicial.Codigo, inicial.Nombre));
     }
 
+    private async Task<System.Security.Claims.ClaimsPrincipal?> UsuarioAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User;
+
+    // Arma el PDF con el período en pantalla y propone el correo del cliente.
+    private async Task AbrirCorreoAsync()
+    {
+        if (tercero is null) return;
+        avisoCorreo = null;
+        try
+        {
+            var usuario = await UsuarioAsync();
+            correo = await EstadoCuentaCorreo.GenerarAsync(tercero.Id, desde, hasta, usuario?.ObtenerSucId());
+            if (correo is null) return;
+            correoPara = correo.Datos.Cliente.Correo ?? "";
+            correoCopia = "";
+            correoMensaje = "";
+            correoAsunto = Erp.Web.Correo.EstadoCuentaCorreo.Asunto(correo);
+            envios = await CorreoRepository.ConsultarEnviosAsync(Erp.Web.Correo.EstadoCuentaCorreo.Tipo, tercero.Id, 5);
+        }
+        catch (Exception ex) { avisoCorreo = MensajesError.Traducir(ex); avisoCorreoError = true; }
+    }
+
+    private async Task EnviarCorreoAsync()
+    {
+        if (correo is null || tercero is null) return;
+        enviando = true;
+        try
+        {
+            var usuario = await UsuarioAsync();
+            var resultado = await EstadoCuentaCorreo.EnviarAsync(correo, correoPara, correoCopia, correoAsunto, correoMensaje, usuario?.ObtenerUsuId());
+            avisoCorreo = resultado.Mensaje;
+            avisoCorreoError = !resultado.Enviado;
+            envios = await CorreoRepository.ConsultarEnviosAsync(Erp.Web.Correo.EstadoCuentaCorreo.Tipo, tercero.Id, 5);
+            if (resultado.Enviado) correo = null;
+        }
+        catch (Exception ex) { avisoCorreo = MensajesError.Traducir(ex); avisoCorreoError = true; }
+        finally { enviando = false; }
+    }
+
     private async Task CambiarTerceroAsync(TerceroSeleccion? nuevo)
     {
         tercero = nuevo;
+        correo = null;
+        avisoCorreo = null;
         consultado = false;
         documentoSeleccionado = null;
         if (tercero is not null) await ConsultarAsync();
@@ -179,6 +298,7 @@ else if (consultado)
                 movimientos = await CuentasRepository.ConsultarEstadoCuentaProveedorAsync(tercero.Id, desde, hasta);
             }
             documentoSeleccionado = null;
+            correo = null;
             consultado = true;
             mensaje = null;
         }

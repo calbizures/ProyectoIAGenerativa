@@ -1783,6 +1783,10 @@ a.modulo-card:focus-visible {
 
 .maestro-detalle > .tarjeta {
     padding: 1rem;
+}
+
+/* Detalle con tablas anchas que se desplazan dentro de la tarjeta (Formatos de archivo). */
+.maestro-detalle > .tarjeta.tarjeta-encogible {
     min-width: 0;
 }
 
@@ -3136,3 +3140,8 @@ fieldset.sin-borde { border: 0; padding: 0; margin: 0; min-width: 0; }
 .formato-resumen dt { font-weight: 600; color: var(--si-navy-700, #34405a); }
 .formato-resumen dd { margin: 0; overflow-wrap: anywhere; }
 @media (max-width: 640px) { .formato-resumen { grid-template-columns: 1fr; } .formato-resumen dd { margin-bottom: 0.4rem; } }
+
+/* Casillas de selección en tablas: área táctil cómoda en el celular. */
+@media (max-width: 640px) {
+    .tabla-datos .col-check input[type=checkbox] { width: 28px; height: 28px; }
+}

@@ -265,3 +265,20 @@ public sealed class CreditoCliente
 	public decimal Saldo { get; set; }
 	public decimal? Disponible { get; set; }
 }
+
+public sealed class ClienteEstadoCuenta
+{
+	public int CliId { get; set; }
+	public string Codigo { get; set; } = "";
+	public string Nombre { get; set; } = "";
+	public string? Nit { get; set; }
+	public string? Direccion { get; set; }
+	public string? Correo { get; set; }
+	public string? Telefono { get; set; }
+	public decimal Limite { get; set; }
+	public decimal Saldo { get; set; }
+	public decimal? Disponible { get; set; }
+	public decimal Vencido { get; set; }
+	public DateTime? UltimaCompra { get; set; }
+	public DateTime? UltimoPago { get; set; }
+}

@@ -71,21 +71,24 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 54_rotacion_reorden.sql                       -- rotación del inventario, punto de reorden y sugerencia de órdenes de compra
 55_planilla_igss_archivo.sql                  -- archivo TXT de la planilla del IGSS (sistema propio 2.2.0) y sus catálogos
 56_libro_salarios_otros_salarios.sql          -- libro de salarios: columna "otros salarios" del formato único del MINTRAB
+57_orden_compra_firmas.sql                    -- orden de compra con visto bueno del jefe de bodega y aprobación del contador general
+58_contrasenas_pago_transferencias.sql        -- contraseñas de pago, pago por cheque o transferencia, archivo para el banco
+59_correo_estado_cuenta.sql                   -- correo saliente (SMTP) de la compañía y bitácora; estado de cuenta por correo
 ```
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `56` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `59` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `56` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `59` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `56`. Si vuelves a
-correr `12`, corre después `22` a `56` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `59`. Si vuelves a
+correr `12`, corre después `22` a `59` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -94,7 +97,11 @@ depósito de caja y el mantenimiento de cuentas bancarias). Si vuelves a
 correr `34` o `38`, corre después el `42` (redefine la consulta de cheques a
 proveedores y el tablero de compras). Si vuelves a correr `10` o `38`,
 corre después el `44` (redefine la consulta de usuarios y la carga de
-empleados con la validación del NIT y el DPI).
+empleados con la validación del NIT y el DPI). Si vuelves a correr `34`,
+`36`, `42` o `51`, corre después el `58` (el estado de cuenta del
+proveedor, la anulación de cheques y de compras, el tablero de compras y el
+control 6 de integridad cuentan las transferencias). Si vuelves a correr
+`53`, corre después el `57` (orden de compra con dos firmas).
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -1509,6 +1516,71 @@ separa en el salario devengado el ordinario, el extraordinario, **otros
 salarios** (comisiones, destajo, producción), séptimos y asuetos y
 vacaciones. Se agrega la columna `OTROS_SALARIOS` y las comisiones pasan a
 ella; los promedios de aguinaldo y Bono 14 siguen contándolas.
+
+## Orden de compra con dos firmas (`57`)
+
+Errores `54523`-`54527`. La elabora el bodeguero; la autorizan, en ese orden,
+el **jefe de bodega** (visto bueno, `COMPRAS_ORDEN_APROBAR_BODEGA`) y el
+**contador general** (aprobación, `COMPRAS_ORDEN_APROBAR`).
+
+- Estados: borrador `B` → visto bueno `V` → aprobada `A`. El contador puede
+  **devolver** una orden con visto bueno al borrador, con motivo (se muestra
+  en la orden). La misma persona no puede dar las dos firmas.
+- Roles nuevos `BODEGUERO`, `JEFE_BODEGA` y `CONTADOR_GENERAL` (este con los
+  permisos del contador); usuarios de demostración `bodega01`, `jbodega` y
+  `cgeneral` (contraseña `Demo#2024`). Los botones solo aparecen con el
+  permiso de cada firma; la impresión lleva las tres firmas.
+
+## Contraseñas de pago, pago por transferencia y archivo para el banco (`58`)
+
+Errores `54801`-`54839`.
+
+- **Proveedor**: forma de pago (cheque o transferencia), banco, tipo y número
+  de cuenta y nombre de la cuenta. **Compañía**: día de pago a proveedores
+  (viernes por omisión).
+- **Contraseña de pago** (`cxp_contrasena_enc/_det`, `CP-000001`): las
+  facturas (cuotas) que se le pagarán al proveedor y la fecha de pago; la
+  sugerida es el primer día de pago a partir del vencimiento más lejano.
+  Una cuota no puede estar en dos contraseñas pendientes. Se imprime para
+  entregarla al proveedor.
+- **Pago**: con cheque (`paContrasenaPagarCheque`, usa el cheque de
+  proveedores del `42` con su póliza) o por **lote de transferencias**
+  (`paContrasenaPagarTransferencia`, `LT-000001`): aplica el pago a cada
+  cuota y genera una sola póliza con origen `PAGO_TRANSFERENCIA` (Debe
+  proveedores por contraseña, Haber la cuenta de abonos del banco). Anular
+  el cheque o el lote devuelve el saldo y deja la contraseña pendiente.
+- **Formatos de archivo por banco** (`bco_formato_archivo` y sus columnas y
+  códigos de banco): delimitado o de ancho fijo, separador, títulos,
+  comillas, encabezado y pie con marcadores (`{TOTAL,15}`), formato de
+  fecha y de monto, códigos de tipo de cuenta y de cada banco destino. La
+  aplicación escribe el archivo del lote de proveedores o del pago de la
+  nómina (`paRrhhNominaTransferenciaArchivo`). Se incluyen un formato CSV
+  genérico y uno de ancho fijo de ejemplo: ajústelos a la especificación de
+  cada banco.
+- Redefine para contar las transferencias: estado de cuenta del proveedor,
+  anulación de cheques y de compras, tablero de compras y control 6 de
+  integridad. Agrega a la lista de orígenes de partida los de la fase 3
+  (`CAJA_CHICA`, `DEPRECIACION`, `ACTIVO_FIJO`, `CIERRE_ANUAL`); `36`, `38`
+  y `45` ya no la reducen si se vuelven a correr.
+- Permisos `CXP_CONTRASENA`, `CXP_PAGO_PROGRAMADO` y
+  `BANCOS_FORMATO_ARCHIVO` (administrador, contador y contador general).
+
+## Estado de cuenta por correo (`59`)
+
+Errores `54901`-`54906`.
+
+- **Correo saliente de la compañía**: servidor SMTP, puerto, STARTTLS,
+  usuario, contraseña (la cifra la aplicación con Data Protection; en la
+  base nunca queda en texto plano), remitente y copia opcional.
+- **Bitácora** `gen_correo_bitacora`: destinatario, copia, asunto, adjunto,
+  usuario, fecha y si el servidor lo aceptó o el error que devolvió.
+- `paClienteEstadoCuentaDatos`: contacto del cliente, límite, saldo,
+  vencido, crédito disponible, última compra y último pago.
+- La aplicación arma el estado de cuenta en PDF (carta) con los datos del
+  cliente, el crédito, la antigüedad, las cuotas y documentos pendientes y
+  los movimientos del período, y lo envía al correo registrado del cliente.
+- Datos de ejemplo: los clientes sin correo quedan con
+  `cliXXX@example.com` (dominio reservado; no llega a nadie).
 
 ## Módulos nuevos
 

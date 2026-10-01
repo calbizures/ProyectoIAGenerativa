@@ -17,6 +17,8 @@ public interface ICuentasRepository
 	Task<ReciboDetalle?> ConsultarReciboAsync(int ppeId);
 	Task AnularReciboAsync(int ppeId, string motivo, int? usuarioAccionId);
 	Task<CreditoCliente?> ConsultarCreditoClienteAsync(int cliId);
+	// Encabezado del estado de cuenta: contacto, límite, saldo, vencido y crédito disponible.
+	Task<ClienteEstadoCuenta?> ConsultarDatosEstadoCuentaClienteAsync(int cliId);
 
 	// Cuentas por pagar
 	Task<IReadOnlyList<DocumentoSaldo>> ConsultarDocumentosCxpAsync(int? prvId, bool soloPendientes);

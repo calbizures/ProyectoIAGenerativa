@@ -7,6 +7,8 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IGeneralRepository GeneralRepository
 @inject Erp.Data.Pagos.IPagosRepository PagosRepository
+@inject Erp.Data.Correo.ICorreoRepository CorreoRepository
+@inject Erp.Web.Correo.CorreoServicio CorreoServicio
 
 <PageTitle>Compañías</PageTitle>
 
@@ -176,6 +178,37 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             <BotonIcono Icono="save" Tooltip="Guardar el día de pago" Etiqueta="Guardar" Variante="primario" OnClick="GuardarDiaPagoAsync" />
         </div>
         <p class="texto-ayuda">La contraseña de pago propone como fecha de pago el primer día de pago a partir del vencimiento más lejano de sus facturas.</p>
+
+        <h3>Correo saliente (SMTP)</h3>
+        @if (correo is not null && correo.CiaId == seleccionada.CiaId)
+        {
+            <p class="texto-ayuda">El servidor de correo de la empresa con el que se envían los estados de cuenta a los clientes. En Microsoft 365 use smtp.office365.com, puerto 587 y STARTTLS; en Gmail, smtp.gmail.com, 587 y una contraseña de aplicación.</p>
+            <div class="panel-formulario panel-ancho">
+                <div class="campo"><label for="cia-smtp-servidor">Servidor</label><input id="cia-smtp-servidor" maxlength="120" placeholder="smtp.office365.com" @bind="correo.Servidor" /></div>
+                <div class="campo"><label for="cia-smtp-puerto">Puerto</label><input id="cia-smtp-puerto" type="number" min="1" max="65535" @bind="correo.Puerto" /></div>
+                <div class="campo campo-checkbox"><label><input type="checkbox" @bind="correo.Ssl" /> Conexión segura (STARTTLS)</label></div>
+                <div class="campo"><label for="cia-smtp-usuario">Usuario</label><input id="cia-smtp-usuario" maxlength="120" autocomplete="off" @bind="correo.Usuario" /></div>
+                <div class="campo">
+                    <label for="cia-smtp-clave">Contraseña</label>
+                    <input id="cia-smtp-clave" type="password" maxlength="200" autocomplete="new-password"
+                           placeholder="@(string.IsNullOrEmpty(correo.ClaveCifrada) ? "" : "•••••• (guardada; escriba para cambiarla)")" @bind="claveNueva" />
+                    @if (!string.IsNullOrEmpty(correo.ClaveCifrada))
+                    {
+                        <label class="campo-checkbox"><input type="checkbox" @bind="borrarClave" /> Quitar la contraseña guardada</label>
+                    }
+                </div>
+                <div class="campo"><label for="cia-smtp-remitente">Correo del remitente</label><input id="cia-smtp-remitente" type="email" maxlength="120" placeholder="cobros@empresa.com" @bind="correo.Remitente" /></div>
+                <div class="campo"><label for="cia-smtp-nombre">Nombre del remitente</label><input id="cia-smtp-nombre" maxlength="120" placeholder="@seleccionada.CiaNombreComercial" @bind="correo.RemitenteNombre" /></div>
+                <div class="campo campo-ancho"><label for="cia-smtp-copia">Enviar copia de cada correo a</label><input id="cia-smtp-copia" maxlength="250" placeholder="Opcional; varios separados por coma" @bind="correo.Copia" /></div>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar el correo saliente" Etiqueta="Guardar" Variante="primario" OnClick="GuardarCorreoAsync" />
+                <span class="barra-herramientas-separador"></span>
+                <label for="cia-smtp-prueba" class="sr-only">Correo para la prueba</label>
+                <input id="cia-smtp-prueba" type="email" class="entrada-referencia" placeholder="Correo para la prueba" @bind="correoPrueba" />
+                <BotonIcono Icono="send" Tooltip="Enviar un correo de prueba con la configuración guardada" Etiqueta="Enviar prueba" Deshabilitado="enviandoPrueba" OnClick="EnviarPruebaAsync" />
+            </div>
+        }
     </div>
 }
 else if (pestanaActiva == "editar")
@@ -267,6 +300,11 @@ else if (pestanaActiva == "editar")
 
     private CompaniaImpresion? impresion;
     private int? diaPago;
+    private Erp.Data.Correo.CorreoConfiguracion? correo;
+    private string claveNueva = "";
+    private bool borrarClave;
+    private string correoPrueba = "";
+    private bool enviandoPrueba;
 
     private async Task Seleccionar(Compania compania)
     {
@@ -277,6 +315,7 @@ else if (pestanaActiva == "editar")
         {
             impresion = await GeneralRepository.ConsultarImpresionAsync(compania.CiaId) ?? new CompaniaImpresion { CiaId = compania.CiaId };
             diaPago = await PagosRepository.ConsultarDiaPagoAsync(compania.CiaId);
+            await CargarCorreoAsync(compania.CiaId);
         }
         catch (Exception ex) { impresion = null; mensaje = MensajesError.Traducir(ex); esMensajeError = true; }
     }
@@ -298,6 +337,53 @@ else if (pestanaActiva == "editar")
     }
 
     private static readonly string[] Dias = ["", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
+
+    private async Task CargarCorreoAsync(int ciaId)
+    {
+        correo = await CorreoRepository.ConsultarConfiguracionAsync(ciaId) ?? new Erp.Data.Correo.CorreoConfiguracion { CiaId = ciaId };
+        claveNueva = "";
+        borrarClave = false;
+        correoPrueba = correo.Remitente ?? "";
+    }
+
+    private async Task GuardarCorreoAsync()
+    {
+        if (correo is null) return;
+        try
+        {
+            var cifrada = string.IsNullOrEmpty(claveNueva) ? null : CorreoServicio.Cifrar(claveNueva);
+            await CorreoRepository.GuardarConfiguracionAsync(correo, cifrada, borrarClave && cifrada is null, await ObtenerUsuIdActualAsync());
+            await CargarCorreoAsync(correo.CiaId);
+            mensaje = "Correo saliente guardado. Envíe una prueba para confirmar que el servidor lo acepta.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private async Task EnviarPruebaAsync()
+    {
+        if (correo is null) return;
+        enviandoPrueba = true;
+        try
+        {
+            var nombre = seleccionada?.CiaNombreComercial ?? "";
+            var texto = $"Este es un correo de prueba de {nombre}. Si lo recibe, el correo saliente del sistema está bien configurado.";
+            var resultado = await CorreoServicio.EnviarAsync(correo.CiaId, "PRUEBA", null, correoPrueba, null, $"Prueba de correo - {nombre}",
+                $"<p style=\"font-family:Arial,sans-serif\">{System.Net.WebUtility.HtmlEncode(texto)}</p>", texto, null, await ObtenerUsuIdActualAsync());
+            mensaje = resultado.Mensaje;
+            esMensajeError = !resultado.Enviado;
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+        finally { enviandoPrueba = false; }
+    }
 
     private async Task GuardarDiaPagoAsync()
     {
