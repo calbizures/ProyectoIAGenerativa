@@ -85,6 +85,13 @@ FROM (VALUES (1, N'Salario base mensual'), (2, N'Salario base mensual + extraord
 WHERE NOT EXISTS (SELECT 1 FROM dbo.rrhhIgssTipoSalario t WHERE t.Codigo = v.Codigo);
 GO
 
+-- Una primera versión de este script cargó un código mal formado.
+DELETE FROM dbo.rrhhIgssActividadEconomica
+ WHERE Codigo = '00000.'
+   AND NOT EXISTS (SELECT 1 FROM dbo.gen_compania WHERE cia_igss_actividad = '00000.')
+   AND NOT EXISTS (SELECT 1 FROM dbo.gen_sucursal WHERE suc_igss_actividad = '00000.')
+   AND NOT EXISTS (SELECT 1 FROM dbo.rrhhIgssTipoPlanilla WHERE Actividad = '00000.');
+GO
 INSERT INTO dbo.rrhhIgssActividadEconomica (Codigo, Descripcion, Categoria)
 SELECT v.* FROM (VALUES
 ('011101', N'Maiz', 'A'),
@@ -499,7 +506,7 @@ SELECT v.* FROM (VALUES
 ('912000', N'Actividades de sindicatos', 'O'),
 ('919100', N'Actividades de organizaciones religiosas', 'O'),
 ('919200', N'Actividades de organizaciones políticas', 'O'),
-('00000.', N'Organizaciones no gubernamentamentales de asistencia social sin animo de lucro', 'O'),
+('919901', N'Organizaciones no gubernamentales de asistencia social sin ánimo de lucro', 'O'),	-- la plantilla trae el código vacío; 919901 por la secuencia
 ('919902', N'Institucioes gubernamentales de asistencia social n.c.p.', 'O'),
 ('919999', N'Actividades de otras instituciones de bienestar a la comunidad  n.c.p.', 'O'),
 ('921100', N'Producción y distribución de filmes y videocintas', 'O'),
