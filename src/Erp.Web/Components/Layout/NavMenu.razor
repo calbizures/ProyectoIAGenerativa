@@ -73,9 +73,14 @@
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <AuthorizeView Policy="Permiso:VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR">
+        <AuthorizeView Policy="Permiso:VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR,VENTAS_COTIZACION">
             <Authorized>
                 <SidebarNodo Titulo="Ventas / POS" IconoNombre="receipt" Rutas="@(new[] { "facturas", "clientes", "vendedores", "ventas", "fel/documentos" })">
+                    <AuthorizeView Policy="Permiso:VENTAS_COTIZACION,VENTAS_FACTURA_CREAR" Context="cotizacionContexto">
+                        <Authorized>
+                            <NavLink href="ventas/cotizaciones" class="sidebar-hijo-link">Cotizaciones</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
                     <NavLink href="facturas" class="sidebar-hijo-link">Facturas</NavLink>
                     <AuthorizeView Policy="Permiso:FEL_ADMIN" Context="felContexto">
                         <Authorized>

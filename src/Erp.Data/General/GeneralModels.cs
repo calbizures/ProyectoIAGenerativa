@@ -27,6 +27,8 @@ public sealed class CompaniaImpresion
 	public string Impresora { get; set; } = "C";
 	public int AnchoTermica { get; set; } = 80;
 	public string? Pie { get; set; }
+	// Días que vale una cotización (script 52).
+	public int VigenciaCotizacion { get; set; } = 15;
 }
 
 // Logotipo de una compañía (Logo es null cuando solo se pidió la versión).

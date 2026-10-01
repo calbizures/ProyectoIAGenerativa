@@ -20,6 +20,7 @@
 @inject ILogger<Facturas> Log
 @inject Erp.Data.Fel.IFelRepository FelRepository
 @inject Erp.Web.Fel.FelConsultaNitServicio ConsultaNit
+@inject ICotizacionRepository CotizacionRepository
 
 <PageTitle>Facturas</PageTitle>
 
@@ -72,6 +73,14 @@
         </div>
 
         <div class="doc-card-body">
+            @if (cotizacionOrigen is not null)
+            {
+                <div class="doc-nota" role="status">
+                    <Icono Nombre="clipboard-list" Tamano="15" />
+                    <span>Desde la cotización <strong>@cotizacionOrigen.Numero</strong>, válida hasta el <strong>@cotizacionOrigen.Vence.ToString("dd/MM/yyyy")</strong>: se respetan los precios cotizados y la existencia se valida al grabar. Al grabar, la cotización queda facturada.</span>
+                    <BotonIcono Icono="x" Tooltip="Facturar sin relacionar la cotización" Variante="fantasma" OnClick="() => cotizacionOrigen = null" />
+                </div>
+            }
             <div class="doc-seccion">
                 <p class="doc-seccion-titulo"><Icono Nombre="file-text" Tamano="15" /> Datos generales</p>
                 <div class="doc-grid">
@@ -319,6 +328,10 @@
                 <div class="doc-totales">
                     <div class="doc-totales-fila"><span>Subtotal</span><span>@MonedaSimbolo @Subtotal.ToString("N2")</span></div>
                     <div class="doc-totales-fila"><span>Descuento</span><span>@MonedaSimbolo @TotalDescuento.ToString("N2")</span></div>
+                    @if (AjusteRedondeo != 0)
+                    {
+                        <div class="doc-totales-fila"><span>Redondeo del IVA</span><span>@MonedaSimbolo @AjusteRedondeo.ToString("N2")</span></div>
+                    }
                     <div class="doc-totales-total"><span>Total</span><span>@MonedaSimbolo @Total.ToString("N2")</span></div>
                     <div class="doc-totales-nota">IVA incluido (@PorcentajeIvaTexto%): @MonedaSimbolo @IvaIncluido.ToString("N2")</div>
                 </div>
@@ -796,7 +809,15 @@
 
     private decimal Subtotal => lineas.Sum(l => l.SubTotal);
     private decimal TotalDescuento => lineas.Sum(l => l.ValorDescuento);
-    private decimal Total => Subtotal - TotalDescuento;
+    // Total que grabará sp_ventas_crear_factura y certificará FEL: el precio se
+    // guarda sin IVA a centavos y el total vuelve a sumarle el IVA por unidad,
+    // así que puede diferir un centavo de la suma de los precios con IVA.
+    private decimal Total => lineas.Sum(TotalLineaDocumento);
+    private decimal AjusteRedondeo => Total - (Subtotal - TotalDescuento);
+    private decimal SinIva(decimal conIva) => Math.Round(conIva / (1 + PorcentajeIva / 100m), 2, MidpointRounding.AwayFromZero);
+    private decimal ConIva(decimal sinIva) => Math.Round(sinIva * (1 + PorcentajeIva / 100m), 2, MidpointRounding.AwayFromZero);
+    private decimal TotalLineaDocumento(LineaCaptura l) =>
+        Math.Round(ConIva(SinIva(l.PrecioUnitario)) * l.Cantidad, 2, MidpointRounding.AwayFromZero) - ConIva(SinIva(l.ValorDescuento));
     private string condicionPagoFactura = "contado";
     private Erp.Data.Cuentas.CreditoCliente? creditoCliente;
     private decimal ValorCuotaFactura => nuevaFactura.NumeroCuotas > 0
@@ -813,6 +834,11 @@
     private int pcaIdFactura;
     private int? sucIdSesion;
     private int? pveIdUsuario;
+
+    // Cotización vigente que se está convirtiendo en esta factura (?cotizacion=ID).
+    [SupplyParameterFromQuery(Name = "cotizacion")]
+    public int? CotizacionId { get; set; }
+    private CotizacionEncabezado? cotizacionOrigen;
 
     private decimal MontoAPagar => condicionPagoFactura == "credito" ? nuevaFactura.MontoEnganche : Total;
 
@@ -852,6 +878,85 @@
         }
 
         await BuscarAsync();
+        if (CotizacionId is int cotId)
+            await CargarCotizacionAsync(cotId);
+    }
+
+    // Abre la factura nueva con las líneas, el cliente, la bodega y el vendedor
+    // de una cotización vigente; todo queda editable antes de grabar.
+    private async Task CargarCotizacionAsync(int cotId)
+    {
+        try
+        {
+            var (cotizacion, lineasCotizacion) = await CotizacionRepository.ConsultarPorIdAsync(cotId);
+            if (cotizacion is null)
+            {
+                mensaje = $"No existe la cotización {cotId}.";
+                esMensajeError = true;
+                return;
+            }
+            if (!cotizacion.PuedeFacturarse)
+            {
+                mensaje = cotizacion.Estado switch
+                {
+                    "X" => $"La cotización {cotizacion.Numero} venció el {cotizacion.Vence:dd/MM/yyyy}: ya no se puede facturar. Duplíquela en Cotizaciones para cotizar con los precios de hoy.",
+                    "F" => $"La cotización {cotizacion.Numero} ya se facturó en {cotizacion.Factura}.",
+                    _ => $"La cotización {cotizacion.Numero} está anulada."
+                };
+                esMensajeError = true;
+                return;
+            }
+
+            await MostrarNuevaFacturaAsync();
+            cotizacionOrigen = cotizacion;
+            if (bodegas.Any(b => b.BodId == cotizacion.BodId)) nuevaFactura.BodId = cotizacion.BodId;
+            nuevaFactura.MonId = cotizacion.MonId;
+            nuevaFactura.PveId = cotizacion.PveId ?? pveIdUsuario;
+            foreach (var l in lineasCotizacion)
+            {
+                lineas.Add(new LineaCaptura
+                {
+                    ProId = l.ProId,
+                    Descripcion = l.Descripcion,
+                    BienOServicio = l.BienOServicio,
+                    Cantidad = l.Cantidad,
+                    UmeId = l.UmeId ?? 0,
+                    PrecioUnitario = l.PrecioUnitario,
+                    ValorDescuento = l.Descuento,
+                    CostoUnitario = l.CostoUnitario,
+                    PprId = l.PprId,
+                    ManejaExistencia = l.ManejaExistencia
+                });
+            }
+
+            var cliente = cotizacion.CliId is int cliId ? await ClienteRepository.ConsultarPorIdAsync(cliId)
+                : string.IsNullOrWhiteSpace(cotizacion.Nit) ? null : await ClienteRepository.BuscarPorNitAsync(cotizacion.Nit);
+            if (cliente is not null)
+            {
+                await SeleccionarClienteAsync(cliente);
+                enfocarProducto = true;
+            }
+            else
+            {
+                // Prospecto: el NIT cotizado queda escrito para registrarlo como cliente.
+                textoNit = cotizacion.Nit ?? "";
+                nombreNitManual = cotizacion.Cliente;
+                enfocarNit = true;
+                enfocarProducto = false;
+            }
+
+            var faltantes = lineasCotizacion.Count(l => l.ManejaExistencia && (l.Existencia ?? 0) < l.Cantidad);
+            if (faltantes > 0)
+            {
+                mensaje = $"{faltantes} {(faltantes == 1 ? "producto de la cotización no tiene" : "productos de la cotización no tienen")} existencia suficiente en la bodega; ajuste las cantidades antes de grabar.";
+                esMensajeError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
     }
 
     private string NombreFormaPago(int pftId) => formasPagoTipo.FirstOrDefault(t => t.PftId == pftId)?.PftDescripcion ?? "—";
@@ -909,6 +1014,7 @@
     private Task MostrarNuevaFacturaAsync()
     {
         mensaje = null;
+        cotizacionOrigen = null;
         nuevaFactura.Fecha = DateTime.Today;
         nuevaFactura.SerieDocumento = null;
         nuevaFactura.NumeroDocumento = null;
@@ -1400,8 +1506,8 @@
             // se convierte de bruto a neto antes de enviarlo.
             var detalle = lineas.Select(l =>
             {
-                var precioUnitarioNeto = Math.Round(l.PrecioUnitario / (1 + PorcentajeIva / 100m), 2);
-                var valorDescuentoNeto = Math.Round(l.ValorDescuento / (1 + PorcentajeIva / 100m), 2);
+                var precioUnitarioNeto = SinIva(l.PrecioUnitario);
+                var valorDescuentoNeto = SinIva(l.ValorDescuento);
                 return new NuevaLineaFactura
                 {
                     ProId = l.ProId,
@@ -1434,7 +1540,8 @@
                 FechaPrimerPago = condicionPagoFactura == "credito" ? nuevaFactura.FechaPrimerPago : null,
                 MontoEnganche = condicionPagoFactura == "credito" ? nuevaFactura.MontoEnganche : 0,
                 NumeroCuotas = condicionPagoFactura == "credito" ? nuevaFactura.NumeroCuotas : 1,
-                ValorDescuento = detalle.Sum(d => d.ValorDescuento)
+                ValorDescuento = detalle.Sum(d => d.ValorDescuento),
+                CotId = cotizacionOrigen?.CotId
             };
 
             var pcaId = cajasAbiertasSucursal.Count > 0 && formasPagoCapturadas.Count > 0 ? pcaIdFactura : (int?)null;
@@ -1451,6 +1558,8 @@
         // Desde aquí la factura YA está grabada: un error posterior no debe
         // parecer que no se grabó (el cajero la volvería a grabar, duplicada).
         mostrarNuevaFactura = false;
+        var notaCotizacion = cotizacionOrigen is null ? "" : $" La cotización {cotizacionOrigen.Numero} quedó facturada.";
+        cotizacionOrigen = null;
         try
         {
             // La certificación se intenta enseguida y, si falla, queda
@@ -1459,6 +1568,7 @@
             mensaje = fel.Aplica && fel.Exito
                 ? $"Factura {numeroGrabada} grabada y certificada (autorización {fel.Uuid})."
                 : $"Factura {numeroGrabada} grabada correctamente.";
+            mensaje += notaCotizacion;
             avisoFel = fel.Aplica && !fel.Exito ? fel.Mensaje : null;
             esMensajeError = false;
 

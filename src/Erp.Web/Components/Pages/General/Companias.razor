@@ -119,7 +119,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             Se muestra en el menú, el inicio de sesión, los documentos impresos y los libros de Excel (Excel no admite WEBP).
         </p>
 
-        <h3>Impresión de facturas</h3>
+        <h3>Facturas y cotizaciones</h3>
         @if (impresion is not null && impresion.CiaId == seleccionada.CiaId)
         {
             <div class="panel-formulario panel-ancho fel-formulario">
@@ -140,13 +140,17 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
                         </select>
                     </div>
                 }
+                <div class="campo">
+                    <label for="cia-vigencia">Vigencia de las cotizaciones (días)</label>
+                    <input id="cia-vigencia" type="number" min="1" max="365" @bind="impresion.VigenciaCotizacion" />
+                </div>
                 <div class="campo campo-ancho">
                     <label for="cia-pie">Texto al pie de la factura</label>
                     <input id="cia-pie" maxlength="256" placeholder="Ej.: ¡Gracias por su compra! Cambios dentro de 30 días con esta factura." @bind="impresion.Pie" />
                 </div>
             </div>
             <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Guardar la configuración de impresión" Etiqueta="Guardar impresión" Variante="primario" OnClick="GuardarImpresionAsync" />
+                <BotonIcono Icono="save" Tooltip="Guardar la configuración de facturas y cotizaciones" Etiqueta="Guardar" Variante="primario" OnClick="GuardarImpresionAsync" />
             </div>
             <p class="texto-ayuda">En la impresora térmica, configure en el diálogo de impresión el papel del rollo y márgenes "Ninguno". En carta, papel tamaño carta y escala 100 %.</p>
         }
@@ -256,7 +260,7 @@ else if (pestanaActiva == "editar")
         try
         {
             await GeneralRepository.GuardarImpresionAsync(impresion, await ObtenerUsuIdActualAsync());
-            mensaje = $"Impresión de facturas guardada: {(impresion.Impresora == "T" ? $"térmica de {impresion.AnchoTermica} mm" : "carta")}.";
+            mensaje = $"Configuración guardada: factura en {(impresion.Impresora == "T" ? $"térmica de {impresion.AnchoTermica} mm" : "carta")}, cotizaciones válidas por {impresion.VigenciaCotizacion} días.";
             esMensajeError = false;
         }
         catch (Exception ex)

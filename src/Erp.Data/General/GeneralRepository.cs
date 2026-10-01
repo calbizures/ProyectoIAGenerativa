@@ -196,7 +196,7 @@ public sealed class GeneralRepository(IDbConnectionFactory connectionFactory) : 
 	{
 		using var connection = connectionFactory.CreateConnection();
 		await connection.ExecuteAsync("dbo.paCompaniaImpresionGuardar",
-			new { impresion.CiaId, impresion.Impresora, AnchoTermica = (byte)impresion.AnchoTermica, impresion.Pie, UsuId = usuarioAccionId },
+			new { impresion.CiaId, impresion.Impresora, AnchoTermica = (byte)impresion.AnchoTermica, impresion.Pie, impresion.VigenciaCotizacion, UsuId = usuarioAccionId },
 			commandType: CommandType.StoredProcedure);
 	}
 }

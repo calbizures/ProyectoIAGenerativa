@@ -114,6 +114,8 @@ public sealed class NuevaFacturaEncabezado
 	public decimal ValorDescuento { get; set; }
 	public string? DireccionCliente { get; set; }
 	public int? MonId { get; set; }
+	// Cotización que se convierte en esta factura (la base la marca facturada en la misma transacción).
+	public int? CotId { get; set; }
 }
 
 public sealed class CuotaPlanPago

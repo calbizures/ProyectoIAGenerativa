@@ -67,6 +67,7 @@ public sealed class FacturaRepository(IDbConnectionFactory connectionFactory) : 
 		parametros.Add("@enc_direccion_cliente", encabezado.DireccionCliente);
 		parametros.Add("@mon_id", encabezado.MonId);
 		parametros.Add("@usu_id", usuarioAccionId);
+		parametros.Add("@cot_id", encabezado.CotId);
 		parametros.Add("@detalle", tablaDetalle.AsTableValuedParameter("dbo.factura_det_type"));
 		parametros.Add("@pca_id", pcaId);
 		parametros.Add("@formas_pago", tablaFormasPago.AsTableValuedParameter("dbo.pago_forma_type"));

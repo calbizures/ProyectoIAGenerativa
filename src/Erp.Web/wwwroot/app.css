@@ -3083,3 +3083,17 @@ label.boton-icono { cursor: pointer; position: relative; }
 @keyframes aviso-entrar { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .aviso { animation: none; } }
 @media print { .avisos-pila { display: none; } }
+
+/* Cotizaciones y órdenes de compra. */
+.cot-vigencia {
+    margin: 0.1in 0 0; padding: 6px 10px; border: 1.5px solid #1f4fb5; border-left-width: 5px;
+    background: #f1f5fd; color: #0d1b4c; font-size: 9pt; border-radius: 4px;
+}
+.cot-observaciones { margin: 0; white-space: pre-line; font-size: 8.5pt; }
+.doc-nota-aviso { color: #7a4a00; background: #fff8e6; border-color: #f1dca8; }
+.doc-nota-aviso .icono { color: #b26a00; }
+.texto-error { color: var(--error-texto); font-size: 0.8rem; font-weight: 600; }
+.tabla-datos tr.fila-faltante td { background: #fff8e6; }
+.tabla-datos td input.entrada-numero { text-align: right; min-width: 80px; }
+.tabla-compacta { margin-bottom: 0.75rem; }
+.tabla-compacta td, .tabla-compacta th { padding-block: 0.3rem; }
