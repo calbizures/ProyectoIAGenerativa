@@ -255,11 +255,15 @@ GO
 
 ------------------------------------------------------------
 -- 5. Índices
+--
+-- Índices normales (sin filtro): un índice filtrado haría fallar con el
+-- error 1934 a cualquier procedimiento que aún tenga QUOTED_IDENTIFIER en
+-- OFF (ver 47).
 ------------------------------------------------------------
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_bco_cheque_det_ppg_id')
-	CREATE INDEX [IX_bco_cheque_det_ppg_id] ON dbo.bco_cheque_emitido_det ([ppg_id]) WHERE [ppg_id] IS NOT NULL;
+	CREATE INDEX [IX_bco_cheque_det_ppg_id] ON dbo.bco_cheque_emitido_det ([ppg_id]);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_bco_cheque_enc_nomina_empleado')
-	CREATE INDEX [IX_bco_cheque_enc_nomina_empleado] ON dbo.bco_cheque_emitido_enc ([IdNominaEmpleado]) WHERE [IdNominaEmpleado] IS NOT NULL;
+	CREATE INDEX [IX_bco_cheque_enc_nomina_empleado] ON dbo.bco_cheque_emitido_enc ([IdNominaEmpleado]);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_inv_proveedor_nota_aplicacion_ppg')
 	CREATE INDEX [IX_inv_proveedor_nota_aplicacion_ppg] ON dbo.inv_proveedor_nota_aplicacion ([ppg_id]);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_pos_cliente_nota_aplicacion_cpp')
@@ -267,7 +271,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_pos_cliente_nota_aplic
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_inv_traslado_origen')
 	CREATE INDEX [IX_inv_traslado_origen] ON dbo.inv_traslado ([bod_id_origen], [tra_estado]);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_inv_documento_det_origen')
-	CREATE INDEX [IX_inv_documento_det_origen] ON dbo.inv_documento_det ([det_id_origen]) WHERE [det_id_origen] IS NOT NULL;
+	CREATE INDEX [IX_inv_documento_det_origen] ON dbo.inv_documento_det ([det_id_origen]);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_cont_asiento_enc_fecha')
 	CREATE INDEX [IX_cont_asiento_enc_fecha] ON dbo.cont_asiento_enc ([asi_fecha]) INCLUDE ([asi_estado], [asi_origen]);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_rrhhNomina_Compania')
@@ -275,19 +279,19 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_rrhhNomina_Compania')
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_rrhhNominaEmpleado_Empleado')
 	CREATE INDEX [IX_rrhhNominaEmpleado_Empleado] ON dbo.rrhhNominaEmpleado ([IdEmpleado]) INCLUDE ([IdNomina], [DiasLaborados]);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_rrhhNominaEmpleado_Pago')
-	CREATE INDEX [IX_rrhhNominaEmpleado_Pago] ON dbo.rrhhNominaEmpleado ([IdNominaPago]) WHERE [IdNominaPago] IS NOT NULL;
+	CREATE INDEX [IX_rrhhNominaEmpleado_Pago] ON dbo.rrhhNominaEmpleado ([IdNominaPago]);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_rrhhNominaEmpleado_Cheque')
-	CREATE INDEX [IX_rrhhNominaEmpleado_Cheque] ON dbo.rrhhNominaEmpleado ([bce_id]) WHERE [bce_id] IS NOT NULL;
+	CREATE INDEX [IX_rrhhNominaEmpleado_Cheque] ON dbo.rrhhNominaEmpleado ([bce_id]);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_rrhhNominaPago_Nomina')
 	CREATE INDEX [IX_rrhhNominaPago_Nomina] ON dbo.rrhhNominaPago ([IdNomina]);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_rrhhMovimientoNomina_Nomina')
-	CREATE INDEX [IX_rrhhMovimientoNomina_Nomina] ON dbo.rrhhMovimientoNomina ([IdNomina]) WHERE [IdNomina] IS NOT NULL;
+	CREATE INDEX [IX_rrhhMovimientoNomina_Nomina] ON dbo.rrhhMovimientoNomina ([IdNomina]);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_rrhhNominaDetalle_Movimiento')
-	CREATE INDEX [IX_rrhhNominaDetalle_Movimiento] ON dbo.rrhhNominaDetalle ([IdMovimientoNomina]) WHERE [IdMovimientoNomina] IS NOT NULL;
+	CREATE INDEX [IX_rrhhNominaDetalle_Movimiento] ON dbo.rrhhNominaDetalle ([IdMovimientoNomina]);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_rrhhHistorialPlaza_Empleado')
 	CREATE INDEX [IX_rrhhHistorialPlaza_Empleado] ON dbo.rrhhHistorialPlaza ([IdEmpleado], [FechaAl]);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_rrhhEmpleado_Plaza')
-	CREATE INDEX [IX_rrhhEmpleado_Plaza] ON dbo.rrhhEmpleado ([IdPlaza]) WHERE [IdPlaza] IS NOT NULL;
+	CREATE INDEX [IX_rrhhEmpleado_Plaza] ON dbo.rrhhEmpleado ([IdPlaza]);
 GO
 
 ------------------------------------------------------------
