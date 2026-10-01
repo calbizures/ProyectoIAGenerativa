@@ -91,6 +91,8 @@ public sealed class LibroSalariosRenglon
 	public decimal HorasExtra { get; set; }
 	public decimal Ordinario { get; set; }
 	public decimal Extraordinario { get; set; }
+	// Comisiones, destajo, producción (formato único del MINTRAB).
+	public decimal OtrosSalarios { get; set; }
 	public decimal Septimos { get; set; }
 	public decimal Vacaciones { get; set; }
 	public decimal SalarioTotal { get; set; }
@@ -198,6 +200,7 @@ public static class ColumnasLibroSalarios
 	[
 		("ORDINARIO", "Salario ordinario", "I"),
 		("EXTRAORDINARIO", "Salario extraordinario (horas extra)", "I"),
+		("OTROS_SALARIOS", "Otros salarios (comisiones, destajo)", "I"),
 		("SEPTIMOS", "Séptimos y asuetos", "I"),
 		("VACACIONES", "Vacaciones", "I"),
 		("BONIFICACION", "Bonificación incentivo (Decreto 37-2001)", "I"),

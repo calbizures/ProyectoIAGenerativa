@@ -41,7 +41,7 @@
                     <th rowspan="2" class="num">Salario (base)</th>
                     <th rowspan="2" class="num">Días trab.</th>
                     <th colspan="2">Horas trabajadas</th>
-                    <th colspan="5">Salario devengado</th>
+                    <th colspan="6">Salario devengado</th>
                     <th colspan="3">Deducciones</th>
                     <th colspan="5">Bonificaciones y prestaciones</th>
                     <th rowspan="2" class="num">Líquido a recibir</th>
@@ -55,6 +55,7 @@
                     <th class="num">Extra</th>
                     <th class="num">Ordinario</th>
                     <th class="num">Extraordinario</th>
+                    <th class="num">Otros salarios</th>
                     <th class="num">Séptimos y asuetos</th>
                     <th class="num">Vacaciones</th>
                     <th class="num">Total</th>
@@ -82,6 +83,7 @@
                         <td class="num">@Cifra(r.HorasExtra, "0.##")</td>
                         <td class="num">@Cifra(r.Ordinario)</td>
                         <td class="num">@Cifra(r.Extraordinario)</td>
+                        <td class="num">@Cifra(r.OtrosSalarios)</td>
                         <td class="num">@Cifra(r.Septimos)</td>
                         <td class="num">@Cifra(r.Vacaciones)</td>
                         <td class="num">@Cifra(r.SalarioTotal)</td>
@@ -109,6 +111,7 @@
                     <td class="num">@Renglones.Sum(r => r.HorasExtra).ToString("0.##")</td>
                     <td class="num">@Renglones.Sum(r => r.Ordinario).ToString("N2")</td>
                     <td class="num">@Renglones.Sum(r => r.Extraordinario).ToString("N2")</td>
+                    <td class="num">@Renglones.Sum(r => r.OtrosSalarios).ToString("N2")</td>
                     <td class="num">@Renglones.Sum(r => r.Septimos).ToString("N2")</td>
                     <td class="num">@Renglones.Sum(r => r.Vacaciones).ToString("N2")</td>
                     <td class="num">@Renglones.Sum(r => r.SalarioTotal).ToString("N2")</td>

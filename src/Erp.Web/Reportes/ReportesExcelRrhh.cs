@@ -71,7 +71,7 @@ public static partial class ReportesExcel
 			}
 			fila++;
 			fila = Titulos(hoja, fila, new List<string> { "No.", "Período de trabajo", "Salario base", "Días trabajados", "Horas ordinarias", "Horas extra",
-				"Salario ordinario", "Salario extraordinario", "Séptimos y asuetos", "Vacaciones", "Salario total", "Cuota laboral IGSS",
+				"Salario ordinario", "Salario extraordinario", "Otros salarios", "Séptimos y asuetos", "Vacaciones", "Salario total", "Cuota laboral IGSS",
 				"Otras deducciones", "Total deducciones", "Bono 14", "Aguinaldo", "Bonificación incentivo", "Otras bonificaciones",
 				"Indemnización", "Líquido a recibir" });
 			var inicioDatos = fila;
@@ -86,22 +86,23 @@ public static partial class ReportesExcel
 				hoja.Cell(fila, 6).Value = r.HorasExtra;
 				hoja.Cell(fila, 7).Value = r.Ordinario;
 				hoja.Cell(fila, 8).Value = r.Extraordinario;
-				hoja.Cell(fila, 9).Value = r.Septimos;
-				hoja.Cell(fila, 10).Value = r.Vacaciones;
-				hoja.Cell(fila, 11).Value = r.SalarioTotal;
-				hoja.Cell(fila, 12).Value = r.Igss;
-				hoja.Cell(fila, 13).Value = r.OtrasDeducciones;
-				hoja.Cell(fila, 14).Value = r.TotalDeducciones;
-				hoja.Cell(fila, 15).Value = r.Bono14;
-				hoja.Cell(fila, 16).Value = r.Aguinaldo;
-				hoja.Cell(fila, 17).Value = r.Bonificacion;
-				hoja.Cell(fila, 18).Value = r.OtrasBonificaciones;
-				hoja.Cell(fila, 19).Value = r.Indemnizacion;
-				hoja.Cell(fila, 20).Value = r.Liquido;
+				hoja.Cell(fila, 9).Value = r.OtrosSalarios;
+				hoja.Cell(fila, 10).Value = r.Septimos;
+				hoja.Cell(fila, 11).Value = r.Vacaciones;
+				hoja.Cell(fila, 12).Value = r.SalarioTotal;
+				hoja.Cell(fila, 13).Value = r.Igss;
+				hoja.Cell(fila, 14).Value = r.OtrasDeducciones;
+				hoja.Cell(fila, 15).Value = r.TotalDeducciones;
+				hoja.Cell(fila, 16).Value = r.Bono14;
+				hoja.Cell(fila, 17).Value = r.Aguinaldo;
+				hoja.Cell(fila, 18).Value = r.Bonificacion;
+				hoja.Cell(fila, 19).Value = r.OtrasBonificaciones;
+				hoja.Cell(fila, 20).Value = r.Indemnizacion;
+				hoja.Cell(fila, 21).Value = r.Liquido;
 				fila++;
 			}
-			Totales(hoja, fila, inicioDatos, 4, 20, 2);
-			Formato(hoja, inicioDatos, fila, 7, 20);
+			Totales(hoja, fila, inicioDatos, 4, 21, 2);
+			Formato(hoja, inicioDatos, fila, 7, 21);
 			hoja.Range(inicioDatos, 3, fila, 3).Style.NumberFormat.Format = "#,##0.00";
 			hoja.Range(inicioDatos, 4, fila, 6).Style.NumberFormat.Format = "#,##0.##";
 		}
