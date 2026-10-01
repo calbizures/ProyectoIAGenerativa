@@ -64,21 +64,22 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 47_reparar_opciones_set.sql                   -- repara objetos creados con QUOTED_IDENTIFIER/ANSI_NULLS en OFF y prueba grabar una factura
 48_impresion_factura.sql                      -- impresión de la factura en carta o en impresora térmica
 49_rrhh_libro_salarios_igss.sql               -- cuota patronal, aguinaldo y bono 14, libro de salarios y planilla del IGSS
+50_auditoria_robustez.sql                     -- auditoría: operaciones dobles, existencia no negativa, períodos cerrados, índices, integridad
 ```
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `49` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `50` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `49` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `50` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `49`. Si vuelves a
-correr `12`, corre después `22` a `49` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `50`. Si vuelves a
+correr `12`, corre después `22` a `50` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -1315,6 +1316,60 @@ trabajadores sin afiliación o nóminas del mes sin aprobar. Se descarga en
 Excel y se imprime. **Pendiente:** el archivo `.TXT` de carga del sistema
 de Planilla Electrónica del IGSS (formato 2.2.0) se agregará con el manual
 oficial `GenerarArchivoPlanilla_2.2.0.pdf`.
+
+## Auditoría de procesos y robustez (`50`)
+
+Auditoría de lo construido en `34` a `49`. Errores `54201`-`54209`.
+
+- **Operaciones aplicadas dos veces.** Varias anulaciones y recepciones
+  validaban el estado antes de abrir la transacción (la base usa
+  *read committed snapshot*, así que esa lectura no espera a la otra
+  transacción). Si dos usuarios, o un doble clic, las ejecutaban a la vez,
+  el efecto se aplicaba dos veces. Por ejemplo: la existencia devuelta dos
+  veces al anular una factura, el saldo de la cuota devuelto dos veces al
+  anular un recibo o un cheque, la mercadería sumada dos veces al recibir un
+  traslado, o dos pólizas al aprobar una nómina. Ahora triggers de
+  transición de estado rechazan el segundo cambio y revierten toda su
+  transacción:
+
+  | Tabla | Regla |
+  |---|---|
+  | `inv_documento_enc` | un documento anulado no cambia de estado (54201) |
+  | `pos_pago_enc` | un recibo anulado no cambia de estado (54202) |
+  | `bco_cheque_emitido_enc` | un cheque anulado no cambia; uno cobrado no se anula (54203) |
+  | `rrhhNomina` | una nómina anulada no cambia; una aprobada solo se anula (54204) |
+  | `inv_traslado` | solo un traslado en tránsito cambia de estado (54205) |
+  | `inv_toma_fisica` | una toma anulada no cambia; una aplicada solo se anula (54206) |
+  | `rrhhNominaEmpleado` | un empleado pagado no se paga en otro lote (54207) |
+
+- **Existencia nunca negativa**: `CK_inv_existencia_no_negativa`. Evita
+  vender el último producto dos veces a la vez y anular una compra o una
+  carga inicial cuya mercadería ya se vendió. Si la base ya tiene
+  existencias negativas, el script las lista y no agrega la regla hasta
+  que se corrijan y se vuelva a correr.
+- **Pago de nómina por transferencia**: bloquea la nómina y calcula el monto
+  dentro de la transacción. Antes, dos pagos simultáneos dejaban un segundo
+  lote vacío con póliza.
+- **Períodos contables cerrados** (`pdo_estado = 'C'`): no se graban ni se
+  anulan pólizas en ellos (54209).
+- **Índices** para las llaves foráneas que usan los procesos (cheques,
+  notas, traslados, nómina) y para las pólizas por fecha.
+- **`paAuditoriaIntegridadConsultar`** (pantalla **Contabilidad ›
+  Revisión de integridad**): 12 controles que deben dar cero en cualquier
+  momento:
+  - pólizas cuadradas y sin cuentas de agrupación;
+  - documentos con su póliza, y anulados sin póliza vigente;
+  - saldos de cuotas de clientes y de proveedores contra sus cobros, pagos
+    y notas;
+  - existencias negativas;
+  - nóminas aprobadas con póliza y pagos de nómina que suman su líquido;
+  - traslados en tránsito con su salida;
+  - recibos con póliza.
+
+En la aplicación, el botón común (`BotonIcono`) queda deshabilitado mientras
+su acción está en curso e ignora los clics repetidos. Antes, **Grabar
+factura**, **Grabar compra**, **Registrar depósito** y otras acciones podían
+grabarse dos veces con un doble clic.
 
 ## Módulos nuevos
 

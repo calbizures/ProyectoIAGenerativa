@@ -3027,3 +3027,13 @@ label.boton-icono { cursor: pointer; position: relative; }
         font-size: 7.5pt;
     }
 }
+
+/* Una lista con opciones largas (p. ej. nombres de proveedores) no ensancha
+   la página en el celular. */
+:where(.app-main) select {
+    max-width: 100%;
+}
+
+.tabla-datos td.col-periodo {
+    white-space: nowrap;
+}

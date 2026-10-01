@@ -41,6 +41,12 @@ public static partial class MensajesError
 		switch (sql.Number)
 		{
 			case 547:
+				// Regla de la base (script 50): ninguna bodega queda con existencia negativa.
+				if (sql.Message.Contains("CK_inv_existencia_no_negativa", StringComparison.OrdinalIgnoreCase))
+				{
+					return "No hay existencia suficiente: la operación dejaría la bodega en negativo. Puede que otro usuario haya vendido o "
+						+ "trasladado la mercadería al mismo tiempo, o que la mercadería de la compra o carga que intenta anular ya se haya vendido.";
+				}
 				if (sql.Message.Contains("CHECK", StringComparison.OrdinalIgnoreCase))
 				{
 					return "Uno de los valores no cumple las reglas permitidas para este dato" + Detalle(sql.Message) + ".";
@@ -50,6 +56,10 @@ public static partial class MensajesError
 					: "El registro hace referencia a un dato que no existe o fue eliminado" + Detalle(sql.Message) + ".";
 			case 2627:
 			case 2601:
+				if (sql.Message.Contains("UQ_bco_cheque_emitido_enc_numero", StringComparison.OrdinalIgnoreCase))
+				{
+					return "Ese número de cheque ya se usó en la chequera (quizá otro usuario emitió un cheque al mismo tiempo). Vuelva a intentarlo para tomar el siguiente número.";
+				}
 				var valor = ValorDuplicadoRegex().Match(sql.Message);
 				return valor.Success
 					? $"Ya existe un registro con el valor {valor.Groups[1].Value}. Verifique los datos ingresados."

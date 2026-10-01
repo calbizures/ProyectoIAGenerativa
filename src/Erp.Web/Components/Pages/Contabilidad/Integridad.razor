@@ -1,0 +1,64 @@
+@page "/contabilidad/integridad"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CONTABILIDAD_SALDOS_INICIALES")]
+@using Erp.Data.Contabilidad
+@inject IIntegridadRepository IntegridadRepository
+
+<PageTitle>Revisión de integridad</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Revisión de integridad</h1>
+    <p>Controles que deben dar cero en cualquier momento: pólizas cuadradas, documentos con su póliza, saldos de clientes y proveedores contra sus cobros y pagos, existencias, nóminas y traslados. Si alguno sale con casos, revise el ejemplo indicado antes de cerrar el mes.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="mensaje-error" role="alert">@mensaje</p>
+}
+
+<div class="barra-herramientas">
+    <span>@(controles.Count == 0 ? "" : controles.All(c => c.Casos == 0) ? "Todo en orden." : $"{controles.Count(c => c.Casos > 0)} control(es) por revisar.")</span>
+    <span class="barra-herramientas-separador"></span>
+    <BotonIcono Icono="refresh-cw" Tooltip="Volver a revisar" Etiqueta="Volver a revisar" Variante="primario" OnClick="RevisarAsync" />
+</div>
+
+@if (controles.Count > 0)
+{
+    <div class="tabla-desplazable">
+        <table class="tabla-datos">
+            <thead><tr><th class="num col-estado">No.</th><th>Control</th><th class="num col-estado">Casos</th><th>Ejemplo</th><th class="col-estado">Resultado</th></tr></thead>
+            <tbody>
+                @foreach (var c in controles)
+                {
+                    <tr>
+                        <td class="num col-estado">@c.Orden</td>
+                        <td>@c.Control</td>
+                        <td class="num col-estado">@c.Casos</td>
+                        <td>@(c.Ejemplo ?? "—")</td>
+                        <td class="col-estado"><span class="estado-badge @(c.Casos == 0 ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.Casos == 0 ? "Correcto" : "Revisar")</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="texto-tenue">Revisado el @revisado.ToString("dd/MM/yyyy HH:mm").</p>
+}
+
+@code {
+    private IReadOnlyList<ControlIntegridad> controles = Array.Empty<ControlIntegridad>();
+    private DateTime revisado;
+    private string? mensaje;
+
+    protected override Task OnInitializedAsync() => RevisarAsync();
+
+    private async Task RevisarAsync()
+    {
+        mensaje = null;
+        try
+        {
+            controles = await IntegridadRepository.ConsultarAsync();
+            revisado = DateTime.Now;
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+    }
+}

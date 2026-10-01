@@ -116,9 +116,10 @@
     }
     else
     {
+        <div class="tabla-desplazable">
         <table class="tabla-datos">
             <thead>
-                <tr><th>Descripción</th><th class="col-estado">Período</th><th class="col-fecha">Del</th><th class="col-fecha">Al</th><th class="num col-estado">Empleados</th><th class="num col-monto">Ingresos</th><th class="num col-monto">Descuentos</th><th class="num col-monto">Líquido</th><th class="num col-monto" title="IGSS patronal + IRTRA + INTECAP">Cuota patronal</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+                <tr><th>Descripción</th><th class="col-estado">Tipo</th><th>Período</th><th class="num col-estado">Empleados</th><th class="num col-monto">Ingresos</th><th class="num col-monto">Descuentos</th><th class="num col-monto">Líquido</th><th class="num col-monto" title="IGSS patronal + IRTRA + INTECAP">Cuota patronal</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
             </thead>
             <tbody>
                 @foreach (var n in nominas)
@@ -126,8 +127,7 @@
                     <tr class="@(seleccionada?.IdNomina == n.IdNomina ? "fila-seleccionada" : "")">
                         <td>@n.Descripcion</td>
                         <td class="col-estado">@(n.Clase == "O" ? NombrePeriodo(n.TipoPeriodo) : NombreClase(n.Clase))</td>
-                        <td class="col-fecha">@n.FechaDel.ToString("dd/MM/yyyy")</td>
-                        <td class="col-fecha">@n.FechaAl.ToString("dd/MM/yyyy")</td>
+                        <td class="col-periodo">@n.FechaDel.ToString("dd/MM/yyyy") al @n.FechaAl.ToString("dd/MM/yyyy")</td>
                         <td class="num col-estado">@n.CantidadEmpleados</td>
                         <td class="num col-monto">@n.TotalIngresos.ToString("N2")</td>
                         <td class="num col-monto">@n.TotalDescuentos.ToString("N2")</td>
@@ -159,6 +159,7 @@
                 }
             </tbody>
         </table>
+        </div>
     }
 }
 else if (pestanaActiva == "detalle" && seleccionada is not null)
@@ -199,6 +200,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         }
         else
         {
+            <div class="tabla-desplazable">
             <table class="tabla-datos">
                 <thead>
                     <tr><th class="col-codigo">Código</th><th>Empleado</th><th>Centro de costo</th><th class="num col-monto">@(seleccionada.Clase == "O" ? "Salario base" : "Salario promedio")</th><th class="num col-estado">Días</th><th class="num col-monto">Ingresos</th><th class="num col-monto">Descuentos</th><th class="num col-monto">Líquido</th><th>Pago</th><th class="col-acciones">Detalle</th></tr>
@@ -268,6 +270,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
                     }
                 </tbody>
             </table>
+            </div>
         }
     </div>
 

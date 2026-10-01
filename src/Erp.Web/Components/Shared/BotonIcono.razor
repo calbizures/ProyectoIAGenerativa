@@ -3,7 +3,9 @@
    Para acciones principales (una sola vez por pantalla, ej. "Nuevo") pasar Etiqueta
    para mostrar además un texto junto al ícono.
    Para acciones que no se pueden deshacer (eliminar, anular) pasar Confirmacion con
-   la pregunta: el primer clic la muestra junto al botón y la acción corre con "Sí". *@
+   la pregunta: el primer clic la muestra junto al botón y la acción corre con "Sí".
+   Mientras la acción está en curso el botón queda deshabilitado e ignora otros
+   clics: un doble clic no graba dos veces la misma factura, pago o póliza. *@
 @if (confirmando)
 {
     <span class="confirmacion-en-linea" role="group" aria-label="@Confirmacion">
@@ -17,7 +19,8 @@ else
     <button type="@TipoBoton"
             class="boton-icono boton-icono-@Variante @(string.IsNullOrEmpty(Etiqueta) ? "" : "boton-icono-con-etiqueta")"
             aria-label="@(string.IsNullOrEmpty(Etiqueta) ? Tooltip : null)"
-            disabled="@Deshabilitado"
+            disabled="@(Deshabilitado || ejecutando)"
+            aria-busy="@(ejecutando ? "true" : null)"
             @onclick="ClicAsync">
         <Icono Nombre="@Icono" Tamano="@TamanoIcono" />
         @if (!string.IsNullOrEmpty(Etiqueta))
@@ -43,14 +46,16 @@ else
     [Parameter] public EventCallback OnClick { get; set; }
 
     private bool confirmando;
+    private bool ejecutando;
     private bool enfocarSi;
     private ElementReference botonSi;
 
     private async Task ClicAsync()
     {
+        if (ejecutando) return;
         if (string.IsNullOrEmpty(Confirmacion))
         {
-            await OnClick.InvokeAsync();
+            await EjecutarAsync();
             return;
         }
         confirmando = true;
@@ -59,8 +64,18 @@ else
 
     private async Task ConfirmarAsync()
     {
+        if (ejecutando) return;
         confirmando = false;
-        await OnClick.InvokeAsync();
+        await EjecutarAsync();
+    }
+
+    // La marca se pone antes del primer await, así un segundo clic que llegue
+    // mientras la base responde ya la encuentra puesta.
+    private async Task EjecutarAsync()
+    {
+        ejecutando = true;
+        try { await OnClick.InvokeAsync(); }
+        finally { ejecutando = false; }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
