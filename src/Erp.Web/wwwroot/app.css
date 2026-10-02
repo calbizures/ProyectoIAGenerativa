@@ -3227,3 +3227,10 @@ fieldset.sin-borde { border: 0; padding: 0; margin: 0; min-width: 0; }
 @media (max-width: 600px) { .cch-gasto .campo-ancho { grid-column: auto; } }
 .compra-activo { display: grid; gap: 0.35rem; min-width: 240px; }
 .compra-activo input, .compra-activo select { text-align: left; border: 1px solid var(--borde); background: var(--superficie); }
+
+/* Estados financieros por nodos */
+.tabla-estado .arbol-toggle, .tabla-estado .arbol-toggle-vacio { vertical-align: middle; margin-right: 0.25rem; }
+.tabla-estado .arbol-toggle { min-width: 28px; min-height: 28px; }
+.estado-cuenta { color: inherit; text-decoration: none; }
+.estado-cuenta:hover, .estado-cuenta:focus-visible { text-decoration: underline; color: var(--si-blue-600); }
+@media print { .tabla-estado .arbol-toggle, .tabla-estado .arbol-toggle-vacio { display: none; } }

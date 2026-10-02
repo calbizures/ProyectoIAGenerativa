@@ -9,7 +9,7 @@
 
 <div class="pagina-encabezado">
     <h1>Estados financieros</h1>
-    <p>Balance General a una fecha y Estado de Resultados de un período, con comparativo opcional. Se calculan con las pólizas vigentes; imprímalos o expórtelos a Excel.</p>
+    <p>Balance General a una fecha y Estado de Resultados de un período, por nodos: abra o cierre cada cuenta de agrupación hasta el detalle (clic en una cuenta para ver su libro mayor). Comparativo opcional. Se calculan con las pólizas vigentes; imprímalos o expórtelos a Excel.</p>
 </div>
 
 @if (mensaje is not null)
@@ -29,12 +29,16 @@
         <label class="filtro-campo">Desde <input type="date" value="@reporte.Desde.ToString("yyyy-MM-dd")" @onchange="e => CambiarFecha(e, f => reporte.Desde = f)" /></label>
         <label class="filtro-campo">Hasta <input type="date" value="@reporte.Hasta.ToString("yyyy-MM-dd")" @onchange="e => CambiarFecha(e, f => reporte.Hasta = f)" /></label>
     }
-    <select @bind="reporte.Nivel" @bind:after="ConsultarAsync" aria-label="Nivel de detalle">
-        @foreach (var n in ReporteContable.Niveles)
-        {
-            <option value="@n.Nivel">@n.Nombre</option>
-        }
-    </select>
+    <label class="filtro-campo">Abrir hasta
+        <select @bind="reporte.Nivel" @bind:after="() => version++" aria-label="Abrir los nodos hasta el nivel">
+            @foreach (var n in ReporteContable.Niveles)
+            {
+                <option value="@n.Nivel">@n.Nombre</option>
+            }
+        </select>
+    </label>
+    <BotonIcono Icono="plus" Tooltip="Abrir todos los nodos hasta las cuentas de detalle" Etiqueta="Expandir todo" OnClick="() => AbrirHasta(4)" />
+    <BotonIcono Icono="x" Tooltip="Cerrar todos los nodos (solo los grupos)" Etiqueta="Contraer todo" OnClick="() => AbrirHasta(1)" />
     <label class="casilla"><input type="checkbox" @bind="reporte.Comparar" @bind:after="ConsultarAsync" /> Comparar con</label>
     @if (reporte.Comparar)
     {
@@ -94,11 +98,11 @@
     }
     else if (reporte.Tipo == "balance" && balance is not null)
     {
-        <TablaBalance Balance="balance" Comparar="comparado" Etiqueta="@reporte.EtiquetaActual" EtiquetaComparativa="@reporte.EtiquetaComparativa" />
+        <TablaBalance Balance="balance" Nodos="true" ExpandirHasta="reporte.Nivel" Version="version" Comparar="comparado" Etiqueta="@reporte.EtiquetaActual" EtiquetaComparativa="@reporte.EtiquetaComparativa" />
     }
     else if (reporte.Tipo == "resultados" && resultados is not null)
     {
-        <TablaResultados Estado="resultados" Comparar="comparado" Etiqueta="@reporte.EtiquetaActual" EtiquetaComparativa="@reporte.EtiquetaComparativa" />
+        <TablaResultados Estado="resultados" Nodos="true" ExpandirHasta="reporte.Nivel" Version="version" Comparar="comparado" Etiqueta="@reporte.EtiquetaActual" EtiquetaComparativa="@reporte.EtiquetaComparativa" />
     }
 </section>
 
@@ -118,6 +122,14 @@
     private BalanceGeneral? balance;
     private EstadoResultados? resultados;
     private bool comparado;
+    // Cambia al pedir abrir o cerrar todos los nodos.
+    private int version;
+
+    private void AbrirHasta(int nivel)
+    {
+        reporte.Nivel = nivel;
+        version++;
+    }
     private bool cargando;
     private string? mensaje;
 
@@ -155,9 +167,9 @@
         try
         {
             if (reporte.Tipo == "balance")
-                balance = await LibrosRepository.ConsultarBalanceGeneralAsync(reporte.Hasta, reporte.Nivel, reporte.Comparar ? reporte.HastaComparativo : null);
+                balance = await LibrosRepository.ConsultarBalanceGeneralAsync(reporte.Hasta, 4, reporte.Comparar ? reporte.HastaComparativo : null);
             else
-                resultados = await LibrosRepository.ConsultarEstadoResultadosAsync(reporte.Desde, reporte.Hasta, reporte.Nivel,
+                resultados = await LibrosRepository.ConsultarEstadoResultadosAsync(reporte.Desde, reporte.Hasta, 4,
                     reporte.Comparar ? reporte.DesdeComparativo : null, reporte.Comparar ? reporte.HastaComparativo : null);
             comparado = reporte.Comparar;
         }

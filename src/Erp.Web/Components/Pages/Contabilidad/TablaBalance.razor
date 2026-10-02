@@ -42,6 +42,44 @@
     [Parameter] public bool Comparar { get; set; }
     [Parameter] public string Etiqueta { get; set; } = "Saldo";
     [Parameter] public string EtiquetaComparativa { get; set; } = "Comparativo";
+    // Por nodos: las cuentas de agrupación se expanden y contraen.
+    [Parameter] public bool Nodos { get; set; }
+    [Parameter] public int ExpandirHasta { get; set; } = 3;
+    [Parameter] public int Version { get; set; }
+
+    private readonly ArbolEstado arbol = new();
+    private (BalanceGeneral?, int, int) cargado;
+
+    protected override void OnParametersSet()
+    {
+        if (!Nodos || cargado == (Balance, ExpandirHasta, Version)) return;
+        cargado = (Balance, ExpandirHasta, Version);
+        arbol.Cargar(Balance.Filas, ExpandirHasta);
+    }
+
+    private string ClaseFila(EstadoFila f) =>
+        (Nodos ? arbol.TieneHijos(f) : f.Nivel < Balance.Filas.Max(x => x.Nivel)) ? $"fila-nivel fila-nivel-{f.Nivel}" : "";
+
+    private RenderFragment Nombre(EstadoFila f) => __builder =>
+    {
+        if (Nodos && arbol.TieneHijos(f))
+        {
+            <button type="button" class="arbol-toggle" aria-expanded="@(arbol.Expandido(f) ? "true" : "false")"
+                    aria-label="@($"{(arbol.Expandido(f) ? "Contraer" : "Expandir")} {f.Cuenta}")" @onclick="() => arbol.Alternar(f)">@(arbol.Expandido(f) ? "▾" : "▸")</button>
+        }
+        else if (Nodos)
+        {
+            <span class="arbol-toggle-vacio"></span>
+        }
+        if (Nodos)
+        {
+            <a class="estado-cuenta" href="@($"contabilidad/libros?vista=mayor&cta={f.CtaId}")" title="Ver los movimientos en el libro mayor">@f.Cuenta</a>
+        }
+        else
+        {
+            @f.Cuenta
+        }
+    };
 
     private RenderFragment Seccion(string tipo, string titulo) => __builder =>
     {
@@ -52,9 +90,10 @@
         }
         foreach (var f in filas)
         {
-            <tr class="@(f.Nivel < Balance.Filas.Max(x => x.Nivel) ? $"fila-nivel fila-nivel-{f.Nivel}" : "")">
+            if (Nodos && !arbol.Visible(f)) continue;
+            <tr class="@ClaseFila(f)">
                 <td class="col-codigo">@f.Codigo</td>
-                <td class="sangria-@f.Nivel">@f.Cuenta</td>
+                <td class="sangria-@f.Nivel">@Nombre(f)</td>
                 @Montos(f.Saldo, f.SaldoComparativo)
             </tr>
         }
