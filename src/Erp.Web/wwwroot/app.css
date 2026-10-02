@@ -3242,3 +3242,27 @@ fieldset.sin-borde { border: 0; padding: 0; margin: 0; min-width: 0; }
 .cuentas-efectivo { display: grid; gap: 0.35rem; margin: 0.6rem 0 1rem; }
 .cuentas-efectivo .sangria-2 { padding-left: 1.4rem; }
 .cuentas-efectivo .sangria-3 { padding-left: 2.8rem; }
+
+/* Conciliación bancaria */
+.estado-badge-pendiente { background: #fff4dc; color: var(--aviso-texto); }
+.conciliacion-resumen { display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem 2rem; align-items: start; margin: 0.6rem 0 1rem; }
+.conciliacion-resumen dl { margin: 0; }
+.conciliacion-resumen dl > div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.3rem 0; border-bottom: 1px solid var(--borde-suave); }
+.conciliacion-resumen dt { color: var(--texto-tenue); }
+.conciliacion-resumen dd { margin: 0; font-variant-numeric: tabular-nums; }
+.conciliacion-resumen .total { font-weight: 700; border-top: 2px solid var(--texto); border-bottom: none; }
+.conciliacion-resumen .total dt { color: var(--texto); }
+.conciliacion-diferencia { display: flex; align-items: center; gap: 0.5rem; padding: 0.8rem 1rem; border-radius: var(--radio); background: var(--error-fondo); color: var(--error-texto); font-weight: 700; border: 1px solid var(--error-borde); }
+.conciliacion-diferencia.cuadra { background: var(--exito-fondo); color: var(--exito-texto); border-color: var(--exito-borde); }
+.conciliacion-columnas { display: grid; grid-template-columns: 1fr; gap: 1.2rem; }
+@media (min-width: 1700px) { .conciliacion-columnas { grid-template-columns: 1fr 1fr; } }
+.conciliacion-columnas h3 { font-size: 1rem; margin: 0 0 0.5rem; }
+.conciliacion-columnas > section { min-width: 0; }
+.tabla-conciliacion .fila-conciliada td { color: var(--texto-tenue); background: var(--superficie-suave); }
+.tabla-conciliacion .fila-candidata td { background: #e6f2ff; }
+.boton-archivo { position: relative; cursor: pointer; }
+.boton-archivo input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.boton-archivo:focus-within { box-shadow: var(--anillo-foco); }
+@media (max-width: 1100px) {
+    .conciliacion-resumen { grid-template-columns: 1fr; }
+}

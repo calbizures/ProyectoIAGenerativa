@@ -71,7 +71,7 @@ GO
 -- La lista es la misma en todos los scripts que la tocan (36, 38, 45, 58);
 -- si ya tiene el último origen agregado no se vuelve a crear, así correr de
 -- nuevo un script anterior no la deja sin los orígenes nuevos.
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_cont_asiento_enc_origen' AND definition LIKE '%CIERRE_ANUAL%')
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_cont_asiento_enc_origen' AND definition LIKE '%CONCILIACION%')
 BEGIN
 	IF OBJECT_ID('dbo.CK_cont_asiento_enc_origen', 'C') IS NOT NULL
 		ALTER TABLE dbo.cont_asiento_enc DROP CONSTRAINT [CK_cont_asiento_enc_origen];
@@ -82,7 +82,8 @@ BEGIN
 								'AJUSTE_INVENTARIO','APERTURA',		-- 38
 								'TRASLADO',							-- 45
 								'PAGO_TRANSFERENCIA',				-- 58
-								'CAJA_CHICA','DEPRECIACION','ACTIVO_FIJO','CIERRE_ANUAL'));	-- 60 en adelante
+								'CAJA_CHICA','DEPRECIACION','ACTIVO_FIJO','CIERRE_ANUAL',
+								'CONCILIACION'));	-- 60 en adelante
 END
 GO
 

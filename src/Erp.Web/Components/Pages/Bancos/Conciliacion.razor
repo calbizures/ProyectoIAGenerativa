@@ -1,0 +1,597 @@
+@page "/bancos/conciliacion"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CONCILIACION_BANCARIA")]
+@using Erp.Data.Bancos
+@using Erp.Data.Conciliacion
+@using Erp.Data.Contabilidad
+@using Erp.Data.General
+@using Erp.Web.Reportes
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IConciliacionRepository ConciliacionRepository
+@inject IBancosRepository BancosRepository
+@inject IGeneralRepository GeneralRepository
+
+<PageTitle>Conciliación bancaria</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Conciliación bancaria</h1>
+    <p>Compare cada mes el estado de cuenta del banco con los movimientos en libros: importe el archivo que descarga de la banca en línea (Excel o CSV), concilie automáticamente, empareje o marque lo que falte, registre con una póliza de ajuste lo que el banco cargó o abonó (comisiones, intereses) y cierre cuando la diferencia sea cero.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="barra-herramientas">
+    <select value="@bcbId" @onchange="CambiarCuentaAsync" aria-label="Cuenta bancaria" class="selector-cuenta">
+        @foreach (var c in cuentas)
+        {
+            <option value="@c.BcbId">@c.Nombre@(string.IsNullOrEmpty(c.Descripcion) ? "" : $" · {c.Descripcion}")</option>
+        }
+    </select>
+    <span class="barra-herramientas-separador"></span>
+    <a class="boton-icono boton-icono-con-etiqueta" href="reportes/bancos/plantilla-estado-cuenta.xlsx" download title="Plantilla de Excel para el estado de cuenta">
+        <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Plantilla</span>
+    </a>
+    <BotonIcono Icono="plus" Tooltip="Empezar la conciliación de un mes" Etiqueta="Nueva conciliación" Variante="primario" OnClick="NuevaConciliacion" />
+</div>
+
+@if (nueva is not null)
+{
+    <section class="tarjeta" aria-labelledby="titulo-nueva">
+        <h2 id="titulo-nueva">Nueva conciliación</h2>
+        <div class="panel-formulario panel-ancho cch-gasto">
+            <div class="campo"><label for="bcn-mes">Mes</label><input id="bcn-mes" type="month" value="@($"{nueva.Anio:0000}-{nueva.Mes:00}")" @onchange="CambiarMesNueva" /></div>
+            <div class="campo">
+                <label for="bcn-inicial">Saldo inicial según el banco</label>
+                <input id="bcn-inicial" type="number" step="0.01" @bind="nueva.SaldoInicialBanco" />
+                <small class="texto-ayuda">Se propone el saldo final de la conciliación anterior.</small>
+            </div>
+            <div class="campo">
+                <label for="bcn-final">Saldo final según el banco</label>
+                <input id="bcn-final" type="number" step="0.01" @bind="nueva.SaldoBanco" />
+                <small class="texto-ayuda">Si importa el archivo con columna Saldo se toma de ahí.</small>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Crear la conciliación" Etiqueta="Crear" Variante="primario" Deshabilitado="guardando" OnClick="CrearAsync" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => nueva = null" />
+            </div>
+        </div>
+    </section>
+}
+
+<section class="tarjeta" aria-labelledby="titulo-conciliaciones">
+    <h2 id="titulo-conciliaciones">Conciliaciones de la cuenta</h2>
+    @if (conciliaciones.Count == 0)
+    {
+        <p class="estado-vacio">La cuenta todavía no tiene conciliaciones. Empiece con Nueva conciliación.</p>
+    }
+    else
+    {
+        <table class="tabla-datos">
+            <thead><tr><th>Mes</th><th class="num col-monto">Saldo según banco</th><th class="num col-estado">Líneas</th><th class="num col-estado">Sin conciliar</th><th class="col-estado">Estado</th><th>Cerrada</th><th class="col-acciones">Abrir</th></tr></thead>
+            <tbody>
+                @foreach (var c in conciliaciones)
+                {
+                    <tr class="@(detalle?.Resumen.BcnId == c.BcnId ? "fila-seleccionada" : "")">
+                        <td>@NombreMes(c.Mes) @c.Anio</td>
+                        <td class="num col-monto">@c.SaldoBanco.ToString("N2")</td>
+                        <td class="num col-estado">@c.LineasExtracto</td>
+                        <td class="num col-estado">@c.Pendientes</td>
+                        <td class="col-estado"><span class="estado-badge @(c.Estado == "C" ? "estado-badge-activo" : "estado-badge-pendiente")">@(c.Estado == "C" ? "Cerrada" : "En proceso")</span></td>
+                        <td>@(c.FechaCierre is null ? "" : $"{c.FechaCierre:dd/MM/yyyy} · {c.CerradaPor}")</td>
+                        <td class="col-acciones"><BotonIcono Icono="eye" Tooltip="Abrir la conciliación" OnClick="() => AbrirAsync(c.BcnId)" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@if (detalle is not null)
+{
+    var r = detalle.Resumen;
+    var enProceso = r.Estado == "B";
+    <section class="tarjeta" aria-labelledby="titulo-detalle">
+        <div class="maestro-detalle-encabezado">
+            <h2 id="titulo-detalle">@r.Cuenta · @NombreMes(r.Mes) @r.Anio</h2>
+            <div class="acciones-fila">
+                <a class="boton-icono boton-icono-con-etiqueta" href="bancos/conciliacion/@r.BcnId/imprimir" target="_blank" title="Imprimir la conciliación">
+                    <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+                </a>
+                @if (enProceso)
+                {
+                    <BotonIcono Icono="check-check" Tooltip="@(r.Diferencia != 0 ? "Para cerrar, la diferencia debe ser cero" : detalle.Extracto.Any(l => l.AsdId is null) ? "Para cerrar, concilie o registre con ajuste todas las líneas del banco" : "Cerrar la conciliación")" Etiqueta="Cerrar conciliación" Variante="primario" Deshabilitado="guardando || r.Diferencia != 0 || detalle.Extracto.Any(l => l.AsdId is null)"
+                                Confirmacion="¿Cerrar la conciliación? Los movimientos en tránsito pasan al mes siguiente." OnClick="CerrarAsync" />
+                    <BotonIcono Icono="trash-2" Tooltip="Eliminar esta conciliación en proceso" Variante="peligro" Confirmacion="¿Eliminar la conciliación y las líneas importadas?" OnClick="EliminarAsync" />
+                }
+                else
+                {
+                    <BotonIcono Icono="unlock" Tooltip="Volver a abrir (solo la última de la cuenta)" Etiqueta="Reabrir" Confirmacion="¿Volver a abrir la conciliación?" OnClick="ReabrirAsync" />
+                }
+            </div>
+        </div>
+
+        <div class="conciliacion-resumen">
+            <dl>
+                <div><dt>Saldo según banco al @r.FechaCorte.ToString("dd/MM/yyyy")</dt><dd>@r.SaldoBanco.ToString("N2")</dd></div>
+                <div><dt>(+) Depósitos en tránsito</dt><dd>@r.DepositosTransito.ToString("N2")</dd></div>
+                <div><dt>(−) Cheques y pagos en circulación</dt><dd>@r.ChequesCirculacion.ToString("N2")</dd></div>
+                <div class="total"><dt>Saldo según banco ajustado</dt><dd>@r.BancoAjustado.ToString("N2")</dd></div>
+            </dl>
+            <dl>
+                <div><dt>Saldo según libros</dt><dd>@r.SaldoLibros.ToString("N2")</dd></div>
+                <div><dt>(+) Créditos del banco sin registrar</dt><dd>@r.CreditosNoRegistrados.ToString("N2")</dd></div>
+                <div><dt>(−) Débitos del banco sin registrar</dt><dd>@r.DebitosNoRegistrados.ToString("N2")</dd></div>
+                <div class="total"><dt>Saldo según libros ajustado</dt><dd>@r.LibrosAjustado.ToString("N2")</dd></div>
+            </dl>
+            <div class="conciliacion-diferencia @(r.Diferencia == 0 ? "cuadra" : "")" role="status">
+                @if (r.Diferencia == 0)
+                {
+                    <Icono Nombre="check-circle" Tamano="20" /><span>La conciliación cuadra.</span>
+                }
+                else
+                {
+                    <Icono Nombre="alert-triangle" Tamano="20" /><span>Diferencia: Q @r.Diferencia.ToString("N2")</span>
+                }
+            </div>
+        </div>
+        @if (r.DiferenciaExtracto != 0 && detalle.Extracto.Count > 0)
+        {
+            <p class="etiqueta-aviso"><Icono Nombre="alert-triangle" Tamano="14" /> El estado de cuenta no cuadra con sus saldos: inicial Q @r.SaldoInicialBanco.ToString("N2") + créditos Q @r.CreditosExtracto.ToString("N2") − débitos Q @r.DebitosExtracto.ToString("N2") difiere del final por Q @r.DiferenciaExtracto.ToString("N2"). Revise los saldos o si falta alguna línea.</p>
+        }
+
+        @if (enProceso)
+        {
+            <div class="barra-herramientas conciliacion-acciones">
+                <label class="filtro-campo">Saldo inicial banco <input type="number" step="0.01" @bind="saldoInicial" /></label>
+                <label class="filtro-campo">Saldo final banco <input type="number" step="0.01" @bind="saldoFinal" /></label>
+                <BotonIcono Icono="save" Tooltip="Guardar los saldos del estado de cuenta" Etiqueta="Guardar saldos" BloquearTrasGuardar="false" OnClick="GuardarSaldosAsync" />
+                <span class="barra-herramientas-separador"></span>
+                <label class="boton-icono boton-icono-con-etiqueta boton-archivo" title="Importar el estado de cuenta (Excel o CSV)">
+                    <Icono Nombre="upload" Tamano="16" /><span class="boton-icono-etiqueta">Importar estado de cuenta</span>
+                    <InputFile OnChange="ImportarAsync" accept=".xlsx,.csv,.txt" aria-label="Archivo del estado de cuenta" />
+                </label>
+                <label class="casilla"><input type="checkbox" @bind="reemplazar" /> Reemplazar las líneas no conciliadas</label>
+                <BotonIcono Icono="check-check" Tooltip="Empareja por número de cheque o documento, y por monto y fecha cercana" Etiqueta="Conciliar automáticamente" Variante="primario" OnClick="ConciliarAutomaticoAsync" />
+            </div>
+            @if (erroresImportacion.Count > 0)
+            {
+                <ul class="mensaje-error" role="alert">
+                    @foreach (var e in erroresImportacion.Take(10))
+                    {
+                        <li>@e</li>
+                    }
+                </ul>
+            }
+        }
+
+        <div class="barra-herramientas">
+            <label class="casilla"><input type="checkbox" @bind="soloPendientes" /> Solo lo que falta conciliar</label>
+            @if (bancoElegido is not null)
+            {
+                <span class="etiqueta-aviso">Línea del banco elegida: @bancoElegido.Fecha.ToString("dd/MM") · Q @(Math.Max(bancoElegido.Debito, bancoElegido.Credito).ToString("N2")). Ahora elija el movimiento de libros con el mismo monto.</span>
+                <BotonIcono Icono="x" Tooltip="Cancelar la selección" OnClick="() => bancoElegido = null" />
+            }
+        </div>
+
+        <div class="conciliacion-columnas">
+            <section aria-labelledby="titulo-extracto">
+                <h3 id="titulo-extracto">Estado de cuenta del banco (@detalle.Extracto.Count(l => l.AsdId is null) sin conciliar de @detalle.Extracto.Count)</h3>
+                @if (detalle.Extracto.Count == 0)
+                {
+                    <p class="estado-vacio">Importe el estado de cuenta del mes.</p>
+                }
+                else
+                {
+                    <div class="tabla-desplazable" tabindex="0" aria-label="Estado de cuenta">
+                        <table class="tabla-datos tabla-conciliacion">
+                            <thead><tr><th class="col-fecha">Fecha</th><th>Descripción</th><th class="num">Débito</th><th class="num">Crédito</th><th class="col-acciones">Acción</th></tr></thead>
+                            <tbody>
+                                @foreach (var l in detalle.Extracto.Where(l => !soloPendientes || l.AsdId is null))
+                                {
+                                    <tr class="@(l.AsdId is not null ? "fila-conciliada" : bancoElegido?.BexId == l.BexId ? "fila-seleccionada" : "")">
+                                        <td class="col-fecha">@l.Fecha.ToString("dd/MM/yyyy")</td>
+                                        <td>@l.Descripcion@if (l.Referencia is not null) {<br /><span class="texto-tenue">Ref. @l.Referencia</span>}@if (l.AsiId is not null) {<br /><span class="texto-tenue">@NombreForma(l.Forma) · <a href="contabilidad/polizas?id=@l.AsiId">póliza #@l.AsiId</a></span>}</td>
+                                        <td class="num">@(l.Debito == 0 ? "" : l.Debito.ToString("N2"))</td>
+                                        <td class="num">@(l.Credito == 0 ? "" : l.Credito.ToString("N2"))</td>
+                                        <td class="col-acciones">
+                                            @if (enProceso)
+                                            {
+                                                <div class="acciones-fila">
+                                                    @if (l.AsdId is null)
+                                                    {
+                                                        <BotonIcono Icono="link" Tooltip="Emparejar con un movimiento de libros" OnClick="() => ElegirBanco(l)" />
+                                                        <BotonIcono Icono="book-open" Tooltip="Registrar con una póliza de ajuste (comisión, interés, nota del banco)" OnClick="() => IniciarAjuste(l)" />
+                                                        <BotonIcono Icono="trash-2" Tooltip="Quitar la línea" Variante="peligro" OnClick="() => EliminarLineaAsync(l)" />
+                                                    }
+                                                    else if (l.Forma != "J")
+                                                    {
+                                                        <BotonIcono Icono="x" Tooltip="Deshacer la conciliación de esta línea" OnClick="() => DesemparejarAsync(l.BexId, null)" />
+                                                    }
+                                                </div>
+                                            }
+                                        </td>
+                                    </tr>
+                                    @if (ajuste?.Linea.BexId == l.BexId)
+                                    {
+                                        <tr class="fila-subdetalle">
+                                            <td colspan="5">
+                                                <div class="fila-edicion">
+                                                    <label for="ajuste-cuenta">Cuenta contable</label>
+                                                    <select id="ajuste-cuenta" @bind="ajuste.CtaId">
+                                                        <option value="">Por omisión (@(l.Debito > 0 ? "comisiones bancarias" : "otros ingresos"))</option>
+                                                        @foreach (var c in cuentasDetalle)
+                                                        {
+                                                            <option value="@c.CtaId">@c.CtaCodigo — @c.CtaNombre</option>
+                                                        }
+                                                    </select>
+                                                    <label for="ajuste-descripcion">Concepto</label>
+                                                    <input id="ajuste-descripcion" maxlength="256" @bind="ajuste.Descripcion" />
+                                                    <BotonIcono Icono="save" Tooltip="Grabar la póliza de ajuste" Etiqueta="Grabar ajuste" Variante="primario" Deshabilitado="guardando" OnClick="GrabarAjusteAsync" />
+                                                    <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => ajuste = null" />
+                                                </div>
+                                                <small class="texto-ayuda">@(l.Debito > 0 ? "Débito del banco: Debe la cuenta elegida / Haber el banco." : "Crédito del banco: Debe el banco / Haber la cuenta elegida.")</small>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+            <section aria-labelledby="titulo-libros">
+                <h3 id="titulo-libros">Movimientos en libros (@detalle.Libros.Count(l => !l.Conciliado) en tránsito)</h3>
+                <div class="tabla-desplazable" tabindex="0" aria-label="Movimientos en libros">
+                    <table class="tabla-datos tabla-conciliacion">
+                        <thead><tr><th class="col-fecha">Fecha</th><th>Póliza / concepto</th><th class="num">Debe</th><th class="num">Haber</th><th class="col-acciones">Acción</th></tr></thead>
+                        <tbody>
+                            @foreach (var l in detalle.Libros.Where(l => !soloPendientes || !l.Conciliado))
+                            {
+                                var coincide = bancoElegido is not null && !l.Conciliado
+                                               && ((bancoElegido.Debito > 0 && l.Haber == bancoElegido.Debito) || (bancoElegido.Credito > 0 && l.Debe == bancoElegido.Credito));
+                                <tr class="@(l.Conciliado ? "fila-conciliada" : coincide ? "fila-candidata" : "")">
+                                    <td class="col-fecha">@l.Fecha.ToString("dd/MM/yyyy")</td>
+                                    <td><a href="contabilidad/polizas?id=@l.AsiId">#@l.AsiId</a> @l.Descripcion<br /><span class="texto-tenue">@OrigenesPoliza.Nombre(l.Origen)@(l.Conciliado ? l.BexId is null ? " · marcado a mano" : " · conciliado" : "")</span></td>
+                                    <td class="num">@(l.Debe == 0 ? "" : l.Debe.ToString("N2"))</td>
+                                    <td class="num">@(l.Haber == 0 ? "" : l.Haber.ToString("N2"))</td>
+                                    <td class="col-acciones">
+                                        @if (enProceso)
+                                        {
+                                            <div class="acciones-fila">
+                                                @if (coincide)
+                                                {
+                                                    <BotonIcono Icono="link" Tooltip="Emparejar con la línea del banco elegida" Variante="primario" OnClick="() => EmparejarAsync(l)" />
+                                                }
+                                                else if (!l.Conciliado)
+                                                {
+                                                    <BotonIcono Icono="check-circle" Tooltip="Marcar como conciliado sin línea del banco (por ejemplo, ya está en el saldo inicial)" OnClick="() => MarcarAsync(l, true)" />
+                                                }
+                                                else if (l.BexId is null)
+                                                {
+                                                    <BotonIcono Icono="x" Tooltip="Quitar la marca" OnClick="() => MarcarAsync(l, false)" />
+                                                }
+                                            </div>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </section>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private static readonly string[] Meses = { "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre" };
+
+    private IReadOnlyList<CuentaBancaria> cuentas = Array.Empty<CuentaBancaria>();
+    private IReadOnlyList<ConciliacionBancaria> conciliaciones = Array.Empty<ConciliacionBancaria>();
+    private IReadOnlyList<CuentaContable> cuentasDetalle = Array.Empty<CuentaContable>();
+    private ConciliacionDetalle? detalle;
+    private int bcbId;
+    private NuevaConciliacionModelo? nueva;
+    private decimal saldoInicial;
+    private decimal saldoFinal;
+    private bool reemplazar = true;
+    private bool soloPendientes;
+    private LineaExtracto? bancoElegido;
+    private AjusteModelo? ajuste;
+    private List<string> erroresImportacion = new();
+    private bool guardando;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private sealed class NuevaConciliacionModelo
+    {
+        public int Anio { get; set; }
+        public int Mes { get; set; }
+        public decimal? SaldoInicialBanco { get; set; }
+        public decimal? SaldoBanco { get; set; }
+    }
+
+    private sealed class AjusteModelo
+    {
+        public LineaExtracto Linea { get; set; } = new();
+        public int? CtaId { get; set; }
+        public string? Descripcion { get; set; }
+    }
+
+    private static string NombreMes(int mes) => Meses[mes - 1];
+    private static string NombreForma(string? forma) => forma switch { "A" => "Automática", "M" => "Manual", "J" => "Ajuste", _ => "" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            cuentas = await BancosRepository.ConsultarCuentasAsync(soloActivas: true);
+            cuentasDetalle = (await GeneralRepository.ConsultarCuentasContablesAsync())
+                .Where(c => c.CtaAceptaMovimiento && c.CtaEstado == "A" && c.CtaTipo is "G" or "I").OrderBy(c => c.CtaCodigo).ToList();
+            bcbId = cuentas.FirstOrDefault()?.BcbId ?? 0;
+            await CargarConciliacionesAsync(abrirPrimera: true);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private void MostrarOk(string texto)
+    {
+        mensaje = texto;
+        esMensajeError = false;
+    }
+
+    private async Task CargarConciliacionesAsync(bool abrirPrimera)
+    {
+        conciliaciones = bcbId == 0 ? Array.Empty<ConciliacionBancaria>() : await ConciliacionRepository.ConsultarAsync(bcbId);
+        if (abrirPrimera)
+        {
+            var abrir = conciliaciones.FirstOrDefault(c => c.Estado == "B") ?? conciliaciones.FirstOrDefault();
+            detalle = null;
+            if (abrir is not null) await AbrirAsync(abrir.BcnId);
+        }
+    }
+
+    private async Task CambiarCuentaAsync(ChangeEventArgs e)
+    {
+        mensaje = null;
+        nueva = null;
+        bcbId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        try { await CargarConciliacionesAsync(abrirPrimera: true); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task AbrirAsync(int bcnId)
+    {
+        try
+        {
+            detalle = await ConciliacionRepository.ConsultarDetalleAsync(bcnId);
+            if (detalle is not null)
+            {
+                saldoInicial = detalle.Resumen.SaldoInicialBanco;
+                saldoFinal = detalle.Resumen.SaldoBanco;
+            }
+            bancoElegido = null;
+            ajuste = null;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task RecargarAsync()
+    {
+        if (detalle is null) return;
+        var id = detalle.Resumen.BcnId;
+        await CargarConciliacionesAsync(abrirPrimera: false);
+        await AbrirAsync(id);
+    }
+
+    private void NuevaConciliacion()
+    {
+        mensaje = null;
+        var ultima = conciliaciones.OrderByDescending(c => c.Anio * 100 + c.Mes).FirstOrDefault();
+        var mes = ultima is null ? DateTime.Today.AddMonths(-1) : new DateTime(ultima.Anio, ultima.Mes, 1).AddMonths(1);
+        nueva = new NuevaConciliacionModelo { Anio = mes.Year, Mes = mes.Month, SaldoInicialBanco = ultima?.SaldoBanco };
+    }
+
+    private void CambiarMesNueva(ChangeEventArgs e)
+    {
+        if (nueva is not null && DateTime.TryParse($"{e.Value}-01", out var fecha))
+        {
+            nueva.Anio = fecha.Year;
+            nueva.Mes = fecha.Month;
+        }
+    }
+
+    private async Task CrearAsync()
+    {
+        if (nueva is null) return;
+        guardando = true;
+        try
+        {
+            var id = await ConciliacionRepository.CrearAsync(bcbId, nueva.Anio, nueva.Mes, nueva.SaldoInicialBanco, nueva.SaldoBanco, await ObtenerUsuIdActualAsync());
+            MostrarOk($"Conciliación de {NombreMes(nueva.Mes)} {nueva.Anio} creada: importe el estado de cuenta.");
+            nueva = null;
+            await CargarConciliacionesAsync(abrirPrimera: false);
+            await AbrirAsync(id);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task GuardarSaldosAsync()
+    {
+        if (detalle is null) return;
+        try
+        {
+            await ConciliacionRepository.GuardarSaldosAsync(detalle.Resumen.BcnId, saldoInicial, saldoFinal, await ObtenerUsuIdActualAsync());
+            MostrarOk("Saldos guardados.");
+            await RecargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task ImportarAsync(InputFileChangeEventArgs e)
+    {
+        if (detalle is null) return;
+        erroresImportacion = new();
+        mensaje = null;
+        try
+        {
+            using var memoria = new MemoryStream();
+            await e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(memoria);
+            memoria.Position = 0;
+            var leido = ExtractoBancario.Leer(memoria, e.File.Name);
+            erroresImportacion = leido.Errores.ToList();
+            if (leido.Lineas.Count == 0) return;
+            await ConciliacionRepository.CargarExtractoAsync(detalle.Resumen.BcnId, leido.Lineas, reemplazar, await ObtenerUsuIdActualAsync());
+            // Con columna Saldo se toman los saldos del archivo.
+            if (leido.SaldoFinal is not null)
+            {
+                saldoFinal = leido.SaldoFinal.Value;
+                if (detalle.Extracto.Count == 0 || reemplazar) saldoInicial = leido.SaldoInicial ?? saldoInicial;
+                await ConciliacionRepository.GuardarSaldosAsync(detalle.Resumen.BcnId, saldoInicial, saldoFinal, await ObtenerUsuIdActualAsync());
+            }
+            var emparejadas = await ConciliacionRepository.ConciliarAutomaticoAsync(detalle.Resumen.BcnId);
+            MostrarOk($"Se importaron {leido.Lineas.Count} líneas del estado de cuenta y se conciliaron {emparejadas} automáticamente.{(leido.Errores.Count > 0 ? " Revise las filas con error." : "")}");
+            await RecargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task ConciliarAutomaticoAsync()
+    {
+        if (detalle is null) return;
+        try
+        {
+            var emparejadas = await ConciliacionRepository.ConciliarAutomaticoAsync(detalle.Resumen.BcnId);
+            MostrarOk(emparejadas == 0 ? "No se encontraron más coincidencias: empareje o marque a mano lo que falte." : $"Se conciliaron {emparejadas} línea(s).");
+            await RecargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void ElegirBanco(LineaExtracto l)
+    {
+        mensaje = null;
+        ajuste = null;
+        bancoElegido = l;
+        soloPendientes = true;
+    }
+
+    private async Task EmparejarAsync(LineaLibro l)
+    {
+        if (detalle is null || bancoElegido is null) return;
+        try
+        {
+            await ConciliacionRepository.EmparejarAsync(detalle.Resumen.BcnId, bancoElegido.BexId, l.AsdId);
+            MostrarOk("Movimiento conciliado.");
+            await RecargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task DesemparejarAsync(int? bexId, int? asdId)
+    {
+        if (detalle is null) return;
+        try
+        {
+            await ConciliacionRepository.DesemparejarAsync(detalle.Resumen.BcnId, bexId, asdId);
+            await RecargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task MarcarAsync(LineaLibro l, bool marcar)
+    {
+        if (detalle is null) return;
+        try
+        {
+            await ConciliacionRepository.MarcarLibroAsync(detalle.Resumen.BcnId, l.AsdId, marcar);
+            await RecargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void IniciarAjuste(LineaExtracto l)
+    {
+        bancoElegido = null;
+        ajuste = new AjusteModelo { Linea = l, Descripcion = $"Conciliación bancaria: {l.Descripcion ?? (l.Debito > 0 ? "cargo del banco" : "crédito del banco")}" };
+    }
+
+    private async Task GrabarAjusteAsync()
+    {
+        if (detalle is null || ajuste is null) return;
+        guardando = true;
+        try
+        {
+            var asiId = await ConciliacionRepository.GrabarAjusteAsync(detalle.Resumen.BcnId, ajuste.Linea.BexId, ajuste.CtaId, ajuste.Descripcion, await ObtenerUsuIdActualAsync());
+            MostrarOk($"Póliza de ajuste #{asiId} grabada y conciliada.");
+            ajuste = null;
+            await RecargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task EliminarLineaAsync(LineaExtracto l)
+    {
+        try
+        {
+            await ConciliacionRepository.EliminarLineaExtractoAsync(l.BexId);
+            await RecargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task CerrarAsync()
+    {
+        if (detalle is null) return;
+        try
+        {
+            await ConciliacionRepository.CerrarAsync(detalle.Resumen.BcnId, await ObtenerUsuIdActualAsync());
+            MostrarOk("Conciliación cerrada.");
+            await RecargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task ReabrirAsync()
+    {
+        if (detalle is null) return;
+        try
+        {
+            await ConciliacionRepository.ReabrirAsync(detalle.Resumen.BcnId, await ObtenerUsuIdActualAsync());
+            MostrarOk("Conciliación abierta de nuevo.");
+            await RecargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task EliminarAsync()
+    {
+        if (detalle is null) return;
+        try
+        {
+            await ConciliacionRepository.EliminarAsync(detalle.Resumen.BcnId);
+            MostrarOk("Conciliación eliminada.");
+            detalle = null;
+            await CargarConciliacionesAsync(abrirPrimera: false);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

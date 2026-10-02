@@ -1,0 +1,63 @@
+@page "/bancos/conciliacion/{BcnId:int}/imprimir"
+@layout Erp.Web.Components.Layout.ReporteLayout
+@attribute [Authorize(Policy = "Permiso:CONCILIACION_BANCARIA")]
+@using Erp.Data.Conciliacion
+@using Erp.Web.Components.Pages.Contabilidad
+@inject IConciliacionRepository ConciliacionRepository
+
+<ReporteContableMarco Titulo="Conciliación bancaria" Subtitulo="@(detalle is null ? "" : $"{detalle.Resumen.Cuenta}")"
+                      Detalle="@(detalle is null ? null : $"Al {detalle.Resumen.FechaCorte:dd/MM/yyyy} · {(detalle.Resumen.Estado == "C" ? "Cerrada" : "En proceso")}")" Error="@error">
+    @if (detalle is not null)
+    {
+        var r = detalle.Resumen;
+        var transito = detalle.Libros.Where(l => !l.Conciliado && l.Debe > 0).ToList();
+        var circulacion = detalle.Libros.Where(l => !l.Conciliado && l.Haber > 0).ToList();
+        var noRegistrados = detalle.Extracto.Where(l => l.AsdId is null).ToList();
+        <table class="tabla-datos tabla-contable tabla-estado">
+            <tbody>
+                <tr class="fila-subtotal"><td>Saldo según estado de cuenta del banco</td><td class="num">@r.SaldoBanco.ToString("N2")</td></tr>
+                <tr><td class="sangria-2">(+) Depósitos en tránsito</td><td class="num">@r.DepositosTransito.ToString("N2")</td></tr>
+                @foreach (var l in transito)
+                {
+                    <tr><td class="sangria-4">@l.Fecha.ToString("dd/MM/yyyy") · #@l.AsiId @l.Descripcion</td><td class="num texto-tenue">@l.Debe.ToString("N2")</td></tr>
+                }
+                <tr><td class="sangria-2">(−) Cheques y pagos en circulación</td><td class="num">@r.ChequesCirculacion.ToString("N2")</td></tr>
+                @foreach (var l in circulacion)
+                {
+                    <tr><td class="sangria-4">@l.Fecha.ToString("dd/MM/yyyy") · #@l.AsiId @l.Descripcion</td><td class="num texto-tenue">@l.Haber.ToString("N2")</td></tr>
+                }
+                <tr class="fila-total"><td>Saldo según banco ajustado</td><td class="num">@r.BancoAjustado.ToString("N2")</td></tr>
+                <tr class="fila-subtotal"><td>Saldo según libros</td><td class="num">@r.SaldoLibros.ToString("N2")</td></tr>
+                <tr><td class="sangria-2">(+) Créditos del banco sin registrar</td><td class="num">@r.CreditosNoRegistrados.ToString("N2")</td></tr>
+                <tr><td class="sangria-2">(−) Débitos del banco sin registrar</td><td class="num">@r.DebitosNoRegistrados.ToString("N2")</td></tr>
+                @foreach (var l in noRegistrados)
+                {
+                    <tr><td class="sangria-4">@l.Fecha.ToString("dd/MM/yyyy") · @l.Descripcion</td><td class="num texto-tenue">@((l.Debito > 0 ? -l.Debito : l.Credito).ToString("N2"))</td></tr>
+                }
+                <tr class="fila-total"><td>Saldo según libros ajustado</td><td class="num">@r.LibrosAjustado.ToString("N2")</td></tr>
+                <tr class="fila-subtotal"><td>Diferencia</td><td class="num">@r.Diferencia.ToString("N2")</td></tr>
+            </tbody>
+        </table>
+        <div class="firmas-poliza">
+            <div><span>Elaborado</span></div>
+            <div><span>Revisado (contador)</span></div>
+        </div>
+    }
+</ReporteContableMarco>
+
+@code {
+    [Parameter] public int BcnId { get; set; }
+
+    private ConciliacionDetalle? detalle;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            detalle = await ConciliacionRepository.ConsultarDetalleAsync(BcnId);
+            if (detalle is null) error = "La conciliación no existe.";
+        }
+        catch (Exception ex) { error = MensajesError.Traducir(ex); }
+    }
+}

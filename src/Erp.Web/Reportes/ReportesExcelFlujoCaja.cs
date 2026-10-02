@@ -44,4 +44,34 @@ public static partial class ReportesExcel
 		Formato(hoja, inicioDatos, fila, 2, ultima);
 		return Guardar(libro);
 	}
+
+	// Plantilla del estado de cuenta para la conciliación bancaria.
+	public static byte[] PlantillaEstadoCuenta(CompaniaReporte compania)
+	{
+		using var libro = new XLWorkbook();
+		var hoja = libro.Worksheets.Add("Estado de cuenta");
+		var fila = Encabezado(hoja, compania, "Estado de cuenta bancario", "Una fila por movimiento; débito = sale del banco, crédito = entra. La columna Saldo es opcional.");
+		fila = Titulos(hoja, fila, ExtractoBancario.ColumnasPlantilla);
+		var ejemplos = new (DateTime Fecha, string Descripcion, string Referencia, decimal Debito, decimal Credito, decimal Saldo)[]
+		{
+			(new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1), "DEPOSITO EN EFECTIVO", "458712", 0, 15980, 165980),
+			(new DateTime(DateTime.Today.Year, DateTime.Today.Month, 2), "CHEQUE PAGADO", "1012", 850, 0, 165130),
+			(new DateTime(DateTime.Today.Year, DateTime.Today.Month, 3), "COMISION MANEJO DE CUENTA", "", 45, 0, 165085)
+		};
+		var inicio = fila;
+		foreach (var e in ejemplos)
+		{
+			hoja.Cell(fila, 1).Value = e.Fecha;
+			hoja.Cell(fila, 1).Style.DateFormat.Format = "dd/MM/yyyy";
+			hoja.Cell(fila, 2).Value = e.Descripcion;
+			hoja.Cell(fila, 3).Value = e.Referencia;
+			if (e.Debito > 0) hoja.Cell(fila, 4).Value = e.Debito;
+			if (e.Credito > 0) hoja.Cell(fila, 5).Value = e.Credito;
+			hoja.Cell(fila, 6).Value = e.Saldo;
+			fila++;
+		}
+		hoja.Range(inicio, 4, fila, 6).Style.NumberFormat.Format = "#,##0.00";
+		hoja.Columns().AdjustToContents();
+		return Guardar(libro);
+	}
 }

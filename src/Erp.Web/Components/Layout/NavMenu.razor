@@ -176,6 +176,11 @@
                             <NavLink href="bancos/caja-chica" class="sidebar-hijo-link">Caja chica</NavLink>
                         </Authorized>
                     </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CONCILIACION_BANCARIA" Context="conciliacionContexto">
+                        <Authorized>
+                            <NavLink href="bancos/conciliacion" class="sidebar-hijo-link">Conciliación bancaria</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
                     <AuthorizeView Policy="Permiso:FLUJO_CAJA" Context="flujoContexto">
                         <Authorized>
                             <NavLink href="bancos/flujo-caja" class="sidebar-hijo-link">Flujo de caja</NavLink>

@@ -325,6 +325,12 @@ app.MapGet("/reportes/bancos/flujo-caja.xlsx", async (string? tipo, DateTime? de
 		TipoExcel, $"flujo-caja-{inicio:yyyyMMdd}-{fin:yyyyMMdd}.xlsx");
 }).RequireAuthorization();
 
+app.MapGet("/reportes/bancos/plantilla-estado-cuenta.xlsx", async (HttpContext contexto, IGeneralRepository general, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:CONCILIACION_BANCARIA")).Succeeded) return Results.Forbid();
+	return Results.File(ReportesExcel.PlantillaEstadoCuenta(await CompaniaReporteAsync(contexto, general)), TipoExcel, "plantilla-estado-cuenta.xlsx");
+}).RequireAuthorization();
+
 // Plantillas y hojas de trabajo de las cargas desde Excel.
 app.MapGet("/reportes/inventario/plantilla-inventario-inicial.xlsx", async (HttpContext contexto, Erp.Data.Inventario.IBodegaRepository bodegas,
 	Erp.Data.Inventario.IProductoRepository productos, IGeneralRepository general, IAuthorizationService autorizacion) =>
