@@ -305,6 +305,26 @@ app.MapGet("/reportes/contabilidad/activos-fijos.xlsx", async (HttpContext conte
 	return Results.File(archivo, TipoExcel, $"activos-fijos-{DateTime.Today:yyyyMMdd}.xlsx");
 }).RequireAuthorization();
 
+app.MapGet("/reportes/bancos/flujo-caja.xlsx", async (string? tipo, DateTime? desde, DateTime? hasta, string? agrupar, HttpContext contexto,
+	Erp.Data.FlujoCaja.IFlujoCajaRepository flujo, IGeneralRepository general, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:FLUJO_CAJA")).Succeeded) return Results.Forbid();
+	var grupo = agrupar == "S" ? "S" : "M";
+	var fin = (hasta ?? DateTime.Today).Date;
+	var compania = await CompaniaReporteAsync(contexto, general);
+	if (tipo == "proyectado")
+	{
+		if (fin < DateTime.Today) fin = DateTime.Today;
+		var pivote = FlujoCajaPivote.DeProyectado(await flujo.ConsultarProyectadoAsync(fin), fin, grupo);
+		return Results.File(ReportesExcel.FlujoCaja(pivote, "Flujo de caja proyectado", $"Del {DateTime.Today:dd/MM/yyyy} al {fin:dd/MM/yyyy}", compania),
+			TipoExcel, $"flujo-caja-proyectado-{fin:yyyyMMdd}.xlsx");
+	}
+	var inicio = (desde ?? new DateTime(fin.Year, 1, 1)).Date;
+	var real = FlujoCajaPivote.DeReal(await flujo.ConsultarRealAsync(inicio, fin, grupo), inicio, fin, grupo);
+	return Results.File(ReportesExcel.FlujoCaja(real, "Flujo de caja real", $"Del {inicio:dd/MM/yyyy} al {fin:dd/MM/yyyy}", compania),
+		TipoExcel, $"flujo-caja-{inicio:yyyyMMdd}-{fin:yyyyMMdd}.xlsx");
+}).RequireAuthorization();
+
 // Plantillas y hojas de trabajo de las cargas desde Excel.
 app.MapGet("/reportes/inventario/plantilla-inventario-inicial.xlsx", async (HttpContext contexto, Erp.Data.Inventario.IBodegaRepository bodegas,
 	Erp.Data.Inventario.IProductoRepository productos, IGeneralRepository general, IAuthorizationService autorizacion) =>

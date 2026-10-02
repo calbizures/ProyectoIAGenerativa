@@ -1,0 +1,361 @@
+@page "/bancos/flujo-caja"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:FLUJO_CAJA")]
+@using Erp.Data.FlujoCaja
+@using Erp.Data.General
+@using Erp.Web.Reportes
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IFlujoCajaRepository FlujoRepository
+@inject IGeneralRepository GeneralRepository
+
+<PageTitle>Flujo de caja</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Flujo de caja</h1>
+    <p>Real: lo que entró y salió de caja y bancos según las pólizas, por actividades de operación, inversión y financiamiento. Proyectado: desde hoy, con las cuotas por cobrar y por pagar, las contraseñas de pago, la nómina promedio y las partidas que usted agregue.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<BarraPestanas Pestanas="Pestanas" PestanaActiva="@pestana" PestanaActivaChanged="CambiarPestanaAsync" />
+
+@if (pestana is "real" or "proyectado")
+{
+    <div class="barra-herramientas">
+        @if (pestana == "real")
+        {
+            <FiltroPeriodo @bind-Desde="desde" @bind-Hasta="hasta" AlCambiar="ConsultarAsync" />
+        }
+        else
+        {
+            <label class="filtro-campo">Proyectar hasta <input type="date" value="@hastaProyeccion.ToString("yyyy-MM-dd")" @onchange="CambiarHastaProyeccionAsync" /></label>
+        }
+        <select @bind="agrupar" @bind:after="ConsultarAsync" aria-label="Agrupar por">
+            <option value="M">Por mes</option>
+            <option value="S">Por semana</option>
+        </select>
+        <BotonIcono Icono="search" Tooltip="Consultar" Etiqueta="Consultar" Variante="primario" OnClick="ConsultarAsync" />
+        <span class="barra-herramientas-separador"></span>
+        <a class="boton-icono boton-icono-con-etiqueta" download title="Exportar a Excel"
+           href="@($"reportes/bancos/flujo-caja.xlsx?tipo={pestana}&desde={Desde:yyyy-MM-dd}&hasta={(pestana == "real" ? Hasta : hastaProyeccion):yyyy-MM-dd}&agrupar={agrupar}")">
+            <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Excel</span>
+        </a>
+    </div>
+
+    @if (pivote is not null)
+    {
+        var minimo = pivote.Periodos.Count == 0 ? pivote.SaldoInicial : pivote.Periodos.Min(pivote.SaldoFinalDe);
+        <div class="resumen-totales">
+            <span>Saldo inicial: <strong>Q @pivote.SaldoInicial.ToString("N2")</strong></span>
+            <span>Entradas: <strong>Q @pivote.Periodos.Sum(pivote.Entradas).ToString("N2")</strong></span>
+            <span>Salidas: <strong>Q @pivote.Periodos.Sum(pivote.Salidas).ToString("N2")</strong></span>
+            <span>Saldo final: <strong>Q @pivote.SaldoFinal.ToString("N2")</strong></span>
+        </div>
+        @if (pestana == "proyectado" && minimo < 0)
+        {
+            var periodo = pivote.Periodos.First(p => pivote.SaldoFinalDe(p) < 0);
+            <p class="mensaje-error" role="alert">El efectivo proyectado queda en negativo en @pivote.Etiqueta(periodo) (Q @pivote.SaldoFinalDe(periodo).ToString("N2")): conviene adelantar cobros, mover pagos o prever financiamiento.</p>
+        }
+        @if (pestana == "proyectado" && proyectado?.Items.Any(i => i.Vencido) == true)
+        {
+            <p class="etiqueta-aviso"><Icono Nombre="alert-triangle" Tamano="14" /> Hay cuotas vencidas: se proyectan para hoy (cobros Q @proyectado.Items.Where(i => i.Vencido && i.Monto > 0).Sum(i => i.Monto).ToString("N2"), pagos Q @((-proyectado.Items.Where(i => i.Vencido && i.Monto < 0).Sum(i => i.Monto)).ToString("N2"))).</p>
+        }
+
+        <TarjetaGrafico Titulo="Entradas y salidas por período" Descripcion="@(pestana == "real" ? "Movimiento real de caja y bancos." : "Proyección desde hoy.")">
+            <ChildContent>
+                <GraficoColumnas Titulo="Entradas y salidas por período" Categorias="pivote.Periodos.Select(pivote.Etiqueta).ToList()"
+                                 Series="Series" />
+            </ChildContent>
+        </TarjetaGrafico>
+
+        <section class="tarjeta" aria-label="Flujo de caja por período">
+            <TablaFlujoCaja Pivote="pivote" />
+        </section>
+
+        @if (pestana == "real" && real is not null)
+        {
+            <section class="tarjeta" aria-labelledby="titulo-polizas-flujo">
+                <div class="maestro-detalle-encabezado">
+                    <h2 id="titulo-polizas-flujo">Pólizas que movieron efectivo (@real.Polizas.Count)</h2>
+                    <BotonIcono Icono="@(verPolizas ? "x" : "list")" Tooltip="Ver u ocultar el detalle" Etiqueta="@(verPolizas ? "Ocultar" : "Ver detalle")" OnClick="() => verPolizas = !verPolizas" />
+                </div>
+                @if (verPolizas)
+                {
+                    <table class="tabla-datos">
+                        <thead><tr><th class="col-fecha">Fecha</th><th class="col-estado">Póliza</th><th>Concepto</th><th>Clasificación</th><th class="num col-monto">Efectivo</th></tr></thead>
+                        <tbody>
+                            @foreach (var p in Paginador.Recortar(real.Polizas, paginaPolizas))
+                            {
+                                var clase = (p.Clasificacion ?? "O|").Split('|');
+                                <tr>
+                                    <td class="col-fecha">@p.Fecha.ToString("dd/MM/yyyy")</td>
+                                    <td class="col-estado"><a href="contabilidad/polizas?id=@p.AsiId">#@p.AsiId</a></td>
+                                    <td>@p.Descripcion</td>
+                                    <td>@clase[1]<br /><span class="texto-tenue">@ActividadesFlujo.Nombre(clase[0])</span></td>
+                                    <td class="num col-monto @(p.Neto < 0 ? "monto-negativo" : "")">@p.Neto.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <Paginador Total="real.Polizas.Count" @bind-Pagina="paginaPolizas" />
+                }
+            </section>
+        }
+
+        @if (pestana == "proyectado" && proyectado is not null)
+        {
+            <section class="tarjeta" aria-labelledby="titulo-items-flujo">
+                <div class="maestro-detalle-encabezado">
+                    <h2 id="titulo-items-flujo">Detalle de la proyección (@proyectado.Items.Count)</h2>
+                    <BotonIcono Icono="@(verPolizas ? "x" : "list")" Tooltip="Ver u ocultar el detalle" Etiqueta="@(verPolizas ? "Ocultar" : "Ver detalle")" OnClick="() => verPolizas = !verPolizas" />
+                </div>
+                @if (verPolizas)
+                {
+                    <table class="tabla-datos">
+                        <thead><tr><th class="col-fecha">Fecha</th><th>Concepto</th><th>Detalle</th><th class="num col-monto">Monto</th></tr></thead>
+                        <tbody>
+                            @foreach (var i in Paginador.Recortar(proyectado.Items, paginaPolizas))
+                            {
+                                <tr>
+                                    <td class="col-fecha">@i.Fecha.ToString("dd/MM/yyyy")@if (i.Vencido) {<br /><span class="etiqueta-aviso">vencido</span>}</td>
+                                    <td>@i.Concepto<br /><span class="texto-tenue">@ActividadesFlujo.Nombre(i.Actividad)</span></td>
+                                    <td>@i.Detalle</td>
+                                    <td class="num col-monto @(i.Monto < 0 ? "monto-negativo" : "")">@i.Monto.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <Paginador Total="proyectado.Items.Count" @bind-Pagina="paginaPolizas" />
+                }
+            </section>
+        }
+    }
+}
+else if (pestana == "partidas")
+{
+    <section class="tarjeta" aria-labelledby="titulo-partidas">
+        <div class="maestro-detalle-encabezado">
+            <h2 id="titulo-partidas">Partidas proyectadas</h2>
+            <BotonIcono Icono="plus" Tooltip="Agregar una partida (préstamo, impuesto, alquiler, venta esperada...)" Etiqueta="Nueva partida" Variante="primario" OnClick="() => partida = new PartidaProyectada { Monto = -1000 }" />
+        </div>
+        <p class="texto-ayuda">Entradas y salidas que el sistema no conoce por documentos: cuotas de préstamos, impuestos, alquileres, aportes, ventas esperadas. Monto positivo si entra dinero, negativo si sale.</p>
+        @if (partida is not null)
+        {
+            <div class="panel-formulario panel-ancho cch-gasto">
+                <div class="campo campo-ancho"><label for="fcp-concepto">Concepto</label><input id="fcp-concepto" maxlength="100" @bind="partida.Concepto" /></div>
+                <div class="campo">
+                    <label for="fcp-actividad">Actividad</label>
+                    <select id="fcp-actividad" @bind="partida.Actividad">
+                        @foreach (var a in ActividadesFlujo.Todas)
+                        {
+                            <option value="@a.Codigo">@a.Nombre</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo"><label for="fcp-monto">Monto (+ entra, − sale)</label><input id="fcp-monto" type="number" step="0.01" @bind="partida.Monto" /></div>
+                <div class="campo"><label for="fcp-fecha">Fecha</label><input id="fcp-fecha" type="date" @bind="partida.Fecha" /></div>
+                <div class="campo">
+                    <label for="fcp-recurrencia">Se repite</label>
+                    <select id="fcp-recurrencia" @bind="partida.Recurrencia"><option value="U">Una sola vez</option><option value="M">Cada mes</option></select>
+                </div>
+                @if (partida.Recurrencia == "M")
+                {
+                    <div class="campo"><label for="fcp-fin">Hasta (opcional)</label><input id="fcp-fin" type="date" @bind="partida.FechaFin" /></div>
+                }
+                <div class="campo">
+                    <label for="fcp-estado">Estado</label>
+                    <select id="fcp-estado" @bind="partida.Estado"><option value="A">Activa</option><option value="I">Inactiva</option></select>
+                </div>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Guardar la partida" Etiqueta="Guardar" Variante="primario" Deshabilitado="guardando" OnClick="GuardarPartidaAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => partida = null" />
+                </div>
+            </div>
+        }
+        @if (partidas.Count == 0)
+        {
+            <p class="estado-vacio">No hay partidas proyectadas.</p>
+        }
+        else
+        {
+            <table class="tabla-datos">
+                <thead><tr><th class="col-fecha">Fecha</th><th>Concepto</th><th>Actividad</th><th>Repetición</th><th class="num col-monto">Monto</th><th class="col-estado">Estado</th><th class="col-acciones">Editar</th></tr></thead>
+                <tbody>
+                    @foreach (var p in partidas)
+                    {
+                        <tr>
+                            <td class="col-fecha">@p.Fecha.ToString("dd/MM/yyyy")</td>
+                            <td>@p.Concepto</td>
+                            <td>@ActividadesFlujo.Nombre(p.Actividad)</td>
+                            <td>@(p.Recurrencia == "M" ? $"Cada mes{(p.FechaFin is null ? "" : $" hasta {p.FechaFin:dd/MM/yyyy}")}" : "Una vez")</td>
+                            <td class="num col-monto @(p.Monto < 0 ? "monto-negativo" : "")">@p.Monto.ToString("N2")</td>
+                            <td class="col-estado"><span class="estado-badge @(p.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(p.Estado == "A" ? "Activa" : "Inactiva")</span></td>
+                            <td class="col-acciones"><BotonIcono Icono="pencil" Tooltip="Editar la partida" OnClick="() => EditarPartida(p)" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+else
+{
+    <section class="tarjeta" aria-labelledby="titulo-cuentas-efectivo">
+        <h2 id="titulo-cuentas-efectivo">Cuentas de efectivo</h2>
+        <p class="texto-ayuda">El flujo toma las cuentas marcadas y todas sus subcuentas. Por omisión, 111 CAJA y 112 BANCOS. Los traslados entre estas cuentas (depósitos, caja chica) no son flujo.</p>
+        <div class="cuentas-efectivo">
+            @foreach (var c in cuentasActivo)
+            {
+                <label class="casilla sangria-@c.CtaNivel">
+                    <input type="checkbox" checked="@seleccionCuentas.Contains(c.CtaId)" @onchange="e => MarcarCuenta(c.CtaId, e)" />
+                    @c.CtaCodigo — @c.CtaNombre
+                </label>
+            }
+        </div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="save" Tooltip="Guardar las cuentas de efectivo" Etiqueta="Guardar" Variante="primario" Deshabilitado="guardando || seleccionCuentas.Count == 0" OnClick="GuardarCuentasAsync" />
+        </div>
+    </section>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private static readonly IReadOnlyList<PestanaItem> Pestanas = new[]
+    {
+        new PestanaItem("real", "Flujo real"), new PestanaItem("proyectado", "Flujo proyectado"),
+        new PestanaItem("partidas", "Partidas proyectadas"), new PestanaItem("cuentas", "Cuentas de efectivo")
+    };
+
+    private string pestana = "real";
+    private DateTime? desde = new DateTime(DateTime.Today.Year, 1, 1);
+    private DateTime? hasta = DateTime.Today;
+    private DateTime Desde => pestana == "proyectado" ? DateTime.Today : desde ?? new DateTime(DateTime.Today.Year, 1, 1);
+    private DateTime Hasta => hasta ?? DateTime.Today;
+    private DateTime hastaProyeccion = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(4).AddDays(-1);
+    private string agrupar = "M";
+    private FlujoReal? real;
+    private FlujoProyectado? proyectado;
+    private FlujoCajaPivote? pivote;
+    private bool verPolizas;
+    private int paginaPolizas = 1;
+    private IReadOnlyList<PartidaProyectada> partidas = Array.Empty<PartidaProyectada>();
+    private PartidaProyectada? partida;
+    private IReadOnlyList<CuentaContable> cuentasActivo = Array.Empty<CuentaContable>();
+    private readonly HashSet<int> seleccionCuentas = new();
+    private bool guardando;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private IReadOnlyList<SerieGrafico> Series => pivote is null ? Array.Empty<SerieGrafico>() : new[]
+    {
+        new SerieGrafico("Entradas", pivote.Periodos.Select(pivote.Entradas).ToList(), 3),
+        new SerieGrafico("Salidas", pivote.Periodos.Select(pivote.Salidas).ToList(), 2)
+    };
+
+    protected override Task OnInitializedAsync() => ConsultarAsync();
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private async Task CambiarPestanaAsync(string nueva)
+    {
+        pestana = nueva;
+        mensaje = null;
+        verPolizas = false;
+        paginaPolizas = 1;
+        try
+        {
+            if (nueva == "partidas") partidas = await FlujoRepository.ConsultarPartidasAsync();
+            else if (nueva == "cuentas")
+            {
+                cuentasActivo = (await GeneralRepository.ConsultarCuentasContablesAsync())
+                    .Where(c => c.CtaTipo == "A" && c.CtaEstado == "A" && c.CtaCodigo.StartsWith("1") && c.CtaNivel <= 3).OrderBy(c => c.CtaCodigo).ToList();
+                seleccionCuentas.Clear();
+                foreach (var c in await FlujoRepository.ConsultarCuentasAsync()) seleccionCuentas.Add(c.CtaId);
+            }
+            else await ConsultarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task CambiarHastaProyeccionAsync(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var fecha)) hastaProyeccion = fecha.Date;
+        await ConsultarAsync();
+    }
+
+    private async Task ConsultarAsync()
+    {
+        try
+        {
+            if (pestana == "proyectado")
+            {
+                if (hastaProyeccion < DateTime.Today) hastaProyeccion = DateTime.Today;
+                proyectado = await FlujoRepository.ConsultarProyectadoAsync(hastaProyeccion);
+                pivote = FlujoCajaPivote.DeProyectado(proyectado, hastaProyeccion, agrupar);
+            }
+            else
+            {
+                real = await FlujoRepository.ConsultarRealAsync(Desde, Hasta, agrupar);
+                pivote = FlujoCajaPivote.DeReal(real, Desde, Hasta, agrupar);
+            }
+            paginaPolizas = 1;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void EditarPartida(PartidaProyectada p)
+    {
+        partida = new PartidaProyectada
+        {
+            FcpId = p.FcpId, Fecha = p.Fecha, Actividad = p.Actividad, Concepto = p.Concepto, Monto = p.Monto,
+            Recurrencia = p.Recurrencia, FechaFin = p.FechaFin, Estado = p.Estado
+        };
+    }
+
+    private async Task GuardarPartidaAsync()
+    {
+        if (partida is null) return;
+        guardando = true;
+        try
+        {
+            await FlujoRepository.GuardarPartidaAsync(partida, await ObtenerUsuIdActualAsync());
+            mensaje = "Partida guardada; ya cuenta en el flujo proyectado.";
+            esMensajeError = false;
+            partida = null;
+            partidas = await FlujoRepository.ConsultarPartidasAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private void MarcarCuenta(int ctaId, ChangeEventArgs e)
+    {
+        if (e.Value is true) seleccionCuentas.Add(ctaId); else seleccionCuentas.Remove(ctaId);
+    }
+
+    private async Task GuardarCuentasAsync()
+    {
+        guardando = true;
+        try
+        {
+            await FlujoRepository.GuardarCuentasAsync(seleccionCuentas.ToList(), await ObtenerUsuIdActualAsync());
+            mensaje = "Cuentas de efectivo guardadas.";
+            esMensajeError = false;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+}

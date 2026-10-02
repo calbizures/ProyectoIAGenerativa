@@ -3234,3 +3234,11 @@ fieldset.sin-borde { border: 0; padding: 0; margin: 0; min-width: 0; }
 .estado-cuenta { color: inherit; text-decoration: none; }
 .estado-cuenta:hover, .estado-cuenta:focus-visible { text-decoration: underline; color: var(--si-blue-600); }
 @media print { .tabla-estado .arbol-toggle, .tabla-estado .arbol-toggle-vacio { display: none; } }
+
+/* Flujo de caja */
+.monto-negativo { color: var(--error-texto); }
+.tabla-flujo .col-concepto { min-width: 240px; }
+.tabla-flujo td.num, .tabla-flujo th.num { white-space: nowrap; }
+.cuentas-efectivo { display: grid; gap: 0.35rem; margin: 0.6rem 0 1rem; }
+.cuentas-efectivo .sangria-2 { padding-left: 1.4rem; }
+.cuentas-efectivo .sangria-3 { padding-left: 2.8rem; }

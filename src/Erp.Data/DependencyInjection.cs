@@ -55,6 +55,7 @@ public static class DependencyInjection
 		services.AddScoped<IBancosRepository, BancosRepository>();
 		services.AddScoped<ICentroCostoRepository, CentroCostoRepository>();
 		services.AddScoped<ILibrosRepository, LibrosRepository>();
+		services.AddScoped<Erp.Data.FlujoCaja.IFlujoCajaRepository, Erp.Data.FlujoCaja.FlujoCajaRepository>();
 		services.AddScoped<Erp.Data.ActivosFijos.IActivosFijosRepository, Erp.Data.ActivosFijos.ActivosFijosRepository>();
 		services.AddScoped<Erp.Data.CajaChica.ICajaChicaRepository, Erp.Data.CajaChica.CajaChicaRepository>();
 		services.AddScoped<IIntegridadRepository, IntegridadRepository>();
