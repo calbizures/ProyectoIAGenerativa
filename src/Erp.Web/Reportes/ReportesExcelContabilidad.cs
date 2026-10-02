@@ -205,4 +205,39 @@ public static partial class ReportesExcel
 		Formato(hoja, inicioDatos, fila, 3, columnas.Count);
 		return Guardar(libro);
 	}
+
+	public static byte[] ActivosFijos(IReadOnlyList<Erp.Data.ActivosFijos.ActivoFijo> activos, CompaniaReporte compania)
+	{
+		using var libro = new XLWorkbook();
+		var hoja = libro.Worksheets.Add("Activos fijos");
+		var fila = Encabezado(hoja, compania, "Registro de activos fijos", $"Al {DateTime.Today:dd/MM/yyyy}");
+		fila = Titulos(hoja, fila, new List<string> { "Código", "Descripción", "Categoría", "% anual", "Sucursal", "Centro de costo", "Responsable", "Serie",
+			"Adquisición", "Documento", "Estado", "Costo", "Valor residual", "Dep. acumulada", "Valor en libros", "Cuota mensual" });
+		var inicioDatos = fila;
+		foreach (var a in activos)
+		{
+			hoja.Cell(fila, 1).Value = a.Codigo;
+			hoja.Cell(fila, 2).Value = a.Descripcion;
+			hoja.Cell(fila, 3).Value = a.Categoria;
+			hoja.Cell(fila, 4).Value = a.Porcentaje;
+			hoja.Cell(fila, 5).Value = a.Sucursal;
+			hoja.Cell(fila, 6).Value = a.Departamento;
+			hoja.Cell(fila, 7).Value = a.Responsable;
+			hoja.Cell(fila, 8).Value = a.Serie;
+			hoja.Cell(fila, 9).Value = a.FechaAdquisicion;
+			hoja.Cell(fila, 9).Style.DateFormat.Format = "dd/MM/yyyy";
+			hoja.Cell(fila, 10).Value = a.Documento;
+			hoja.Cell(fila, 11).Value = Erp.Data.ActivosFijos.ActivoFijo.NombreEstado(a.Estado);
+			hoja.Cell(fila, 12).Value = a.Costo;
+			hoja.Cell(fila, 13).Value = a.ValorResidual;
+			hoja.Cell(fila, 14).Value = a.Acumulada;
+			hoja.Cell(fila, 15).Value = a.ValorLibros;
+			hoja.Cell(fila, 16).Value = a.CuotaMensual;
+			fila++;
+		}
+		Totales(hoja, fila, inicioDatos, 12, 16, 11);
+		Formato(hoja, inicioDatos, fila, 12, 16);
+		if (fila > inicioDatos) hoja.Range(inicioDatos - 1, 1, fila - 1, 16).SetAutoFilter();
+		return Guardar(libro);
+	}
 }

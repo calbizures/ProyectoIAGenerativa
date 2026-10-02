@@ -101,4 +101,7 @@ public sealed class NuevaLineaCompra
 	public decimal SubTotal { get; set; }
 	public decimal? PorcentajeIva { get; set; }
 	public int BodId { get; set; }
+	// Línea de activo fijo: categoría (sin producto) y centro de costo.
+	public int? AfcId { get; set; }
+	public int? IdDepartamento { get; set; }
 }

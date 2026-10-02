@@ -57,6 +57,16 @@ public sealed class CompraRepository(IDbConnectionFactory connectionFactory) : I
 		parametros.Add("@detalle", tablaDetalle.AsTableValuedParameter("dbo.compra_det_type"));
 		parametros.Add("@enc_id", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
+		// Líneas de activo fijo: det_item (posición) → categoría y centro de costo.
+		var tablaActivos = new DataTable();
+		tablaActivos.Columns.Add("det_item", typeof(int));
+		tablaActivos.Columns.Add("afc_id", typeof(int));
+		tablaActivos.Columns.Add("IdDepartamento", typeof(int));
+		for (var i = 0; i < detalle.Count; i++)
+			if (detalle[i].AfcId is int afcId)
+				tablaActivos.Rows.Add(i + 1, afcId, (object?)detalle[i].IdDepartamento ?? DBNull.Value);
+		parametros.Add("@activos", tablaActivos.AsTableValuedParameter("dbo.compra_activo_type"));
+
 		await connection.ExecuteAsync("dbo.sp_compras_crear_documento", parametros, commandType: CommandType.StoredProcedure);
 		return parametros.Get<int>("@enc_id");
 	}

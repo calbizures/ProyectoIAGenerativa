@@ -297,6 +297,14 @@ app.MapGet("/reportes/contabilidad/libro.xlsx", async (string? tipo, DateTime? d
 	return Results.File(archivo, TipoExcel, $"{nombre}-{reporte.Hasta:yyyyMMdd}.xlsx");
 }).RequireAuthorization();
 
+app.MapGet("/reportes/contabilidad/activos-fijos.xlsx", async (HttpContext contexto, Erp.Data.ActivosFijos.IActivosFijosRepository activos,
+	IGeneralRepository general, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:ACTIVOS_FIJOS")).Succeeded) return Results.Forbid();
+	var archivo = ReportesExcel.ActivosFijos(await activos.ConsultarAsync(null, null, null, null, null), await CompaniaReporteAsync(contexto, general));
+	return Results.File(archivo, TipoExcel, $"activos-fijos-{DateTime.Today:yyyyMMdd}.xlsx");
+}).RequireAuthorization();
+
 // Plantillas y hojas de trabajo de las cargas desde Excel.
 app.MapGet("/reportes/inventario/plantilla-inventario-inicial.xlsx", async (HttpContext contexto, Erp.Data.Inventario.IBodegaRepository bodegas,
 	Erp.Data.Inventario.IProductoRepository productos, IGeneralRepository general, IAuthorizationService autorizacion) =>

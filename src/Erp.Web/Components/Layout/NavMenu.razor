@@ -229,7 +229,7 @@
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <AuthorizeView Policy="Permiso:CONTABILIDAD_NOMENCLATURA_ADMIN,CONTABILIDAD_CENTRO_COSTO,CONTABILIDAD_SALDOS_INICIALES,CONTABILIDAD_POLIZAS,CONTABILIDAD_ASIENTO_MANUAL,CONTABILIDAD_ESTADOS,CONTABILIDAD_CIERRE">
+        <AuthorizeView Policy="Permiso:CONTABILIDAD_NOMENCLATURA_ADMIN,CONTABILIDAD_CENTRO_COSTO,CONTABILIDAD_SALDOS_INICIALES,CONTABILIDAD_POLIZAS,CONTABILIDAD_ASIENTO_MANUAL,CONTABILIDAD_ESTADOS,CONTABILIDAD_CIERRE,ACTIVOS_FIJOS">
             <Authorized>
                 <SidebarNodo Titulo="Contabilidad" IconoNombre="bar-chart-2" Rutas="@(new[] { "contabilidad" })">
                     <AuthorizeView Policy="Permiso:CONTABILIDAD_POLIZAS,CONTABILIDAD_ASIENTO_MANUAL" Context="polizasContexto">
@@ -245,6 +245,11 @@
                     <AuthorizeView Policy="Permiso:CONTABILIDAD_ESTADOS" Context="estadosContexto">
                         <Authorized>
                             <NavLink href="contabilidad/estados-financieros" class="sidebar-hijo-link">Estados financieros</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:ACTIVOS_FIJOS" Context="activosContexto">
+                        <Authorized>
+                            <NavLink href="contabilidad/activos-fijos" class="sidebar-hijo-link">Activos fijos</NavLink>
                         </Authorized>
                     </AuthorizeView>
                     <AuthorizeView Policy="Permiso:CONTABILIDAD_CIERRE" Context="cierreContexto">

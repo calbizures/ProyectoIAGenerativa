@@ -3225,3 +3225,5 @@ fieldset.sin-borde { border: 0; padding: 0; margin: 0; min-width: 0; }
 .cch-gasto > p, .cch-cheque > p { grid-column: 1 / -1; }
 .cch-gasto .campo-ancho { grid-column: span 2; }
 @media (max-width: 600px) { .cch-gasto .campo-ancho { grid-column: auto; } }
+.compra-activo { display: grid; gap: 0.35rem; min-width: 240px; }
+.compra-activo input, .compra-activo select { text-align: left; border: 1px solid var(--borde); background: var(--superficie); }

@@ -13,6 +13,8 @@
 @inject IProveedorRepository ProveedorRepository
 @inject IProductoProveedorRepository ProductoProveedorRepository
 @inject Erp.Data.Cuentas.ICuentasRepository CuentasRepository
+@inject Erp.Data.ActivosFijos.IActivosFijosRepository ActivosFijosRepository
+@inject Erp.Data.Rrhh.IRrhhRepository RrhhRepository
 
 <PageTitle>Compras</PageTitle>
 
@@ -191,6 +193,13 @@
                     }
                 </div>
 
+                @if (categoriasActivo.Count > 0)
+                {
+                    <div class="acciones-fila">
+                        <BotonIcono Icono="plus" Tooltip="Agregar un bien de activo fijo (mobiliario, equipo, vehículo...): va a la cuenta de activo, no al inventario" Etiqueta="Agregar activo fijo" OnClick="AgregarActivoFijo" />
+                    </div>
+                }
+
                 <div class="doc-nota">
                     <Icono Nombre="check-circle" Tamano="15" />
                     <span>El costo unitario ya incluye IVA (@PorcentajeIvaTexto%), como lo factura el proveedor — no se suma aparte.</span>
@@ -223,7 +232,30 @@
                         {
                             <tr>
                                 <td>
-                                    @linea.Descripcion
+                                    @if (linea.AfcId is not null)
+                                    {
+                                        <div class="compra-activo">
+                                            <span class="etiqueta-aviso"><Icono Nombre="building" Tamano="13" /> Activo fijo</span>
+                                            <input aria-label="Descripción del activo fijo" maxlength="200" placeholder="Descripción del bien" @bind="linea.Descripcion" />
+                                            <select aria-label="Categoría del activo fijo" @bind="linea.AfcId">
+                                                @foreach (var c in categoriasActivo)
+                                                {
+                                                    <option value="@c.AfcId">@c.Nombre (@c.Porcentaje.ToString("0.##") %)</option>
+                                                }
+                                            </select>
+                                            <select aria-label="Centro de costo del activo fijo" @bind="linea.IdDepartamento">
+                                                <option value="">Sin centro de costo</option>
+                                                @foreach (var d in departamentos)
+                                                {
+                                                    <option value="@d.IdDepartamento">@d.Descripcion</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        @linea.Descripcion
+                                    }
                                     @if (nuevaCompra.PrvId is not null && !linea.Relacionado)
                                     {
                                         <br />
@@ -451,6 +483,8 @@
 
     private readonly NuevaCompraModelo nuevaCompra = new();
     private readonly List<LineaCaptura> lineas = new();
+    private IReadOnlyList<Erp.Data.ActivosFijos.CategoriaActivo> categoriasActivo = Array.Empty<Erp.Data.ActivosFijos.CategoriaActivo>();
+    private IReadOnlyList<Erp.Data.Rrhh.Departamento> departamentos = Array.Empty<Erp.Data.Rrhh.Departamento>();
 
     // Igual que en Facturas: el costo unitario que cotiza el proveedor ya
     // incluye IVA (% de la compañía); no se suma aparte. Internamente se convierte a neto
@@ -489,6 +523,8 @@
         PorcentajeIva = (await GeneralRepository.ConsultarParametrosAsync(sucIdParametros)).CiaPorcIva;
         monedas = await CompraRepository.ConsultarMonedasAsync();
         bodegas = await BodegaRepository.ConsultarAsync(sucId: null, estado: "A");
+        categoriasActivo = (await ActivosFijosRepository.ConsultarCategoriasAsync(soloActivas: true)).ToList();
+        departamentos = await RrhhRepository.ConsultarDepartamentosAsync(soloActivos: true);
 
         nuevaCompra.TdoId = tiposDocumento.FirstOrDefault()?.TdoId ?? 0;
         var monedaLocal = monedas.FirstOrDefault(m => m.MonEsLocal);
@@ -568,7 +604,7 @@
             : await ProductoProveedorRepository.ConsultarAsync(nuevaCompra.PrvId, null);
         soloDelProveedor = productosProveedor.Count > 0;
         foreach (var linea in lineas)
-            linea.Relacionado = RelacionDe(linea.ProId) is not null;
+            linea.Relacionado = linea.AfcId is not null || RelacionDe(linea.ProId) is not null;
         productosEncontrados = soloDelProveedor ? ProductosDelProveedor(null) : Array.Empty<Producto>();
     }
 
@@ -700,6 +736,22 @@
         textoBusquedaProducto = "";
     }
 
+    // Línea de un bien de activo fijo: sin producto, con categoría; al grabar
+    // la compra se crea el activo (uno por unidad) y su costo va a la cuenta
+    // de activo de la categoría.
+    private void AgregarActivoFijo()
+    {
+        lineas.Add(new LineaCaptura
+        {
+            ProId = 0,
+            Descripcion = "",
+            BienOServicio = "B",
+            Cantidad = 1,
+            AfcId = categoriasActivo.FirstOrDefault(c => c.Codigo == "MOB")?.AfcId ?? categoriasActivo[0].AfcId,
+            Relacionado = true
+        });
+    }
+
     private async Task GrabarCompraAsync()
     {
         if (nuevaCompra.PrvId is null)
@@ -712,6 +764,13 @@
         if (lineas.Count == 0)
         {
             mensaje = "Debe agregar al menos un producto.";
+            esMensajeError = true;
+            return;
+        }
+
+        if (lineas.Any(l => l.AfcId is not null && (string.IsNullOrWhiteSpace(l.Descripcion) || l.PrecioUnitario <= 0)))
+        {
+            mensaje = "Escriba la descripción y el costo de cada activo fijo.";
             esMensajeError = true;
             return;
         }
@@ -740,7 +799,9 @@
                 var valorDescuentoNeto = SinIva(l.ValorDescuento);
                 return new NuevaLineaCompra
                 {
-                    ProId = l.ProId,
+                    ProId = l.AfcId is null ? l.ProId : null,
+                    AfcId = l.AfcId,
+                    IdDepartamento = l.AfcId is null ? null : l.IdDepartamento,
                     BienOServicio = l.BienOServicio,
                     Cantidad = l.Cantidad,
                     Descripcion = l.Descripcion,
@@ -869,5 +930,8 @@
         public decimal SubTotal => Cantidad * PrecioUnitario;
         // El producto ya está relacionado con el proveedor de la compra.
         public bool Relacionado { get; set; }
+        // Línea de activo fijo (sin producto): categoría y centro de costo.
+        public int? AfcId { get; set; }
+        public int? IdDepartamento { get; set; }
     }
 }
