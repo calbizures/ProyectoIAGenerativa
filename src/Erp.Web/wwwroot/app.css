@@ -3203,3 +3203,25 @@ fieldset.sin-borde { border: 0; padding: 0; margin: 0; min-width: 0; }
     .reporte-pagina .tabla-desplazable { overflow: visible; }
     .mayor-cuenta { break-inside: avoid-page; }
 }
+
+/* Caja chica */
+.cch-saldo { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.8rem; margin: 0.6rem 0 0.8rem; }
+.cch-saldo > div { background: var(--superficie-suave); border: 1px solid var(--borde-suave); border-radius: var(--radio); padding: 0.6rem 0.8rem; display: flex; flex-direction: column; gap: 0.2rem; }
+.cch-saldo span { font-size: 0.8rem; color: var(--texto-tenue); }
+.cch-saldo strong { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.cch-saldo .cch-disponible { border-color: var(--exito-borde); background: var(--exito-fondo); }
+.cch-saldo .cch-disponible strong { color: var(--exito-texto); }
+.cch-barra { height: 8px; border-radius: 4px; background: var(--borde-suave); overflow: hidden; margin-bottom: 0.6rem; }
+.cch-barra > div { height: 100%; background: var(--si-blue-500); }
+.cch-barra > div.cch-barra-alta { background: var(--aviso-texto); }
+.cch-cheque, .cch-gasto { margin-top: 1rem; }
+.panel-formulario.cch-gasto, .panel-formulario.cch-cheque {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.8rem 1.1rem;
+    align-items: start;
+}
+.cch-gasto > h3, .cch-cheque > h3, .cch-gasto > .acciones-fila, .cch-cheque > .acciones-fila,
+.cch-gasto > p, .cch-cheque > p { grid-column: 1 / -1; }
+.cch-gasto .campo-ancho { grid-column: span 2; }
+@media (max-width: 600px) { .cch-gasto .campo-ancho { grid-column: auto; } }

@@ -158,7 +158,7 @@
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <AuthorizeView Policy="Permiso:BANCOS_CAJA_ADMIN,BANCOS_ADMIN,BANCOS_CHEQUE_EMITIR,BANCOS_FORMATO_ARCHIVO">
+        <AuthorizeView Policy="Permiso:BANCOS_CAJA_ADMIN,BANCOS_ADMIN,BANCOS_CHEQUE_EMITIR,BANCOS_FORMATO_ARCHIVO,CAJA_CHICA_GASTOS,CAJA_CHICA_ADMIN">
             <Authorized>
                 <SidebarNodo Titulo="Caja y bancos" IconoNombre="landmark" Rutas="@(new[] { "caja", "bancos" })">
                     <AuthorizeView Policy="Permiso:BANCOS_CAJA_ADMIN" Context="cajaContexto">
@@ -169,6 +169,11 @@
                     <AuthorizeView Policy="Permiso:BANCOS_ADMIN,BANCOS_CHEQUE_EMITIR" Context="chequesContexto">
                         <Authorized>
                             <NavLink href="bancos/cheques" class="sidebar-hijo-link">Cheques</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CAJA_CHICA_GASTOS,CAJA_CHICA_ADMIN" Context="cajaChicaContexto">
+                        <Authorized>
+                            <NavLink href="bancos/caja-chica" class="sidebar-hijo-link">Caja chica</NavLink>
                         </Authorized>
                     </AuthorizeView>
                     <AuthorizeView Policy="Permiso:BANCOS_ADMIN" Context="bancosContexto">
