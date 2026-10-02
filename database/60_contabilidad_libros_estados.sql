@@ -607,8 +607,10 @@ GO
 ------------------------------------------------------------
 -- En los datos de prueba el cheque 1009 paga una compra de inventario de más
 -- de Q1.1 millones sin fondos y el banco queda en negativo. Se registra el
--- préstamo bancario que la financia, para que el Balance General tenga sentido.
--- Solo con los datos de demostración (ese cheque) y una sola vez.
+-- préstamo bancario que la financia, para que el Balance General tenga sentido:
+-- lo que le falta al banco más Q100,000, en múltiplos de Q100,000 (los datos de
+-- prueba dependen de la fecha en que se instalan). Solo con los datos de
+-- demostración (ese cheque) y una sola vez.
 IF EXISTS (SELECT 1 FROM dbo.cont_asiento_enc WHERE asi_descripcion = 'Pago a proveedor con cheque 1009' AND asi_estado = 'A')
    AND NOT EXISTS (SELECT 1 FROM dbo.cont_asiento_enc WHERE asi_descripcion LIKE 'Desembolso de préstamo bancario%')
    AND EXISTS (SELECT 1 FROM dbo.cont_cuenta_contable WHERE cta_codigo = '1120014')
@@ -616,10 +618,15 @@ IF EXISTS (SELECT 1 FROM dbo.cont_asiento_enc WHERE asi_descripcion = 'Pago a pr
    AND NOT EXISTS (SELECT 1 FROM dbo.cont_periodo_contable WHERE pdo_anio = 2026 AND pdo_mes = 9 AND pdo_estado = 'C')
 BEGIN
 	DECLARE @lineas dbo.cont_asiento_det_cc_type, @asi_id INT;
+	DECLARE @saldo_banco NUMERIC(16, 2) = (
+		SELECT ISNULL(SUM(deta.asd_debe - deta.asd_haber), 0) FROM dbo.cont_asiento_det deta
+		INNER JOIN dbo.cont_asiento_enc asie ON asie.asi_id = deta.asi_id AND asie.asi_estado = 'A'
+		INNER JOIN dbo.cont_cuenta_contable cuen ON cuen.cta_id = deta.cta_id AND cuen.cta_codigo = '1120014');
+	DECLARE @prestamo NUMERIC(16, 2) = IIF(@saldo_banco < 0, CEILING((100000 - @saldo_banco) / 100000) * 100000, 1200000);
 	INSERT INTO @lineas (cta_id, asd_debe, asd_haber, asd_descripcion)
-	SELECT cta_id, 1200000, 0, 'Desembolso del préstamo' FROM dbo.cont_cuenta_contable WHERE cta_codigo = '1120014'
+	SELECT cta_id, @prestamo, 0, 'Desembolso del préstamo' FROM dbo.cont_cuenta_contable WHERE cta_codigo = '1120014'
 	UNION ALL
-	SELECT cta_id, 0, 1200000, 'Préstamo a 5 años para compra de inventario' FROM dbo.cont_cuenta_contable WHERE cta_codigo = '2160001';
+	SELECT cta_id, 0, @prestamo, 'Préstamo a 5 años para compra de inventario' FROM dbo.cont_cuenta_contable WHERE cta_codigo = '2160001';
 	EXEC dbo.paPolizaManualGrabar @Fecha = '20260930', @Descripcion = 'Desembolso de préstamo bancario para compra de inventario (datos de demostración)',
 		@Lineas = @lineas, @UsuId = 1, @AsiId = @asi_id OUTPUT;
 END

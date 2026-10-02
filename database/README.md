@@ -74,21 +74,27 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 57_orden_compra_firmas.sql                    -- orden de compra con visto bueno del jefe de bodega y aprobación del contador general
 58_contrasenas_pago_transferencias.sql        -- contraseñas de pago, pago por cheque o transferencia, archivo para el banco
 59_correo_estado_cuenta.sql                   -- correo saliente (SMTP) de la compañía y bitácora; estado de cuenta por correo
+60_contabilidad_libros_estados.sql            -- pólizas manuales, libros, balanza, estados financieros, períodos y cierre anual
+61_caja_chica.sql                             -- caja chica: fondo fijo, gastos, liquidación con póliza, reposición y arqueo
+62_activos_fijos.sql                          -- activos fijos: compra, depreciación mensual (tasas del ISR), bajas y ventas
+63_flujo_caja.sql                             -- flujo de caja real (operación, inversión, financiamiento) y proyectado
+64_conciliacion_bancaria.sql                  -- conciliación bancaria con el estado de cuenta del banco
+65_integridad_fase3.sql                       -- controles de integridad 14 a 19 (caja chica, activos, conciliación, balance)
 ```
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `59` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `65` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `59` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `65` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `59`. Si vuelves a
-correr `12`, corre después `22` a `59` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `65`. Si vuelves a
+correr `12`, corre después `22` a `65` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -1582,6 +1588,109 @@ Errores `54901`-`54906`.
 - Datos de ejemplo: los clientes sin correo quedan con
   `cliXXX@example.com` (dominio reservado; no llega a nadie).
 
+## Pólizas, libros, estados financieros y cierres (`60`)
+
+Errores `55001`-`55019`. Permisos `CONTABILIDAD_POLIZAS`, `CONTABILIDAD_ESTADOS`,
+`CONTABILIDAD_CIERRE` y `CONTABILIDAD_ASIENTO_MANUAL` (pólizas manuales).
+
+- **Pólizas**: consulta de todas (automáticas y manuales) con su documento de
+  origen; **póliza manual** con varias líneas y centro de costo por línea;
+  solo se graba si cuadra, en cuentas de detalle activas y en un mes abierto.
+  Se anulan aquí solo las manuales y la de cierre (con motivo); las demás, desde
+  su documento.
+- **Libro diario**, **libro mayor** (saldo inicial, movimientos y saldo corrido,
+  por cuenta de detalle o de agrupación) y **balanza de comprobación** por nivel
+  con sumas iguales.
+- **Balance General** a una fecha y **Estado de Resultados** de un período, con
+  comparativo; en la aplicación se ven **por nodos** (cada cuenta de agrupación
+  se abre y se cierra hasta el detalle). El resultado del ejercicio va del 1 de
+  enero a la fecha; el Estado de Resultados no toma la partida de cierre.
+  Ingresos y costo de ventas se separan por la naturaleza de la cuenta de mayor
+  (`411` acreedora, `412` deudora).
+- **Períodos**: cerrar y volver a abrir cada mes (en un mes cerrado no se graban
+  ni anulan pólizas, script `50`).
+- **Cierre anual**: póliza al 31 de diciembre (origen `CIERRE_ANUAL`) que salda
+  ingresos, costos y gastos contra Utilidades o Pérdidas del ejercicio
+  (conceptos `CIERRE_UTILIDAD` y `CIERRE_PERDIDA`).
+- Corrección: el gasto de la cuota patronal del IRTRA iba a FALTANTES DE
+  INVENTARIO; se crea la cuenta `5110074 CUOTA PATRONAL IRTRA`.
+- Datos de demostración: un desembolso de préstamo bancario que financia la
+  compra de inventario del cheque 1009 (lo que le falta al banco más Q100,000,
+  en múltiplos de Q100,000), para que el banco no quede en negativo.
+
+## Caja chica (`61`)
+
+Errores `55101`-`55133`. Permisos `CAJA_CHICA_GASTOS` (registrar gastos y
+arqueos; también el rol `CAJERO`) y `CAJA_CHICA_ADMIN`.
+
+- Fondo por sucursal con responsable, monto y cuenta (por omisión `CAJA CHICA`,
+  concepto `CAJA_CHICA`). Se **constituye** y se **aumenta** con un cheque al
+  responsable (Debe caja chica / Haber banco).
+- **Gastos**: factura (IVA crédito fiscal incluido en el total), factura de
+  pequeño contribuyente, recibo o vale; cuenta de gasto y centro de costo; no
+  pueden pasar del disponible ni repetir una factura.
+- **Liquidación** `LCC-000001`: póliza `CAJA_CHICA` (Debe cada gasto sin IVA +
+  IVA por cobrar / Haber caja chica). **Reposición** con cheque por el total.
+- Disponible = constituido − gastos sin liquidar − liquidado sin reponer. Un
+  cheque anulado deja de contar. **Arqueo** con la diferencia.
+
+## Activos fijos (`62`)
+
+Errores `55201`-`55242`. Permiso `ACTIVOS_FIJOS`.
+
+- **Categorías** con el porcentaje anual máximo del Decreto 10-2012, art. 28
+  (edificios 5 %; maquinaria, vehículos, mobiliario y equipo 20 %; equipo de
+  computación 33.33 %; herramientas 25 %; demás bienes 10 %; terrenos 0 %) y sus
+  cuentas de activo, depreciación acumulada (se crean las que faltaban) y gasto.
+- **Activo** `AF-000001`: alta desde **Compras** (línea "activo fijo": un activo
+  por unidad y la póliza de la compra va a la cuenta del activo, no a inventario)
+  o manual (ya en libros con su depreciación anterior, o con póliza contra la
+  cuenta que se elija).
+- **Depreciación mensual** en línea recta desde el mes siguiente a la adquisición
+  hasta el valor residual: póliza `DEPRECIACION` por centro de costo; los meses
+  van en orden y se puede anular la última.
+- **Baja** (pérdida por el valor en libros) o **venta** (IVA débito y ganancia o
+  pérdida): póliza `ACTIVO_FIJO`. Al anular una compra se anulan sus activos si
+  no se han depreciado.
+
+## Flujo de caja (`63`)
+
+Errores `55301`-`55308`. Permiso `FLUJO_CAJA`.
+
+- Cuentas de efectivo configurables (por omisión `111` y `112` con sus
+  subcuentas); los traslados entre ellas no son flujo.
+- **Real** por método directo: cada póliza que movió efectivo se clasifica en
+  operación, inversión o financiamiento por su origen (`fcj_concepto_origen`) o
+  por su contrapartida (`fcj_concepto_cuenta`, prefijo más largo).
+- **Proyectado** desde hoy: cuotas por cobrar y por pagar (lo vencido, hoy),
+  contraseñas de pago, nómina promedio y sus cuotas, y **partidas proyectadas**
+  (una vez o cada mes). Por semana o por mes, con aviso si el saldo queda negativo.
+
+## Conciliación bancaria (`64`)
+
+Errores `55401`-`55421`. Permiso `CONCILIACION_BANCARIA`. Origen de partida
+`CONCILIACION` (los scripts `36`, `38`, `45` y `58` ya lo incluyen).
+
+- Una conciliación por cuenta bancaria y mes, en orden; saldo inicial y final
+  según el banco y las líneas del estado de cuenta (la aplicación importa el
+  Excel o CSV de la banca en línea y tiene plantilla).
+- **Automática** por número de documento y monto, o por monto y fecha cercana
+  (±5 días); el resto se empareja o se marca a mano. Lo que el banco registró y
+  libros no (comisiones, intereses) se graba con una **póliza de ajuste**.
+- Reporte: saldo según banco + depósitos en tránsito − cheques en circulación =
+  saldo según libros + créditos − débitos no registrados. Se **cierra** solo si
+  cuadra y todas las líneas del banco quedaron conciliadas; lo pendiente pasa al
+  mes siguiente. Datos de demostración: septiembre conciliado (cheque 1013 en
+  circulación, comisión e intereses con ajuste).
+
+## Controles de integridad de la Fase 3 (`65`)
+
+Agrega a Contabilidad > Revisión de integridad: liquidaciones de caja chica sin
+póliza (14), saldo de la cuenta de caja chica distinto del fondo (15),
+depreciaciones sin póliza (16), depreciación mayor que el costo (17),
+movimientos conciliados cuya póliza se anuló después (18) y Balance General que
+no cuadra (19).
+
 ## Módulos nuevos
 
 - **Seguridad (`sec_*`)**: roles, permisos y las tablas de asignación
@@ -1673,7 +1782,12 @@ prueba.
 - Anular una factura no cambia sus cuotas (quedan fuera de los saldos porque
   todas las consultas toman solo documentos vigentes).
 - La anulación de pólizas marca la póliza como anulada (`asi_estado = 'N'`);
-  no genera una póliza de reversión con fecha de la anulación.
+  no genera una póliza de reversión con fecha de la anulación (para eso está
+  la **Reversión** de una póliza manual en Contabilidad > Pólizas).
+- La depreciación es en línea recta por meses completos (empieza el mes
+  siguiente a la adquisición); no calcula días ni revalúa activos.
+- La conciliación bancaria no se conecta en línea con el banco: se importa el
+  archivo que descarga la banca en línea.
 - Una nota de crédito solo se aplica a un documento con saldo pendiente: la
   devolución de una factura de contado ya pagada (que implicaría reembolso)
   no está cubierta.

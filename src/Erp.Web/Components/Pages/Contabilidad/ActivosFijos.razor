@@ -184,6 +184,7 @@
             }
             else
             {
+                <div class="tabla-desplazable" tabindex="0" aria-label="Activos fijos">
                 <table class="tabla-datos">
                     <thead><tr><th class="col-codigo">Código</th><th>Descripción</th><th>Categoría / ubicación</th><th class="col-fecha">Adquisición</th><th class="num col-monto">Costo</th><th class="num col-monto">Dep. acumulada</th><th class="num col-monto">Valor en libros</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
                     <tbody>
@@ -239,6 +240,7 @@
                         }
                     </tbody>
                 </table>
+                </div>
                 <Paginador Total="activos.Count" @bind-Pagina="pagina" />
             }
         </section>
