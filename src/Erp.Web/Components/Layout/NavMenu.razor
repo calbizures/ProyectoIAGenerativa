@@ -224,9 +224,29 @@
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <AuthorizeView Policy="Permiso:CONTABILIDAD_NOMENCLATURA_ADMIN,CONTABILIDAD_CENTRO_COSTO,CONTABILIDAD_SALDOS_INICIALES">
+        <AuthorizeView Policy="Permiso:CONTABILIDAD_NOMENCLATURA_ADMIN,CONTABILIDAD_CENTRO_COSTO,CONTABILIDAD_SALDOS_INICIALES,CONTABILIDAD_POLIZAS,CONTABILIDAD_ASIENTO_MANUAL,CONTABILIDAD_ESTADOS,CONTABILIDAD_CIERRE">
             <Authorized>
                 <SidebarNodo Titulo="Contabilidad" IconoNombre="bar-chart-2" Rutas="@(new[] { "contabilidad" })">
+                    <AuthorizeView Policy="Permiso:CONTABILIDAD_POLIZAS,CONTABILIDAD_ASIENTO_MANUAL" Context="polizasContexto">
+                        <Authorized>
+                            <NavLink href="contabilidad/polizas" class="sidebar-hijo-link">Pólizas</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CONTABILIDAD_POLIZAS,CONTABILIDAD_ESTADOS" Context="librosContexto">
+                        <Authorized>
+                            <NavLink href="contabilidad/libros" class="sidebar-hijo-link">Libros y balanza</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CONTABILIDAD_ESTADOS" Context="estadosContexto">
+                        <Authorized>
+                            <NavLink href="contabilidad/estados-financieros" class="sidebar-hijo-link">Estados financieros</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CONTABILIDAD_CIERRE" Context="cierreContexto">
+                        <Authorized>
+                            <NavLink href="contabilidad/periodos" class="sidebar-hijo-link">Períodos y cierre</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
                     <AuthorizeView Policy="Permiso:CONTABILIDAD_NOMENCLATURA_ADMIN" Context="nomenclaturaContexto">
                         <Authorized>
                             <NavLink href="contabilidad/nomenclatura" class="sidebar-hijo-link">Nomenclatura</NavLink>

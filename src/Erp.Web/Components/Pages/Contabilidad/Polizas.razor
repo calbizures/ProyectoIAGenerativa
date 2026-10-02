@@ -1,0 +1,422 @@
+@page "/contabilidad/polizas"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CONTABILIDAD_POLIZAS,CONTABILIDAD_ASIENTO_MANUAL")]
+@using Erp.Data.Contabilidad
+@using Erp.Data.General
+@using Erp.Data.Rrhh
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ILibrosRepository LibrosRepository
+@inject IGeneralRepository GeneralRepository
+@inject IRrhhRepository RrhhRepository
+
+<PageTitle>Pólizas</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Pólizas contables</h1>
+    <p>Todas las pólizas: las que generan las ventas, compras, cobros, pagos, cheques, nómina y demás procesos, y las pólizas manuales (ajustes, provisiones, reclasificaciones). Las automáticas se anulan desde su documento.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="barra-herramientas">
+    <FiltroPeriodo @bind-Desde="filtroDesde" @bind-Hasta="filtroHasta" AlCambiar="ConsultarAsync" />
+    <select @bind="filtroOrigen" @bind:after="ConsultarAsync" aria-label="Origen">
+        <option value="">Todos los orígenes</option>
+        @foreach (var o in OrigenesPoliza.Todos)
+        {
+            <option value="@o.Codigo">@o.Nombre</option>
+        }
+    </select>
+    <select @bind="filtroEstado" @bind:after="ConsultarAsync" aria-label="Estado">
+        <option value="">Vigentes y anuladas</option>
+        <option value="A">Vigentes</option>
+        <option value="N">Anuladas</option>
+    </select>
+    <input type="search" placeholder="Concepto, número de póliza o documento" aria-label="Buscar" @bind="filtroTexto" @bind:after="ConsultarAsync" />
+    <BotonIcono Icono="search" Tooltip="Consultar" OnClick="ConsultarAsync" />
+    <span class="barra-herramientas-separador"></span>
+    <AuthorizeView Policy="Permiso:CONTABILIDAD_ASIENTO_MANUAL" Context="permisoManual">
+        <BotonIcono Icono="plus" Tooltip="Grabar una póliza manual" Etiqueta="Nueva póliza" Variante="primario" OnClick="() => NuevaPoliza(null, false)" />
+    </AuthorizeView>
+</div>
+
+@if (captura is not null)
+{
+    <div class="doc-card">
+        <div class="doc-card-header">
+            <div>
+                <h2>Nueva póliza manual</h2>
+                <p>Cada línea va al Debe o al Haber. La póliza se graba solo si cuadra, en cuentas de detalle y en un mes abierto.</p>
+            </div>
+            <Icono Nombre="book-open" Tamano="30" />
+        </div>
+        <div class="doc-card-body">
+            <div class="doc-seccion">
+                <div class="doc-grid">
+                    <div class="campo"><label for="pol-fecha">Fecha</label><input id="pol-fecha" type="date" @bind="captura.Fecha" /></div>
+                    <div class="campo campo-ancho"><label for="pol-concepto">Concepto</label><input id="pol-concepto" maxlength="256" placeholder="Ej.: Provisión de aguinaldo de septiembre" @bind="captura.Descripcion" /></div>
+                </div>
+            </div>
+            <div class="doc-seccion">
+                <p class="doc-seccion-titulo"><Icono Nombre="list" Tamano="15" /> Líneas</p>
+                <datalist id="cuentas-detalle">
+                    @foreach (var c in cuentasDetalle)
+                    {
+                        <option value="@TextoCuenta(c)"></option>
+                    }
+                </datalist>
+                <div class="tabla-desplazable" tabindex="0" aria-label="Líneas de la póliza">
+                    <table class="doc-tabla poliza-captura">
+                        <thead><tr><th>Cuenta</th><th>Descripción de la línea</th><th>Centro de costo</th><th class="num">Debe</th><th class="num">Haber</th><th></th></tr></thead>
+                        <tbody>
+                            @for (var i = 0; i < captura.Lineas.Count; i++)
+                            {
+                                var linea = captura.Lineas[i];
+                                var numero = i + 1;
+                                <tr>
+                                    <td>
+                                        <input list="cuentas-detalle" aria-label="Cuenta de la línea @numero" placeholder="Código o nombre" class="@(linea.CuentaTexto.Length > 0 && linea.CtaId is null ? "entrada-invalida" : "")"
+                                               value="@linea.CuentaTexto" @onchange="e => ElegirCuenta(linea, e.Value?.ToString())" />
+                                        @if (linea.CuentaTexto.Length > 0 && linea.CtaId is null)
+                                        {
+                                            <small class="texto-error">Elija una cuenta de detalle de la lista.</small>
+                                        }
+                                    </td>
+                                    <td><input aria-label="Descripción de la línea @numero" maxlength="256" @bind="linea.Descripcion" /></td>
+                                    <td>
+                                        <select aria-label="Centro de costo de la línea @numero" @bind="linea.IdDepartamento">
+                                            <option value="">(Ninguno)</option>
+                                            @foreach (var d in departamentos)
+                                            {
+                                                <option value="@d.IdDepartamento">@d.Descripcion</option>
+                                            }
+                                        </select>
+                                    </td>
+                                    <td class="num"><input type="number" step="0.01" min="0" aria-label="Debe de la línea @numero" value="@linea.Debe" @onchange="e => CambiarMonto(linea, e.Value?.ToString(), true)" /></td>
+                                    <td class="num"><input type="number" step="0.01" min="0" aria-label="Haber de la línea @numero" value="@linea.Haber" @onchange="e => CambiarMonto(linea, e.Value?.ToString(), false)" /></td>
+                                    <td><BotonIcono Icono="trash-2" Tooltip="Quitar línea" Variante="peligro" Deshabilitado="captura.Lineas.Count <= 2" OnClick="() => captura.Lineas.Remove(linea)" /></td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr class="fila-total">
+                                <td colspan="3">
+                                    <BotonIcono Icono="plus" Tooltip="Agregar una línea" Etiqueta="Agregar línea" OnClick="() => captura.Lineas.Add(new LineaCaptura())" />
+                                    @if (Diferencia != 0)
+                                    {
+                                        <BotonIcono Icono="scale" Tooltip="Pone la diferencia en la última línea vacía o en una línea nueva" Etiqueta="Cuadrar" OnClick="Cuadrar" />
+                                    }
+                                </td>
+                                <td class="num">@TotalDebe.ToString("N2")</td>
+                                <td class="num">@TotalHaber.ToString("N2")</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                @if (Diferencia != 0)
+                {
+                    <p class="etiqueta-aviso" role="status"><Icono Nombre="alert-triangle" Tamano="14" /> Falta cuadrar: diferencia de Q @Math.Abs(Diferencia).ToString("N2") al @(Diferencia > 0 ? "Haber" : "Debe").</p>
+                }
+                else if (TotalDebe > 0)
+                {
+                    <p class="texto-ayuda"><Icono Nombre="check-circle" Tamano="14" /> La póliza cuadra.</p>
+                }
+            </div>
+        </div>
+        <div class="doc-card-footer">
+            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => captura = null" />
+            <BotonIcono Icono="save" Tooltip="Grabar la póliza" Etiqueta="Grabar póliza" Variante="primario" Deshabilitado="guardando" OnClick="GrabarAsync" />
+        </div>
+    </div>
+}
+
+@if (seleccionada is not null)
+{
+    <section class="tarjeta" aria-labelledby="titulo-poliza">
+        <div class="maestro-detalle-encabezado">
+            <h2 id="titulo-poliza">Póliza #@seleccionada.AsiId · @seleccionada.Fecha.ToString("dd/MM/yyyy")</h2>
+            <div class="acciones-fila">
+                <a class="boton-icono boton-icono-con-etiqueta" href="contabilidad/polizas/@seleccionada.AsiId/imprimir" target="_blank" title="Imprimir la póliza">
+                    <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+                </a>
+                <AuthorizeView Policy="Permiso:CONTABILIDAD_ASIENTO_MANUAL" Context="permisoCopia">
+                    <BotonIcono Icono="copy" Tooltip="Nueva póliza manual con las mismas líneas" Etiqueta="Copiar" OnClick="() => NuevaPoliza(seleccionada, false)" />
+                    <BotonIcono Icono="rotate-ccw" Tooltip="Nueva póliza manual con las líneas invertidas (Debe ↔ Haber)" Etiqueta="Reversión" OnClick="() => NuevaPoliza(seleccionada, true)" />
+                    @if (seleccionada.Anulable && seleccionada.EstadoPeriodo == "A")
+                    {
+                        <BotonIcono Icono="ban" Tooltip="Anular la póliza" Etiqueta="Anular" Variante="peligro" OnClick="IniciarAnulacion" />
+                    }
+                </AuthorizeView>
+                <BotonIcono Icono="x" Tooltip="Cerrar el detalle" OnClick="() => seleccionada = null" />
+            </div>
+        </div>
+        <dl class="poliza-datos">
+            <div><dt>Concepto</dt><dd>@seleccionada.Descripcion</dd></div>
+            <div><dt>Origen</dt><dd>@OrigenesPoliza.Nombre(seleccionada.Origen)@(seleccionada.Documento is null ? "" : $" · {seleccionada.Documento}")</dd></div>
+            <div><dt>Estado</dt><dd><span class="estado-badge @(seleccionada.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(seleccionada.Estado == "A" ? "Vigente" : "Anulada")</span>@(seleccionada.EstadoPeriodo == "C" ? " · período cerrado" : "")</dd></div>
+            <div><dt>Grabada por</dt><dd>@seleccionada.Usuario @seleccionada.Creada?.ToString("dd/MM/yyyy HH:mm")</dd></div>
+            @if (seleccionada.MotivoAnulacion is not null)
+            {
+                <div><dt>Motivo de anulación</dt><dd>@seleccionada.MotivoAnulacion</dd></div>
+            }
+        </dl>
+        @if (anulando)
+        {
+            <div class="fila-edicion">
+                <label for="motivo-poliza">Motivo de la anulación</label>
+                <input id="motivo-poliza" maxlength="250" placeholder="Ej.: se registró en la cuenta equivocada" @bind="motivoAnulacion" @bind:event="oninput" />
+                <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Anular póliza" Variante="peligro" Deshabilitado="motivoAnulacion.Trim().Length < 5 || guardando" OnClick="AnularAsync" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => anulando = false" />
+            </div>
+        }
+        <PolizaDetalle Poliza="seleccionada" />
+    </section>
+}
+
+<section class="tarjeta" aria-labelledby="titulo-polizas">
+    <div class="maestro-detalle-encabezado">
+        <h2 id="titulo-polizas">Pólizas</h2>
+        <span class="texto-tenue">@polizas.Count(p => p.Estado == "A") vigente(s) · Q @polizas.Where(p => p.Estado == "A").Sum(p => p.Total).ToString("N2")</span>
+    </div>
+    @if (polizas.Count == 0)
+    {
+        <p class="estado-vacio">No hay pólizas con esos filtros.</p>
+    }
+    else
+    {
+        <table class="tabla-datos">
+            <thead><tr><th class="col-fecha">Fecha</th><th class="col-estado">Póliza</th><th class="col-estado">Origen</th><th>Concepto</th><th class="num col-monto">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Ver</th></tr></thead>
+            <tbody>
+                @foreach (var p in Paginador.Recortar(polizas, pagina))
+                {
+                    <tr class="@(seleccionada?.AsiId == p.AsiId ? "fila-seleccionada" : "")">
+                        <td class="col-fecha">@p.Fecha.ToString("dd/MM/yyyy")</td>
+                        <td class="col-estado"><strong>#@p.AsiId</strong></td>
+                        <td class="col-estado">@OrigenesPoliza.Nombre(p.Origen)</td>
+                        <td>@p.Descripcion@if (p.Documento is not null) {<br /><span class="texto-tenue">@p.Documento</span>}</td>
+                        <td class="num col-monto">@p.Total.ToString("N2")</td>
+                        <td class="col-estado"><span class="estado-badge @(p.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(p.Estado == "A" ? "Vigente" : "Anulada")</span></td>
+                        <td class="col-acciones"><BotonIcono Icono="eye" Tooltip="Ver la póliza" OnClick="() => VerAsync(p.AsiId)" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <Paginador Total="polizas.Count" @bind-Pagina="pagina" />
+    }
+</section>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    [SupplyParameterFromQuery(Name = "id")] public int? IdInicial { get; set; }
+
+    private IReadOnlyList<Poliza> polizas = Array.Empty<Poliza>();
+    private IReadOnlyList<CuentaContable> cuentasDetalle = Array.Empty<CuentaContable>();
+    private IReadOnlyList<Departamento> departamentos = Array.Empty<Departamento>();
+    private DateTime? filtroDesde = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-1);
+    private DateTime? filtroHasta = DateTime.Today;
+    private string filtroOrigen = "";
+    private string filtroEstado = "";
+    private string? filtroTexto;
+    private int pagina = 1;
+    private Poliza? seleccionada;
+    private Captura? captura;
+    private bool anulando;
+    private string motivoAnulacion = "";
+    private bool guardando;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private sealed class Captura
+    {
+        public DateTime Fecha { get; set; } = DateTime.Today;
+        public string Descripcion { get; set; } = "";
+        public List<LineaCaptura> Lineas { get; } = new();
+    }
+
+    private sealed class LineaCaptura
+    {
+        public string CuentaTexto { get; set; } = "";
+        public int? CtaId { get; set; }
+        public decimal? Debe { get; set; }
+        public decimal? Haber { get; set; }
+        public string? Descripcion { get; set; }
+        public int? IdDepartamento { get; set; }
+    }
+
+    private decimal TotalDebe => captura?.Lineas.Sum(l => l.Debe ?? 0) ?? 0;
+    private decimal TotalHaber => captura?.Lineas.Sum(l => l.Haber ?? 0) ?? 0;
+    private decimal Diferencia => TotalDebe - TotalHaber;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            cuentasDetalle = (await GeneralRepository.ConsultarCuentasContablesAsync())
+                .Where(c => c.CtaAceptaMovimiento && c.CtaEstado == "A").OrderBy(c => c.CtaCodigo).ToList();
+            departamentos = await RrhhRepository.ConsultarDepartamentosAsync(soloActivos: true);
+            if (IdInicial is not null)
+            {
+                filtroDesde = null;
+                filtroHasta = null;
+                filtroTexto = IdInicial.ToString();
+            }
+            await ConsultarAsync();
+            if (IdInicial is not null) await VerAsync(IdInicial.Value);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private static string TextoCuenta(CuentaContable c) => $"{c.CtaCodigo} — {c.CtaNombre}";
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private async Task ConsultarAsync()
+    {
+        try
+        {
+            polizas = await LibrosRepository.ConsultarPolizasAsync(filtroDesde, filtroHasta, filtroOrigen, filtroEstado, filtroTexto, null);
+            pagina = 1;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task VerAsync(int asiId)
+    {
+        try
+        {
+            seleccionada = await LibrosRepository.ConsultarPolizaAsync(asiId);
+            anulando = false;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    // Póliza en blanco, o copia / reversión de otra.
+    private void NuevaPoliza(Poliza? origen, bool invertir)
+    {
+        mensaje = null;
+        captura = new Captura();
+        if (origen is null)
+        {
+            captura.Lineas.Add(new LineaCaptura());
+            captura.Lineas.Add(new LineaCaptura());
+            return;
+        }
+        captura.Descripcion = invertir ? $"Reversión de la póliza #{origen.AsiId}: {origen.Descripcion}" : origen.Descripcion;
+        if (captura.Descripcion.Length > 256) captura.Descripcion = captura.Descripcion[..256];
+        foreach (var l in origen.Detalle)
+        {
+            var cuenta = cuentasDetalle.FirstOrDefault(c => c.CtaId == l.CtaId);
+            captura.Lineas.Add(new LineaCaptura
+            {
+                CtaId = cuenta?.CtaId,
+                CuentaTexto = cuenta is null ? $"{l.Codigo} — {l.Cuenta}" : TextoCuenta(cuenta),
+                Debe = (invertir ? l.Haber : l.Debe) is var d && d > 0 ? d : null,
+                Haber = (invertir ? l.Debe : l.Haber) is var h && h > 0 ? h : null,
+                Descripcion = l.Descripcion,
+                IdDepartamento = l.IdDepartamento
+            });
+        }
+    }
+
+    private void ElegirCuenta(LineaCaptura linea, string? texto)
+    {
+        linea.CuentaTexto = texto?.Trim() ?? "";
+        var codigo = linea.CuentaTexto.Split('—', 2)[0].Trim();
+        var porNombre = cuentasDetalle.Where(c => c.CtaNombre.Contains(linea.CuentaTexto, StringComparison.OrdinalIgnoreCase)).Take(2).ToList();
+        var cuenta = cuentasDetalle.FirstOrDefault(c => c.CtaCodigo == codigo) ?? (porNombre.Count == 1 && linea.CuentaTexto.Length >= 3 ? porNombre[0] : null);
+        linea.CtaId = cuenta?.CtaId;
+        if (cuenta is not null) linea.CuentaTexto = TextoCuenta(cuenta);
+    }
+
+    private static void CambiarMonto(LineaCaptura linea, string? texto, bool alDebe)
+    {
+        decimal? valor = decimal.TryParse(texto, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var v) && v > 0
+            ? Math.Round(v, 2) : null;
+        if (alDebe)
+        {
+            linea.Debe = valor;
+            if (valor is not null) linea.Haber = null;
+        }
+        else
+        {
+            linea.Haber = valor;
+            if (valor is not null) linea.Debe = null;
+        }
+    }
+
+    private void Cuadrar()
+    {
+        if (captura is null || Diferencia == 0) return;
+        var diferencia = Diferencia;
+        var linea = captura.Lineas.LastOrDefault(l => (l.Debe ?? 0) == 0 && (l.Haber ?? 0) == 0);
+        if (linea is null)
+        {
+            linea = new LineaCaptura();
+            captura.Lineas.Add(linea);
+        }
+        if (diferencia > 0) linea.Haber = diferencia; else linea.Debe = -diferencia;
+    }
+
+    private async Task GrabarAsync()
+    {
+        if (captura is null) return;
+        var lineas = captura.Lineas.Where(l => l.CtaId is not null || (l.Debe ?? 0) > 0 || (l.Haber ?? 0) > 0).ToList();
+        if (lineas.Any(l => l.CtaId is null))
+        {
+            mensaje = "Hay líneas sin cuenta: elija la cuenta de la lista o quite la línea.";
+            esMensajeError = true;
+            return;
+        }
+        guardando = true;
+        try
+        {
+            var asiId = await LibrosRepository.GrabarPolizaManualAsync(captura.Fecha, captura.Descripcion,
+                lineas.Select(l => new PolizaManualLinea { CtaId = l.CtaId, Debe = l.Debe, Haber = l.Haber, Descripcion = l.Descripcion, IdDepartamento = l.IdDepartamento }).ToList(),
+                await ObtenerUsuIdActualAsync());
+            mensaje = $"Póliza #{asiId} grabada por Q {TotalDebe:N2}.";
+            esMensajeError = false;
+            captura = null;
+            await ConsultarAsync();
+            await VerAsync(asiId);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private void IniciarAnulacion()
+    {
+        anulando = true;
+        motivoAnulacion = "";
+    }
+
+    private async Task AnularAsync()
+    {
+        if (seleccionada is null) return;
+        guardando = true;
+        try
+        {
+            await LibrosRepository.AnularPolizaAsync(seleccionada.AsiId, motivoAnulacion.Trim(), await ObtenerUsuIdActualAsync());
+            mensaje = $"Póliza #{seleccionada.AsiId} anulada.";
+            esMensajeError = false;
+            var id = seleccionada.AsiId;
+            await ConsultarAsync();
+            await VerAsync(id);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+}

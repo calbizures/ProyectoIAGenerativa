@@ -1,0 +1,66 @@
+@* Estado de Resultados: ingresos, costo de ventas, utilidad bruta, gastos y utilidad neta. *@
+@using Erp.Data.Contabilidad
+
+@{
+    var t = Estado.Totales;
+    var c = Estado.Comparativo ?? new ResultadosTotales();
+    var ingresos = Estado.Filas.Where(f => f.Tipo == "I").ToList();
+    var gastos = Estado.Filas.Where(f => f.Tipo == "G").ToList();
+}
+<div class="tabla-desplazable" tabindex="0" aria-label="Estado de Resultados">
+    <table class="tabla-datos tabla-contable tabla-estado">
+        <thead>
+            <tr>
+                <th class="col-codigo">Cuenta</th><th>Nombre</th>
+                <th class="num col-monto">@Etiqueta</th>
+                @if (Comparar)
+                {
+                    <th class="num col-monto">@EtiquetaComparativa</th><th class="num col-monto">Variación</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @Filas(ingresos)
+            <tr class="fila-subtotal"><td></td><td>Ventas e ingresos</td>@Montos(t.Ingresos, c.Ingresos)</tr>
+            <tr class="fila-subtotal"><td></td><td>(−) Costo de ventas</td>@Montos(t.Costos, c.Costos)</tr>
+            <tr class="fila-total"><td colspan="2">UTILIDAD BRUTA</td>@Montos(t.UtilidadBruta, c.UtilidadBruta)</tr>
+            @Filas(gastos)
+            <tr class="fila-subtotal"><td></td><td>(−) Total gastos de operación</td>@Montos(t.Gastos, c.Gastos)</tr>
+            <tr class="fila-total"><td colspan="2">@(t.UtilidadNeta >= 0 ? "UTILIDAD" : "PÉRDIDA") NETA DEL PERÍODO</td>@Montos(t.UtilidadNeta, c.UtilidadNeta)</tr>
+        </tbody>
+    </table>
+</div>
+@if (t.Ingresos != 0)
+{
+    <p class="texto-ayuda">Margen bruto: @((t.UtilidadBruta / t.Ingresos).ToString("P1")) · Margen neto: @((t.UtilidadNeta / t.Ingresos).ToString("P1")) · No incluye la partida de cierre anual.</p>
+}
+
+@code {
+    [Parameter, EditorRequired] public EstadoResultados Estado { get; set; } = new();
+    [Parameter] public bool Comparar { get; set; }
+    [Parameter] public string Etiqueta { get; set; } = "Período";
+    [Parameter] public string EtiquetaComparativa { get; set; } = "Comparativo";
+
+    private RenderFragment Filas(IEnumerable<EstadoFila> filas) => __builder =>
+    {
+        var maximo = Estado.Filas.Count == 0 ? 0 : Estado.Filas.Max(x => x.Nivel);
+        foreach (var f in filas)
+        {
+            <tr class="@(f.Nivel < maximo ? $"fila-nivel fila-nivel-{f.Nivel}" : "")">
+                <td class="col-codigo">@f.Codigo</td>
+                <td class="sangria-@f.Nivel">@(f.Tipo == "I" && f.Naturaleza == "D" ? "(−) " : "")@f.Cuenta</td>
+                @Montos(f.Saldo, f.SaldoComparativo)
+            </tr>
+        }
+    };
+
+    private RenderFragment Montos(decimal actual, decimal comparativo) => __builder =>
+    {
+        <td class="num col-monto">@actual.ToString("N2")</td>
+        if (Comparar)
+        {
+            <td class="num col-monto">@comparativo.ToString("N2")</td>
+            <td class="num col-monto">@((actual - comparativo).ToString("N2"))</td>
+        }
+    };
+}

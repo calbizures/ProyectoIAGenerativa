@@ -3145,3 +3145,61 @@ fieldset.sin-borde { border: 0; padding: 0; margin: 0; min-width: 0; }
 @media (max-width: 640px) {
     .tabla-datos .col-check input[type=checkbox] { width: 28px; height: 28px; }
 }
+
+/* ===================================================================
+   Contabilidad: pólizas, libros, balanza y estados financieros
+   =================================================================== */
+.tabla-contable td, .tabla-contable th { vertical-align: top; }
+.tabla-contable th.centrado { text-align: center; }
+.tabla-contable .fila-grupo td { background: var(--superficie-suave); border-top: 1px solid var(--borde); }
+.tabla-contable .fila-total td { font-weight: 700; border-top: 2px solid var(--texto); background: var(--superficie-suave); }
+.tabla-contable .fila-subtotal td { font-weight: 600; border-top: 1px solid var(--borde); }
+.tabla-contable .fila-nivel td { font-weight: 600; }
+.tabla-contable .fila-nivel-1 td { font-weight: 700; text-transform: uppercase; background: var(--superficie-suave); }
+.tabla-contable .sangria-2 { padding-left: 1.4rem; }
+.tabla-contable .sangria-3 { padding-left: 2.2rem; }
+.tabla-contable .sangria-4 { padding-left: 3rem; }
+.tabla-contable .cuenta-abono { padding-left: 2rem; }
+.tabla-estado { max-width: 980px; }
+
+.mayor-cuenta + .mayor-cuenta { margin-top: 1.4rem; }
+.mayor-cuenta h3 { font-size: 1rem; margin: 0 0 0.4rem; }
+.mayor-cuenta h3 .col-codigo { font-variant-numeric: tabular-nums; margin-right: 0.4rem; }
+
+.poliza-datos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.6rem 1.4rem;
+    margin: 0 0 1rem;
+}
+.poliza-datos dt { font-size: 0.78rem; color: var(--texto-tenue); text-transform: uppercase; letter-spacing: 0.03em; }
+.poliza-datos dd { margin: 0.1rem 0 0; }
+
+.poliza-captura td { vertical-align: top; }
+.poliza-captura td:first-child { min-width: 260px; }
+.poliza-captura input, .poliza-captura select { width: 100%; }
+.poliza-captura input { border-color: var(--borde); background: var(--superficie); text-align: left; }
+.poliza-captura td.num input { text-align: right; }
+.poliza-captura td.num input { min-width: 110px; text-align: right; }
+.poliza-captura tfoot td { padding-top: 0.6rem; }
+.poliza-captura tfoot .boton-icono + .boton-icono { margin-left: 0.4rem; }
+.entrada-invalida { border-color: var(--error-texto) !important; }
+.doc-grid .campo-ancho { grid-column: span 2; }
+@media (max-width: 700px) { .doc-grid .campo-ancho { grid-column: auto; } }
+
+.selector-cuenta { max-width: 420px; }
+.anio-actual { font-size: 1.15rem; min-width: 3.5rem; text-align: center; }
+
+.firmas-poliza {
+    display: flex;
+    gap: 2rem;
+    justify-content: space-around;
+    margin-top: 3.5rem;
+}
+.firmas-poliza > div { flex: 1; max-width: 220px; border-top: 1px solid var(--texto); text-align: center; padding-top: 0.3rem; font-size: 0.85rem; }
+
+@media print {
+    .tabla-contable .fila-grupo td, .tabla-contable .fila-total td, .tabla-contable .fila-nivel-1 td { background: none; }
+    .reporte-pagina .tabla-desplazable { overflow: visible; }
+    .mayor-cuenta { break-inside: avoid-page; }
+}

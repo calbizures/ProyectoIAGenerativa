@@ -274,6 +274,29 @@ app.MapGet("/reportes/contabilidad/centros-costo.xlsx", async (DateTime desde, D
 	return Results.File(archivo, TipoExcel, $"centros-costo-{desde:yyyyMMdd}-{hasta:yyyyMMdd}.xlsx");
 }).RequireAuthorization();
 
+// Libros y estados financieros (la misma consulta que la pantalla y la vista imprimible).
+app.MapGet("/reportes/contabilidad/libro.xlsx", async (string? tipo, DateTime? desde, DateTime? hasta, int? nivel, int? cta, bool? comparar,
+	DateTime? desdec, DateTime? hastac, HttpContext contexto, Erp.Data.Contabilidad.ILibrosRepository libros, IGeneralRepository general,
+	IAuthorizationService autorizacion) =>
+{
+	var reporte = ReporteContable.Crear(tipo, desde, hasta, nivel, cta, comparar, desdec, hastac);
+	var permiso = reporte.Tipo is "balance" or "resultados" ? "Permiso:CONTABILIDAD_ESTADOS" : "Permiso:CONTABILIDAD_POLIZAS,CONTABILIDAD_ESTADOS";
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, permiso)).Succeeded) return Results.Forbid();
+	var compania = await CompaniaReporteAsync(contexto, general);
+	byte[] archivo = reporte.Tipo switch
+	{
+		"mayor" => ReportesExcel.LibroMayor(await libros.ConsultarLibroMayorAsync(reporte.Desde, reporte.Hasta, reporte.CtaId), reporte, compania),
+		"balanza" => ReportesExcel.Balanza(await libros.ConsultarBalanzaAsync(reporte.Desde, reporte.Hasta, reporte.Nivel), reporte, compania),
+		"balance" => ReportesExcel.BalanceGeneral(await libros.ConsultarBalanceGeneralAsync(reporte.Hasta, reporte.Nivel,
+			reporte.Comparar ? reporte.HastaComparativo : null), reporte, compania),
+		"resultados" => ReportesExcel.EstadoResultados(await libros.ConsultarEstadoResultadosAsync(reporte.Desde, reporte.Hasta, reporte.Nivel,
+			reporte.Comparar ? reporte.DesdeComparativo : null, reporte.Comparar ? reporte.HastaComparativo : null), reporte, compania),
+		_ => ReportesExcel.LibroDiario(await libros.ConsultarLibroDiarioAsync(reporte.Desde, reporte.Hasta), reporte, compania)
+	};
+	var nombre = reporte.Tipo switch { "mayor" => "libro-mayor", "balanza" => "balanza", "balance" => "balance-general", "resultados" => "estado-resultados", _ => "libro-diario" };
+	return Results.File(archivo, TipoExcel, $"{nombre}-{reporte.Hasta:yyyyMMdd}.xlsx");
+}).RequireAuthorization();
+
 // Plantillas y hojas de trabajo de las cargas desde Excel.
 app.MapGet("/reportes/inventario/plantilla-inventario-inicial.xlsx", async (HttpContext contexto, Erp.Data.Inventario.IBodegaRepository bodegas,
 	Erp.Data.Inventario.IProductoRepository productos, IGeneralRepository general, IAuthorizationService autorizacion) =>

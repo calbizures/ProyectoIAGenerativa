@@ -1,0 +1,141 @@
+@page "/contabilidad/libros"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CONTABILIDAD_POLIZAS,CONTABILIDAD_ESTADOS")]
+@using Erp.Data.Contabilidad
+@using Erp.Data.General
+@using Erp.Web.Reportes
+@inject ILibrosRepository LibrosRepository
+@inject IGeneralRepository GeneralRepository
+@inject NavigationManager Navegacion
+
+<PageTitle>Libros contables</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Libros contables</h1>
+    <p>Libro diario (las pólizas en orden de fecha), libro mayor (los movimientos y el saldo de cada cuenta) y balanza de comprobación. Solo toman las pólizas vigentes.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="mensaje-error" role="alert">@mensaje</p>
+}
+
+<BarraPestanas Pestanas="Vistas" PestanaActiva="@reporte.Tipo" PestanaActivaChanged="CambiarVistaAsync" />
+
+<div class="barra-herramientas">
+    <FiltroPeriodo Desde="reporte.Desde" DesdeChanged="d => reporte.Desde = d ?? reporte.Desde" Hasta="reporte.Hasta" HastaChanged="h => reporte.Hasta = h ?? reporte.Hasta" AlCambiar="ConsultarAsync" />
+    @if (reporte.Tipo == "mayor")
+    {
+        <select @bind="reporte.CtaId" @bind:after="ConsultarAsync" aria-label="Cuenta" class="selector-cuenta">
+            <option value="">Todas las cuentas con saldo o movimiento</option>
+            @foreach (var c in cuentas)
+            {
+                <option value="@c.CtaId">@(new string(' ', (c.CtaNivel - 1) * 2))@c.CtaCodigo — @c.CtaNombre</option>
+            }
+        </select>
+    }
+    @if (reporte.Tipo == "balanza")
+    {
+        <select @bind="reporte.Nivel" @bind:after="ConsultarAsync" aria-label="Nivel de detalle">
+            @foreach (var n in ReporteContable.Niveles)
+            {
+                <option value="@n.Nivel">@n.Nombre</option>
+            }
+        </select>
+    }
+    <BotonIcono Icono="search" Tooltip="Consultar" Etiqueta="Consultar" Variante="primario" OnClick="ConsultarAsync" />
+    <span class="barra-herramientas-separador"></span>
+    <a class="boton-icono boton-icono-con-etiqueta" href="contabilidad/reportes/imprimir?@reporte.Query()" target="_blank" title="Vista para imprimir o guardar en PDF">
+        <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+    </a>
+    <a class="boton-icono boton-icono-con-etiqueta" href="reportes/contabilidad/libro.xlsx?@reporte.Query()" download title="Exportar a Excel">
+        <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Excel</span>
+    </a>
+</div>
+
+<section class="tarjeta" aria-label="@reporte.Titulo">
+    <div class="maestro-detalle-encabezado">
+        <h2>@reporte.Titulo</h2>
+        <span class="texto-tenue">@reporte.Rango</span>
+    </div>
+    @if (cargando)
+    {
+        <p class="estado-vacio">Consultando...</p>
+    }
+    else
+    {
+        @switch (reporte.Tipo)
+        {
+            case "mayor":
+                <TablaMayor Cuentas="mayor" AlVerPoliza="VerPoliza" />
+                break;
+            case "balanza":
+                <TablaBalanza Filas="balanza" />
+                break;
+            default:
+                <TablaDiario Lineas="diario" />
+                break;
+        }
+    }
+</section>
+
+@code {
+    [SupplyParameterFromQuery(Name = "vista")] public string? VistaInicial { get; set; }
+    [SupplyParameterFromQuery(Name = "cta")] public int? CuentaInicial { get; set; }
+
+    private static readonly IReadOnlyList<PestanaItem> Vistas = new[]
+    {
+        new PestanaItem("diario", "Libro diario"), new PestanaItem("mayor", "Libro mayor"), new PestanaItem("balanza", "Balanza de comprobación")
+    };
+
+    private readonly ReporteContable reporte = new() { Nivel = 4 };
+    private IReadOnlyList<CuentaContable> cuentas = Array.Empty<CuentaContable>();
+    private IReadOnlyList<LibroDiarioLinea> diario = Array.Empty<LibroDiarioLinea>();
+    private IReadOnlyList<MayorCuenta> mayor = Array.Empty<MayorCuenta>();
+    private IReadOnlyList<BalanzaFila> balanza = Array.Empty<BalanzaFila>();
+    private bool cargando;
+    private string? mensaje;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (VistaInicial is "mayor" or "balanza") reporte.Tipo = VistaInicial;
+        reporte.CtaId = CuentaInicial;
+        try
+        {
+            cuentas = (await GeneralRepository.ConsultarCuentasContablesAsync()).Where(c => c.CtaEstado == "A").OrderBy(c => c.CtaCodigo).ToList();
+            await ConsultarAsync();
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+    }
+
+    private async Task CambiarVistaAsync(string vista)
+    {
+        reporte.Tipo = vista;
+        await ConsultarAsync();
+    }
+
+    private async Task ConsultarAsync()
+    {
+        mensaje = null;
+        cargando = true;
+        try
+        {
+            switch (reporte.Tipo)
+            {
+                case "mayor":
+                    mayor = await LibrosRepository.ConsultarLibroMayorAsync(reporte.Desde, reporte.Hasta, reporte.CtaId);
+                    break;
+                case "balanza":
+                    balanza = await LibrosRepository.ConsultarBalanzaAsync(reporte.Desde, reporte.Hasta, reporte.Nivel);
+                    break;
+                default:
+                    diario = await LibrosRepository.ConsultarLibroDiarioAsync(reporte.Desde, reporte.Hasta);
+                    break;
+            }
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+        finally { cargando = false; }
+    }
+
+    private void VerPoliza(int asiId) => Navegacion.NavigateTo($"contabilidad/polizas?id={asiId}");
+}

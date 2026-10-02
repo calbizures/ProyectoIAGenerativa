@@ -1,0 +1,44 @@
+@* Libro diario: cada póliza con sus líneas (cargos primero). *@
+@using Erp.Data.Contabilidad
+
+@if (Lineas.Count == 0)
+{
+    <p class="estado-vacio">No hay pólizas vigentes en ese rango.</p>
+}
+else
+{
+    <div class="tabla-desplazable" tabindex="0" aria-label="Libro diario">
+        <table class="tabla-datos tabla-contable">
+            <thead><tr><th class="col-fecha">Fecha</th><th class="col-codigo">Cuenta</th><th>Nombre / concepto</th><th class="num col-monto">Debe</th><th class="num col-monto">Haber</th></tr></thead>
+            <tbody>
+                @foreach (var poliza in Lineas.GroupBy(l => l.AsiId))
+                {
+                    var primera = poliza.First();
+                    <tr class="fila-grupo">
+                        <td class="col-fecha">@primera.Fecha.ToString("dd/MM/yyyy")</td>
+                        <td colspan="4"><strong>Póliza #@poliza.Key</strong> · @OrigenesPoliza.Nombre(primera.Origen) · @primera.Descripcion</td>
+                    </tr>
+                    @foreach (var l in poliza)
+                    {
+                        <tr>
+                            <td></td>
+                            <td class="col-codigo">@l.Codigo</td>
+                            <td class="@(l.Haber > 0 ? "cuenta-abono" : "")">@l.Cuenta@(string.IsNullOrEmpty(l.DescripcionLinea) ? "" : $" — {l.DescripcionLinea}")</td>
+                            <td class="num col-monto">@Monto(l.Debe)</td>
+                            <td class="num col-monto">@Monto(l.Haber)</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+            <tfoot>
+                <tr class="fila-total"><td colspan="3">Totales (@Lineas.Select(l => l.AsiId).Distinct().Count() pólizas)</td><td class="num">@Lineas.Sum(l => l.Debe).ToString("N2")</td><td class="num">@Lineas.Sum(l => l.Haber).ToString("N2")</td></tr>
+            </tfoot>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<LibroDiarioLinea> Lineas { get; set; } = Array.Empty<LibroDiarioLinea>();
+
+    private static string Monto(decimal valor) => valor == 0 ? "" : valor.ToString("N2");
+}

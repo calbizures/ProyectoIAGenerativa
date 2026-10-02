@@ -1,0 +1,167 @@
+@page "/contabilidad/estados-financieros"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CONTABILIDAD_ESTADOS")]
+@using Erp.Data.Contabilidad
+@using Erp.Web.Reportes
+@inject ILibrosRepository LibrosRepository
+
+<PageTitle>Estados financieros</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Estados financieros</h1>
+    <p>Balance General a una fecha y Estado de Resultados de un período, con comparativo opcional. Se calculan con las pólizas vigentes; imprímalos o expórtelos a Excel.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="mensaje-error" role="alert">@mensaje</p>
+}
+
+<BarraPestanas Pestanas="Vistas" PestanaActiva="@reporte.Tipo" PestanaActivaChanged="CambiarVistaAsync" />
+
+<div class="barra-herramientas barra-estados">
+    @if (reporte.Tipo == "balance")
+    {
+        <label class="filtro-campo">Al <input type="date" value="@reporte.Hasta.ToString("yyyy-MM-dd")" @onchange="e => CambiarFecha(e, f => reporte.Hasta = f)" /></label>
+    }
+    else
+    {
+        <label class="filtro-campo">Desde <input type="date" value="@reporte.Desde.ToString("yyyy-MM-dd")" @onchange="e => CambiarFecha(e, f => reporte.Desde = f)" /></label>
+        <label class="filtro-campo">Hasta <input type="date" value="@reporte.Hasta.ToString("yyyy-MM-dd")" @onchange="e => CambiarFecha(e, f => reporte.Hasta = f)" /></label>
+    }
+    <select @bind="reporte.Nivel" @bind:after="ConsultarAsync" aria-label="Nivel de detalle">
+        @foreach (var n in ReporteContable.Niveles)
+        {
+            <option value="@n.Nivel">@n.Nombre</option>
+        }
+    </select>
+    <label class="casilla"><input type="checkbox" @bind="reporte.Comparar" @bind:after="ConsultarAsync" /> Comparar con</label>
+    @if (reporte.Comparar)
+    {
+        @if (reporte.Tipo == "balance")
+        {
+            <label class="filtro-campo">Al <input type="date" value="@reporte.HastaComparativo?.ToString("yyyy-MM-dd")" @onchange="e => CambiarFecha(e, f => reporte.HastaComparativo = f)" /></label>
+        }
+        else
+        {
+            <label class="filtro-campo">Desde <input type="date" value="@reporte.DesdeComparativo?.ToString("yyyy-MM-dd")" @onchange="e => CambiarFecha(e, f => reporte.DesdeComparativo = f)" /></label>
+            <label class="filtro-campo">Hasta <input type="date" value="@reporte.HastaComparativo?.ToString("yyyy-MM-dd")" @onchange="e => CambiarFecha(e, f => reporte.HastaComparativo = f)" /></label>
+        }
+    }
+    <BotonIcono Icono="search" Tooltip="Consultar" Etiqueta="Consultar" Variante="primario" OnClick="ConsultarAsync" />
+    <span class="barra-herramientas-separador"></span>
+    <a class="boton-icono boton-icono-con-etiqueta" href="contabilidad/reportes/imprimir?@reporte.Query()" target="_blank" title="Vista para imprimir o guardar en PDF">
+        <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+    </a>
+    <a class="boton-icono boton-icono-con-etiqueta" href="reportes/contabilidad/libro.xlsx?@reporte.Query()" download title="Exportar a Excel">
+        <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Excel</span>
+    </a>
+</div>
+
+@if (reporte.Tipo == "balance" && balance is not null)
+{
+    var t = balance.Totales;
+    <div class="resumen-totales">
+        <span>Activo: <strong>Q @t.Activo.ToString("N2")</strong></span>
+        <span>Pasivo: <strong>Q @t.Pasivo.ToString("N2")</strong></span>
+        <span>Capital: <strong>Q @((t.Capital + t.ResultadoEjercicio + t.ResultadosAnteriores).ToString("N2"))</strong></span>
+        <span>@(t.ResultadoEjercicio >= 0 ? "Utilidad" : "Pérdida") del ejercicio: <strong>Q @Math.Abs(t.ResultadoEjercicio).ToString("N2")</strong></span>
+        @if (t.Activo != 0)
+        {
+            <span title="Pasivo entre activo">Endeudamiento: <strong>@((t.Pasivo / t.Activo).ToString("P1"))</strong></span>
+        }
+    </div>
+}
+@if (reporte.Tipo == "resultados" && resultados is not null)
+{
+    var t = resultados.Totales;
+    <div class="resumen-totales">
+        <span>Ingresos: <strong>Q @t.Ingresos.ToString("N2")</strong></span>
+        <span>Costo de ventas: <strong>Q @t.Costos.ToString("N2")</strong></span>
+        <span>Gastos: <strong>Q @t.Gastos.ToString("N2")</strong></span>
+        <span>@(t.UtilidadNeta >= 0 ? "Utilidad" : "Pérdida") neta: <strong>Q @Math.Abs(t.UtilidadNeta).ToString("N2")</strong></span>
+    </div>
+}
+
+<section class="tarjeta" aria-label="@reporte.Titulo">
+    <div class="maestro-detalle-encabezado">
+        <h2>@reporte.Titulo</h2>
+        <span class="texto-tenue">@reporte.Rango</span>
+    </div>
+    @if (cargando)
+    {
+        <p class="estado-vacio">Consultando...</p>
+    }
+    else if (reporte.Tipo == "balance" && balance is not null)
+    {
+        <TablaBalance Balance="balance" Comparar="comparado" Etiqueta="@reporte.EtiquetaActual" EtiquetaComparativa="@reporte.EtiquetaComparativa" />
+    }
+    else if (reporte.Tipo == "resultados" && resultados is not null)
+    {
+        <TablaResultados Estado="resultados" Comparar="comparado" Etiqueta="@reporte.EtiquetaActual" EtiquetaComparativa="@reporte.EtiquetaComparativa" />
+    }
+</section>
+
+@code {
+    private static readonly IReadOnlyList<PestanaItem> Vistas = new[]
+    {
+        new PestanaItem("balance", "Balance General"), new PestanaItem("resultados", "Estado de Resultados")
+    };
+
+    private readonly ReporteContable reporte = new()
+    {
+        Tipo = "balance",
+        Desde = new DateTime(DateTime.Today.Year, 1, 1),
+        Hasta = DateTime.Today,
+        Nivel = 3
+    };
+    private BalanceGeneral? balance;
+    private EstadoResultados? resultados;
+    private bool comparado;
+    private bool cargando;
+    private string? mensaje;
+
+    protected override Task OnInitializedAsync() => ConsultarAsync();
+
+    private async Task CambiarVistaAsync(string vista)
+    {
+        reporte.Tipo = vista;
+        reporte.DesdeComparativo = null;
+        reporte.HastaComparativo = null;
+        await ConsultarAsync();
+    }
+
+    private async Task CambiarFecha(ChangeEventArgs e, Action<DateTime> asignar)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var fecha)) asignar(fecha.Date);
+        await ConsultarAsync();
+    }
+
+    private async Task ConsultarAsync()
+    {
+        mensaje = null;
+        // Comparativo por omisión: el cierre del año anterior (balance) o el mismo período del año anterior (resultados).
+        if (reporte.Comparar)
+        {
+            if (reporte.Tipo == "balance")
+                reporte.HastaComparativo ??= new DateTime(reporte.Hasta.Year - 1, 12, 31);
+            else
+            {
+                reporte.DesdeComparativo ??= reporte.Desde.AddYears(-1);
+                reporte.HastaComparativo ??= reporte.Hasta.AddYears(-1);
+            }
+        }
+        cargando = true;
+        try
+        {
+            if (reporte.Tipo == "balance")
+                balance = await LibrosRepository.ConsultarBalanceGeneralAsync(reporte.Hasta, reporte.Nivel, reporte.Comparar ? reporte.HastaComparativo : null);
+            else
+                resultados = await LibrosRepository.ConsultarEstadoResultadosAsync(reporte.Desde, reporte.Hasta, reporte.Nivel,
+                    reporte.Comparar ? reporte.DesdeComparativo : null, reporte.Comparar ? reporte.HastaComparativo : null);
+            comparado = reporte.Comparar;
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+        finally { cargando = false; }
+    }
+}
