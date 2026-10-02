@@ -1,0 +1,112 @@
+@page "/rrhh/libro-salarios"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:RRHH_ADMIN")]
+@using Erp.Data.General
+@using Erp.Data.Rrhh
+@inject IRrhhRepository RrhhRepository
+@inject IGeneralRepository GeneralRepository
+
+<PageTitle>Libro de salarios</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Libro de salarios</h1>
+    <p>Un folio por trabajador con lo que exige el Código de Trabajo (art. 102) y el Acuerdo Ministerial 124-2019: datos del trabajador y, por cada período pagado, días y horas trabajadas, salario ordinario, extraordinario y otros salarios, séptimos y asuetos, vacaciones, deducciones, bonificaciones, prestaciones y líquido. Sale de las nóminas aprobadas.</p>
+</div>
+
+<div class="doc-nota" role="note">
+    <Icono Nombre="info" Tamano="15" />
+    <span>Obligatorio para el patrono con 10 o más trabajadores permanentes. Se autoriza en línea, sin costo, en <a href="https://librosalarios.mintrabajo.gob.gt/" target="_blank" rel="noopener">librosalarios.mintrabajo.gob.gt</a>; anote el número de autorización en Planilla del IGSS › Patrono para que salga en cada folio. Se puede llevar impreso o electrónico, un folio por trabajador.</span>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="mensaje-error" role="alert">@mensaje</p>
+}
+
+<div class="barra-herramientas">
+    <select @bind="ciaId" @bind:after="ConsultarAsync" aria-label="Compañía">
+        @foreach (var c in companias)
+        {
+            <option value="@c.CiaId">@c.CiaNombreComercial</option>
+        }
+    </select>
+    <label class="filtro-campo">Año <input type="number" min="2000" max="2100" @bind="anio" @bind:after="ConsultarAsync" /></label>
+    <select @bind="idEmpleado" @bind:after="ConsultarAsync" aria-label="Trabajador">
+        <option value="">Todos los trabajadores</option>
+        @foreach (var e in empleados)
+        {
+            <option value="@e.IdEmpleado">@e.CodigoEmpleado — @e.NombreCompleto</option>
+        }
+    </select>
+    <span class="barra-herramientas-separador"></span>
+    @if (libro?.Trabajadores.Count > 0)
+    {
+        <a class="boton-icono boton-icono-con-etiqueta" href="@UrlExcel" download title="Libro de salarios en Excel (una hoja por folio)"><Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Excel</span></a>
+        <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@UrlImprimir" target="_blank" title="Folios para imprimir en las hojas autorizadas o guardar en PDF"><Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span></a>
+    }
+</div>
+
+@if (libro?.Patrono is { } patrono)
+{
+    @if (string.IsNullOrWhiteSpace(patrono.IgssNumeroPatronal) || string.IsNullOrWhiteSpace(patrono.LibroSalariosAutorizacion))
+    {
+        <p class="aviso-pendiente" role="status">
+            Faltan datos del patrono: @(string.IsNullOrWhiteSpace(patrono.IgssNumeroPatronal) ? "número patronal del IGSS" : "")@(string.IsNullOrWhiteSpace(patrono.IgssNumeroPatronal) && string.IsNullOrWhiteSpace(patrono.LibroSalariosAutorizacion) ? " y " : "")@(string.IsNullOrWhiteSpace(patrono.LibroSalariosAutorizacion) ? "número de autorización del libro de salarios del Ministerio de Trabajo" : "").
+            Regístrelos en <a href="rrhh/planilla-igss?pestana=patrono">RRHH &gt; Planilla del IGSS &gt; Patrono y centros de trabajo</a>.
+        </p>
+    }
+
+    @if (libro.Trabajadores.Count == 0)
+    {
+        <p class="estado-vacio">No hay nóminas aprobadas en @anio para esta compañía.</p>
+    }
+    else
+    {
+        <div class="resumen-totales">
+            <span>Trabajadores: <strong>@libro.Trabajadores.Count</strong></span>
+            <span>Salario devengado: <strong>Q @libro.Renglones.Sum(r => r.SalarioTotal).ToString("N2")</strong></span>
+            <span>Cuota laboral IGSS: <strong>Q @libro.Renglones.Sum(r => r.Igss).ToString("N2")</strong></span>
+            <span>Líquido pagado: <strong>Q @libro.Renglones.Sum(r => r.Liquido).ToString("N2")</strong></span>
+        </div>
+        @foreach (var t in libro.Trabajadores)
+        {
+            <LibroSalariosFolio Patrono="patrono" Trabajador="t" Renglones="libro.RenglonesDe(t.IdEmpleado).ToList()" />
+        }
+    }
+}
+
+@code {
+    private IReadOnlyList<Compania> companias = Array.Empty<Compania>();
+    private IReadOnlyList<EmpleadoResumen> empleados = Array.Empty<EmpleadoResumen>();
+    private LibroSalarios? libro;
+    private int ciaId;
+    private int anio = DateTime.Today.Year;
+    private int? idEmpleado;
+    private string? mensaje;
+
+    private string UrlExcel => $"reportes/rrhh/libro-salarios.xlsx?cia={ciaId}&anio={anio}{(idEmpleado is int e ? $"&empleado={e}" : "")}";
+    private string UrlImprimir => $"rrhh/libro-salarios/imprimir?cia={ciaId}&anio={anio}{(idEmpleado is int e ? $"&empleado={e}" : "")}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            companias = await GeneralRepository.ConsultarCompaniasAsync(soloActivas: true);
+            empleados = await RrhhRepository.ConsultarEmpleadosAsync(null, null);
+            ciaId = companias.FirstOrDefault()?.CiaId ?? 0;
+            await ConsultarAsync();
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+    }
+
+    private async Task ConsultarAsync()
+    {
+        mensaje = null;
+        if (ciaId <= 0 || anio is < 2000 or > 2100) return;
+        try
+        {
+            libro = await RrhhRepository.ConsultarLibroSalariosAsync(ciaId, anio, idEmpleado);
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+    }
+}

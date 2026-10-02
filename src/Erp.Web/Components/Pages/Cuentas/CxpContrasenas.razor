@@ -1,0 +1,456 @@
+@page "/cxp/contrasenas"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CXP_CONTRASENA")]
+@using System.Globalization
+@using Erp.Data.Compras
+@using Erp.Data.Pagos
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IPagosRepository PagosRepository
+@inject IProveedorRepository ProveedorRepository
+
+<PageTitle>Contraseñas de pago</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Contraseñas de pago</h1>
+    <p>La contraseña es el comprobante que se le entrega al proveedor por las facturas recibidas, con la fecha en que se le pagará: el primer día de pago de la compañía (@NombreDia(diaPago)) a partir del vencimiento más lejano. El pago se hace en Cuentas por pagar › Pagos programados, con cheque o por transferencia.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+@if (emitida is not null)
+{
+    <section class="tarjeta tarjeta-exito" aria-live="polite">
+        <div class="exito-contenido">
+            <Icono Nombre="check-circle" Tamano="22" />
+            <div>
+                <h2>Contraseña @emitida.Value.Numero emitida</h2>
+                <p>Q@(emitida.Value.Total.ToString("N2")) a @emitida.Value.Proveedor · se paga el @FechaLarga(emitida.Value.FechaPago)</p>
+            </div>
+        </div>
+        <div class="acciones-fila">
+            <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@($"cxp/contrasenas/{emitida.Value.CpaId}/imprimir?auto=1")" target="_blank" rel="noopener">
+                <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir para el proveedor</span>
+            </a>
+            <BotonIcono Icono="plus" Tooltip="Emitir otra contraseña" Etiqueta="Otra contraseña" OnClick="() => emitida = null" />
+        </div>
+    </section>
+}
+
+<section class="tarjeta" aria-labelledby="titulo-proveedor">
+    <h2 id="titulo-proveedor">1. Proveedor</h2>
+    <SelectorTercero EsCliente="false" SoloConSaldo="true" Seleccionado="proveedor" SeleccionadoChanged="CambiarProveedorAsync" />
+    @if (proveedor is not null && datosPago is not null)
+    {
+        <p class="texto-tenue">
+            Forma de pago del proveedor: <strong>@(datosPago.FormaPago == "T" ? "transferencia" : "cheque")</strong>
+            @if (datosPago.FormaPago == "T" || datosPago.NumeroCuenta is not null)
+            {
+                <span> · @datosPago.Banco, cuenta @(datosPago.TipoCuenta == "A" ? "de ahorro" : "monetaria") @datosPago.NumeroCuenta</span>
+            }
+            · <a href="proveedores">cambiar en Proveedores</a>
+        </p>
+    }
+</section>
+
+@if (proveedor is not null)
+{
+    <section class="tarjeta" aria-labelledby="titulo-facturas">
+        <h2 id="titulo-facturas">2. Facturas que cubre</h2>
+        @if (cuotas.Count == 0)
+        {
+            <p class="estado-vacio">El proveedor no tiene cuotas con saldo fuera de otra contraseña pendiente.</p>
+        }
+        else
+        {
+            <div class="acciones-fila">
+                <BotonIcono Icono="check-check" Tooltip="Incluir todas las cuotas con saldo" Etiqueta="Todas" OnClick="MarcarTodas" />
+                <BotonIcono Icono="alert-triangle" Tooltip="Incluir las cuotas vencidas o que vencen hoy" Etiqueta="Vencidas" OnClick="MarcarVencidas" />
+                <button type="button" class="boton-texto" @onclick="Limpiar">Limpiar</button>
+            </div>
+            <table class="tabla-datos tabla-cuotas-cobro">
+                <thead>
+                    <tr>
+                        <th class="col-check"><span class="sr-only">Incluir</span></th>
+                        <th>Documento</th><th class="col-fecha">Fecha</th><th class="num">Cuota</th><th class="col-fecha">Vence</th>
+                        <th class="num">Valor cuota</th><th class="num">Saldo</th><th class="num col-aplicar">En la contraseña</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in cuotas)
+                    {
+                        var marcada = incluir.ContainsKey(c.PpgId);
+                        <tr class="@(marcada ? "fila-seleccionada" : "")">
+                            <td class="col-check"><input type="checkbox" checked="@marcada" aria-label="@($"Incluir cuota {c.Cuota} de {c.Documento}")" @onchange="e => Alternar(c, (bool)(e.Value ?? false))" /></td>
+                            <td>@c.Documento</td>
+                            <td class="col-fecha">@c.FechaDocumento.ToString("dd/MM/yyyy")</td>
+                            <td class="num">@c.Cuota</td>
+                            <td class="col-fecha">
+                                @c.Vencimiento.ToString("dd/MM/yyyy")
+                                @if (c.Vencimiento < DateTime.Today) { <span class="estado-badge estado-badge-anulada">Vencida</span> }
+                            </td>
+                            <td class="num">@c.ValorCuota.ToString("N2")</td>
+                            <td class="num">@c.Saldo.ToString("N2")</td>
+                            <td class="num col-aplicar">
+                                @if (marcada)
+                                {
+                                    <input type="number" step="0.01" min="0" max="@c.Saldo" aria-label="@($"Monto de la cuota {c.Cuota} de {c.Documento}")"
+                                           value="@incluir[c.PpgId].ToString(CultureInfo.InvariantCulture)" @onchange="e => CambiarMonto(c, e.Value)" />
+                                }
+                                else
+                                {
+                                    <span class="texto-tenue">—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr><td colspan="7">Total de la contraseña (@incluir.Count cuota@(incluir.Count == 1 ? "" : "s"))</td><td class="num"><strong>Q@(Total.ToString("N2"))</strong></td></tr>
+                </tfoot>
+            </table>
+        }
+    </section>
+
+    @if (incluir.Count > 0)
+    {
+        <section class="tarjeta" aria-labelledby="titulo-pago">
+            <h2 id="titulo-pago">3. Fecha y forma de pago</h2>
+            <div class="panel-formulario panel-ancho">
+                <div class="campo">
+                    <label for="cpa-fecha-pago">Fecha de pago</label>
+                    <input id="cpa-fecha-pago" type="date" min="@DateTime.Today.ToString("yyyy-MM-dd")" value="@fechaPago.ToString("yyyy-MM-dd")" @onchange="CambiarFechaPago" />
+                    <small class="texto-ayuda">
+                        Sugerida: @FechaLarga(FechaSugerida).
+                        @if (fechaPago != FechaSugerida)
+                        {
+                            <button type="button" class="boton-texto" @onclick="() => fechaPago = FechaSugerida">Usar la sugerida</button>
+                        }
+                    </small>
+                </div>
+                <div class="campo">
+                    <label for="cpa-forma">Forma de pago</label>
+                    <select id="cpa-forma" @bind="formaPago">
+                        <option value="C">Cheque</option>
+                        <option value="T">Transferencia</option>
+                    </select>
+                    @if (formaPago == "T" && datosPago?.NumeroCuenta is null)
+                    {
+                        <small class="texto-ayuda" role="alert">El proveedor no tiene cuenta para transferencia: regístrela en Proveedores antes de pagar.</small>
+                    }
+                </div>
+                <div class="campo campo-ancho">
+                    <label for="cpa-observaciones">Observaciones</label>
+                    <input id="cpa-observaciones" maxlength="250" @bind="observaciones" placeholder="Ej.: recibió Juan López, presentar DPI" />
+                </div>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Emitir la contraseña" Etiqueta="@($"Emitir contraseña Q{Total:N2}")" Variante="primario"
+                            Deshabilitado="guardando" OnClick="EmitirAsync" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="Limpiar" />
+            </div>
+        </section>
+    }
+}
+
+<section class="tarjeta" aria-labelledby="titulo-emitidas">
+    <div class="maestro-detalle-encabezado">
+        <h2 id="titulo-emitidas">Contraseñas emitidas</h2>
+        <span class="texto-tenue">@lista.Count(c => c.Estado == "E") pendiente(s) · Q@(lista.Where(c => c.Estado == "E").Sum(c => c.Total).ToString("N2"))</span>
+    </div>
+    <div class="barra-herramientas">
+        <FiltroPeriodo @bind-Desde="desde" @bind-Hasta="hasta" AlCambiar="CargarListaAsync" />
+        <select value="@filtroEstado" @onchange="CambiarFiltroEstadoAsync" aria-label="Estado">
+            <option value="">Todas</option>
+            <option value="E">Pendientes de pago</option>
+            <option value="P">Pagadas</option>
+            <option value="A">Anuladas</option>
+        </select>
+    </div>
+    @if (lista.Count == 0)
+    {
+        <p class="estado-vacio">No hay contraseñas en el período.</p>
+    }
+    else
+    {
+        <table class="tabla-datos">
+            <thead>
+                <tr><th class="col-codigo">Número</th><th class="col-fecha">Fecha</th><th>Proveedor</th><th class="num">Facturas</th><th class="col-fecha">Se paga</th><th>Forma</th><th class="num">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var c in lista)
+                {
+                    <tr class="@(c.Estado == "A" ? "fila-anulada" : "")">
+                        <td class="col-codigo">@c.Numero</td>
+                        <td class="col-fecha">@c.Fecha.ToString("dd/MM/yyyy")</td>
+                        <td>@c.Proveedor</td>
+                        <td class="num">@c.Facturas</td>
+                        <td class="col-fecha">@c.FechaPago.ToString("dd/MM/yyyy")</td>
+                        <td>@(c.FormaPago == "T" ? "Transferencia" : "Cheque")</td>
+                        <td class="num">@c.Total.ToString("N2")</td>
+                        <td class="col-estado">
+                            <span class="estado-badge @EstadoClase(c)">@EstadoTexto(c)</span>
+                        </td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                <a class="boton-icono" href="@($"cxp/contrasenas/{c.CpaId}/imprimir")" target="_blank" rel="noopener" title="Imprimir" aria-label="@($"Imprimir la contraseña {c.Numero}")">
+                                    <Icono Nombre="printer" Tamano="16" />
+                                </a>
+                                @if (c.Estado == "E")
+                                {
+                                    <BotonIcono Icono="ban" Tooltip="Anular la contraseña" Variante="peligro" OnClick="() => IniciarAnulacion(c)" />
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                    @if (anulando?.CpaId == c.CpaId)
+                    {
+                        <tr class="fila-edicion-tabla">
+                            <td colspan="9">
+                                <div class="anulacion-form">
+                                    <label for="motivo-contrasena">Motivo de la anulación de la contraseña @c.Numero</label>
+                                    <input id="motivo-contrasena" maxlength="200" placeholder="Ej.: el proveedor devolvió la contraseña" @bind="motivoAnulacion" @bind:event="oninput" />
+                                    <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Anular contraseña" Variante="peligro"
+                                                Deshabilitado="motivoAnulacion.Trim().Length < 5 || guardando" OnClick="AnularAsync" />
+                                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => anulando = null" />
+                                    <small class="texto-ayuda">Las facturas quedan libres para otra contraseña. No cambia saldos ni pólizas.</small>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    [SupplyParameterFromQuery(Name = "prv")] public int? PrvId { get; set; }
+
+    private static readonly CultureInfo Es = CultureInfo.GetCultureInfo("es-GT");
+
+    private TerceroSeleccion? proveedor;
+    private ProveedorPago? datosPago;
+    private IReadOnlyList<ContrasenaCuotaDisponible> cuotas = Array.Empty<ContrasenaCuotaDisponible>();
+    private readonly Dictionary<int, decimal> incluir = new();
+    private int? diaPago = 5;
+    private DateTime fechaPago = DateTime.Today;
+    private string formaPago = "C";
+    private string observaciones = "";
+    private int? sucId;
+
+    private IReadOnlyList<ContrasenaResumen> lista = Array.Empty<ContrasenaResumen>();
+    private DateTime? desde = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-1);
+    private DateTime? hasta = DateTime.Today;
+    private string filtroEstado = "";
+    private ContrasenaResumen? anulando;
+    private string motivoAnulacion = "";
+
+    private bool guardando;
+    private (int CpaId, string Numero, decimal Total, string Proveedor, DateTime FechaPago)? emitida;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private decimal Total => incluir.Values.Sum();
+
+    // El primer día de pago en o después del vencimiento más lejano (y no antes de hoy).
+    private DateTime FechaSugerida
+    {
+        get
+        {
+            var vence = cuotas.Where(c => incluir.ContainsKey(c.PpgId)).Select(c => c.Vencimiento.Date).DefaultIfEmpty(DateTime.Today).Max();
+            var base_ = vence < DateTime.Today ? DateTime.Today : vence;
+            if (diaPago is not int dia) return base_;
+            var actual = ((int)base_.DayOfWeek + 6) % 7 + 1;   // 1 lunes ... 7 domingo
+            return base_.AddDays((dia - actual + 7) % 7);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var usuario = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User;
+            sucId = usuario?.ObtenerSucId();
+            if (sucId is int s) diaPago = await PagosRepository.ConsultarDiaPagoSucursalAsync(s);
+            if (PrvId is > 0 && await ProveedorRepository.ConsultarPorIdAsync(PrvId.Value) is { } elegido)
+                await CambiarProveedorAsync(new TerceroSeleccion(elegido.PrvId, elegido.PrvCodigo, elegido.PrvNombreComercial));
+            await CargarListaAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private static string NombreDia(int? dia) => dia switch
+    {
+        1 => "lunes", 2 => "martes", 3 => "miércoles", 4 => "jueves", 5 => "viernes", 6 => "sábado", 7 => "domingo",
+        _ => "cualquier día"
+    };
+
+    private static string FechaLarga(DateTime fecha) => fecha.ToString("dddd dd/MM/yyyy", Es);
+
+    private static string EstadoTexto(ContrasenaResumen c) => c.Estado switch
+    {
+        "E" => c.FechaPago <= DateTime.Today ? "Por pagar hoy" : "Pendiente",
+        "P" => c.Cheque is not null ? $"Pagada · cheque {c.Cheque}" : $"Pagada · {c.Lote}",
+        _ => "Anulada"
+    };
+
+    private static string EstadoClase(ContrasenaResumen c) => c.Estado switch
+    {
+        "E" => "estado-badge-pendiente",
+        "P" => "estado-badge-activo",
+        _ => "estado-badge-inactivo"
+    };
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private async Task CambiarProveedorAsync(TerceroSeleccion? nuevo)
+    {
+        proveedor = nuevo;
+        Limpiar();
+        cuotas = Array.Empty<ContrasenaCuotaDisponible>();
+        datosPago = null;
+        if (proveedor is null) return;
+        try
+        {
+            datosPago = await PagosRepository.ConsultarProveedorPagoAsync(proveedor.Id);
+            formaPago = datosPago?.FormaPago ?? "C";
+            cuotas = await PagosRepository.ConsultarCuotasDisponiblesAsync(proveedor.Id);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void Limpiar()
+    {
+        incluir.Clear();
+        observaciones = "";
+        mensaje = null;
+        fechaPago = FechaSugerida;
+    }
+
+    private void Actualizar()
+    {
+        fechaPago = FechaSugerida;
+        mensaje = null;
+    }
+
+    private void MarcarTodas()
+    {
+        incluir.Clear();
+        foreach (var c in cuotas) incluir[c.PpgId] = c.Saldo;
+        Actualizar();
+    }
+
+    private void MarcarVencidas()
+    {
+        incluir.Clear();
+        foreach (var c in cuotas.Where(c => c.Vencimiento <= DateTime.Today)) incluir[c.PpgId] = c.Saldo;
+        Actualizar();
+        if (incluir.Count == 0)
+        {
+            mensaje = "El proveedor no tiene cuotas vencidas.";
+            esMensajeError = true;
+        }
+    }
+
+    private void Alternar(ContrasenaCuotaDisponible c, bool marcada)
+    {
+        if (marcada) incluir[c.PpgId] = c.Saldo;
+        else incluir.Remove(c.PpgId);
+        Actualizar();
+    }
+
+    private void CambiarMonto(ContrasenaCuotaDisponible c, object? valor)
+    {
+        if (decimal.TryParse(valor?.ToString(), NumberStyles.Number, CultureInfo.InvariantCulture, out var monto))
+            incluir[c.PpgId] = Math.Round(monto, 2);
+    }
+
+    private void CambiarFechaPago(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var fecha))
+            fechaPago = fecha.Date;
+    }
+
+    private async Task EmitirAsync()
+    {
+        if (proveedor is null || incluir.Count == 0) return;
+        var mala = cuotas.FirstOrDefault(c => incluir.TryGetValue(c.PpgId, out var m) && (m <= 0 || m > c.Saldo));
+        if (mala is not null)
+        {
+            mensaje = $"El monto de la cuota {mala.Cuota} de {mala.Documento} debe ser mayor a cero y no pasar de su saldo (Q{mala.Saldo:N2}).";
+            esMensajeError = true;
+            return;
+        }
+        if (sucId is not int sucursal)
+        {
+            mensaje = "No se pudo determinar la sucursal de la sesión. Vuelva a iniciar sesión.";
+            esMensajeError = true;
+            return;
+        }
+        guardando = true;
+        try
+        {
+            var total = Total;
+            var (cpaId, numero) = await PagosRepository.EmitirContrasenaAsync(proveedor.Id, sucursal, fechaPago, formaPago, observaciones,
+                incluir.Select(i => new ContrasenaCuota { PpgId = i.Key, Monto = i.Value }).ToList(), await ObtenerUsuIdActualAsync());
+            emitida = (cpaId, numero, total, proveedor.Nombre, fechaPago);
+            Limpiar();
+            cuotas = await PagosRepository.ConsultarCuotasDisponiblesAsync(proveedor.Id);
+            await CargarListaAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task CambiarFiltroEstadoAsync(ChangeEventArgs e)
+    {
+        filtroEstado = e.Value?.ToString() ?? "";
+        await CargarListaAsync();
+    }
+
+    private async Task CargarListaAsync()
+    {
+        try { lista = await PagosRepository.ConsultarContrasenasAsync(filtroEstado, null, desde, hasta, null, null); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void IniciarAnulacion(ContrasenaResumen c)
+    {
+        anulando = c;
+        motivoAnulacion = "";
+        mensaje = null;
+    }
+
+    private async Task AnularAsync()
+    {
+        if (anulando is null) return;
+        guardando = true;
+        try
+        {
+            var numero = anulando.Numero;
+            await PagosRepository.AnularContrasenaAsync(anulando.CpaId, motivoAnulacion.Trim(), await ObtenerUsuIdActualAsync());
+            mensaje = $"Contraseña {numero} anulada. Sus facturas quedan libres para otra contraseña.";
+            esMensajeError = false;
+            anulando = null;
+            if (emitida?.Numero == numero) emitida = null;
+            await CargarListaAsync();
+            if (proveedor is not null) cuotas = await PagosRepository.ConsultarCuotasDisponiblesAsync(proveedor.Id);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+}

@@ -1,0 +1,162 @@
+@page "/ventas/cotizaciones/{CotId:int}/imprimir"
+@layout Erp.Web.Components.Layout.ReporteLayout
+@attribute [Authorize(Policy = "Permiso:VENTAS_COTIZACION,VENTAS_FACTURA_CREAR")]
+@using Erp.Data.Ventas
+@using Erp.Web.Reportes
+@inject ICotizacionRepository CotizacionRepository
+
+<PageTitle>@(enc is null ? "Cotización" : $"Cotización {enc.Numero}")</PageTitle>
+
+@if (enc is null)
+{
+    <p class="mensaje-error" role="alert">@(error ?? $"No existe la cotización {CotId}.")</p>
+}
+else
+{
+    <style>
+        @@page { size: letter portrait; margin: 11mm 12mm; }
+        @@media print { body { background: #fff; } .reporte-pagina { padding: 0; max-width: none; } }
+    </style>
+
+    <div class="reporte-acciones fac-acciones">
+        <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
+            <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+        </button>
+        <span class="texto-tenue">Formato carta. La vigencia se configura en General › Compañías.</span>
+    </div>
+
+    <article class="fac-carta">
+        @if (MarcaAgua is not null) { <div class="fac-marca">@MarcaAgua</div> }
+        <header class="fac-cab">
+            <div class="fac-emisor">
+                @if (enc.TieneLogo) { <img class="fac-logo" src="@($"compania/logo?cia={enc.CiaId}&v={enc.LogoActualizado?.Ticks ?? 0}")" alt="" /> }
+                <div>
+                    <div class="fac-comercial">@enc.NombreComercial</div>
+                    <div class="fac-razon">@enc.NombreEmisor</div>
+                    <div>NIT @enc.NitEmisor</div>
+                    <div>@enc.DireccionEmisor</div>
+                    <div>@string.Join(" · ", new[] { enc.TelefonoEmisor is null ? null : $"Tel. {enc.TelefonoEmisor}", enc.CorreoEmisor }.Where(t => !string.IsNullOrWhiteSpace(t)))</div>
+                </div>
+            </div>
+            <div class="fac-doc">
+                <div class="fac-doc-tipo">COTIZACIÓN</div>
+                <div class="fac-doc-sub">No es un documento tributario</div>
+                <dl>
+                    <dt>Número</dt><dd>@enc.Numero</dd>
+                    <dt>Fecha</dt><dd>@enc.Fecha.ToString("dd/MM/yyyy")</dd>
+                    <dt>Válida hasta</dt><dd><strong>@enc.Vence.ToString("dd/MM/yyyy")</strong></dd>
+                </dl>
+            </div>
+        </header>
+
+        <p class="cot-vigencia">
+            Esta cotización es válida por <strong>@enc.VigenciaDias días</strong>, hasta el <strong>@enc.Vence.ToString("dddd d 'de' MMMM 'de' yyyy", Cultura)</strong>.
+            Dentro de ese plazo se respetan los precios cotizados; la existencia se confirma al facturar.
+        </p>
+        @if (AvisoEstado is not null) { <p class="fac-aviso">@AvisoEstado</p> }
+
+        <section class="fac-partes">
+            <div class="fac-bloque">
+                <div class="fac-bloque-titulo">Cliente</div>
+                <div class="fac-fila"><span>Nombre</span><strong>@enc.Cliente</strong></div>
+                <div class="fac-fila"><span>NIT</span>@(string.IsNullOrWhiteSpace(enc.Nit) ? "—" : enc.Nit)</div>
+                @if (!string.IsNullOrWhiteSpace(enc.Direccion)) { <div class="fac-fila"><span>Dirección</span>@enc.Direccion</div> }
+                @if (!string.IsNullOrWhiteSpace(enc.Telefono) || !string.IsNullOrWhiteSpace(enc.Correo))
+                {
+                    <div class="fac-fila"><span>Contacto</span>@string.Join(" · ", new[] { enc.Telefono, enc.Correo }.Where(t => !string.IsNullOrWhiteSpace(t)))</div>
+                }
+            </div>
+            <div class="fac-bloque">
+                <div class="fac-bloque-titulo">Condiciones</div>
+                <div class="fac-fila"><span>Moneda</span>@enc.Moneda</div>
+                <div class="fac-fila"><span>Sucursal</span>@enc.Sucursal</div>
+                @if (enc.Vendedor is not null) { <div class="fac-fila"><span>Vendedor</span>@enc.Vendedor</div> }
+                @if (enc.Usuario is not null) { <div class="fac-fila"><span>Elaboró</span>@enc.Usuario</div> }
+            </div>
+        </section>
+
+        <table class="fac-items">
+            <thead>
+                <tr><th class="num">#</th><th class="num">Cantidad</th><th>Unidad</th><th>Descripción</th><th class="num">Precio unitario</th><th class="num">Descuento</th><th class="num">Total</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var l in lineas)
+                {
+                    <tr>
+                        <td class="num">@l.Item</td>
+                        <td class="num">@Cantidad(l.Cantidad)</td>
+                        <td>@l.Unidad</td>
+                        <td>@l.Descripcion@if (l.Codigo is not null) { <small> · @l.Codigo</small> }<small class="fac-bs">@(l.BienOServicio == "S" ? "Servicio" : "Bien")</small></td>
+                        <td class="num">@l.PrecioUnitario.ToString("N2")</td>
+                        <td class="num">@(l.Descuento > 0 ? l.Descuento.ToString("N2") : "")</td>
+                        <td class="num">@l.Total.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <section class="fac-pie-tabla">
+            <div class="fac-notas">
+                <div class="fac-letras"><span>Total en letras</span>@NumeroALetras.Convertir(enc.Total)</div>
+                @if (!string.IsNullOrWhiteSpace(enc.Observaciones))
+                {
+                    <div class="fac-mini">
+                        <div class="fac-bloque-titulo">Observaciones</div>
+                        <p class="cot-observaciones">@enc.Observaciones</p>
+                    </div>
+                }
+            </div>
+            <div class="fac-totales">
+                @if (enc.Descuento > 0) { <div class="fac-fila"><span>Descuentos</span>@enc.Simbolo @enc.Descuento.ToString("N2")</div> }
+                <div class="fac-fila"><span>IVA incluido (@enc.PorcentajeIva.ToString("0.##")%)</span>@enc.Simbolo @enc.IvaIncluido.ToString("N2")</div>
+                <div class="fac-total"><span>TOTAL @enc.Moneda</span>@enc.Simbolo @enc.Total.ToString("N2")</div>
+            </div>
+        </section>
+
+        <footer class="fac-final">
+            <div class="fac-final-texto">
+                <div>Precios en @enc.Moneda con IVA incluido. Cotización válida hasta el @enc.Vence.ToString("dd/MM/yyyy"); pasada esa fecha los precios y la disponibilidad pueden cambiar.</div>
+                <div>Para confirmar su pedido, mencione el número @enc.Numero.</div>
+            </div>
+        </footer>
+    </article>
+
+    @if (Auto == 1)
+    {
+        <script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 400); });</script>
+    }
+}
+
+@code {
+    [Parameter] public int CotId { get; set; }
+    [SupplyParameterFromQuery] public int? Auto { get; set; }
+
+    private static readonly System.Globalization.CultureInfo Cultura = new("es-GT");
+    private CotizacionEncabezado? enc;
+    private IReadOnlyList<CotizacionLinea> lineas = Array.Empty<CotizacionLinea>();
+    private string? error;
+
+    private string? MarcaAgua => enc?.Estado switch
+    {
+        "A" => "ANULADA",
+        "X" => "VENCIDA",
+        "F" => "FACTURADA",
+        _ => null
+    };
+
+    private string? AvisoEstado => enc?.Estado switch
+    {
+        "A" => $"COTIZACIÓN ANULADA{(string.IsNullOrWhiteSpace(enc.MotivoAnulacion) ? "" : $" — {enc.MotivoAnulacion}")}",
+        "X" => $"COTIZACIÓN VENCIDA EL {enc.Vence:dd/MM/yyyy}: LOS PRECIOS YA NO ESTÁN GARANTIZADOS",
+        "F" => $"COTIZACIÓN FACTURADA EN {enc.Factura}",
+        _ => null
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { (enc, lineas) = await CotizacionRepository.ConsultarPorIdAsync(CotId); }
+        catch (Exception ex) { error = MensajesError.Traducir(ex); }
+    }
+
+    private static string Cantidad(decimal cantidad) => cantidad.ToString(cantidad == Math.Truncate(cantidad) ? "0" : "0.##");
+}

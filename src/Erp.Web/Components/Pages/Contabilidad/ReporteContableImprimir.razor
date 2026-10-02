@@ -1,0 +1,86 @@
+@page "/contabilidad/reportes/imprimir"
+@layout Erp.Web.Components.Layout.ReporteLayout
+@attribute [Authorize(Policy = "Permiso:CONTABILIDAD_POLIZAS,CONTABILIDAD_ESTADOS")]
+@using Erp.Data.Contabilidad
+@using Erp.Web.Reportes
+@inject ILibrosRepository LibrosRepository
+
+<ReporteContableMarco Titulo="@reporte.Titulo" Subtitulo="@reporte.Rango" Detalle="@detalle" Error="@error">
+    @switch (reporte.Tipo)
+    {
+        case "mayor":
+            <TablaMayor Cuentas="mayor" />
+            break;
+        case "balanza":
+            <TablaBalanza Filas="balanza" />
+            break;
+        case "balance":
+            @if (balance is not null)
+            {
+                <TablaBalance Balance="balance" Comparar="reporte.Comparar" Etiqueta="@reporte.EtiquetaActual" EtiquetaComparativa="@reporte.EtiquetaComparativa" />
+                <div class="firmas-poliza"><div><span>Contador</span></div><div><span>Representante legal</span></div></div>
+            }
+            break;
+        case "resultados":
+            @if (resultados is not null)
+            {
+                <TablaResultados Estado="resultados" Comparar="reporte.Comparar" Etiqueta="@reporte.EtiquetaActual" EtiquetaComparativa="@reporte.EtiquetaComparativa" />
+                <div class="firmas-poliza"><div><span>Contador</span></div><div><span>Representante legal</span></div></div>
+            }
+            break;
+        default:
+            <TablaDiario Lineas="diario" />
+            break;
+    }
+</ReporteContableMarco>
+
+@code {
+    [SupplyParameterFromQuery] public string? Tipo { get; set; }
+    [SupplyParameterFromQuery] public DateTime? Desde { get; set; }
+    [SupplyParameterFromQuery] public DateTime? Hasta { get; set; }
+    [SupplyParameterFromQuery] public int? Nivel { get; set; }
+    [SupplyParameterFromQuery] public int? Cta { get; set; }
+    [SupplyParameterFromQuery] public bool? Comparar { get; set; }
+    [SupplyParameterFromQuery(Name = "desdec")] public DateTime? DesdeC { get; set; }
+    [SupplyParameterFromQuery(Name = "hastac")] public DateTime? HastaC { get; set; }
+
+    private ReporteContable reporte = new();
+    private IReadOnlyList<LibroDiarioLinea> diario = Array.Empty<LibroDiarioLinea>();
+    private IReadOnlyList<MayorCuenta> mayor = Array.Empty<MayorCuenta>();
+    private IReadOnlyList<BalanzaFila> balanza = Array.Empty<BalanzaFila>();
+    private BalanceGeneral? balance;
+    private EstadoResultados? resultados;
+    private string? detalle;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        reporte = ReporteContable.Crear(Tipo, Desde, Hasta, Nivel, Cta, Comparar, DesdeC, HastaC);
+        try
+        {
+            switch (reporte.Tipo)
+            {
+                case "mayor":
+                    mayor = await LibrosRepository.ConsultarLibroMayorAsync(reporte.Desde, reporte.Hasta, reporte.CtaId);
+                    break;
+                case "balanza":
+                    balanza = await LibrosRepository.ConsultarBalanzaAsync(reporte.Desde, reporte.Hasta, reporte.Nivel);
+                    detalle = ReporteContable.Niveles.First(n => n.Nivel == reporte.Nivel).Nombre;
+                    break;
+                case "balance":
+                    balance = await LibrosRepository.ConsultarBalanceGeneralAsync(reporte.Hasta, reporte.Nivel, reporte.Comparar ? reporte.HastaComparativo : null);
+                    detalle = "Cifras en quetzales";
+                    break;
+                case "resultados":
+                    resultados = await LibrosRepository.ConsultarEstadoResultadosAsync(reporte.Desde, reporte.Hasta, reporte.Nivel,
+                        reporte.Comparar ? reporte.DesdeComparativo : null, reporte.Comparar ? reporte.HastaComparativo : null);
+                    detalle = "Cifras en quetzales";
+                    break;
+                default:
+                    diario = await LibrosRepository.ConsultarLibroDiarioAsync(reporte.Desde, reporte.Hasta);
+                    break;
+            }
+        }
+        catch (Exception ex) { error = MensajesError.Traducir(ex); }
+    }
+}

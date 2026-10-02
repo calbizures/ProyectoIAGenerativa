@@ -1,0 +1,80 @@
+@* Antigüedad de saldos de clientes (CxC) o proveedores (CxP), por vencimiento
+   de cada cuota a la fecha de corte. *@
+@using Erp.Data.Cuentas
+@inject ICuentasRepository CuentasRepository
+
+<div class="pagina-encabezado">
+    <h1>Antigüedad de saldos de @(EsCliente ? "clientes" : "proveedores")</h1>
+    <p>Saldo pendiente de cada cuota según los días transcurridos desde su vencimiento a la fecha de corte.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="mensaje-error" role="alert">@mensaje</p>
+}
+
+<div class="barra-filtros">
+    <label class="filtro-campo" for="ant-fecha">Fecha de corte <input id="ant-fecha" type="date" @bind="fechaCorte" /></label>
+    <div class="filtro-tercero">
+        <SelectorTercero EsCliente="EsCliente" @bind-Seleccionado="tercero" />
+    </div>
+    <BotonIcono Icono="search" Tooltip="Consultar" Etiqueta="Consultar" Variante="primario" OnClick="ConsultarAsync" />
+    <span class="barra-herramientas-separador"></span>
+    <a class="boton-icono boton-icono-con-etiqueta" href="@UrlExcel" download title="Exportar a Excel">
+        <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Excel</span>
+    </a>
+    <a class="boton-icono boton-icono-con-etiqueta" href="@UrlImprimir" target="_blank" rel="noopener" title="Abrir el reporte para imprimir">
+        <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+    </a>
+</div>
+
+@if (consultado)
+{
+    <div class="kpi-fila">
+        <div class="kpi"><span class="kpi-etiqueta">Saldo total</span><span class="kpi-valor">Q@(totales.Sum().ToString("N2"))</span></div>
+        <div class="kpi"><span class="kpi-etiqueta">No vencido</span><span class="kpi-valor">Q@(totales[0].ToString("N2"))</span></div>
+        <div class="kpi kpi-alerta"><span class="kpi-etiqueta">Vencido</span><span class="kpi-valor">Q@(totales.Skip(1).Sum().ToString("N2"))</span></div>
+        <div class="kpi kpi-alerta"><span class="kpi-etiqueta">Más de 90 días</span><span class="kpi-valor">Q@(totales[4].ToString("N2"))</span></div>
+    </div>
+
+    <BarraPestanas Pestanas="Vistas" @bind-PestanaActiva="vista" />
+    <AntiguedadTabla Grupos="grupos" Vista="@vista" EsCliente="EsCliente" Enlaces="true" />
+}
+
+@code {
+    [Parameter] public bool EsCliente { get; set; } = true;
+
+    private static readonly IReadOnlyList<PestanaItem> VistasCliente = new[] { new PestanaItem("tercero", "Por cliente"), new PestanaItem("documento", "Por factura") };
+    private static readonly IReadOnlyList<PestanaItem> VistasProveedor = new[] { new PestanaItem("tercero", "Por proveedor"), new PestanaItem("documento", "Por compra") };
+    private IReadOnlyList<PestanaItem> Vistas => EsCliente ? VistasCliente : VistasProveedor;
+
+    private DateTime fechaCorte = DateTime.Today;
+    private TerceroSeleccion? tercero;
+    private string vista = "tercero";
+    private bool consultado;
+    private List<AntiguedadGrupo> grupos = new();
+    private decimal[] totales = new decimal[5];
+    private string? mensaje;
+
+    private string Modulo => EsCliente ? "cxc" : "cxp";
+    private string Filtros => $"fecha={fechaCorte:yyyy-MM-dd}{(tercero is null ? "" : $"&id={tercero.Id}")}";
+    private string UrlExcel => $"reportes/{Modulo}/antiguedad.xlsx?{Filtros}";
+    private string UrlImprimir => $"{Modulo}/antiguedad/imprimir?{Filtros}&vista={vista}";
+
+    protected override Task OnInitializedAsync() => ConsultarAsync();
+
+    private async Task ConsultarAsync()
+    {
+        try
+        {
+            var filas = EsCliente
+                ? await CuentasRepository.ConsultarAntiguedadClientesAsync(fechaCorte, tercero?.Id)
+                : await CuentasRepository.ConsultarAntiguedadProveedoresAsync(fechaCorte, tercero?.Id);
+            grupos = AntiguedadGrupo.Agrupar(filas);
+            totales = AntiguedadGrupo.Totales(grupos);
+            consultado = true;
+            mensaje = null;
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+    }
+}

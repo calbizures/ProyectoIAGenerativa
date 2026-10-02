@@ -1,0 +1,515 @@
+@page "/cxc/cobros"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CXC_ADMIN")]
+@using Erp.Data.Caja
+@using Erp.Data.Cuentas
+@using Erp.Data.Ventas
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ICuentasRepository CuentasRepository
+@inject ICajaRepository CajaRepository
+
+<PageTitle>Cobros a clientes</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Cobros a clientes</h1>
+    <p>Elija el cliente, indique el monto recibido y se aplica a sus cuotas de la más antigua a la más reciente (o marque las que paga). Un cobro genera un recibo y su póliza (Caja / Clientes).</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+@if (cajasAbiertas.Count == 0)
+{
+    <div class="doc-nota">
+        <Icono Nombre="alert-triangle" Tamano="15" />
+        <span>No hay una caja abierta en su sucursal. Abra la caja en Bancos › Caja para poder cobrar.</span>
+    </div>
+}
+
+@if (reciboRegistrado is not null)
+{
+    <section class="tarjeta tarjeta-exito" aria-live="polite">
+        <div class="exito-contenido">
+            <Icono Nombre="check-circle" Tamano="22" />
+            <div>
+                <h2>Recibo @reciboRegistrado.Value.Id registrado</h2>
+                <p>Q@(reciboRegistrado.Value.Monto.ToString("N2")) de @reciboRegistrado.Value.Cliente.</p>
+            </div>
+        </div>
+        <div class="acciones-fila">
+            <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@($"/cxc/recibos/imprimir?id={reciboRegistrado.Value.Id}")" target="_blank" rel="noopener">
+                <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir recibo</span>
+            </a>
+            <BotonIcono Icono="plus" Tooltip="Registrar otro cobro" Etiqueta="Otro cobro" OnClick="NuevoCobro" />
+        </div>
+    </section>
+}
+
+<section class="tarjeta" aria-labelledby="titulo-cliente">
+    <h2 id="titulo-cliente">1. Cliente</h2>
+    <SelectorTercero EsCliente="true" Seleccionado="cliente" SeleccionadoChanged="CambiarClienteAsync" />
+</section>
+
+@if (cliente is not null)
+{
+    <section class="tarjeta" aria-labelledby="titulo-cuotas">
+        <h2 id="titulo-cuotas">2. Cuotas a cobrar</h2>
+        @if (cuotas.Count == 0)
+        {
+            <p class="estado-vacio">El cliente no tiene cuotas pendientes.</p>
+        }
+        else
+        {
+            <div class="cobro-aplicacion">
+                <div class="campo">
+                    <label for="cob-recibido">Monto recibido</label>
+                    <input id="cob-recibido" type="number" step="0.01" min="0" @bind="montoRecibido" />
+                </div>
+                <BotonIcono Icono="check-check" Tooltip="Aplicar el monto a las cuotas más antiguas" Etiqueta="Aplicar a las más antiguas" OnClick="AplicarAntiguas" />
+                <BotonIcono Icono="alert-triangle" Tooltip="Marcar todo lo vencido" Etiqueta="Todo lo vencido" OnClick="MarcarVencidas" />
+                <button type="button" class="boton-texto" @onclick="Limpiar">Limpiar</button>
+                <div class="cobro-resumen">
+                    <span>Vencido <strong>Q@(cuotas.Where(c => c.Dias > 0).Sum(c => c.Saldo).ToString("N2"))</strong></span>
+                    <span>Saldo total <strong>Q@(cuotas.Sum(c => c.Saldo).ToString("N2"))</strong></span>
+                </div>
+            </div>
+
+            <table class="tabla-datos tabla-cuotas-cobro">
+                <thead>
+                    <tr>
+                        <th class="col-check"><span class="sr-only">Cobrar</span></th>
+                        <th>Documento</th><th class="num">Cuota</th><th class="col-fecha">Vence</th><th>Situación</th>
+                        <th class="num">Saldo</th><th class="num col-aplicar">A aplicar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in cuotas)
+                    {
+                        var marcada = aplicar.ContainsKey(c.CppId);
+                        <tr class="@(marcada ? "fila-seleccionada" : "")">
+                            <td class="col-check"><input type="checkbox" checked="@marcada" aria-label="@($"Cobrar cuota {c.Cuota} de {c.Documento}")" @onchange="e => Alternar(c, (bool)(e.Value ?? false))" /></td>
+                            <td>@c.Documento</td>
+                            <td class="num">@c.Cuota</td>
+                            <td class="col-fecha">@c.Vencimiento.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                @if (c.Dias > 0)
+                                {
+                                    <span class="estado-badge estado-badge-anulada">Vencida hace @c.Dias d</span>
+                                }
+                                else if (c.Dias == 0)
+                                {
+                                    <span class="estado-badge estado-badge-pendiente">Vence hoy</span>
+                                }
+                                else
+                                {
+                                    <span class="texto-tenue">En @(-c.Dias) d</span>
+                                }
+                            </td>
+                            <td class="num">@c.Saldo.ToString("N2")</td>
+                            <td class="num col-aplicar">
+                                @if (marcada)
+                                {
+                                    <input type="number" step="0.01" min="0" max="@c.Saldo" aria-label="@($"Monto a aplicar a la cuota {c.Cuota} de {c.Documento}")"
+                                           value="@aplicar[c.CppId]" @onchange="e => CambiarMonto(c, e.Value)" />
+                                }
+                                else
+                                {
+                                    <span class="texto-tenue">—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr><td colspan="6">Total a cobrar (@aplicar.Count cuota@(aplicar.Count == 1 ? "" : "s"))</td><td class="num"><strong>Q@(TotalCobro.ToString("N2"))</strong></td></tr>
+                </tfoot>
+            </table>
+        }
+    </section>
+
+    @if (aplicar.Count > 0)
+    {
+        <section class="tarjeta" aria-labelledby="titulo-formas">
+            <h2 id="titulo-formas">3. Forma de pago</h2>
+            @if (cajasAbiertas.Count > 1)
+            {
+                <div class="panel-formulario panel-ancho">
+                    <div class="campo">
+                        <label for="cob-caja">Caja</label>
+                        <select id="cob-caja" @bind="pcaId">
+                            @foreach (var c in cajasAbiertas)
+                            {
+                                <option value="@c.PcaId">@c.PcrDescripcion</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            }
+            <table class="doc-tabla tabla-formas-pago">
+                <thead><tr><th>Forma de pago</th><th class="num">Monto</th><th>Entidad financiera</th><th>No. de cheque o referencia</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var f in formas)
+                    {
+                        <tr>
+                            <td>@NombreForma(f.PftId)</td>
+                            <td class="num">Q@(f.Monto.ToString("N2"))</td>
+                            <td>@(entidades.FirstOrDefault(e => e.GefId == f.GefId)?.GefDescripcion ?? "—")</td>
+                            <td>@(f.NumeroCheque ?? f.NumeroTarjetaUlt4 ?? "—")</td>
+                            <td><BotonIcono Icono="trash-2" Tooltip="Quitar" Variante="peligro" OnClick="() => formas.Remove(f)" /></td>
+                        </tr>
+                    }
+                    <tr>
+                        <td>
+                            <select aria-label="Forma de pago" @bind="formaNueva.PftId">
+                                <option value="0">Seleccione...</option>
+                                @foreach (var t in tiposForma)
+                                {
+                                    <option value="@t.PftId">@t.PftDescripcion</option>
+                                }
+                            </select>
+                        </td>
+                        <td class="num"><input class="entrada-monto" type="number" step="0.01" min="0" aria-label="Monto" @bind="formaNueva.Monto" /></td>
+                        <td>
+                            @if (EsForma(formaNueva.PftId, "Cheque") || EsForma(formaNueva.PftId, "Transferencia") || EsForma(formaNueva.PftId, "Tarjeta"))
+                            {
+                                <select aria-label="Entidad financiera" @bind="formaNueva.GefId">
+                                    <option value="">Entidad...</option>
+                                    @foreach (var e in entidades)
+                                    {
+                                        <option value="@e.GefId">@e.GefDescripcion</option>
+                                    }
+                                </select>
+                            }
+                        </td>
+                        <td>
+                            @if (EsForma(formaNueva.PftId, "Cheque"))
+                            {
+                                <input class="entrada-referencia" placeholder="No. de cheque" aria-label="No. de cheque" @bind="formaNueva.NumeroCheque" />
+                            }
+                            else if (EsForma(formaNueva.PftId, "Tarjeta"))
+                            {
+                                <input class="entrada-referencia" placeholder="Últimos 4 dígitos" aria-label="Últimos 4 dígitos" maxlength="4" @bind="formaNueva.NumeroTarjetaUlt4" />
+                            }
+                        </td>
+                        <td><BotonIcono Icono="plus" Tooltip="Agregar forma de pago" OnClick="AgregarForma" /></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="doc-totales-nota">
+                Capturado: Q@(FormasTotal.ToString("N2")) de Q@(TotalCobro.ToString("N2"))
+                @if (formas.Count == 0 && formaNueva.PftId > 0)
+                {
+                    <span> · si no agrega otra, todo se registra en @NombreForma(formaNueva.PftId)</span>
+                }
+            </div>
+
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Registrar el cobro" Etiqueta="@($"Registrar cobro Q{TotalCobro:N2}")" Variante="primario"
+                            Deshabilitado="cajasAbiertas.Count == 0 || guardando" OnClick="CobrarAsync" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="Limpiar" />
+            </div>
+        </section>
+    }
+}
+
+<section class="tarjeta" aria-labelledby="titulo-recibos">
+    <div class="maestro-detalle-encabezado">
+        <h2 id="titulo-recibos">Recibos de la caja abierta</h2>
+        <span class="texto-tenue">@recibos.Count(r => !r.Anulado) vigente(s) · Q@(recibos.Where(r => !r.Anulado).Sum(r => r.Total).ToString("N2"))</span>
+    </div>
+    @if (recibos.Count == 0)
+    {
+        <p class="estado-vacio">Todavía no hay cobros en la caja abierta.</p>
+    }
+    else
+    {
+        <table class="tabla-datos">
+            <thead>
+                <tr><th class="col-codigo">Recibo</th><th class="col-fecha">Hora</th><th>Cliente</th><th>Documentos</th><th>Forma</th><th class="num">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var r in recibos)
+                {
+                    <tr class="@(r.Anulado ? "fila-anulada" : "")">
+                        <td class="col-codigo">@r.PpeId</td>
+                        <td class="col-fecha">@r.Fecha.ToString("HH:mm")</td>
+                        <td>@r.Cliente</td>
+                        <td>@r.Documentos</td>
+                        <td>@r.Formas</td>
+                        <td class="num">@r.Total.ToString("N2")</td>
+                        <td class="col-estado">
+                            <span class="estado-badge @(r.Anulado ? "estado-badge-inactivo" : "estado-badge-activo")" title="@r.MotivoAnulacion">@(r.Anulado ? "Anulado" : "Vigente")</span>
+                        </td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                <a class="boton-icono" href="@($"/cxc/recibos/imprimir?id={r.PpeId}")" target="_blank" rel="noopener" aria-label="@($"Imprimir recibo {r.PpeId}")">
+                                    <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-tip" role="tooltip">Imprimir recibo</span>
+                                </a>
+                                @if (r.SePuedeAnular)
+                                {
+                                    <BotonIcono Icono="ban" Tooltip="Anular recibo" Variante="peligro" OnClick="() => IniciarAnulacion(r)" />
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                    @if (anulando?.PpeId == r.PpeId)
+                    {
+                        <tr class="fila-edicion-tabla">
+                            <td colspan="8">
+                                <div class="anulacion-form">
+                                    <label for="motivo-anulacion">Motivo de la anulación del recibo @r.PpeId</label>
+                                    <input id="motivo-anulacion" maxlength="256" placeholder="Ej.: cobro registrado al cliente equivocado" @bind="motivoAnulacion" @bind:event="oninput" />
+                                    <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Anular recibo" Variante="peligro"
+                                                Deshabilitado="motivoAnulacion.Trim().Length < 5 || guardando" OnClick="AnularAsync" />
+                                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => anulando = null" />
+                                    <small class="texto-ayuda">El saldo vuelve a las cuotas, la póliza se anula y el monto sale del cuadre de la caja.</small>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private TerceroSeleccion? cliente;
+    private IReadOnlyList<CuotaPendiente> cuotas = Array.Empty<CuotaPendiente>();
+    // Cuotas marcadas y el monto que se les aplica, en el orden de la tabla.
+    private readonly Dictionary<int, decimal> aplicar = new();
+    private decimal montoRecibido;
+    private readonly List<FormaPagoCaptura> formas = new();
+    private FormaPagoCaptura formaNueva = new();
+
+    private IReadOnlyList<CajaAperturaActiva> cajasAbiertas = Array.Empty<CajaAperturaActiva>();
+    private int pcaId;
+    private IReadOnlyList<FormaPagoTipo> tiposForma = Array.Empty<FormaPagoTipo>();
+    private IReadOnlyList<EntidadFinanciera> entidades = Array.Empty<EntidadFinanciera>();
+    private IReadOnlyList<ReciboResumen> recibos = Array.Empty<ReciboResumen>();
+
+    private (int Id, decimal Monto, string Cliente)? reciboRegistrado;
+    private ReciboResumen? anulando;
+    private string motivoAnulacion = "";
+    private bool guardando;
+
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private decimal TotalCobro => aplicar.Values.Sum();
+    private decimal FormasTotal => formas.Sum(f => f.Monto);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            tiposForma = await CajaRepository.ConsultarFormasPagoTipoAsync();
+            entidades = await CajaRepository.ConsultarEntidadesFinancierasAsync();
+            if (AuthenticationStateTask is not null)
+            {
+                var sucId = (await AuthenticationStateTask).User.ObtenerSucId();
+                if (sucId is > 0) cajasAbiertas = await CajaRepository.ConsultarAperturaActivaPorSucursalAsync(sucId.Value);
+            }
+            pcaId = cajasAbiertas.FirstOrDefault()?.PcaId ?? 0;
+            ReiniciarFormaNueva();
+            await CargarRecibosAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private void MostrarAviso(string texto)
+    {
+        mensaje = texto;
+        esMensajeError = true;
+    }
+
+    private string NombreForma(int pftId) => tiposForma.FirstOrDefault(t => t.PftId == pftId)?.PftDescripcion ?? "—";
+    private bool EsForma(int pftId, string nombre) => NombreForma(pftId).Equals(nombre, StringComparison.OrdinalIgnoreCase);
+
+    private void ReiniciarFormaNueva() =>
+        formaNueva = new FormaPagoCaptura { PftId = tiposForma.FirstOrDefault(t => t.PftDescripcion == "Efectivo")?.PftId ?? 0 };
+
+    // Recibos de todas las cajas abiertas de la sucursal.
+    private async Task CargarRecibosAsync()
+    {
+        var lista = new List<ReciboResumen>();
+        foreach (var c in cajasAbiertas)
+            lista.AddRange(await CuentasRepository.ConsultarRecibosAsync(c.PcaId, null, null, null));
+        recibos = lista.OrderByDescending(r => r.PpeId).ToList();
+    }
+
+    private async Task CambiarClienteAsync(TerceroSeleccion? nuevo)
+    {
+        cliente = nuevo;
+        reciboRegistrado = null;
+        Limpiar();
+        cuotas = Array.Empty<CuotaPendiente>();
+        if (cliente is not null) await CargarCuotasAsync();
+    }
+
+    private async Task CargarCuotasAsync()
+    {
+        try { cuotas = await CuentasRepository.ConsultarCuotasPendientesClienteAsync(cliente!.Id); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void Limpiar()
+    {
+        aplicar.Clear();
+        formas.Clear();
+        montoRecibido = 0;
+        ReiniciarFormaNueva();
+    }
+
+    private void NuevoCobro()
+    {
+        reciboRegistrado = null;
+        mensaje = null;
+    }
+
+    private void SincronizarFormaNueva()
+    {
+        if (formas.Count == 0) formaNueva.Monto = TotalCobro;
+        mensaje = null;
+    }
+
+    // Reparte el monto recibido de la cuota más antigua a la más reciente.
+    private void AplicarAntiguas()
+    {
+        if (montoRecibido <= 0)
+        {
+            MostrarAviso("Indique el monto recibido.");
+            return;
+        }
+        var saldoTotal = cuotas.Sum(c => c.Saldo);
+        if (montoRecibido > saldoTotal)
+        {
+            MostrarAviso($"El monto recibido (Q{montoRecibido:N2}) supera el saldo total del cliente (Q{saldoTotal:N2}).");
+            return;
+        }
+        aplicar.Clear();
+        var restante = montoRecibido;
+        foreach (var c in cuotas)
+        {
+            if (restante <= 0) break;
+            var monto = Math.Min(restante, c.Saldo);
+            aplicar[c.CppId] = monto;
+            restante -= monto;
+        }
+        SincronizarFormaNueva();
+    }
+
+    private void MarcarVencidas()
+    {
+        aplicar.Clear();
+        foreach (var c in cuotas.Where(c => c.Dias > 0)) aplicar[c.CppId] = c.Saldo;
+        if (aplicar.Count == 0) MostrarAviso("El cliente no tiene cuotas vencidas.");
+        else SincronizarFormaNueva();
+        montoRecibido = TotalCobro;
+    }
+
+    private void Alternar(CuotaPendiente c, bool marcada)
+    {
+        if (marcada) aplicar[c.CppId] = c.Saldo;
+        else aplicar.Remove(c.CppId);
+        montoRecibido = TotalCobro;
+        SincronizarFormaNueva();
+    }
+
+    private void CambiarMonto(CuotaPendiente c, object? valor)
+    {
+        if (!decimal.TryParse(valor?.ToString(), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var monto))
+            return;
+        aplicar[c.CppId] = Math.Round(monto, 2);
+        montoRecibido = TotalCobro;
+        SincronizarFormaNueva();
+    }
+
+    private void AgregarForma()
+    {
+        if (formaNueva.PftId <= 0 || formaNueva.Monto <= 0)
+        {
+            MostrarAviso("Seleccione la forma de pago e indique un monto mayor a cero.");
+            return;
+        }
+        formas.Add(formaNueva);
+        var restante = TotalCobro - FormasTotal;
+        formaNueva = new FormaPagoCaptura { Monto = restante > 0 ? restante : 0 };
+        mensaje = null;
+    }
+
+    private async Task CobrarAsync()
+    {
+        if (cliente is null || aplicar.Count == 0) return;
+        var excedida = cuotas.FirstOrDefault(c => aplicar.TryGetValue(c.CppId, out var m) && (m <= 0 || m > c.Saldo));
+        if (excedida is not null)
+        {
+            MostrarAviso($"El monto de la cuota {excedida.Cuota} de {excedida.Documento} debe ser mayor a cero y no pasar de su saldo (Q{excedida.Saldo:N2}).");
+            return;
+        }
+        var formasCobro = formas.ToList();
+        // Si no agregó formas, todo el cobro se registra en la forma de la fila de captura.
+        if (formasCobro.Count == 0 && formaNueva.PftId > 0)
+            formasCobro.Add(new FormaPagoCaptura { PftId = formaNueva.PftId, Monto = TotalCobro, GefId = formaNueva.GefId, NumeroCheque = formaNueva.NumeroCheque, NumeroTarjetaUlt4 = formaNueva.NumeroTarjetaUlt4 });
+        if (Math.Abs(formasCobro.Sum(f => f.Monto) - TotalCobro) > 0.001m)
+        {
+            MostrarAviso($"Las formas de pago suman Q{formasCobro.Sum(f => f.Monto):N2} y el cobro es de Q{TotalCobro:N2}.");
+            return;
+        }
+        guardando = true;
+        try
+        {
+            var total = TotalCobro;
+            var cobro = cuotas.Where(c => aplicar.ContainsKey(c.CppId)).Select(c => new CuotaCobro(c.CppId, aplicar[c.CppId])).ToList();
+            var recibo = await CuentasRepository.RegistrarCobroCuotasAsync(cliente.Id, pcaId, cobro, formasCobro, await ObtenerUsuIdActualAsync());
+            reciboRegistrado = (recibo, total, cliente.Nombre);
+            mensaje = null;
+            Limpiar();
+            await CargarCuotasAsync();
+            await CargarRecibosAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private void IniciarAnulacion(ReciboResumen r)
+    {
+        anulando = r;
+        motivoAnulacion = "";
+        mensaje = null;
+    }
+
+    private async Task AnularAsync()
+    {
+        if (anulando is null) return;
+        guardando = true;
+        try
+        {
+            var id = anulando.PpeId;
+            await CuentasRepository.AnularReciboAsync(id, motivoAnulacion.Trim(), await ObtenerUsuIdActualAsync());
+            mensaje = $"Recibo {id} anulado. El saldo volvió a las cuotas del cliente.";
+            esMensajeError = false;
+            anulando = null;
+            if (reciboRegistrado?.Id == id) reciboRegistrado = null;
+            await CargarRecibosAsync();
+            if (cliente is not null) await CargarCuotasAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+}

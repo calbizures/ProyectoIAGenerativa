@@ -1,0 +1,115 @@
+@* Elige un cliente (búsqueda por código, nombre o NIT) o un proveedor (lista). *@
+@using Erp.Data.Compras
+@using Erp.Data.Ventas
+@inject IClienteRepository ClienteRepository
+@inject IProveedorRepository ProveedorRepository
+@inject Erp.Data.Cuentas.ICuentasRepository CuentasRepository
+@using Erp.Data.Cuentas
+
+@if (Seleccionado is not null)
+{
+    <div class="doc-chip">
+        <span class="doc-chip-texto">
+            <strong>@Seleccionado.Nombre</strong>
+            <span>@(EsCliente ? "Cliente" : "Proveedor") @Seleccionado.Codigo</span>
+        </span>
+        @if (PermiteCambiar)
+        {
+            <BotonIcono Icono="x" Tooltip="@($"Cambiar {(EsCliente ? "cliente" : "proveedor")}")" Variante="fantasma" OnClick="() => SeleccionarAsync(null)" />
+        }
+    </div>
+}
+else if (EsCliente)
+{
+    <div class="doc-buscador">
+        <div class="doc-buscador-fila">
+            <input placeholder="Buscar cliente por código, nombre o NIT" aria-label="Buscar cliente por código, nombre o NIT" @bind="texto" @bind:event="oninput"
+                   @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
+            <BotonIcono Icono="search" Tooltip="Buscar cliente" OnClick="BuscarAsync" />
+        </div>
+        @if (clientes.Count > 0)
+        {
+            <div class="doc-buscador-resultados">
+                @foreach (var c in clientes)
+                {
+                    <div class="doc-resultado-fila" @onclick="() => SeleccionarAsync(new TerceroSeleccion(c.CliId, c.CliCodigo, c.NombreCompleto))">
+                        <span class="doc-resultado-texto"><strong>@c.NombreCompleto</strong><span>@c.CliCodigo · NIT @(c.CliNit ?? "C/F")</span></span>
+                    </div>
+                }
+            </div>
+        }
+        @if (sinResultados)
+        {
+            <p class="texto-ayuda">No se encontraron clientes con ese texto.</p>
+        }
+    </div>
+}
+else
+{
+    <select aria-label="Proveedor" value="0" @onchange="ElegirProveedorAsync">
+        <option value="0">@(SoloConSaldo ? (conSaldo.Count == 0 ? "Ningún proveedor tiene saldo pendiente" : $"Seleccione el proveedor ({conSaldo.Count} con saldo)...") : "Seleccione el proveedor...")</option>
+        @if (SoloConSaldo)
+        {
+            @foreach (var p in conSaldo)
+            {
+                <option value="@p.PrvId">@p.Codigo - @p.Nombre · saldo Q@(p.Saldo.ToString("N2"))@(p.Vencido > 0 ? $" (vencido Q{p.Vencido:N2})" : "")</option>
+            }
+        }
+        else
+        {
+            @foreach (var p in proveedores)
+            {
+                <option value="@p.PrvId">@p.PrvCodigo - @p.PrvNombreComercial</option>
+            }
+        }
+    </select>
+}
+
+@code {
+    [Parameter] public bool EsCliente { get; set; } = true;
+    [Parameter] public TerceroSeleccion? Seleccionado { get; set; }
+    [Parameter] public EventCallback<TerceroSeleccion?> SeleccionadoChanged { get; set; }
+    [Parameter] public bool PermiteCambiar { get; set; } = true;
+    // Proveedores: solo los que tienen cuotas pendientes (con su saldo).
+    [Parameter] public bool SoloConSaldo { get; set; }
+
+    private string texto = "";
+    private bool sinResultados;
+    private IReadOnlyList<Cliente> clientes = Array.Empty<Cliente>();
+    private IReadOnlyList<Proveedor> proveedores = Array.Empty<Proveedor>();
+    private IReadOnlyList<ProveedorConSaldo> conSaldo = Array.Empty<ProveedorConSaldo>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (EsCliente) return;
+        if (SoloConSaldo) conSaldo = await CuentasRepository.ConsultarProveedoresConSaldoAsync();
+        else proveedores = await ProveedorRepository.ConsultarAsync(null, "A");
+    }
+
+    private async Task BuscarAsync()
+    {
+        clientes = string.IsNullOrWhiteSpace(texto) ? Array.Empty<Cliente>() : await ClienteRepository.ConsultarAsync(texto.Trim(), "A");
+        sinResultados = !string.IsNullOrWhiteSpace(texto) && clientes.Count == 0;
+    }
+
+    private async Task ElegirProveedorAsync(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var id) || id == 0) return;
+        if (SoloConSaldo)
+        {
+            var s = conSaldo.First(x => x.PrvId == id);
+            await SeleccionarAsync(new TerceroSeleccion(s.PrvId, s.Codigo, s.Nombre));
+            return;
+        }
+        var p = proveedores.First(x => x.PrvId == id);
+        await SeleccionarAsync(new TerceroSeleccion(p.PrvId, p.PrvCodigo, p.PrvNombreComercial));
+    }
+
+    private async Task SeleccionarAsync(TerceroSeleccion? tercero)
+    {
+        clientes = Array.Empty<Cliente>();
+        texto = "";
+        sinResultados = false;
+        await SeleccionadoChanged.InvokeAsync(tercero);
+    }
+}

@@ -1,0 +1,65 @@
+@page "/bancos/caja-chica/liquidacion/{LccId:int}/imprimir"
+@layout Erp.Web.Components.Layout.ReporteLayout
+@attribute [Authorize(Policy = "Permiso:CAJA_CHICA_GASTOS,CAJA_CHICA_ADMIN")]
+@using Erp.Data.CajaChica
+@using Erp.Web.Components.Pages.Contabilidad
+@inject ICajaChicaRepository CajaChicaRepository
+
+<ReporteContableMarco Titulo="@($"Liquidación de caja chica {liquidacion?.Numero}")" Subtitulo="@(liquidacion is null ? "" : $"{liquidacion.Fondo} · {liquidacion.FondoNombre}")"
+                      Detalle="@(liquidacion is null ? null : $"Fecha {liquidacion.Fecha:dd/MM/yyyy} · Responsable: {liquidacion.Responsable}")" Error="@error">
+    @if (liquidacion is not null)
+    {
+        @if (liquidacion.Estado == "A")
+        {
+            <p class="mensaje-error">LIQUIDACIÓN ANULADA: @liquidacion.MotivoAnulacion</p>
+        }
+        <table class="tabla-datos tabla-contable">
+            <thead><tr><th class="col-fecha">Fecha</th><th>Comprobante</th><th>Proveedor / concepto</th><th>Cuenta</th><th class="num col-monto">Sin IVA</th><th class="num col-monto">IVA</th><th class="num col-monto">Total</th></tr></thead>
+            <tbody>
+                @foreach (var g in gastos)
+                {
+                    <tr>
+                        <td class="col-fecha">@g.Fecha.ToString("dd/MM/yyyy")</td>
+                        <td>@GastoCajaChica.NombreTipo(g.Tipo) @(g.Serie is null ? "" : g.Serie + "-")@g.Numero</td>
+                        <td>@g.Proveedor@(g.Nit is null ? "" : $" (NIT {g.Nit})") — @g.Concepto</td>
+                        <td>@g.CuentaCodigo @g.CuentaNombre</td>
+                        <td class="num col-monto">@((g.Total - g.Iva).ToString("N2"))</td>
+                        <td class="num col-monto">@g.Iva.ToString("N2")</td>
+                        <td class="num col-monto">@g.Total.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="fila-total"><td colspan="4">Total a reponer</td><td class="num">@gastos.Sum(g => g.Total - g.Iva).ToString("N2")</td><td class="num">@gastos.Sum(g => g.Iva).ToString("N2")</td><td class="num">@gastos.Sum(g => g.Total).ToString("N2")</td></tr>
+            </tfoot>
+        </table>
+        <p>
+            Póliza #@liquidacion.AsiId ·
+            @(liquidacion.Repuesta ? $"Repuesta con el cheque {liquidacion.ChequeReposicion} del {liquidacion.FechaReposicion:dd/MM/yyyy}." : "Pendiente de reponer.")
+        </p>
+        <div class="firmas-poliza">
+            <div><span>Responsable del fondo</span></div>
+            <div><span>Revisado (contabilidad)</span></div>
+            <div><span>Autorizado</span></div>
+        </div>
+    }
+</ReporteContableMarco>
+
+@code {
+    [Parameter] public int LccId { get; set; }
+
+    private LiquidacionCajaChica? liquidacion;
+    private IReadOnlyList<GastoCajaChica> gastos = Array.Empty<GastoCajaChica>();
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            liquidacion = (await CajaChicaRepository.ConsultarLiquidacionesAsync(null, LccId)).FirstOrDefault();
+            if (liquidacion is null) { error = "La liquidación no existe."; return; }
+            gastos = (await CajaChicaRepository.ConsultarGastosAsync(liquidacion.CchId, null, LccId)).OrderBy(g => g.Fecha).ToList();
+        }
+        catch (Exception ex) { error = MensajesError.Traducir(ex); }
+    }
+}

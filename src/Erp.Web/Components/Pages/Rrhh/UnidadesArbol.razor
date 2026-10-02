@@ -1,0 +1,367 @@
+@* Mantenimiento por nodos de rrhhUnidadOrganizativa (relación recursiva):
+   árbol a la izquierda y nodo seleccionado a la derecha. *@
+@using Erp.Data.Rrhh
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IRrhhRepository RrhhRepository
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="maestro-detalle nomenclatura">
+    <section class="tarjeta maestro-detalle-maestro" aria-labelledby="titulo-unidades">
+        <div class="maestro-detalle-encabezado">
+            <h2 id="titulo-unidades">Unidades organizativas</h2>
+            <BotonIcono Icono="plus" Tooltip="Nueva unidad raíz" Etiqueta="Nueva raíz" OnClick="IniciarNuevaRaiz" />
+        </div>
+        <div class="arbol-acciones">
+            <button type="button" class="boton-texto" @onclick="() => { contraidos.Clear(); }">Expandir todo</button>
+            <button type="button" class="boton-texto" @onclick="ContraerTodo">Contraer</button>
+            <span class="arbol-conteo">@nodos.Count unidades · @nodos.Sum(n => n.CantidadDepartamentos) departamentos</span>
+        </div>
+        @if (nodos.Count == 0)
+        {
+            <p class="estado-vacio">Todavía no hay unidades. Cree la unidad raíz (por ejemplo, Junta Directiva).</p>
+        }
+        <div class="arbol-lista" role="tree" aria-label="Unidades organizativas">
+            @foreach (var n in NodosVisibles())
+            {
+                <div class="arbol-nodo arbol-nivel-@Math.Min(n.Nivel, 3) @(seleccionado?.IdUnidadOrganizativa == n.IdUnidadOrganizativa ? "seleccionado" : "") @(n.Estado != "A" ? "inactivo" : "")"
+                     role="treeitem" aria-selected="@(seleccionado?.IdUnidadOrganizativa == n.IdUnidadOrganizativa ? "true" : "false")"
+                     aria-expanded="@(n.CantidadHijos > 0 ? (!contraidos.Contains(n.IdUnidadOrganizativa) ? "true" : "false") : null)"
+                     style="padding-left: @((n.Nivel - 1) * 18 + 6)px">
+                    @if (n.CantidadHijos > 0)
+                    {
+                        <button type="button" class="arbol-toggle" aria-label="@(contraidos.Contains(n.IdUnidadOrganizativa) ? "Expandir" : "Contraer") @n.Descripcion" @onclick="() => Alternar(n)">@(contraidos.Contains(n.IdUnidadOrganizativa) ? "▸" : "▾")</button>
+                    }
+                    else
+                    {
+                        <span class="arbol-toggle-vacio"></span>
+                    }
+                    <button type="button" class="arbol-etiqueta" @onclick="() => Seleccionar(n)">
+                        <span class="arbol-codigo">@Codigo(n)</span>
+                        <span class="arbol-nombre">@n.Descripcion</span>
+                    </button>
+                </div>
+            }
+        </div>
+    </section>
+
+    <section class="tarjeta maestro-detalle-detalle" aria-labelledby="titulo-unidad">
+        @if (modo is Modo.NuevaRaiz or Modo.AgregarHijo or Modo.Editar)
+        {
+            <h2 id="titulo-unidad">@(modo switch { Modo.NuevaRaiz => "Nueva unidad raíz", Modo.AgregarHijo => $"Nueva unidad bajo {seleccionado!.Descripcion}", _ => $"Editar {seleccionado!.Descripcion}" })</h2>
+            <div class="panel-formulario panel-ancho nodo-formulario">
+                <div class="campo"><label for="uni-desc">Descripción</label><input id="uni-desc" @bind="formDescripcion" maxlength="100" /></div>
+                <div class="campo">
+                    <label for="uni-orden">Orden entre sus hermanas</label>
+                    <input id="uni-orden" type="number" min="0" max="999" @bind="formOrden" />
+                    <small class="texto-ayuda">Define la posición en el árbol y en el organigrama (menor primero).</small>
+                </div>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => modo = Modo.Ver" />
+                </div>
+            </div>
+        }
+        else if (seleccionado is null)
+        {
+            <h2 id="titulo-unidad">Unidad seleccionada</h2>
+            <p class="estado-vacio">Seleccione una unidad en el árbol para ver su detalle, editarla, agregarle subunidades, moverla o inactivarla.</p>
+        }
+        else if (modo == Modo.Mover)
+        {
+            <h2 id="titulo-unidad">Mover @seleccionado.Descripcion</h2>
+            <div class="panel-formulario panel-ancho nodo-formulario">
+                <div class="campo">
+                    <label for="uni-padre">Nueva unidad superior</label>
+                    <select id="uni-padre" @bind="formPadreNuevo">
+                        <option value="-1">Seleccione...</option>
+                        <option value="0">(Raíz: sin unidad superior)</option>
+                        @foreach (var p in nodos.Where(p => p.Estado == "A" && !Rama(seleccionado).Contains(p.IdUnidadOrganizativa) && p.IdUnidadOrganizativa != seleccionado.IdUnidadPadre))
+                        {
+                            <option value="@p.IdUnidadOrganizativa">@(new string('·', (p.Nivel - 1) * 2)) @p.Descripcion</option>
+                        }
+                    </select>
+                </div>
+                <p class="texto-ayuda">La unidad se mueve con sus @(Rama(seleccionado).Count - 1) subunidades y sus departamentos. No puede quedar bajo sí misma ni bajo una de sus subunidades.</p>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="check-check" Tooltip="Mover" Etiqueta="Mover" Variante="primario" Deshabilitado="formPadreNuevo < 0" OnClick="MoverAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => modo = Modo.Ver" />
+                </div>
+            </div>
+        }
+        else if (modo == Modo.ConfirmarEliminar)
+        {
+            <h2 id="titulo-unidad">Eliminar @seleccionado.Descripcion</h2>
+            <p class="mensaje-error" role="alert">La unidad se eliminará. Esta acción no se puede deshacer.</p>
+            <div class="acciones-fila">
+                <BotonIcono Icono="trash-2" Tooltip="Eliminar" Etiqueta="Sí, eliminar" Variante="peligro" OnClick="EliminarAsync" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => modo = Modo.Ver" />
+            </div>
+        }
+        else
+        {
+            <div class="nodo-encabezado">
+                <span class="nodo-tipo nodo-tipo-@Math.Min(seleccionado.Nivel, 4)">Nivel @seleccionado.Nivel · @Codigo(seleccionado)</span>
+                <h2 id="titulo-unidad">@seleccionado.Descripcion</h2>
+                <p class="nodo-ruta">@Ruta(seleccionado)</p>
+            </div>
+            <dl class="nodo-datos">
+                <dt>Estado</dt><dd><span class="estado-badge @(seleccionado.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(seleccionado.Estado == "A" ? "Activa" : "Inactiva")</span></dd>
+                <dt>Subunidades</dt><dd>@seleccionado.CantidadHijos</dd>
+                <dt>Departamentos</dt><dd>@(seleccionado.CantidadDepartamentos == 0 ? "—" : string.Join(", ", DepartamentosDe(seleccionado)))</dd>
+                <dt>Orden</dt><dd>@seleccionado.Orden</dd>
+            </dl>
+            <p class="texto-ayuda">Los departamentos se asignan a una unidad en la pestaña Departamentos.</p>
+            <div class="acciones-fila">
+                <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+                @if (seleccionado.Estado == "A")
+                {
+                    <BotonIcono Icono="plus" Tooltip="Agregar subunidad" Etiqueta="Agregar subunidad" Variante="primario" OnClick="IniciarAgregarHijo" />
+                }
+                <BotonIcono Icono="upload" Tooltip="Mover" Etiqueta="Mover" OnClick="IniciarMover" />
+                @if (seleccionado.Estado == "A")
+                {
+                    <BotonIcono Icono="ban" Tooltip="Inactivar" Etiqueta="Inactivar" Variante="peligro" Confirmacion="¿Inactivar la unidad?" OnClick='() => CambiarEstadoAsync("I")' />
+                }
+                else
+                {
+                    <BotonIcono Icono="check-circle" Tooltip="Activar" Etiqueta="Activar" OnClick='() => CambiarEstadoAsync("A")' />
+                }
+                <BotonIcono Icono="trash-2" Tooltip="@(seleccionado.CantidadHijos + seleccionado.CantidadDepartamentos > 0 ? "Tiene subunidades o departamentos" : "Eliminar")"
+                            Etiqueta="Eliminar" Variante="peligro" Deshabilitado="seleccionado.CantidadHijos + seleccionado.CantidadDepartamentos > 0"
+                            OnClick="() => modo = Modo.ConfirmarEliminar" />
+            </div>
+        }
+    </section>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    // Avisa a la página para que recargue la lista de unidades de sus formularios.
+    [Parameter] public EventCallback OnCambio { get; set; }
+
+    private enum Modo { Ver, Editar, AgregarHijo, NuevaRaiz, Mover, ConfirmarEliminar }
+
+    private IReadOnlyList<UnidadOrganizativaNodo> nodos = Array.Empty<UnidadOrganizativaNodo>();
+    private IReadOnlyList<Departamento> departamentos = Array.Empty<Departamento>();
+    private Dictionary<int, string> codigos = new();
+    private readonly HashSet<int> contraidos = new();
+    private UnidadOrganizativaNodo? seleccionado;
+    private Modo modo = Modo.Ver;
+
+    private string formDescripcion = "";
+    private short formOrden;
+    private int formPadreNuevo = -1;
+
+    private string? mensaje;
+    private bool esMensajeError;
+
+    protected override Task OnInitializedAsync() => CargarAsync();
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        return (await AuthenticationStateTask).User.ObtenerUsuId();
+    }
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private async Task CargarAsync()
+    {
+        try
+        {
+            nodos = await RrhhRepository.ConsultarUnidadesArbolAsync();
+            departamentos = await RrhhRepository.ConsultarDepartamentosAsync(soloActivos: false);
+            codigos = OrganigramaCodigos.CodigosUnidades(nodos);
+            if (seleccionado is not null)
+                seleccionado = nodos.FirstOrDefault(n => n.IdUnidadOrganizativa == seleccionado.IdUnidadOrganizativa);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private string Codigo(UnidadOrganizativaNodo n) => codigos.TryGetValue(n.IdUnidadOrganizativa, out var c) ? c : "";
+
+    private IEnumerable<string> DepartamentosDe(UnidadOrganizativaNodo n) =>
+        departamentos.Where(d => d.IdUnidadOrganizativa == n.IdUnidadOrganizativa).Select(d => d.Descripcion);
+
+    // Visible si ninguno de sus ancestros está contraído.
+    private IEnumerable<UnidadOrganizativaNodo> NodosVisibles()
+    {
+        var porId = nodos.ToDictionary(n => n.IdUnidadOrganizativa);
+        foreach (var n in nodos)
+        {
+            var padre = n.IdUnidadPadre;
+            var visible = true;
+            while (padre is not null && porId.TryGetValue(padre.Value, out var p))
+            {
+                if (contraidos.Contains(p.IdUnidadOrganizativa)) { visible = false; break; }
+                padre = p.IdUnidadPadre;
+            }
+            if (visible) yield return n;
+        }
+    }
+
+    private void Alternar(UnidadOrganizativaNodo n)
+    {
+        if (!contraidos.Remove(n.IdUnidadOrganizativa)) contraidos.Add(n.IdUnidadOrganizativa);
+    }
+
+    private void ContraerTodo()
+    {
+        contraidos.Clear();
+        foreach (var n in nodos.Where(n => n.CantidadHijos > 0)) contraidos.Add(n.IdUnidadOrganizativa);
+    }
+
+    private void Seleccionar(UnidadOrganizativaNodo n)
+    {
+        seleccionado = n;
+        modo = Modo.Ver;
+        mensaje = null;
+    }
+
+    // La unidad y todas sus subunidades.
+    private HashSet<int> Rama(UnidadOrganizativaNodo raiz)
+    {
+        var rama = new HashSet<int> { raiz.IdUnidadOrganizativa };
+        bool agrego;
+        do
+        {
+            agrego = false;
+            foreach (var n in nodos)
+                if (n.IdUnidadPadre is not null && rama.Contains(n.IdUnidadPadre.Value) && rama.Add(n.IdUnidadOrganizativa))
+                    agrego = true;
+        } while (agrego);
+        return rama;
+    }
+
+    private string Ruta(UnidadOrganizativaNodo n)
+    {
+        var partes = new List<string>();
+        var actual = n;
+        while (actual.IdUnidadPadre is not null)
+        {
+            actual = nodos.FirstOrDefault(p => p.IdUnidadOrganizativa == actual.IdUnidadPadre);
+            if (actual is null) break;
+            partes.Insert(0, actual.Descripcion);
+        }
+        return partes.Count == 0 ? "Unidad raíz" : string.Join(" › ", partes);
+    }
+
+    private void IniciarNuevaRaiz()
+    {
+        mensaje = null;
+        modo = Modo.NuevaRaiz;
+        formDescripcion = "";
+        formOrden = (short)(nodos.Where(n => n.IdUnidadPadre is null).Select(n => (int)n.Orden).DefaultIfEmpty(0).Max() + 1);
+    }
+
+    private void IniciarAgregarHijo()
+    {
+        if (seleccionado is null) return;
+        mensaje = null;
+        modo = Modo.AgregarHijo;
+        formDescripcion = "";
+        formOrden = (short)(nodos.Where(n => n.IdUnidadPadre == seleccionado.IdUnidadOrganizativa).Select(n => (int)n.Orden).DefaultIfEmpty(0).Max() + 1);
+    }
+
+    private void IniciarEdicion()
+    {
+        if (seleccionado is null) return;
+        mensaje = null;
+        modo = Modo.Editar;
+        formDescripcion = seleccionado.Descripcion;
+        formOrden = seleccionado.Orden;
+    }
+
+    private void IniciarMover()
+    {
+        mensaje = null;
+        modo = Modo.Mover;
+        formPadreNuevo = -1;
+    }
+
+    private async Task GuardarAsync()
+    {
+        if (string.IsNullOrWhiteSpace(formDescripcion))
+        {
+            mensaje = "Ingrese la descripción de la unidad.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            int? idUnidad = modo == Modo.Editar ? seleccionado!.IdUnidadOrganizativa : null;
+            int? idPadre = modo switch
+            {
+                Modo.AgregarHijo => seleccionado!.IdUnidadOrganizativa,
+                Modo.Editar => seleccionado!.IdUnidadPadre,
+                _ => null
+            };
+            var id = await RrhhRepository.GuardarUnidadAsync(idUnidad, idPadre, formDescripcion.Trim(), formOrden, await ObtenerUsuIdActualAsync());
+            mensaje = modo == Modo.Editar ? "Unidad actualizada." : "Unidad creada.";
+            esMensajeError = false;
+            if (idPadre is not null) contraidos.Remove(idPadre.Value);
+            modo = Modo.Ver;
+            await CargarAsync();
+            seleccionado = nodos.FirstOrDefault(n => n.IdUnidadOrganizativa == id);
+            await OnCambio.InvokeAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task MoverAsync()
+    {
+        if (seleccionado is null || formPadreNuevo < 0) return;
+        try
+        {
+            await RrhhRepository.MoverUnidadAsync(seleccionado.IdUnidadOrganizativa, formPadreNuevo == 0 ? null : formPadreNuevo, await ObtenerUsuIdActualAsync());
+            mensaje = "Unidad movida.";
+            esMensajeError = false;
+            if (formPadreNuevo > 0) contraidos.Remove(formPadreNuevo);
+            modo = Modo.Ver;
+            await CargarAsync();
+            await OnCambio.InvokeAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task CambiarEstadoAsync(string estado)
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            await RrhhRepository.CambiarEstadoUnidadAsync(seleccionado.IdUnidadOrganizativa, estado, await ObtenerUsuIdActualAsync());
+            mensaje = estado == "A" ? "Unidad activada." : "Unidad inactivada.";
+            esMensajeError = false;
+            await CargarAsync();
+            await OnCambio.InvokeAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task EliminarAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            await RrhhRepository.EliminarUnidadAsync(seleccionado.IdUnidadOrganizativa);
+            mensaje = "Unidad eliminada.";
+            esMensajeError = false;
+            seleccionado = null;
+            modo = Modo.Ver;
+            await CargarAsync();
+            await OnCambio.InvokeAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

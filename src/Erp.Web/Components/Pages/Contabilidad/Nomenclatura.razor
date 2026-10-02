@@ -1,0 +1,494 @@
+@page "/contabilidad/nomenclatura"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CONTABILIDAD_NOMENCLATURA_ADMIN")]
+@using Erp.Data.Contabilidad
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject INomenclaturaRepository NomenclaturaRepository
+
+<PageTitle>Nomenclatura contable</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Nomenclatura contable</h1>
+    <p>Grupo (1 posición) › Subgrupo (2) › Cuenta (3) › Subcuenta (7). Solo las subcuentas reciben partidas.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="maestro-detalle nomenclatura">
+    <section class="tarjeta maestro-detalle-maestro" aria-labelledby="titulo-arbol">
+        <div class="maestro-detalle-encabezado">
+            <h2 id="titulo-arbol">Árbol de cuentas</h2>
+            <BotonIcono Icono="plus" Tooltip="Nuevo grupo" Etiqueta="Nuevo grupo" OnClick="IniciarNuevoGrupoAsync" />
+        </div>
+        <div class="fila-edicion">
+            <input type="search" placeholder="Buscar por código o nombre" aria-label="Buscar por código o nombre" @bind="busqueda" @bind:event="oninput" />
+        </div>
+        <div class="arbol-acciones">
+            <button type="button" class="boton-texto" @onclick="ExpandirTodo">Expandir todo</button>
+            <button type="button" class="boton-texto" @onclick="ContraerTodo">Contraer</button>
+            <span class="arbol-conteo">@nodos.Count nodos · @nodos.Count(n => n.CtaNivel == 4) subcuentas</span>
+        </div>
+        <div class="arbol-lista" role="tree" aria-label="Nomenclatura contable">
+            @foreach (var n in NodosVisibles())
+            {
+                <div class="arbol-nodo arbol-nivel-@n.CtaNivel @(seleccionado?.CtaId == n.CtaId ? "seleccionado" : "") @(n.CtaEstado != "A" ? "inactivo" : "")"
+                     role="treeitem" aria-selected="@(seleccionado?.CtaId == n.CtaId ? "true" : "false")"
+                     aria-expanded="@(n.CantidadHijos > 0 ? (EstaExpandido(n) ? "true" : "false") : null)"
+                     style="padding-left: @((n.CtaNivel - 1) * 18 + 6)px">
+                    @if (n.CantidadHijos > 0)
+                    {
+                        <button type="button" class="arbol-toggle" aria-label="@(EstaExpandido(n) ? "Contraer" : "Expandir") @n.CtaNombre" @onclick="() => Alternar(n)">@(EstaExpandido(n) ? "▾" : "▸")</button>
+                    }
+                    else
+                    {
+                        <span class="arbol-toggle-vacio"></span>
+                    }
+                    <button type="button" class="arbol-etiqueta" @onclick="() => Seleccionar(n)">
+                        <span class="arbol-codigo">@n.CtaCodigo</span>
+                        <span class="arbol-nombre">@n.CtaNombre</span>
+                    </button>
+                </div>
+            }
+        </div>
+    </section>
+
+    <section class="tarjeta maestro-detalle-detalle" aria-labelledby="titulo-nodo">
+        @if (modo == Modo.NuevoGrupo || modo == Modo.AgregarHijo)
+        {
+            <h2 id="titulo-nodo">@(modo == Modo.NuevoGrupo ? "Nuevo grupo" : $"Nueva {NombreNivel(seleccionado!.CtaNivel + 1).ToLowerInvariant()} en {seleccionado.CtaCodigo} {seleccionado.CtaNombre}")</h2>
+            <div class="panel-formulario panel-ancho nodo-formulario">
+                <div class="campo">
+                    <label for="nodo-codigo">Código</label>
+                    <input id="nodo-codigo" @bind="formCodigo" inputmode="numeric" />
+                    <small class="texto-ayuda">@AyudaCodigo()</small>
+                </div>
+                <div class="campo"><label for="nodo-nombre">Nombre</label><input id="nodo-nombre" @bind="formNombre" maxlength="128" /></div>
+                @if (modo == Modo.NuevoGrupo)
+                {
+                    <div class="campo">
+                        <label for="nodo-tipo">Tipo</label>
+                        <select id="nodo-tipo" @bind="formTipo">
+                            @foreach (var t in Tipos)
+                            {
+                                <option value="@t.Key">@t.Value</option>
+                            }
+                        </select>
+                    </div>
+                }
+                <div class="campo">
+                    <label for="nodo-naturaleza">Naturaleza</label>
+                    <select id="nodo-naturaleza" @bind="formNaturaleza">
+                        <option value="">@(modo == Modo.NuevoGrupo ? "Según el tipo" : "La del padre")</option>
+                        <option value="D">Deudora</option>
+                        <option value="H">Acreedora</option>
+                    </select>
+                </div>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarNuevoAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="Cancelar" />
+                </div>
+            </div>
+        }
+        else if (seleccionado is null)
+        {
+            <h2 id="titulo-nodo">Nodo seleccionado</h2>
+            <p class="estado-vacio">Seleccione una cuenta en el árbol para ver su detalle, editarla, agregarle cuentas, moverla o inactivarla.</p>
+        }
+        else if (modo == Modo.Editar)
+        {
+            <h2 id="titulo-nodo">Editar @seleccionado.TipoNodo.ToLowerInvariant() @seleccionado.CtaCodigo</h2>
+            <div class="panel-formulario panel-ancho nodo-formulario">
+                <div class="campo">
+                    <label for="edit-codigo">Código</label>
+                    <input id="edit-codigo" @bind="formCodigo" inputmode="numeric" disabled="@(!PuedeCambiarCodigo(seleccionado))" />
+                    @if (!PuedeCambiarCodigo(seleccionado))
+                    {
+                        <small class="texto-ayuda">El código no se puede cambiar porque la cuenta tiene cuentas debajo o partidas.</small>
+                    }
+                </div>
+                <div class="campo"><label for="edit-nombre">Nombre</label><input id="edit-nombre" @bind="formNombre" maxlength="128" /></div>
+                @if (seleccionado.CtaNivel == 1)
+                {
+                    <div class="campo">
+                        <label for="edit-tipo">Tipo (se aplica a todo el grupo)</label>
+                        <select id="edit-tipo" @bind="formTipo">
+                            @foreach (var t in Tipos)
+                            {
+                                <option value="@t.Key">@t.Value</option>
+                            }
+                        </select>
+                    </div>
+                }
+                <div class="campo">
+                    <label for="edit-naturaleza">Naturaleza</label>
+                    <select id="edit-naturaleza" @bind="formNaturaleza">
+                        <option value="D">Deudora</option>
+                        <option value="H">Acreedora</option>
+                    </select>
+                </div>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" OnClick="GuardarEdicionAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="Cancelar" />
+                </div>
+            </div>
+        }
+        else if (modo == Modo.Mover)
+        {
+            <h2 id="titulo-nodo">Mover @seleccionado.CtaCodigo @seleccionado.CtaNombre</h2>
+            <div class="panel-formulario panel-ancho nodo-formulario">
+                <div class="campo">
+                    <label for="mover-padre">Nuevo @NombreNivel(seleccionado.CtaNivel - 1).ToLowerInvariant()</label>
+                    <select id="mover-padre" @bind="formPadreNuevo">
+                        <option value="0">Seleccione...</option>
+                        @foreach (var p in nodos.Where(p => p.CtaNivel == seleccionado.CtaNivel - 1 && p.CtaEstado == "A" && p.CtaId != seleccionado.CtaIdPadre))
+                        {
+                            <option value="@p.CtaId">@p.CtaCodigo @p.CtaNombre</option>
+                        }
+                    </select>
+                </div>
+                <p class="texto-ayuda">
+                    El código depende del padre: la cuenta recibe el siguiente código libre del nuevo padre
+                    @(seleccionado.CantidadHijos > 0 ? $"y sus {Descendientes(seleccionado).Count} cuentas de abajo se recodifican con el mismo prefijo" : "").
+                    No se puede mover si alguna de ellas ya tiene partidas.
+                </p>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="check-check" Tooltip="Mover" Etiqueta="Mover" Variante="primario" Deshabilitado="formPadreNuevo == 0" OnClick="MoverAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="Cancelar" />
+                </div>
+            </div>
+        }
+        else if (modo == Modo.ConfirmarEliminar)
+        {
+            <h2 id="titulo-nodo">Eliminar @seleccionado.CtaCodigo @seleccionado.CtaNombre</h2>
+            <p class="mensaje-error" role="alert">La cuenta se eliminará de la nomenclatura. Esta acción no se puede deshacer.</p>
+            <div class="acciones-fila">
+                <BotonIcono Icono="trash-2" Tooltip="Eliminar" Etiqueta="Sí, eliminar" Variante="peligro" OnClick="EliminarAsync" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="Cancelar" />
+            </div>
+        }
+        else
+        {
+            <div class="nodo-encabezado">
+                <span class="nodo-tipo nodo-tipo-@seleccionado.CtaNivel">@seleccionado.TipoNodo · nivel @seleccionado.CtaNivel</span>
+                <h2 id="titulo-nodo"><span class="arbol-codigo">@seleccionado.CtaCodigo</span> @seleccionado.CtaNombre</h2>
+                <p class="nodo-ruta">@Ruta(seleccionado)</p>
+            </div>
+            <dl class="nodo-datos">
+                <dt>Tipo</dt><dd>@Tipos[seleccionado.CtaTipo]</dd>
+                <dt>Naturaleza</dt><dd>@(seleccionado.CtaNaturaleza == "D" ? "Deudora" : "Acreedora")</dd>
+                <dt>Movimiento</dt><dd>@(seleccionado.CtaAceptaMovimiento ? "Acepta partidas" : "Agrupa (no recibe partidas)")</dd>
+                <dt>Estado</dt><dd><span class="estado-badge @(seleccionado.CtaEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(seleccionado.CtaEstado == "A" ? "Activa" : "Inactiva")</span></dd>
+                <dt>Cuentas debajo</dt><dd>@seleccionado.CantidadHijos</dd>
+                <dt>Partidas</dt><dd>@seleccionado.CantidadPartidas</dd>
+                <dt>Asignada a</dt><dd>@(seleccionado.CantidadAsignaciones == 0 ? "—" : $"{seleccionado.CantidadAsignaciones} póliza(s) automática(s) o tipo(s) de nómina")</dd>
+            </dl>
+            <div class="acciones-fila">
+                <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+                @if (seleccionado.CtaNivel < 4 && seleccionado.CtaEstado == "A")
+                {
+                    <BotonIcono Icono="plus" Tooltip="@($"Agregar {NombreNivel(seleccionado.CtaNivel + 1).ToLowerInvariant()}")" Etiqueta="@($"Agregar {NombreNivel(seleccionado.CtaNivel + 1).ToLowerInvariant()}")" Variante="primario" OnClick="IniciarAgregarHijoAsync" />
+                }
+                @if (seleccionado.CtaNivel > 1)
+                {
+                    <BotonIcono Icono="upload" Tooltip="Mover" Etiqueta="Mover" OnClick="IniciarMover" />
+                }
+                @if (seleccionado.CtaEstado == "A")
+                {
+                    <BotonIcono Icono="ban" Tooltip="Inactivar" Etiqueta="Inactivar" OnClick="@(() => CambiarEstadoAsync("I"))" />
+                }
+                else
+                {
+                    <BotonIcono Icono="refresh-cw" Tooltip="Activar" Etiqueta="Activar" OnClick="@(() => CambiarEstadoAsync("A"))" />
+                }
+                <BotonIcono Icono="trash-2" Tooltip="Eliminar" Etiqueta="Eliminar" Variante="peligro"
+                            Deshabilitado="@(seleccionado.CantidadHijos > 0 || seleccionado.CantidadPartidas > 0 || seleccionado.CantidadAsignaciones > 0)"
+                            OnClick="() => modo = Modo.ConfirmarEliminar" />
+            </div>
+            @if (seleccionado.CantidadHijos > 0 || seleccionado.CantidadPartidas > 0 || seleccionado.CantidadAsignaciones > 0)
+            {
+                <p class="texto-ayuda">Solo se puede eliminar una cuenta sin cuentas debajo, sin partidas y sin asignaciones; en los demás casos, inactívela.</p>
+            }
+        }
+    </section>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private enum Modo { Ver, Editar, AgregarHijo, NuevoGrupo, Mover, ConfirmarEliminar }
+
+    private static readonly Dictionary<string, string> Tipos = new()
+    {
+        ["A"] = "Activo", ["P"] = "Pasivo", ["K"] = "Capital", ["I"] = "Ingreso", ["G"] = "Gasto"
+    };
+
+    private IReadOnlyList<NodoCuenta> nodos = Array.Empty<NodoCuenta>();
+    private Dictionary<int, NodoCuenta> porId = new();
+    private readonly HashSet<int> expandidos = new();
+    private NodoCuenta? seleccionado;
+    private Modo modo = Modo.Ver;
+    private string busqueda = "";
+
+    private string formCodigo = "";
+    private string formNombre = "";
+    private string formTipo = "A";
+    private string formNaturaleza = "";
+    private int formPadreNuevo;
+
+    private string? mensaje;
+    private bool esMensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAsync();
+        // Abiertos hasta cuentas: se ven grupos, subgrupos y cuentas.
+        foreach (var n in nodos.Where(n => n.CtaNivel <= 2)) expandidos.Add(n.CtaId);
+    }
+
+    private async Task CargarAsync(int? seleccionarId = null)
+    {
+        try
+        {
+            nodos = await NomenclaturaRepository.ConsultarArbolAsync();
+            porId = nodos.ToDictionary(n => n.CtaId);
+            var id = seleccionarId ?? seleccionado?.CtaId;
+            seleccionado = id is not null && porId.TryGetValue(id.Value, out var nodo) ? nodo : null;
+            if (seleccionado is not null) ExpandirAncestros(seleccionado);
+        }
+        catch (Exception ex)
+        {
+            MostrarError(ex);
+        }
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private void MostrarOk(string texto)
+    {
+        mensaje = texto;
+        esMensajeError = false;
+    }
+
+    private static string NombreNivel(int nivel) => nivel switch { 1 => "Grupo", 2 => "Subgrupo", 3 => "Cuenta", _ => "Subcuenta" };
+
+    // ---- Árbol ----
+    private bool EstaExpandido(NodoCuenta n) => expandidos.Contains(n.CtaId);
+
+    private void Alternar(NodoCuenta n)
+    {
+        if (!expandidos.Remove(n.CtaId)) expandidos.Add(n.CtaId);
+    }
+
+    private void ExpandirTodo()
+    {
+        foreach (var n in nodos.Where(n => n.CantidadHijos > 0)) expandidos.Add(n.CtaId);
+    }
+
+    private void ContraerTodo() => expandidos.Clear();
+
+    private void ExpandirAncestros(NodoCuenta n)
+    {
+        var padre = n.CtaIdPadre;
+        while (padre is not null && porId.TryGetValue(padre.Value, out var p))
+        {
+            expandidos.Add(p.CtaId);
+            padre = p.CtaIdPadre;
+        }
+    }
+
+    private IEnumerable<NodoCuenta> NodosVisibles()
+    {
+        var texto = busqueda.Trim();
+        if (texto.Length > 0)
+        {
+            // Coincidencias y sus antecesores, para no perder el contexto del árbol.
+            var visibles = new HashSet<int>();
+            foreach (var n in nodos.Where(n => n.CtaCodigo.StartsWith(texto, StringComparison.Ordinal)
+                                             || n.CtaNombre.Contains(texto, StringComparison.CurrentCultureIgnoreCase)))
+            {
+                visibles.Add(n.CtaId);
+                var padre = n.CtaIdPadre;
+                while (padre is not null && visibles.Add(padre.Value)) padre = porId[padre.Value].CtaIdPadre;
+            }
+            return nodos.Where(n => visibles.Contains(n.CtaId));
+        }
+        return nodos.Where(n =>
+        {
+            var padre = n.CtaIdPadre;
+            while (padre is not null)
+            {
+                if (!expandidos.Contains(padre.Value)) return false;
+                padre = porId[padre.Value].CtaIdPadre;
+            }
+            return true;
+        });
+    }
+
+    private string Ruta(NodoCuenta n)
+    {
+        var partes = new List<string>();
+        var padre = n.CtaIdPadre;
+        while (padre is not null && porId.TryGetValue(padre.Value, out var p))
+        {
+            partes.Insert(0, $"{p.CtaCodigo} {p.CtaNombre}");
+            padre = p.CtaIdPadre;
+        }
+        return partes.Count == 0 ? "Primer nivel de la nomenclatura" : string.Join(" › ", partes);
+    }
+
+    private List<NodoCuenta> Descendientes(NodoCuenta n) =>
+        nodos.Where(d => d.CtaId != n.CtaId && d.CtaCodigo.StartsWith(n.CtaCodigo, StringComparison.Ordinal)).ToList();
+
+    private static bool PuedeCambiarCodigo(NodoCuenta n) => n.CantidadHijos == 0 && n.CantidadPartidas == 0;
+
+    private string AyudaCodigo()
+    {
+        if (modo == Modo.NuevoGrupo) return "1 posición numérica.";
+        var padre = seleccionado!;
+        var largo = padre.CtaNivel switch { 1 => 2, 2 => 3, _ => 7 };
+        return $"{largo} posiciones; debe empezar con {padre.CtaCodigo}. Se propone el siguiente código libre.";
+    }
+
+    // ---- Acciones ----
+    private void Seleccionar(NodoCuenta n)
+    {
+        seleccionado = n;
+        modo = Modo.Ver;
+        mensaje = null;
+    }
+
+    private void Cancelar() => modo = Modo.Ver;
+
+    private async Task IniciarNuevoGrupoAsync()
+    {
+        mensaje = null;
+        try
+        {
+            formCodigo = await NomenclaturaRepository.SiguienteCodigoAsync(null);
+            formNombre = "";
+            formTipo = "A";
+            formNaturaleza = "";
+            modo = Modo.NuevoGrupo;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task IniciarAgregarHijoAsync()
+    {
+        if (seleccionado is null) return;
+        mensaje = null;
+        try
+        {
+            formCodigo = await NomenclaturaRepository.SiguienteCodigoAsync(seleccionado.CtaId);
+            formNombre = "";
+            formNaturaleza = "";
+            modo = Modo.AgregarHijo;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task GuardarNuevoAsync()
+    {
+        try
+        {
+            var idPadre = modo == Modo.AgregarHijo ? seleccionado?.CtaId : null;
+            var id = await NomenclaturaRepository.GuardarAsync(null, idPadre, formCodigo.Trim(), formNombre.Trim(),
+                modo == Modo.NuevoGrupo ? formTipo : null, string.IsNullOrEmpty(formNaturaleza) ? null : formNaturaleza,
+                await ObtenerUsuIdActualAsync());
+            modo = Modo.Ver;
+            await CargarAsync(id);
+            MostrarOk($"Se creó {seleccionado?.TipoNodo.ToLowerInvariant()} {seleccionado?.CtaCodigo} {seleccionado?.CtaNombre}.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void IniciarEdicion()
+    {
+        if (seleccionado is null) return;
+        mensaje = null;
+        formCodigo = seleccionado.CtaCodigo;
+        formNombre = seleccionado.CtaNombre;
+        formTipo = seleccionado.CtaTipo;
+        formNaturaleza = seleccionado.CtaNaturaleza;
+        modo = Modo.Editar;
+    }
+
+    private async Task GuardarEdicionAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            await NomenclaturaRepository.GuardarAsync(seleccionado.CtaId, seleccionado.CtaIdPadre, formCodigo.Trim(), formNombre.Trim(),
+                seleccionado.CtaNivel == 1 ? formTipo : null, formNaturaleza, await ObtenerUsuIdActualAsync());
+            modo = Modo.Ver;
+            await CargarAsync();
+            MostrarOk("Cambios guardados.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void IniciarMover()
+    {
+        mensaje = null;
+        formPadreNuevo = 0;
+        modo = Modo.Mover;
+    }
+
+    private async Task MoverAsync()
+    {
+        if (seleccionado is null || formPadreNuevo == 0) return;
+        try
+        {
+            var id = seleccionado.CtaId;
+            await NomenclaturaRepository.MoverAsync(id, formPadreNuevo, await ObtenerUsuIdActualAsync());
+            modo = Modo.Ver;
+            await CargarAsync(id);
+            MostrarOk($"Cuenta movida; su nuevo código es {seleccionado?.CtaCodigo}.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task CambiarEstadoAsync(string estado)
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            await NomenclaturaRepository.CambiarEstadoAsync(seleccionado.CtaId, estado, await ObtenerUsuIdActualAsync());
+            await CargarAsync();
+            MostrarOk(estado == "A" ? "Cuenta activada." : "Cuenta inactivada: ya no se podrá usar en nuevas partidas.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task EliminarAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            var texto = $"{seleccionado.CtaCodigo} {seleccionado.CtaNombre}";
+            var padre = seleccionado.CtaIdPadre;
+            await NomenclaturaRepository.EliminarAsync(seleccionado.CtaId);
+            modo = Modo.Ver;
+            seleccionado = null;
+            await CargarAsync(padre);
+            MostrarOk($"Se eliminó {texto}.");
+        }
+        catch (Exception ex)
+        {
+            modo = Modo.Ver;
+            MostrarError(ex);
+        }
+    }
+}

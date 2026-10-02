@@ -1,0 +1,7 @@
+@page "/cxp/antiguedad"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CXP_ADMIN")]
+
+<PageTitle>Antigüedad de saldos de proveedores</PageTitle>
+
+<AntiguedadVista EsCliente="false" />

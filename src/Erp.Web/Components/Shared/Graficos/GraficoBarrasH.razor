@@ -1,0 +1,47 @@
+@* Ranking en barras horizontales: nombre, barra y valor en la punta. Si hay
+   OnSeleccionar, cada fila es un botón (p. ej. abre el estado de cuenta). *@
+
+@if (Filas.Count == 0)
+{
+    <p class="estado-vacio">@TextoVacio</p>
+}
+else
+{
+    var maximo = Math.Max(Filas.Max(f => f.Valor), 0.01m);
+    <ol class="ranking" aria-label="@Titulo">
+        @foreach (var f in Filas)
+        {
+            var fila = f;
+            var ancho = (double)(Math.Max(0, f.Valor) / maximo * 100);
+            <li>
+                @if (OnSeleccionar.HasDelegate)
+                {
+                    <button type="button" class="ranking-fila seleccionable" title="@f.Etiqueta" @onclick="() => OnSeleccionar.InvokeAsync(fila.Id)"
+                            aria-label="@($"{f.Etiqueta}: {PaletaGraficos.Moneda(f.Valor)}. {PistaSeleccion}")">
+                        @Contenido(f, ancho)
+                    </button>
+                }
+                else
+                {
+                    <div class="ranking-fila" title="@($"{f.Etiqueta}: {PaletaGraficos.Moneda(f.Valor)}")">@Contenido(f, ancho)</div>
+                }
+            </li>
+        }
+    </ol>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<BarraFila> Filas { get; set; } = Array.Empty<BarraFila>();
+    [Parameter] public string Titulo { get; set; } = "Ranking";
+    [Parameter] public int Slot { get; set; } = 1;
+    [Parameter] public EventCallback<int> OnSeleccionar { get; set; }
+    [Parameter] public string? PistaSeleccion { get; set; }
+    [Parameter] public string TextoVacio { get; set; } = "Sin datos para el período.";
+
+    private RenderFragment Contenido(BarraFila f, double ancho) => __builder =>
+    {
+        <span class="ranking-etiqueta">@f.Etiqueta</span>
+        <span class="ranking-pista"><span class="ranking-barra" style="width:@(ancho.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))%;background:@PaletaGraficos.Color(Slot)"></span></span>
+        <span class="ranking-valor">@PaletaGraficos.MonedaCompacta(f.Valor)@if (f.Detalle is not null) {<small>@f.Detalle</small>}</span>
+    };
+}

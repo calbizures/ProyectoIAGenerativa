@@ -1,0 +1,69 @@
+namespace Erp.Data.Rrhh;
+
+public interface IRrhhRepository
+{
+	// Catálogos simples (el nombre del catálogo lo valida paRrhhCatalogoTabla)
+	Task<IReadOnlyList<CatalogoRrhh>> ConsultarCatalogoAsync(string catalogo, bool soloActivos);
+	Task<int> GuardarCatalogoAsync(string catalogo, int? id, string descripcion, int? usuarioAccionId);
+	Task CambiarEstadoCatalogoAsync(string catalogo, int id, string estado, int? usuarioAccionId);
+
+	// Estructura organizativa
+	Task<IReadOnlyList<Departamento>> ConsultarDepartamentosAsync(bool soloActivos);
+	Task<int> GuardarDepartamentoAsync(Departamento departamento, int? usuarioAccionId);
+	Task<IReadOnlyList<Puesto>> ConsultarPuestosAsync(bool soloActivos);
+	Task<int> GuardarPuestoAsync(Puesto puesto, int? usuarioAccionId);
+	Task<IReadOnlyList<Plaza>> ConsultarPlazasAsync(bool soloActivos);
+	Task<int> GuardarPlazaAsync(Plaza plaza, int? usuarioAccionId);
+
+	// Unidades organizativas (árbol) y organigrama
+	Task<IReadOnlyList<UnidadOrganizativaNodo>> ConsultarUnidadesArbolAsync();
+	Task<int> GuardarUnidadAsync(int? idUnidad, int? idPadre, string descripcion, short orden, int? usuarioAccionId);
+	Task MoverUnidadAsync(int idUnidad, int? idPadreNuevo, int? usuarioAccionId);
+	Task CambiarEstadoUnidadAsync(int idUnidad, string estado, int? usuarioAccionId);
+	Task EliminarUnidadAsync(int idUnidad);
+	Task<IReadOnlyList<OrganigramaNodo>> ConsultarOrganigramaAsync(bool soloActivos);
+
+	// Empleados
+	Task<IReadOnlyList<EmpleadoResumen>> ConsultarEmpleadosAsync(string? filtro, string? estado);
+	Task<(Empleado? Empleado, IReadOnlyList<HistorialPlaza> Historial)> ConsultarEmpleadoPorIdAsync(int idEmpleado);
+	Task<int> GuardarEmpleadoAsync(Empleado empleado, int? usuarioAccionId);
+	Task DarBajaEmpleadoAsync(int idEmpleado, DateTime fechaBaja, int? usuarioAccionId);
+	Task ReactivarEmpleadoAsync(int idEmpleado, int? usuarioAccionId);
+	Task AsignarUsuarioAsync(int idEmpleado, int? usuIdAsignado, int? usuarioAccionId);
+	Task AsignarVendedorAsync(int idEmpleado, int? pveId, int? usuarioAccionId);
+	Task GuardarPagoEmpleadoAsync(int idEmpleado, string tipoNomina, string formaPago, int? gefId, string? tipoCuenta, string? numeroCuenta, int? usuarioAccionId);
+
+	// Tipos de movimiento y movimientos manuales
+	Task<IReadOnlyList<TipoMovimientoNomina>> ConsultarTiposMovimientoAsync(bool soloActivos);
+	Task<int> GuardarTipoMovimientoAsync(TipoMovimientoNomina tipo, int? usuarioAccionId);
+	Task<IReadOnlyList<MovimientoNomina>> ConsultarMovimientosAsync(int? idEmpleado, DateTime? fechaDel, DateTime? fechaAl, bool soloPendientes);
+	Task<int> GuardarMovimientoAsync(int? idMovimiento, int idEmpleado, int idTipoMovimiento, string? descripcion, decimal monto, DateTime fechaAplicacion, decimal? horas, int? usuarioAccionId);
+	Task AnularMovimientoAsync(int idMovimiento, int? usuarioAccionId);
+
+	// Nómina
+	Task<IReadOnlyList<Nomina>> ConsultarNominasAsync(int? ciaId);
+	Task<int> CrearNominaAsync(int ciaId, string descripcion, string tipoPeriodo, DateTime fechaDel, DateTime fechaAl, DateTime? fechaPago, int? usuarioAccionId);
+	Task CalcularNominaAsync(int idNomina, int? usuarioAccionId);
+	Task AprobarNominaAsync(int idNomina, int? usuarioAccionId);
+	Task AnularNominaAsync(int idNomina, int? usuarioAccionId);
+	Task<IReadOnlyList<NominaEmpleado>> ConsultarNominaEmpleadosAsync(int idNomina);
+	Task<IReadOnlyList<NominaDetalle>> ConsultarNominaDetalleAsync(int idNominaEmpleado);
+	Task<PeriodoSugerido> ConsultarPeriodoSugeridoAsync(int ciaId, string tipoPeriodo);
+
+	// Pago de nómina
+	Task<IReadOnlyList<NominaPago>> ConsultarPagosNominaAsync(int idNomina);
+	Task<int> PagarTransferenciasAsync(int idNomina, int bcbId, DateTime fecha, string? referencia, int? usuarioAccionId);
+	Task<int> EmitirChequesNominaAsync(int idNomina, int cbcId, DateTime fecha, int? usuarioAccionId);
+	Task AnularPagoNominaAsync(int idNominaPago, string motivo, int? usuarioAccionId);
+	Task<IReadOnlyList<TransferenciaNomina>> ConsultarListadoTransferenciasAsync(int idNominaPago);
+
+	// Cumplimiento laboral: prestaciones, IGSS y libro de salarios
+	Task<int> CrearNominaPrestacionAsync(int ciaId, string clase, int anio, DateTime? fechaPago, int? usuarioAccionId);
+	Task<CompaniaRrhh?> ConsultarCompaniaRrhhAsync(int ciaId);
+	Task GuardarCompaniaRrhhAsync(CompaniaRrhh datos, int? usuarioAccionId);
+	Task<IReadOnlyList<SucursalIgss>> ConsultarSucursalesIgssAsync(int? ciaId);
+	Task GuardarSucursalIgssAsync(SucursalIgss sucursal, int? usuarioAccionId);
+	Task GuardarLaboralEmpleadoAsync(int idEmpleado, int? sucId, string? nacionalidad, string jornada, string tiempoContrato, int? usuarioAccionId);
+	Task<LibroSalarios> ConsultarLibroSalariosAsync(int ciaId, int anio, int? idEmpleado);
+	Task<PlanillaIgss> ConsultarPlanillaIgssAsync(int ciaId, int anio, int mes);
+}

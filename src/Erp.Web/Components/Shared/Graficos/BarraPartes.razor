@@ -1,0 +1,32 @@
+@* Parte de un total en una barra 100 % con leyenda (nombre, monto y %). *@
+
+@{ var total = Partes.Sum(p => Math.Max(0, p.Valor)); }
+@if (total <= 0)
+{
+    <p class="estado-vacio">Sin datos para el período.</p>
+}
+else
+{
+    <div class="barra-partes" role="img" aria-label="@(string.Join("; ", Partes.Select(p => $"{p.Nombre} {PaletaGraficos.Porcentaje(p.Valor / total * 100)}")))">
+        @foreach (var p in Partes.Where(p => p.Valor > 0))
+        {
+            <span class="barra-partes-segmento" style="flex-grow:@((p.Valor / total * 1000).ToString("0", System.Globalization.CultureInfo.InvariantCulture));background:@PaletaGraficos.Color(p.Slot)"
+                  title="@($"{p.Nombre}: {PaletaGraficos.Moneda(p.Valor)} ({PaletaGraficos.Porcentaje(p.Valor / total * 100)})")"></span>
+        }
+    </div>
+    <ul class="barra-partes-leyenda">
+        @foreach (var p in Partes)
+        {
+            <li>
+                <span class="leyenda-muestra" style="background:@PaletaGraficos.Color(p.Slot)"></span>
+                <span>@p.Nombre</span>
+                <strong>@PaletaGraficos.Moneda(p.Valor)</strong>
+                <span class="texto-tenue">@PaletaGraficos.Porcentaje(p.Valor / total * 100)</span>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ParteTotal> Partes { get; set; } = Array.Empty<ParteTotal>();
+}

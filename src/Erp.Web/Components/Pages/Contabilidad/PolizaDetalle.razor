@@ -1,0 +1,28 @@
+@* Líneas de una póliza con sus totales. *@
+@using Erp.Data.Contabilidad
+
+<div class="tabla-desplazable" tabindex="0" aria-label="Líneas de la póliza #@Poliza.AsiId">
+    <table class="tabla-datos tabla-contable">
+        <thead><tr><th class="col-codigo">Cuenta</th><th>Nombre</th><th>Descripción</th><th>Centro de costo</th><th class="num col-monto">Debe</th><th class="num col-monto">Haber</th></tr></thead>
+        <tbody>
+            @foreach (var l in Poliza.Detalle.OrderBy(l => l.Debe > 0 ? 0 : 1).ThenBy(l => l.AsdId))
+            {
+                <tr>
+                    <td class="col-codigo">@l.Codigo</td>
+                    <td class="@(l.Haber > 0 ? "cuenta-abono" : "")">@l.Cuenta</td>
+                    <td>@l.Descripcion</td>
+                    <td>@l.Departamento</td>
+                    <td class="num col-monto">@(l.Debe == 0 ? "" : l.Debe.ToString("N2"))</td>
+                    <td class="num col-monto">@(l.Haber == 0 ? "" : l.Haber.ToString("N2"))</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr class="fila-total"><td colspan="4">Sumas iguales</td><td class="num">@Poliza.Detalle.Sum(l => l.Debe).ToString("N2")</td><td class="num">@Poliza.Detalle.Sum(l => l.Haber).ToString("N2")</td></tr>
+        </tfoot>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Poliza Poliza { get; set; } = new();
+}

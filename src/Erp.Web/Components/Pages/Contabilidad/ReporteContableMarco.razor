@@ -1,0 +1,63 @@
+@* Marco de los reportes contables imprimibles: logo, compañía, título y pie. *@
+@using Erp.Data.General
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IGeneralRepository GeneralRepository
+
+<PageTitle>@Titulo</PageTitle>
+
+<div class="reporte-acciones">
+    <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
+        <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir o guardar PDF</span>
+    </button>
+</div>
+
+<div class="reporte-encabezado">
+    <div>
+        <LogoCompania Clase="reporte-logo" />
+        <div class="reporte-compania">@compania</div>
+        <h1>@Titulo</h1>
+    </div>
+    <div class="reporte-meta">@Subtitulo@if (Detalle is not null) {<br />@Detalle}</div>
+</div>
+
+@if (Error is not null)
+{
+    <p class="mensaje-error" role="alert">@Error</p>
+}
+else
+{
+    @ChildContent
+}
+
+<p class="reporte-pie">Generado el @DateTime.Now.ToString("dd/MM/yyyy HH:mm") por @usuario. Cifras en quetzales.</p>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    [Parameter] public string Titulo { get; set; } = "";
+    [Parameter] public string Subtitulo { get; set; } = "";
+    [Parameter] public string? Detalle { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string compania = "";
+    private string usuario = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            int? sucId = null;
+            if (AuthenticationStateTask is not null)
+            {
+                var estado = await AuthenticationStateTask;
+                usuario = estado.User.Identity?.Name ?? "";
+                sucId = estado.User.ObtenerSucId();
+            }
+            compania = (await GeneralRepository.ConsultarParametrosAsync(sucId)).CiaNombreComercial;
+        }
+        catch { compania = ""; }
+    }
+}

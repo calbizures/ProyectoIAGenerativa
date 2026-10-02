@@ -1,0 +1,157 @@
+@page "/cxp/contrasenas/{CpaId:int}/imprimir"
+@layout Erp.Web.Components.Layout.ReporteLayout
+@attribute [Authorize(Policy = "Permiso:CXP_CONTRASENA,CXP_PAGO_PROGRAMADO")]
+@using System.Globalization
+@using Erp.Data.Pagos
+@using Erp.Web.Reportes
+@inject IPagosRepository PagosRepository
+
+<PageTitle>@(enc is null ? "Contraseña de pago" : $"Contraseña de pago {enc.Numero}")</PageTitle>
+
+@if (enc is null)
+{
+    <p class="mensaje-error" role="alert">@(error ?? $"No existe la contraseña {CpaId}.")</p>
+}
+else
+{
+    <style>
+        @@page { size: letter portrait; margin: 11mm 12mm; }
+        @@media print { body { background: #fff; } .reporte-pagina { padding: 0; max-width: none; } }
+    </style>
+
+    <div class="reporte-acciones fac-acciones">
+        <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
+            <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+        </button>
+        <span class="texto-tenue">Formato carta. Entregue el original al proveedor y archive la copia firmada.</span>
+    </div>
+
+    <article class="fac-carta">
+        @if (enc.Estado == "A") { <div class="fac-marca">ANULADA</div> }
+        <header class="fac-cab">
+            <div class="fac-emisor">
+                @if (enc.TieneLogo) { <img class="fac-logo" src="@($"compania/logo?cia={enc.CiaId}&v={enc.LogoActualizado?.Ticks ?? 0}")" alt="" /> }
+                <div>
+                    <div class="fac-comercial">@enc.NombreComercial</div>
+                    <div class="fac-razon">@enc.NombreEmisor</div>
+                    <div>NIT @enc.NitEmisor</div>
+                    <div>@enc.DireccionEmisor</div>
+                    @if (!string.IsNullOrWhiteSpace(enc.TelefonoEmisor)) { <div>Tel. @enc.TelefonoEmisor</div> }
+                </div>
+            </div>
+            <div class="fac-doc">
+                <div class="fac-doc-tipo">CONTRASEÑA DE PAGO</div>
+                <div class="fac-doc-sub">Presente este documento para cobrar</div>
+                <dl>
+                    <dt>Número</dt><dd>@enc.Numero</dd>
+                    <dt>Fecha</dt><dd>@enc.Fecha.ToString("dd/MM/yyyy")</dd>
+                    <dt>Fecha de pago</dt><dd><strong>@enc.FechaPago.ToString("dddd dd/MM/yyyy", Es)</strong></dd>
+                </dl>
+            </div>
+        </header>
+        @if (enc.Estado == "A")
+        {
+            <p class="fac-aviso">CONTRASEÑA ANULADA@(string.IsNullOrWhiteSpace(enc.MotivoAnulacion) ? "" : $" — {enc.MotivoAnulacion}")</p>
+        }
+        else if (enc.Estado == "P")
+        {
+            <p class="fac-aviso">PAGADA @(enc.Cheque is not null ? $"CON CHEQUE {enc.Cheque}" : $"POR TRANSFERENCIA ({enc.Lote})")</p>
+        }
+
+        <section class="fac-partes">
+            <div class="fac-bloque">
+                <div class="fac-bloque-titulo">Proveedor</div>
+                <div class="fac-fila"><span>Nombre</span><strong>@enc.Proveedor</strong></div>
+                <div class="fac-fila"><span>Código</span>@enc.ProveedorCodigo</div>
+                <div class="fac-fila"><span>NIT</span>@(string.IsNullOrWhiteSpace(enc.Nit) ? "—" : enc.Nit)</div>
+                @if (!string.IsNullOrWhiteSpace(enc.ProveedorDireccion)) { <div class="fac-fila"><span>Dirección</span>@enc.ProveedorDireccion</div> }
+            </div>
+            <div class="fac-bloque">
+                <div class="fac-bloque-titulo">Forma de pago</div>
+                @if (enc.FormaPago == "T")
+                {
+                    <div class="fac-fila"><span>Pago</span><strong>Transferencia bancaria</strong></div>
+                    <div class="fac-fila"><span>Banco</span>@(enc.Banco ?? "—")</div>
+                    <div class="fac-fila"><span>Cuenta</span>@(enc.TipoCuenta == "A" ? "Ahorro" : "Monetaria") @CuentaOculta(enc.CuentaProveedor)</div>
+                }
+                else
+                {
+                    <div class="fac-fila"><span>Pago</span><strong>Cheque</strong></div>
+                    <div class="fac-fila"><span>A nombre de</span>@enc.Proveedor</div>
+                }
+                <div class="fac-fila"><span>Emitió</span>@enc.Usuario</div>
+            </div>
+        </section>
+
+        <table class="fac-items">
+            <thead>
+                <tr><th class="num">#</th><th>Documento</th><th class="col-fecha">Fecha</th><th class="num">Cuota</th><th class="col-fecha">Vence</th><th class="num">Monto</th></tr>
+            </thead>
+            <tbody>
+                @{ var i = 0; }
+                @foreach (var l in enc.Lineas)
+                {
+                    <tr>
+                        <td class="num">@(++i)</td>
+                        <td>@l.Documento</td>
+                        <td class="col-fecha">@l.FechaDocumento.ToString("dd/MM/yyyy")</td>
+                        <td class="num">@l.Cuota</td>
+                        <td class="col-fecha">@l.Vencimiento.ToString("dd/MM/yyyy")</td>
+                        <td class="num">@l.Monto.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <section class="fac-pie-tabla">
+            <div class="fac-notas">
+                <div class="fac-letras"><span>Total en letras</span>@NumeroALetras.Convertir(enc.Total)</div>
+                @if (!string.IsNullOrWhiteSpace(enc.Observaciones))
+                {
+                    <div class="fac-mini">
+                        <div class="fac-bloque-titulo">Observaciones</div>
+                        <p class="cot-observaciones">@enc.Observaciones</p>
+                    </div>
+                }
+            </div>
+            <div class="fac-totales">
+                <div class="fac-total"><span>TOTAL A PAGAR</span>Q @enc.Total.ToString("N2")</div>
+            </div>
+        </section>
+
+        <section class="oc-firmas oc-firmas-2">
+            <div><span class="oc-firma-linea"></span>Entregó: @enc.Usuario</div>
+            <div><span class="oc-firma-linea"></span>Recibió (nombre, firma y DPI)</div>
+        </section>
+
+        <footer class="fac-final">
+            <div class="fac-final-texto">
+                <div>El pago se hace a partir de la fecha indicada@(enc.FormaPago == "T" ? " por transferencia a la cuenta registrada" : ", contra entrega de esta contraseña"). Cite el número @enc.Numero en cualquier consulta.</div>
+            </div>
+        </footer>
+    </article>
+
+    @if (Auto == 1)
+    {
+        <script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 400); });</script>
+    }
+}
+
+@code {
+    [Parameter] public int CpaId { get; set; }
+    [SupplyParameterFromQuery] public int? Auto { get; set; }
+
+    private static readonly CultureInfo Es = CultureInfo.GetCultureInfo("es-GT");
+    private Contrasena? enc;
+    private string? error;
+
+    // En el papel solo los últimos 4 dígitos de la cuenta del proveedor.
+    private static string CuentaOculta(string? cuenta) =>
+        string.IsNullOrWhiteSpace(cuenta) ? "—" : cuenta.Length <= 4 ? cuenta : new string('•', 4) + cuenta[^4..];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { enc = await PagosRepository.ConsultarContrasenaAsync(CpaId); }
+        catch (Exception ex) { error = MensajesError.Traducir(ex); }
+    }
+}

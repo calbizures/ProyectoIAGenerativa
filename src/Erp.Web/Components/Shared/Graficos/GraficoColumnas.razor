@@ -1,0 +1,188 @@
+@* Columnas agrupadas o apiladas en SVG. Cada categoría es una franja que
+   responde al pasar el puntero o con el teclado: muestra todas las series de
+   esa categoría en un tooltip y, si hay OnSeleccionar, se puede elegir. *@
+@using System.Globalization
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@if (Categorias.Count == 0 || Series.Count == 0)
+{
+    <p class="estado-vacio">Sin datos para el período.</p>
+}
+else
+{
+    @if (Series.Count > 1)
+    {
+        <ul class="grafico-leyenda" aria-label="Leyenda">
+            @foreach (var s in Series)
+            {
+                <li><span class="leyenda-muestra" style="background:@PaletaGraficos.Color(s.Slot)"></span>@s.Nombre</li>
+            }
+        </ul>
+    }
+    <div class="grafico-columnas" @ref="contenedor">
+        <svg viewBox="0 0 @F(Ancho) @Alto" width="@F(Ancho)" height="@Alto" role="img" aria-label="@Titulo">
+            @for (var t = 0; t <= Divisiones; t++)
+            {
+                var valorTick = tope * t / Divisiones;
+                var y = Y(valorTick);
+                <g>
+                    <line x1="@F(MargenIzq)" x2="@F(Ancho - MargenDer)" y1="@F(y)" y2="@F(y)" class="@(t == 0 ? "eje-base" : "eje-grilla")" />
+                    <text x="@F(MargenIzq - 8)" y="@F(y + 4)" text-anchor="end" class="eje-texto">@PaletaGraficos.MonedaCompacta(valorTick)</text>
+                </g>
+            }
+            @for (var i = 0; i < Categorias.Count; i++)
+            {
+                @foreach (var barra in Barras(i))
+                {
+                    <path d="@barra.Trazo" fill="@barra.Color" class="grafico-marca" />
+                }
+                @if (i % PasoEtiquetas == 0)
+                {
+                    <g><text x="@F(CentroBanda(i))" y="@F(Alto - 8)" text-anchor="middle" class="eje-texto">@Categorias[i]</text></g>
+                }
+            }
+        </svg>
+        <div class="grafico-franjas">
+            @for (var i = 0; i < Categorias.Count; i++)
+            {
+                var indice = i;
+                <div class="grafico-franja @(OnSeleccionar.HasDelegate ? "seleccionable" : "") @(indice == 0 ? "primera" : indice == Categorias.Count - 1 ? "ultima" : "")"
+                     style="left:@Pct(MargenIzq + i * Banda, Ancho);width:@Pct(Banda, Ancho);top:@Pct(MargenSup, Alto);height:@Pct(AltoPlot, Alto)"
+                     tabindex="0" role="button" aria-label="@Resumen(i)"
+                     @onclick="() => SeleccionarAsync(indice)" @onkeydown="e => TeclaAsync(e, indice)">
+                    <div class="grafico-tooltip" aria-hidden="true">
+                        <strong class="tooltip-titulo">@Categorias[i]</strong>
+                        @foreach (var s in Series)
+                        {
+                            <span class="tooltip-fila"><span class="tooltip-clave" style="background:@PaletaGraficos.Color(s.Slot)"></span><strong>@PaletaGraficos.Moneda(s.Valores[i])</strong> @s.Nombre</span>
+                        }
+                        @if (Apiladas && Series.Count > 1)
+                        {
+                            <span class="tooltip-fila tooltip-total"><strong>@PaletaGraficos.Moneda(Series.Sum(s => s.Valores[i]))</strong> Total</span>
+                        }
+                        @if (!string.IsNullOrEmpty(PistaSeleccion) && OnSeleccionar.HasDelegate)
+                        {
+                            <span class="tooltip-pista">@PistaSeleccion</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<string> Categorias { get; set; } = Array.Empty<string>();
+    [Parameter, EditorRequired] public IReadOnlyList<SerieGrafico> Series { get; set; } = Array.Empty<SerieGrafico>();
+    [Parameter] public bool Apiladas { get; set; }
+    [Parameter] public string Titulo { get; set; } = "Gráfico";
+    [Parameter] public int Alto { get; set; } = 260;
+    [Parameter] public EventCallback<int> OnSeleccionar { get; set; }
+    [Parameter] public string? PistaSeleccion { get; set; }
+
+    private const int MargenIzq = 64, MargenDer = 12, MargenSup = 12, MargenInf = 30, Divisiones = 4;
+    // Ancho medido del contenedor (se redibuja al cambiar el tamaño de la ventana).
+    private double Ancho = 720;
+    private ElementReference contenedor;
+    private DotNetObjectReference<GraficoColumnas>? referencia;
+    private double AltoPlot => Alto - MargenSup - MargenInf;
+    private double AnchoPlot => Ancho - MargenIzq - MargenDer;
+    private double Banda => AnchoPlot / Math.Max(1, Categorias.Count);
+    private int PasoEtiquetas => Math.Max(1, (int)Math.Ceiling(Categorias.Count / Math.Max(2, AnchoPlot / 64)));
+    private decimal tope = 1;
+
+    protected override void OnParametersSet()
+    {
+        var maximo = Categorias.Count == 0 ? 0 : Enumerable.Range(0, Categorias.Count)
+            .Max(i => Apiladas ? Series.Sum(s => Math.Max(0, s.Valores[i])) : Series.Max(s => s.Valores[i]));
+        tope = PaletaGraficos.TopeEje(maximo, Divisiones);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool primeraVez)
+    {
+        if (!primeraVez || Categorias.Count == 0) return;
+        referencia = DotNetObjectReference.Create(this);
+        try
+        {
+            var ancho = await JS.InvokeAsync<double>("erpGraficos.observar", contenedor, referencia);
+            if (ancho > 0) { Ancho = ancho; StateHasChanged(); }
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    [JSInvokable]
+    public void AjustarAncho(double ancho)
+    {
+        if (ancho <= 0 || Math.Abs(ancho - Ancho) < 1) return;
+        Ancho = ancho;
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("erpGraficos.dejar", contenedor); }
+        catch (Exception ex) when (ex is JSDisconnectedException or InvalidOperationException) { }
+        referencia?.Dispose();
+    }
+
+    private static string F(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
+    private static string Pct(double v, double total) => (v / total * 100).ToString("0.###", CultureInfo.InvariantCulture) + "%";
+    private double Y(decimal valor) => MargenSup + AltoPlot - (double)(valor / tope) * AltoPlot;
+    private double CentroBanda(int i) => MargenIzq + (i + 0.5) * Banda;
+
+    private sealed record Barra(string Trazo, string Color);
+
+    // Columnas de hasta 24 px, extremo redondeado de 4 px y base recta; 2 px de
+    // separación entre columnas agrupadas y entre segmentos apilados.
+    private IEnumerable<Barra> Barras(int i)
+    {
+        var baseY = MargenSup + AltoPlot;
+        if (Apiladas)
+        {
+            var ancho = Math.Min(24, Banda * 0.6);
+            var x = CentroBanda(i) - ancho / 2;
+            var acumulado = 0m;
+            var visibles = Series.Where(s => s.Valores[i] > 0).ToList();
+            for (var k = 0; k < visibles.Count; k++)
+            {
+                var s = visibles[k];
+                var y0 = Y(acumulado);
+                acumulado += s.Valores[i];
+                var y1 = Y(acumulado);
+                var esUltimo = k == visibles.Count - 1;
+                var fondo = k == 0 ? y0 : y0 - 2;
+                if (fondo - y1 < 0.5) continue;
+                yield return new Barra(Trazo(x, y1, ancho, fondo, esUltimo ? 4 : 0), PaletaGraficos.Color(s.Slot));
+            }
+        }
+        else
+        {
+            var n = Series.Count;
+            var ancho = Math.Min(24, (Banda * 0.7 - (n - 1) * 2) / n);
+            var grupo = n * ancho + (n - 1) * 2;
+            var x0 = CentroBanda(i) - grupo / 2;
+            for (var k = 0; k < n; k++)
+            {
+                var valor = Series[k].Valores[i];
+                if (valor <= 0) continue;
+                var y = Y(valor);
+                yield return new Barra(Trazo(x0 + k * (ancho + 2), y, ancho, baseY, 4), PaletaGraficos.Color(Series[k].Slot));
+            }
+        }
+    }
+
+    private static string Trazo(double x, double yArriba, double ancho, double yAbajo, double radio)
+    {
+        var r = Math.Min(radio, Math.Min(ancho / 2, (yAbajo - yArriba) / 2));
+        return $"M{F(x)},{F(yAbajo)} L{F(x)},{F(yArriba + r)} Q{F(x)},{F(yArriba)} {F(x + r)},{F(yArriba)} " +
+               $"L{F(x + ancho - r)},{F(yArriba)} Q{F(x + ancho)},{F(yArriba)} {F(x + ancho)},{F(yArriba + r)} L{F(x + ancho)},{F(yAbajo)} Z";
+    }
+
+    private string Resumen(int i) =>
+        $"{Categorias[i]}: " + string.Join("; ", Series.Select(s => $"{s.Nombre} {PaletaGraficos.Moneda(s.Valores[i])}"));
+
+    private Task SeleccionarAsync(int i) => OnSeleccionar.HasDelegate ? OnSeleccionar.InvokeAsync(i) : Task.CompletedTask;
+
+    private Task TeclaAsync(KeyboardEventArgs e, int i) => e.Key is "Enter" or " " ? SeleccionarAsync(i) : Task.CompletedTask;
+}

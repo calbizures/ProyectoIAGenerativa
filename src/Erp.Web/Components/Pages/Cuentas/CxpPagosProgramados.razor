@@ -1,0 +1,428 @@
+@page "/cxp/pagos-programados"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CXP_PAGO_PROGRAMADO")]
+@using System.Globalization
+@using Erp.Data.Bancos
+@using Erp.Data.Cuentas
+@using Erp.Data.Pagos
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IPagosRepository PagosRepository
+@inject ICuentasRepository CuentasRepository
+@inject IBancosRepository BancosRepository
+
+<PageTitle>Pagos programados</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Pagos programados</h1>
+    <p>Las contraseñas pendientes cuya fecha de pago ya llegó. Las de transferencia se pagan juntas en un lote: se genera una sola póliza y el archivo para subir al banco. Las de cheque se pagan una por una, con su póliza.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+@if (loteGenerado is not null)
+{
+    <section class="tarjeta tarjeta-exito" aria-live="polite">
+        <div class="exito-contenido">
+            <Icono Nombre="check-circle" Tamano="22" />
+            <div>
+                <h2>Lote @loteGenerado.Value.Numero generado</h2>
+                <p>@loteGenerado.Value.Cantidad transferencia(s) por Q@(loteGenerado.Value.Total.ToString("N2")). Descargue el archivo y súbalo a la banca en línea.</p>
+            </div>
+        </div>
+        <ArchivoBancoPanel Tipo="lote" Id="loteGenerado.Value.BltId" />
+        <div class="acciones-fila">
+            <BotonIcono Icono="x" Tooltip="Cerrar" Etiqueta="Cerrar" OnClick="() => loteGenerado = null" />
+        </div>
+    </section>
+}
+
+<section class="tarjeta" aria-labelledby="titulo-por-pagar">
+    <div class="maestro-detalle-encabezado">
+        <h2 id="titulo-por-pagar">Por pagar</h2>
+        <span class="texto-tenue">@pendientes.Count contraseña(s) · Q@(pendientes.Sum(c => c.Total).ToString("N2"))</span>
+    </div>
+    <div class="barra-herramientas">
+        <label for="pp-hasta">Con fecha de pago hasta</label>
+        <input id="pp-hasta" type="date" value="@pagoHasta.ToString("yyyy-MM-dd")" @onchange="CambiarHastaAsync" />
+        <span class="texto-tenue">Próximo día de pago: @proximoDia.ToString("dddd dd/MM/yyyy", Es)</span>
+    </div>
+
+    <h3>Por transferencia</h3>
+    @if (!Transferencias.Any())
+    {
+        <p class="estado-vacio">No hay contraseñas por transferencia para pagar.</p>
+    }
+    else
+    {
+        <table class="tabla-datos">
+            <thead>
+                <tr>
+                    <th class="col-check"><input type="checkbox" aria-label="Seleccionar todas las transferencias" checked="@(Transferencias.Where(c => c.TieneCuenta).All(c => seleccion.Contains(c.CpaId)))" @onchange="e => MarcarTodas((bool)(e.Value ?? false))" /></th>
+                    <th class="col-codigo">Contraseña</th><th>Proveedor</th><th>Banco y cuenta</th><th class="col-fecha">Se paga</th><th class="num">Facturas</th><th class="num">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Transferencias)
+                {
+                    var marcada = seleccion.Contains(c.CpaId);
+                    <tr class="@(marcada ? "fila-seleccionada" : "")">
+                        <td class="col-check">
+                            <input type="checkbox" checked="@marcada" disabled="@(!c.TieneCuenta)" aria-label="@($"Pagar la contraseña {c.Numero}")"
+                                   @onchange="e => Alternar(c.CpaId, (bool)(e.Value ?? false))" />
+                        </td>
+                        <td class="col-codigo"><a href="@($"cxp/contrasenas/{c.CpaId}/imprimir")" target="_blank" rel="noopener">@c.Numero</a></td>
+                        <td>@c.Proveedor</td>
+                        <td>
+                            @if (c.TieneCuenta) { <span>@c.Banco · @c.CuentaProveedor</span> }
+                            else { <span class="estado-badge estado-badge-anulada">Sin cuenta</span> <a href="proveedores">registrar</a> }
+                        </td>
+                        <td class="col-fecha">@c.FechaPago.ToString("dd/MM/yyyy")</td>
+                        <td class="num">@c.Facturas</td>
+                        <td class="num">@c.Total.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr><td colspan="6">Seleccionadas (@seleccion.Count)</td><td class="num"><strong>Q@(TotalSeleccion.ToString("N2"))</strong></td></tr>
+            </tfoot>
+        </table>
+
+        @if (seleccion.Count > 0)
+        {
+            <div class="panel-formulario panel-ancho">
+                <div class="campo">
+                    <label for="pp-cuenta">Cuenta que paga</label>
+                    <select id="pp-cuenta" @bind="bcbId">
+                        @foreach (var c in cuentas)
+                        {
+                            <option value="@c.BcbId">@c.Nombre</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="pp-fecha">Fecha</label>
+                    <input id="pp-fecha" type="date" value="@fechaLote.ToString("yyyy-MM-dd")" @onchange="CambiarFechaLote" />
+                </div>
+                <div class="campo campo-ancho">
+                    <label for="pp-referencia">Referencia</label>
+                    <input id="pp-referencia" maxlength="60" @bind="referencia" placeholder="Ej.: pago a proveedores semana 40" />
+                </div>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="send" Tooltip="Pagar las contraseñas seleccionadas en un lote de transferencias" Etiqueta="@($"Generar lote Q{TotalSeleccion:N2}")"
+                            Variante="primario" Deshabilitado="guardando || bcbId == 0" OnClick="GenerarLoteAsync" />
+            </div>
+            <p class="texto-ayuda">Las facturas quedan pagadas con la fecha del lote y la póliza sale de la cuenta elegida. Si el banco rechaza el archivo, anule el lote abajo: las contraseñas vuelven a quedar pendientes.</p>
+        }
+    }
+
+    <h3>Con cheque</h3>
+    @if (!Cheques.Any())
+    {
+        <p class="estado-vacio">No hay contraseñas con cheque para pagar.</p>
+    }
+    else
+    {
+        <table class="tabla-datos">
+            <thead>
+                <tr><th class="col-codigo">Contraseña</th><th>Proveedor</th><th class="col-fecha">Se paga</th><th class="num">Facturas</th><th class="num">Total</th><th class="col-acciones">Acciones</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Cheques)
+                {
+                    <tr>
+                        <td class="col-codigo"><a href="@($"cxp/contrasenas/{c.CpaId}/imprimir")" target="_blank" rel="noopener">@c.Numero</a></td>
+                        <td>@c.Proveedor</td>
+                        <td class="col-fecha">@c.FechaPago.ToString("dd/MM/yyyy")</td>
+                        <td class="num">@c.Facturas</td>
+                        <td class="num">@c.Total.ToString("N2")</td>
+                        <td class="col-acciones">
+                            <BotonIcono Icono="banknote" Tooltip="Pagar con cheque" Etiqueta="Pagar" OnClick="() => IniciarCheque(c)" />
+                        </td>
+                    </tr>
+                    @if (pagandoCheque?.CpaId == c.CpaId)
+                    {
+                        <tr class="fila-edicion-tabla">
+                            <td colspan="6">
+                                <div class="anulacion-form">
+                                    <label for="pp-chequera">Chequera</label>
+                                    <select id="pp-chequera" value="@cbcId" @onchange="CambiarChequera">
+                                        @foreach (var q in chequeras)
+                                        {
+                                            <option value="@q.CbcId">@q.Descripcion</option>
+                                        }
+                                    </select>
+                                    <label for="pp-numero">Número</label>
+                                    <input id="pp-numero" class="entrada-referencia" maxlength="16" inputmode="numeric" @bind="numeroCheque" />
+                                    <BotonIcono Icono="save" Tooltip="Emitir el cheque" Etiqueta="@($"Emitir cheque Q{c.Total:N2}")" Variante="primario"
+                                                Deshabilitado="guardando || cbcId == 0" OnClick="PagarChequeAsync" />
+                                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => pagandoCheque = null" />
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+<section class="tarjeta" aria-labelledby="titulo-lotes">
+    <div class="maestro-detalle-encabezado">
+        <h2 id="titulo-lotes">Lotes de transferencias</h2>
+        <span class="texto-tenue">@lotes.Count(l => l.Estado == "A") vigente(s) · Q@(lotes.Where(l => l.Estado == "A").Sum(l => l.Total).ToString("N2"))</span>
+    </div>
+    <div class="barra-herramientas">
+        <FiltroPeriodo @bind-Desde="desde" @bind-Hasta="hasta" AlCambiar="CargarLotesAsync" />
+    </div>
+    @if (lotes.Count == 0)
+    {
+        <p class="estado-vacio">No hay lotes en el período.</p>
+    }
+    else
+    {
+        <table class="tabla-datos">
+            <thead>
+                <tr><th class="col-codigo">Lote</th><th class="col-fecha">Fecha</th><th>Cuenta</th><th>Referencia</th><th class="num">Transferencias</th><th class="num">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var l in lotes)
+                {
+                    <tr class="@(l.Estado == "N" ? "fila-anulada" : "")">
+                        <td class="col-codigo">@l.Numero</td>
+                        <td class="col-fecha">@l.Fecha.ToString("dd/MM/yyyy")</td>
+                        <td>@l.CuentaOrigen</td>
+                        <td>@l.Referencia</td>
+                        <td class="num">@l.Cantidad</td>
+                        <td class="num">@l.Total.ToString("N2")</td>
+                        <td class="col-estado"><span class="estado-badge @(l.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")" title="@l.MotivoAnulacion">@(l.Estado == "A" ? "Vigente" : "Anulado")</span></td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                @if (l.Estado == "A")
+                                {
+                                    <BotonIcono Icono="download" Tooltip="@(archivoBltId == l.BltId ? "Ocultar el archivo" : "Archivo para el banco")" OnClick="() => archivoBltId = archivoBltId == l.BltId ? null : l.BltId" />
+                                    <BotonIcono Icono="ban" Tooltip="Anular el lote" Variante="peligro" OnClick="() => IniciarAnulacion(l)" />
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                    @if (archivoBltId == l.BltId)
+                    {
+                        <tr class="fila-detalle-cheque">
+                            <td colspan="8"><ArchivoBancoPanel Tipo="lote" Id="l.BltId" GefIdOrigen="l.GefIdOrigen" /></td>
+                        </tr>
+                    }
+                    @if (anulando?.BltId == l.BltId)
+                    {
+                        <tr class="fila-edicion-tabla">
+                            <td colspan="8">
+                                <div class="anulacion-form">
+                                    <label for="motivo-lote">Motivo de la anulación del lote @l.Numero</label>
+                                    <input id="motivo-lote" maxlength="200" placeholder="Ej.: el banco rechazó el archivo" @bind="motivoAnulacion" @bind:event="oninput" />
+                                    <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Anular lote" Variante="peligro"
+                                                Deshabilitado="motivoAnulacion.Trim().Length < 5 || guardando" OnClick="AnularLoteAsync" />
+                                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => anulando = null" />
+                                    <small class="texto-ayuda">Anúlelo solo si el banco no hizo las transferencias: el saldo vuelve a las facturas, las contraseñas quedan pendientes y la póliza se anula.</small>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private static readonly CultureInfo Es = CultureInfo.GetCultureInfo("es-GT");
+
+    private DateTime proximoDia = DateTime.Today;
+    private DateTime pagoHasta = DateTime.Today;
+    private IReadOnlyList<ContrasenaResumen> pendientes = Array.Empty<ContrasenaResumen>();
+    private readonly HashSet<int> seleccion = new();
+
+    private IReadOnlyList<CuentaBancaria> cuentas = Array.Empty<CuentaBancaria>();
+    private int bcbId;
+    private DateTime fechaLote = DateTime.Today;
+    private string referencia = "";
+
+    private IReadOnlyList<Erp.Data.Cuentas.Chequera> chequeras = Array.Empty<Erp.Data.Cuentas.Chequera>();
+    private ContrasenaResumen? pagandoCheque;
+    private int cbcId;
+    private string numeroCheque = "";
+
+    private IReadOnlyList<LoteTransferencia> lotes = Array.Empty<LoteTransferencia>();
+    private DateTime? desde = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-1);
+    private DateTime? hasta = DateTime.Today;
+    private int? archivoBltId;
+    private LoteTransferencia? anulando;
+    private string motivoAnulacion = "";
+
+    private bool guardando;
+    private (int BltId, string Numero, int Cantidad, decimal Total)? loteGenerado;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private IEnumerable<ContrasenaResumen> Transferencias => pendientes.Where(c => c.FormaPago == "T");
+    private IEnumerable<ContrasenaResumen> Cheques => pendientes.Where(c => c.FormaPago == "C");
+    private decimal TotalSeleccion => pendientes.Where(c => seleccion.Contains(c.CpaId)).Sum(c => c.Total);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var usuario = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User;
+            int? dia = usuario?.ObtenerSucId() is int s ? await PagosRepository.ConsultarDiaPagoSucursalAsync(s) : null;
+            if (dia is int d)
+            {
+                var actual = ((int)DateTime.Today.DayOfWeek + 6) % 7 + 1;
+                proximoDia = DateTime.Today.AddDays((d - actual + 7) % 7);
+            }
+            pagoHasta = proximoDia;
+            cuentas = await BancosRepository.ConsultarCuentasAsync(soloActivas: true);
+            bcbId = cuentas.FirstOrDefault()?.BcbId ?? 0;
+            chequeras = await CuentasRepository.ConsultarChequerasAsync();
+            await CargarPendientesAsync();
+            await CargarLotesAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private async Task CargarPendientesAsync()
+    {
+        try
+        {
+            pendientes = await PagosRepository.ConsultarContrasenasAsync("E", null, null, null, pagoHasta, null);
+            seleccion.IntersectWith(pendientes.Where(c => c.FormaPago == "T" && c.TieneCuenta).Select(c => c.CpaId));
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task CargarLotesAsync()
+    {
+        try { lotes = await PagosRepository.ConsultarLotesAsync(desde, hasta); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task CambiarHastaAsync(ChangeEventArgs e)
+    {
+        if (!DateTime.TryParse(e.Value?.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var fecha)) return;
+        pagoHasta = fecha.Date;
+        await CargarPendientesAsync();
+    }
+
+    private void CambiarFechaLote(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var fecha)) fechaLote = fecha.Date;
+    }
+
+    private void MarcarTodas(bool marcar)
+    {
+        seleccion.Clear();
+        if (marcar) seleccion.UnionWith(Transferencias.Where(c => c.TieneCuenta).Select(c => c.CpaId));
+    }
+
+    private void Alternar(int cpaId, bool marcar)
+    {
+        if (marcar) seleccion.Add(cpaId);
+        else seleccion.Remove(cpaId);
+    }
+
+    private async Task GenerarLoteAsync()
+    {
+        if (seleccion.Count == 0 || bcbId == 0) return;
+        guardando = true;
+        mensaje = null;
+        try
+        {
+            var total = TotalSeleccion;
+            var cantidad = seleccion.Count;
+            var (bltId, numero) = await PagosRepository.PagarTransferenciaAsync(bcbId, fechaLote, referencia, seleccion.ToList(), await ObtenerUsuIdActualAsync());
+            loteGenerado = (bltId, numero, cantidad, total);
+            seleccion.Clear();
+            referencia = "";
+            await CargarPendientesAsync();
+            await CargarLotesAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private string SiguienteNumero() => chequeras.FirstOrDefault(c => c.CbcId == cbcId)?.SiguienteNumero?.ToString() ?? "";
+
+    private void IniciarCheque(ContrasenaResumen c)
+    {
+        pagandoCheque = c;
+        cbcId = chequeras.FirstOrDefault()?.CbcId ?? 0;
+        numeroCheque = SiguienteNumero();
+        mensaje = chequeras.Count == 0 ? "No hay chequeras activas. Registre una en Caja y bancos › Cuentas y chequeras." : null;
+        esMensajeError = chequeras.Count == 0;
+    }
+
+    private void CambiarChequera(ChangeEventArgs e)
+    {
+        cbcId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        numeroCheque = SiguienteNumero();
+    }
+
+    private async Task PagarChequeAsync()
+    {
+        if (pagandoCheque is null || cbcId == 0) return;
+        guardando = true;
+        try
+        {
+            var c = pagandoCheque;
+            await PagosRepository.PagarContrasenaChequeAsync(c.CpaId, cbcId, numeroCheque, await ObtenerUsuIdActualAsync());
+            mensaje = $"Contraseña {c.Numero} pagada con el cheque {numeroCheque} por Q{c.Total:N2}. El cheque se ve en Pagos a proveedores y en Cheques.";
+            esMensajeError = false;
+            pagandoCheque = null;
+            chequeras = await CuentasRepository.ConsultarChequerasAsync();
+            await CargarPendientesAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private void IniciarAnulacion(LoteTransferencia l)
+    {
+        anulando = l;
+        motivoAnulacion = "";
+        mensaje = null;
+    }
+
+    private async Task AnularLoteAsync()
+    {
+        if (anulando is null) return;
+        guardando = true;
+        try
+        {
+            var numero = anulando.Numero;
+            await PagosRepository.AnularLoteAsync(anulando.BltId, motivoAnulacion.Trim(), await ObtenerUsuIdActualAsync());
+            mensaje = $"Lote {numero} anulado. Sus contraseñas vuelven a estar pendientes de pago.";
+            esMensajeError = false;
+            anulando = null;
+            archivoBltId = null;
+            if (loteGenerado?.Numero == numero) loteGenerado = null;
+            await CargarPendientesAsync();
+            await CargarLotesAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+}

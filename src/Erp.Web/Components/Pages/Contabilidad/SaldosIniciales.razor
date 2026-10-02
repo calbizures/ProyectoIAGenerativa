@@ -1,0 +1,215 @@
+@page "/contabilidad/saldos-iniciales"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CONTABILIDAD_SALDOS_INICIALES")]
+@using Erp.Data.Cargas
+@using Erp.Web.Reportes
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ICargasRepository CargasRepository
+
+<PageTitle>Saldos iniciales</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Saldos iniciales</h1>
+    <p>Exporte la nomenclatura a Excel, ponga el saldo de cada cuenta de movimiento en Debe o Haber y súbala: se genera la partida de apertura. La partida debe cuadrar y la cuenta de inventario se compara con el inventario inicial cargado.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="pasos-carga">
+    <div class="panel-formulario">
+        <h3>1. Exporte la nomenclatura</h3>
+        <p class="texto-ayuda">Las cuentas de agrupación van en gris; si ya hay partida de apertura, trae sus saldos para corregirlos.</p>
+        <a class="boton-icono boton-icono-con-etiqueta" href="reportes/contabilidad/saldos-iniciales.xlsx" download>
+            <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Nomenclatura en Excel</span>
+        </a>
+    </div>
+    <div class="panel-formulario">
+        <h3>2. Suba los saldos</h3>
+        <div class="campo"><label for="saldo-fecha">Fecha de la partida de apertura</label><input id="saldo-fecha" type="date" @bind="fecha" @bind:after="RevalidarAsync" /></div>
+        <label class="casilla"><input type="checkbox" @bind="reemplazar" @bind:after="RevalidarAsync" /> Reemplazar la partida de apertura vigente</label>
+        <div class="campo">
+            <label for="saldo-archivo">Archivo (.xlsx)</label>
+            <InputFile id="saldo-archivo" OnChange="LeerArchivoAsync" accept=".xlsx" />
+        </div>
+    </div>
+    <div class="panel-formulario">
+        <h3>3. Revise y genere la partida</h3>
+        @if (resultado?.Resumen is { } r)
+        {
+            <div class="resumen-totales">
+                <span>Cuentas: <strong>@r.Cuentas</strong></span>
+                <span>Debe: <strong>Q @r.TotalDebe.ToString("N2")</strong></span>
+                <span>Haber: <strong>Q @r.TotalHaber.ToString("N2")</strong></span>
+                <span>Inventario en la partida: <strong>Q @r.InventarioPartida.ToString("N2")</strong></span>
+                <span>Inventario inicial cargado: <strong>Q @r.InventarioCargado.ToString("N2")</strong></span>
+            </div>
+        }
+        else
+        {
+            <p class="texto-ayuda">El archivo se valida completo antes de grabar.</p>
+        }
+        <BotonIcono Icono="save" Tooltip="Generar la partida de apertura" Etiqueta="Generar partida de apertura" Variante="primario"
+                    Deshabilitado="!PuedeGrabar || guardando" OnClick="GrabarAsync" />
+    </div>
+</div>
+
+@if (resultado is not null)
+{
+    <section class="tarjeta">
+        <h2>Validación de @nombreArchivo</h2>
+        <MensajesCargaVista Mensajes="resultado.Mensajes" />
+    </section>
+}
+
+<section class="tarjeta" aria-labelledby="titulo-apertura">
+    <h2 id="titulo-apertura">Partida de apertura vigente</h2>
+    @if (apertura is null)
+    {
+        <p class="estado-vacio">Todavía no hay partida de apertura.</p>
+    }
+    else
+    {
+        <p><strong>#@apertura.AsiId · @apertura.Fecha.ToString("dd/MM/yyyy")</strong> · @apertura.Descripcion · Q @apertura.TotalDebe.ToString("N2") · @apertura.Usuario</p>
+        <table class="tabla-datos">
+            <thead><tr><th class="col-codigo">Cuenta</th><th>Nombre</th><th class="num col-monto">Debe</th><th class="num col-monto">Haber</th></tr></thead>
+            <tbody>
+                @foreach (var l in lineasApertura)
+                {
+                    <tr>
+                        <td class="col-codigo">@l.Codigo</td>
+                        <td>@l.Nombre</td>
+                        <td class="num col-monto">@(l.Debe == 0 ? "" : l.Debe.ToString("N2"))</td>
+                        <td class="num col-monto">@(l.Haber == 0 ? "" : l.Haber.ToString("N2"))</td>
+                    </tr>
+                }
+                <tr>
+                    <td colspan="2"><strong>Totales</strong></td>
+                    <td class="num col-monto"><strong>@lineasApertura.Sum(l => l.Debe).ToString("N2")</strong></td>
+                    <td class="num col-monto"><strong>@lineasApertura.Sum(l => l.Haber).ToString("N2")</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    }
+</section>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private List<FilaSaldoInicial> filas = new();
+    private ResultadoCarga<ResumenSaldosIniciales>? resultado;
+    private PartidaApertura? apertura;
+    private IReadOnlyList<LineaApertura> lineasApertura = Array.Empty<LineaApertura>();
+    private DateTime fecha = new(DateTime.Today.Year, 1, 1);
+    private bool reemplazar;
+    private string nombreArchivo = "";
+    private bool lecturaConErrores;
+    private List<MensajeCarga> erroresLectura = new();
+    private bool guardando;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private bool PuedeGrabar => resultado is not null && !resultado.TieneErrores && !lecturaConErrores && filas.Count > 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAperturaAsync();
+        if (apertura is not null) fecha = apertura.Fecha;
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private async Task CargarAperturaAsync()
+    {
+        try { (apertura, lineasApertura) = await CargasRepository.ConsultarAperturaAsync(); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task LeerArchivoAsync(InputFileChangeEventArgs e)
+    {
+        mensaje = null;
+        resultado = null;
+        filas = new();
+        nombreArchivo = e.File.Name;
+        try
+        {
+            using var memoria = new MemoryStream();
+            await e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(memoria);
+            memoria.Position = 0;
+            using var lector = LectorExcel.Leer(memoria, ReportesExcel.ColumnasSaldosIniciales);
+            var faltantes = lector.ColumnasFaltantes(new[] { "Código", "Debe", "Haber" }).ToList();
+            if (lector.Errores.Count == 0 && faltantes.Count > 0)
+                lector.Errores.Add(new MensajeCarga { Mensaje = $"Faltan las columnas: {string.Join(", ", faltantes)}." });
+            if (lector.Errores.Count == 0)
+                foreach (var fila in lector.Filas)
+                {
+                    // Las filas sin código (totales, notas) no son cuentas.
+                    var codigo = lector.Texto(fila, "Código");
+                    if (codigo is null) continue;
+                    filas.Add(new FilaSaldoInicial { Fila = fila.RowNumber(), Codigo = codigo, Debe = lector.Numero(fila, "Debe"), Haber = lector.Numero(fila, "Haber") });
+                }
+
+            erroresLectura = lector.Errores.ToList();
+            lecturaConErrores = erroresLectura.Count > 0;
+            // Sin encabezados válidos no hay filas que validar.
+            if (erroresLectura.Any(m => m.Fila == 0))
+            {
+                resultado = new ResultadoCarga<ResumenSaldosIniciales> { Mensajes = erroresLectura };
+                return;
+            }
+            await RevalidarAsync();
+        }
+        catch (Exception ex) when (ex is not Microsoft.Data.SqlClient.SqlException)
+        {
+            mensaje = "No se pudo leer el archivo. Verifique que sea un libro de Excel (.xlsx) válido y que no esté abierto en otro programa.";
+            esMensajeError = true;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    // Valida en la base y junta esos mensajes con los valores que no se pudieron leer.
+    private async Task RevalidarAsync()
+    {
+        if (filas.Count == 0) return;
+        try
+        {
+            var validacion = await CargasRepository.ProcesarSaldosInicialesAsync(fecha, filas, soloValidar: true, reemplazar, await ObtenerUsuIdActualAsync());
+            resultado = new ResultadoCarga<ResumenSaldosIniciales>
+            {
+                Mensajes = erroresLectura.Concat(validacion.Mensajes).OrderBy(m => m.Fila).ThenBy(m => m.Tipo == "E" ? 0 : 1).ToList(),
+                Resumen = validacion.Resumen
+            };
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task GrabarAsync()
+    {
+        guardando = true;
+        try
+        {
+            resultado = await CargasRepository.ProcesarSaldosInicialesAsync(fecha, filas, soloValidar: false, reemplazar, await ObtenerUsuIdActualAsync());
+            if (resultado.Resumen?.Grabado == true)
+            {
+                mensaje = $"Partida de apertura #{resultado.Resumen.AsiId} generada por Q {resultado.Resumen.TotalDebe:N2}.";
+                esMensajeError = false;
+                filas = new();
+                reemplazar = false;
+                await CargarAperturaAsync();
+            }
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+}

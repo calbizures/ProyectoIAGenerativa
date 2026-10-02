@@ -1,0 +1,50 @@
+@* Logotipo de la compañía (General > Compañías). Sin CiaId es el de la
+   compañía de la sucursal del usuario o, sin sesión, el de la primera
+   compañía activa. Si la compañía no tiene logotipo se muestra ChildContent
+   (por ejemplo, el logotipo del sistema). *@
+@using Erp.Data.General
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IGeneralRepository GeneralRepository
+
+@if (logo?.TieneLogo == true)
+{
+    <img src="@logo.Url" alt="@logo.Nombre" class="@Clase" />
+    @if (ClaseNombre is not null)
+    {
+        <span class="@ClaseNombre">@logo.Nombre</span>
+    }
+}
+else if (cargado)
+{
+    @ChildContent
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    [Parameter] public int? CiaId { get; set; }
+    [Parameter] public string? Clase { get; set; }
+    // Con clase, junto al logotipo se muestra el nombre de la compañía.
+    [Parameter] public string? ClaseNombre { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private CompaniaLogo? logo;
+    private bool cargado;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            var sucId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerSucId();
+            logo = await GeneralRepository.ConsultarLogoAsync(CiaId, sucId, soloVersion: true);
+        }
+        catch (Exception)
+        {
+            // Sin logotipo (p. ej. la base aún no tiene el script 40) se usa el contenido alterno.
+            logo = null;
+        }
+        cargado = true;
+    }
+}

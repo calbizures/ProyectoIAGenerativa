@@ -1,0 +1,258 @@
+@page "/fel/documentos"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:FEL_ADMIN")]
+@using Erp.Data.Fel
+@using Erp.Web.Fel
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IFelRepository FelRepository
+@inject FelService FelService
+
+<PageTitle>Documentos electrónicos</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Documentos electrónicos (FEL)</h1>
+    <p>Estado de certificación de facturas y notas ante SAT. Los pendientes por falla de comunicación se reintentan solos; los rechazados se corrigen y se envían de nuevo desde aquí.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="fel-conteos" role="group" aria-label="Filtrar por estado">
+    <button type="button" class="fel-conteo @(filtroEstado == "" ? "activo" : "")" @onclick='() => FiltrarEstado("")'>
+        <span class="fel-conteo-valor">@todos.Count</span><span>Todos</span>
+    </button>
+    @foreach (var (codigo, texto) in FelVista.Estados)
+    {
+        var n = todos.Count(d => d.FelEstado == codigo);
+        <button type="button" class="fel-conteo @(filtroEstado == codigo ? "activo" : "")" @onclick="() => FiltrarEstado(codigo)" disabled="@(n == 0 && filtroEstado != codigo)">
+            <span class="fel-conteo-valor">@n</span><span class="estado-badge @FelVista.Clase(codigo)">@texto</span>
+        </button>
+    }
+</div>
+
+<div class="barra-filtros">
+    <FiltroPeriodo @bind-Desde="desde" @bind-Hasta="hasta" AlCambiar="CargarAsync" />
+    <BotonIcono Icono="search" Tooltip="Consultar" Etiqueta="Consultar" OnClick="CargarAsync" />
+    <input type="search" placeholder="Filtrar por documento, cliente o autorización" aria-label="Filtrar por documento, cliente o autorización"
+           @bind="texto" @bind:event="oninput" @bind:after="() => pagina = 1" />
+    <span class="barra-herramientas-separador"></span>
+    @if (Filtrados.Any(d => d.FelEstado is "N" or "P" or "R" && d.EstadoDocumento == "G"))
+    {
+        <BotonIcono Icono="refresh-cw" Tooltip="Enviar los no enviados, pendientes y rechazados de la lista, del más antiguo al más reciente" Etiqueta="Enviar pendientes"
+                    Variante="primario" Deshabilitado="procesando" OnClick="EnviarPendientesAsync" />
+    }
+</div>
+
+@if (Filtrados.Count == 0)
+{
+    <p class="estado-vacio">No hay documentos para los filtros seleccionados.</p>
+}
+else
+{
+    <table class="tabla-datos">
+        <thead>
+            <tr>
+                <th class="col-fecha">Fecha</th><th>Documento</th><th>Cliente</th><th class="num">Total</th><th class="col-codigo">DTE</th>
+                <th class="col-estado">Estado FEL</th><th>Autorización / mensaje</th><th class="col-acciones">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var d in Paginador.Recortar(Filtrados, pagina))
+            {
+                <tr class="@(abiertoId == d.EncId ? "fila-seleccionada" : "")">
+                    <td class="col-fecha">@d.Fecha.ToString("dd/MM/yyyy")</td>
+                    <td>@d.TdoCodigo @d.Documento @(d.EstadoDocumento != "G" ? "(anulado)" : "")</td>
+                    <td>@d.Cliente</td>
+                    <td class="num">@d.Total.ToString("N2")</td>
+                    <td class="col-codigo">@(d.TipoDte ?? "—")</td>
+                    <td class="col-estado"><span class="estado-badge @FelVista.Clase(d.FelEstado)">@FelService.EstadoTexto(d.FelEstado)</span></td>
+                    <td class="fel-celda-mensaje">
+                        @if (d.Uuid is not null)
+                        {
+                            <span class="fel-uuid">@d.Uuid</span>
+                            <small class="texto-tenue">Serie @d.Serie · No. @d.Numero · @d.FechaCertificacion?.ToString("dd/MM/yyyy HH:mm")</small>
+                        }
+                        else if (d.Mensaje is not null)
+                        {
+                            <span class="texto-tenue">@d.Mensaje</span>
+                        }
+                        else
+                        {
+                            <span class="texto-tenue">—</span>
+                        }
+                    </td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="eye" Tooltip="Ver detalle y bitácora" OnClick="() => AlternarDetalleAsync(d)" />
+                            @if (d.EstadoDocumento == "G" && d.FelEstado is "N" or "P" or "R")
+                            {
+                                <BotonIcono Icono="refresh-cw" Tooltip="@(d.FelEstado == "N" ? "Certificar" : "Reintentar certificación")" Deshabilitado="procesando" OnClick="() => CertificarAsync(d)" />
+                            }
+                            @if (d.FelEstado == "X")
+                            {
+                                <BotonIcono Icono="refresh-cw" Tooltip="Reintentar anulación ante SAT" Deshabilitado="procesando" OnClick="() => ReintentarAnulacionAsync(d)" />
+                            }
+                        </div>
+                    </td>
+                </tr>
+                @if (abiertoId == d.EncId)
+                {
+                    <tr class="fila-edicion-tabla fel-detalle-fila">
+                        <td colspan="8">
+                            @if (detalle is null)
+                            {
+                                <p class="texto-tenue">Este documento todavía no se ha enviado al certificador.</p>
+                            }
+                            else
+                            {
+                                <div class="fel-detalle">
+                                    <dl>
+                                        <dt>Certificador</dt><dd>@detalle.Certificador</dd>
+                                        <dt>Intentos</dt><dd>@detalle.Intentos</dd>
+                                        @if (detalle.MotivoAnulacion is not null)
+                                        {
+                                            <dt>Motivo de anulación</dt><dd>@detalle.MotivoAnulacion (@detalle.FechaAnulacion?.ToString("dd/MM/yyyy HH:mm"))</dd>
+                                        }
+                                        <dt>Último mensaje</dt><dd>@(detalle.Mensaje ?? "—")</dd>
+                                    </dl>
+                                    <div class="acciones-fila">
+                                        @if (detalle.XmlEnviado is not null)
+                                        {
+                                            <a class="boton-icono boton-icono-con-etiqueta" href="@($"fel/xml/{d.EncId}/enviado")" download><Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">XML enviado</span></a>
+                                        }
+                                        @if (detalle.XmlCertificado is not null)
+                                        {
+                                            <a class="boton-icono boton-icono-con-etiqueta" href="@($"fel/xml/{d.EncId}/certificado")" download><Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">XML certificado</span></a>
+                                        }
+                                        @if (detalle.XmlAnulacion is not null)
+                                        {
+                                            <a class="boton-icono boton-icono-con-etiqueta" href="@($"fel/xml/{d.EncId}/anulacion")" download><Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">XML de anulación</span></a>
+                                        }
+                                    </div>
+                                </div>
+                                <table class="tabla-datos fel-bitacora">
+                                    <thead><tr><th class="col-fecha">Fecha</th><th>Operación</th><th>Resultado</th><th>Mensaje</th><th>Usuario</th></tr></thead>
+                                    <tbody>
+                                        @foreach (var b in bitacora)
+                                        {
+                                            <tr>
+                                                <td class="col-fecha">@b.Fecha.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                                                <td>@(b.Operacion == "ANULAR" ? "Anulación" : "Certificación")</td>
+                                                <td><span class="estado-badge @(b.Exito ? "estado-badge-activo" : "estado-badge-anulada")">@(b.Exito ? "Correcto" : "Con error")</span></td>
+                                                <td>@b.Mensaje</td>
+                                                <td>@(b.Usuario ?? "Automático")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+    <Paginador Total="Filtrados.Count" @bind-Pagina="pagina" />
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<FelDocumentoResumen> todos = Array.Empty<FelDocumentoResumen>();
+    private string filtroEstado = "";
+    private string texto = "";
+    private DateTime? desde = DateTime.Today.AddDays(-90);
+    private DateTime? hasta = DateTime.Today;
+    private int pagina = 1;
+    private int? abiertoId;
+    private FelDocumentoDetalle? detalle;
+    private IReadOnlyList<FelBitacora> bitacora = Array.Empty<FelBitacora>();
+    private bool procesando;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private IReadOnlyList<FelDocumentoResumen> Filtrados => todos
+        .Where(d => filtroEstado == "" || d.FelEstado == filtroEstado)
+        .Where(d => string.IsNullOrWhiteSpace(texto) || $"{d.Documento} {d.Cliente} {d.Uuid}".Contains(texto.Trim(), StringComparison.CurrentCultureIgnoreCase))
+        .ToList();
+
+    protected override Task OnInitializedAsync() => CargarAsync();
+
+    private async Task<int?> UsuIdAsync() => AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private async Task CargarAsync()
+    {
+        try { todos = await FelRepository.ConsultarDocumentosAsync(null, desde, hasta); pagina = 1; }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); esMensajeError = true; }
+    }
+
+    private void FiltrarEstado(string estado)
+    {
+        filtroEstado = estado;
+        pagina = 1;
+    }
+
+    private async Task AlternarDetalleAsync(FelDocumentoResumen d)
+    {
+        if (abiertoId == d.EncId) { abiertoId = null; return; }
+        abiertoId = d.EncId;
+        (detalle, bitacora) = await FelRepository.ConsultarDetalleAsync(d.EncId);
+    }
+
+    private async Task RefrescarAsync(int encId)
+    {
+        await CargarAsync();
+        if (abiertoId == encId) (detalle, bitacora) = await FelRepository.ConsultarDetalleAsync(encId);
+    }
+
+    private async Task CertificarAsync(FelDocumentoResumen d)
+    {
+        procesando = true;
+        try
+        {
+            var r = await FelService.CertificarAsync(d.EncId, await UsuIdAsync());
+            mensaje = $"{d.Documento}: {r.Mensaje}";
+            esMensajeError = !r.Exito;
+            await RefrescarAsync(d.EncId);
+        }
+        finally { procesando = false; }
+    }
+
+    private async Task ReintentarAnulacionAsync(FelDocumentoResumen d)
+    {
+        procesando = true;
+        try
+        {
+            var (det, _) = await FelRepository.ConsultarDetalleAsync(d.EncId);
+            var r = await FelService.AnularAsync(d.EncId, det?.MotivoAnulacion ?? "", await UsuIdAsync());
+            mensaje = $"{d.Documento}: {r.Mensaje}";
+            esMensajeError = !r.Exito;
+            await RefrescarAsync(d.EncId);
+        }
+        finally { procesando = false; }
+    }
+
+    private async Task EnviarPendientesAsync()
+    {
+        procesando = true;
+        try
+        {
+            var usuId = await UsuIdAsync();
+            int ok = 0, fallas = 0;
+            // Del más antiguo al más reciente: una nota necesita su factura ya certificada.
+            foreach (var d in Filtrados.Where(d => d.FelEstado is "N" or "P" or "R" && d.EstadoDocumento == "G").OrderBy(d => d.EncId).ToList())
+            {
+                var r = await FelService.CertificarAsync(d.EncId, usuId);
+                if (r.Exito) ok++; else fallas++;
+            }
+            mensaje = $"Enviados: {ok} certificados, {fallas} con error.";
+            esMensajeError = fallas > 0 && ok == 0;
+            await CargarAsync();
+        }
+        finally { procesando = false; }
+    }
+}

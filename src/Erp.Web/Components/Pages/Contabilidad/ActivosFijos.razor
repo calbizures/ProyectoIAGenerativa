@@ -1,0 +1,652 @@
+@page "/contabilidad/activos-fijos"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:ACTIVOS_FIJOS")]
+@using Erp.Data.ActivosFijos
+@using Erp.Data.General
+@using Erp.Data.Rrhh
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IActivosFijosRepository ActivosRepository
+@inject IGeneralRepository GeneralRepository
+@inject IRrhhRepository RrhhRepository
+
+<PageTitle>Activos fijos</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Activos fijos</h1>
+    <p>Registro de mobiliario, equipo, vehículos, edificios y demás bienes; depreciación mensual en línea recta con los porcentajes máximos del ISR (Decreto 10-2012, art. 28) y su póliza; bajas y ventas. Los bienes comprados se dan de alta desde Compras marcando la línea como activo fijo.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestana" />
+
+@switch (pestana)
+{
+    case "activos":
+        <div class="barra-herramientas">
+            <select @bind="filtroCategoria" @bind:after="ConsultarAsync" aria-label="Categoría">
+                <option value="">Todas las categorías</option>
+                @foreach (var c in categorias)
+                {
+                    <option value="@c.AfcId">@c.Nombre</option>
+                }
+            </select>
+            <select @bind="filtroEstado" @bind:after="ConsultarAsync" aria-label="Estado">
+                <option value="A">En uso</option>
+                <option value="">Todos</option>
+                <option value="B">Dados de baja</option>
+                <option value="V">Vendidos</option>
+                <option value="N">Anulados</option>
+            </select>
+            <input type="search" placeholder="Código, descripción, serie o responsable" aria-label="Buscar" @bind="filtroTexto" @bind:after="ConsultarAsync" />
+            <BotonIcono Icono="search" Tooltip="Consultar" OnClick="ConsultarAsync" />
+            <span class="barra-herramientas-separador"></span>
+            <a class="boton-icono boton-icono-con-etiqueta" href="reportes/contabilidad/activos-fijos.xlsx" download title="Registro de activos fijos en Excel">
+                <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Excel</span>
+            </a>
+            <BotonIcono Icono="plus" Tooltip="Registrar un activo que no viene de una compra" Etiqueta="Alta manual" Variante="primario" OnClick="NuevoActivo" />
+        </div>
+
+        @if (edicion is not null)
+        {
+            <section class="tarjeta" aria-labelledby="titulo-activo">
+                <h2 id="titulo-activo">@(edicion.AfaId == 0 ? "Alta de activo fijo" : $"Activo {edicion.Codigo}")</h2>
+                <div class="panel-formulario panel-ancho cch-gasto">
+                    <div class="campo campo-ancho"><label for="afa-descripcion">Descripción</label><input id="afa-descripcion" maxlength="200" @bind="edicion.Descripcion" /></div>
+                    <div class="campo">
+                        <label for="afa-categoria">Categoría</label>
+                        <select id="afa-categoria" value="@edicion.AfcId" @onchange="CambiarCategoria" disabled="@BloqueadoContable">
+                            <option value="0">Seleccione...</option>
+                            @foreach (var c in categorias.Where(c => c.Estado == "A" || c.AfcId == edicion.AfcId))
+                            {
+                                <option value="@c.AfcId">@c.Nombre (@c.Porcentaje.ToString("0.##") %)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label for="afa-sucursal">Sucursal</label>
+                        <select id="afa-sucursal" @bind="edicion.SucId">
+                            @foreach (var s in sucursales)
+                            {
+                                <option value="@s.SucId">@s.SucDescripcion</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label for="afa-depto">Centro de costo (gasto de depreciación)</label>
+                        <select id="afa-depto" @bind="edicion.IdDepartamento">
+                            <option value="">(Ninguno)</option>
+                            @foreach (var d in departamentos)
+                            {
+                                <option value="@d.IdDepartamento">@d.Descripcion</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="campo"><label for="afa-responsable">Responsable</label><input id="afa-responsable" maxlength="150" @bind="edicion.Responsable" /></div>
+                    <div class="campo"><label for="afa-serie">Serie, marca, modelo o placa</label><input id="afa-serie" maxlength="100" @bind="edicion.Serie" /></div>
+                    <div class="campo"><label for="afa-ubicacion">Ubicación</label><input id="afa-ubicacion" maxlength="150" @bind="edicion.Ubicacion" /></div>
+                    <div class="campo"><label for="afa-fecha">Fecha de adquisición</label><input id="afa-fecha" type="date" @bind="edicion.FechaAdquisicion" disabled="@BloqueadoDepreciacion" /></div>
+                    <div class="campo"><label for="afa-costo">Costo (sin IVA)</label><input id="afa-costo" type="number" step="0.01" min="0" @bind="edicion.Costo" disabled="@BloqueadoContable" /></div>
+                    <div class="campo"><label for="afa-residual">Valor residual</label><input id="afa-residual" type="number" step="0.01" min="0" @bind="edicion.ValorResidual" disabled="@BloqueadoDepreciacion" /></div>
+                    <div class="campo">
+                        <label for="afa-porcentaje">Depreciación anual (%)</label>
+                        <input id="afa-porcentaje" type="number" step="0.01" min="0" max="@MaximoCategoria" @bind="edicion.Porcentaje" disabled="@BloqueadoDepreciacion" />
+                        <small class="texto-ayuda">Máximo de la categoría: @MaximoCategoria.ToString("0.##") %. Cuota mensual: Q @CuotaMensual.ToString("N2")</small>
+                    </div>
+                    @if (edicion.AfaId == 0)
+                    {
+                        <div class="campo">
+                            <label for="afa-contrapartida">Póliza de alta</label>
+                            <select id="afa-contrapartida" @bind="edicion.CtaIdContrapartida">
+                                <option value="">Sin póliza: el bien ya está en libros</option>
+                                @foreach (var c in cuentasContrapartida)
+                                {
+                                    <option value="@c.CtaId">Contra @c.CtaCodigo — @c.CtaNombre</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                    @if (edicion.CtaIdContrapartida is null && edicion.EncId is null)
+                    {
+                        <div class="campo">
+                            <label for="afa-dep-inicial">Depreciación acumulada anterior</label>
+                            <input id="afa-dep-inicial" type="number" step="0.01" min="0" @bind="edicion.DepreciacionInicial" disabled="@BloqueadoDepreciacion" />
+                            <small class="texto-ayuda">Lo que ya se depreció antes de usar el sistema.</small>
+                        </div>
+                    }
+                    @if (edicion.EncId is null)
+                    {
+                        <div class="campo"><label for="afa-documento">Documento o referencia</label><input id="afa-documento" maxlength="100" placeholder="Ej.: factura 1234, aporte de socios" @bind="edicion.Documento" /></div>
+                    }
+                    <div class="acciones-fila">
+                        <BotonIcono Icono="save" Tooltip="Guardar el activo" Etiqueta="Guardar" Variante="primario" Deshabilitado="guardando" OnClick="GuardarAsync" />
+                        <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => edicion = null" />
+                    </div>
+                </div>
+            </section>
+        }
+
+        @if (baja is not null)
+        {
+            <section class="tarjeta" aria-labelledby="titulo-baja">
+                <h2 id="titulo-baja">Baja o venta de @baja.Activo.Codigo · @baja.Activo.Descripcion</h2>
+                <p class="texto-ayuda">Costo Q @baja.Activo.Costo.ToString("N2") · depreciación acumulada Q @baja.Activo.Acumulada.ToString("N2") · valor en libros Q @baja.Activo.ValorLibros.ToString("N2"). Grabe antes la depreciación de los meses en que todavía se usó.</p>
+                <div class="panel-formulario panel-ancho cch-gasto">
+                    <div class="campo">
+                        <label for="baja-tipo">Tipo</label>
+                        <select id="baja-tipo" @bind="baja.Tipo">
+                            <option value="B">Baja (desuso, robo, destrucción)</option>
+                            <option value="V">Venta</option>
+                        </select>
+                    </div>
+                    <div class="campo"><label for="baja-fecha">Fecha</label><input id="baja-fecha" type="date" @bind="baja.Fecha" /></div>
+                    <div class="campo campo-ancho"><label for="baja-motivo">Motivo</label><input id="baja-motivo" maxlength="250" @bind="baja.Motivo" @bind:event="oninput" /></div>
+                    @if (baja.Tipo == "V")
+                    {
+                        <div class="campo"><label for="baja-precio">Precio de venta (IVA incluido)</label><input id="baja-precio" type="number" step="0.01" min="0" @bind="baja.Precio" @bind:event="oninput" /></div>
+                        <div class="campo">
+                            <label for="baja-cobro">Se cobra en</label>
+                            <select id="baja-cobro" @bind="baja.CtaIdCobro">
+                                <option value="">Seleccione...</option>
+                                @foreach (var c in cuentasCobro)
+                                {
+                                    <option value="@c.CtaId">@c.CtaCodigo — @c.CtaNombre</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                    <p class="texto-ayuda">@ResultadoBaja()</p>
+                    <div class="acciones-fila">
+                        <BotonIcono Icono="ban" Tooltip="Grabar la baja con su póliza" Etiqueta="@(baja.Tipo == "V" ? "Grabar venta" : "Dar de baja")" Variante="peligro"
+                                    Deshabilitado="guardando || baja.Motivo.Trim().Length < 5" Confirmacion="¿Grabar la baja del activo con su póliza?" OnClick="DarDeBajaAsync" />
+                        <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => baja = null" />
+                    </div>
+                </div>
+            </section>
+        }
+
+        <div class="resumen-totales">
+            <span>@activos.Count activo(s)</span>
+            <span>Costo: <strong>Q @activos.Sum(a => a.Costo).ToString("N2")</strong></span>
+            <span>Depreciación acumulada: <strong>Q @activos.Sum(a => a.Acumulada).ToString("N2")</strong></span>
+            <span>Valor en libros: <strong>Q @activos.Sum(a => a.ValorLibros).ToString("N2")</strong></span>
+            <span>Cuota mensual: <strong>Q @activos.Sum(a => a.CuotaMensual).ToString("N2")</strong></span>
+        </div>
+
+        <section class="tarjeta" aria-label="Activos fijos">
+            @if (activos.Count == 0)
+            {
+                <p class="estado-vacio">No hay activos con esos filtros.</p>
+            }
+            else
+            {
+                <div class="tabla-desplazable" tabindex="0" aria-label="Activos fijos">
+                <table class="tabla-datos">
+                    <thead><tr><th class="col-codigo">Código</th><th>Descripción</th><th>Categoría / ubicación</th><th class="col-fecha">Adquisición</th><th class="num col-monto">Costo</th><th class="num col-monto">Dep. acumulada</th><th class="num col-monto">Valor en libros</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+                    <tbody>
+                        @foreach (var a in Paginador.Recortar(activos, pagina))
+                        {
+                            <tr class="@(historialDe == a.AfaId ? "fila-seleccionada" : "")">
+                                <td class="col-codigo"><strong>@a.Codigo</strong></td>
+                                <td>@a.Descripcion@if (a.Serie is not null) {<br /><span class="texto-tenue">@a.Serie</span>}@if (a.Documento is not null) {<br /><span class="texto-tenue">@a.Documento</span>}</td>
+                                <td>@a.Categoria (@a.Porcentaje.ToString("0.##") %)<br /><span class="texto-tenue">@a.Sucursal@(a.Departamento is null ? "" : $" · {a.Departamento}")@(a.Responsable is null ? "" : $" · {a.Responsable}")</span></td>
+                                <td class="col-fecha">@a.FechaAdquisicion.ToString("dd/MM/yyyy")</td>
+                                <td class="num col-monto">@a.Costo.ToString("N2")</td>
+                                <td class="num col-monto">@a.Acumulada.ToString("N2")</td>
+                                <td class="num col-monto">@a.ValorLibros.ToString("N2")</td>
+                                <td class="col-estado"><span class="estado-badge @(a.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@ActivoFijo.NombreEstado(a.Estado)</span>@if (a.FechaBaja is not null) {<br /><span class="texto-tenue">@a.FechaBaja?.ToString("dd/MM/yyyy")</span>}</td>
+                                <td class="col-acciones">
+                                    <div class="acciones-fila">
+                                        <BotonIcono Icono="list" Tooltip="Historial de depreciación" OnClick="() => VerHistorialAsync(a)" />
+                                        @if (a.Estado == "A")
+                                        {
+                                            <BotonIcono Icono="pencil" Tooltip="Editar el activo" OnClick="() => Editar(a)" />
+                                            <BotonIcono Icono="ban" Tooltip="Dar de baja o vender" Variante="peligro" OnClick="() => IniciarBaja(a)" />
+                                        }
+                                        @if (a.AsiIdBaja is not null)
+                                        {
+                                            <a class="boton-icono" href="contabilidad/polizas?id=@a.AsiIdBaja" title="Póliza de la baja" aria-label="Póliza de la baja de @a.Codigo"><Icono Nombre="book-open" Tamano="16" /></a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                            @if (historialDe == a.AfaId)
+                            {
+                                <tr class="fila-subdetalle">
+                                    <td colspan="9">
+                                        @if (historial.Count == 0)
+                                        {
+                                            <p class="texto-ayuda">Todavía no tiene depreciación grabada@(a.DepreciacionInicial > 0 ? $" (depreciación anterior: Q {a.DepreciacionInicial:N2})" : "").</p>
+                                        }
+                                        else
+                                        {
+                                            <table class="doc-tabla">
+                                                <thead><tr><th>Mes</th><th class="num">Depreciación</th><th class="num">Acumulada</th><th>Póliza</th></tr></thead>
+                                                <tbody>
+                                                    @foreach (var h in historial)
+                                                    {
+                                                        <tr><td>@h.Mes.ToString("00")/@h.Anio</td><td class="num">@h.Monto.ToString("N2")</td><td class="num">@h.Acumulada.ToString("N2")</td><td><a href="contabilidad/polizas?id=@h.AsiId">#@h.AsiId</a></td></tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+                </div>
+                <Paginador Total="activos.Count" @bind-Pagina="pagina" />
+            }
+        </section>
+        break;
+
+    case "depreciacion":
+        <section class="tarjeta" aria-labelledby="titulo-depreciar">
+            <h2 id="titulo-depreciar">Depreciación del mes</h2>
+            <div class="barra-herramientas">
+                <label class="filtro-campo">Mes <input type="month" value="@($"{anioDep:0000}-{mesDep:00}")" @onchange="CambiarMesAsync" /></label>
+                <BotonIcono Icono="calculator" Tooltip="Grabar la depreciación del mes con su póliza" Etiqueta="@($"Grabar depreciación · Q {previa.Sum(p => p.Monto):N2}")" Variante="primario"
+                            Deshabilitado="guardando || previa.Count == 0" Confirmacion="@($"¿Grabar la depreciación de {mesDep:00}/{anioDep}?")" OnClick="DepreciarAsync" />
+            </div>
+            <p class="texto-ayuda">Línea recta: (costo − valor residual) × porcentaje anual ÷ 12. Empieza el mes siguiente a la adquisición y para al llegar al valor residual. Póliza: Debe gasto de depreciación (por centro de costo) / Haber depreciación acumulada. Los meses se graban en orden.</p>
+            @if (previa.Count == 0)
+            {
+                <p class="estado-vacio">No hay activos que depreciar en @mesDep.ToString("00")/@anioDep (o ese mes ya está grabado).</p>
+            }
+            else
+            {
+                <table class="tabla-datos">
+                    <thead><tr><th class="col-codigo">Código</th><th>Descripción</th><th>Categoría</th><th>Centro de costo</th><th class="num col-monto">Depreciación</th></tr></thead>
+                    <tbody>
+                        @foreach (var p in previa)
+                        {
+                            <tr><td class="col-codigo">@p.Codigo</td><td>@p.Descripcion</td><td>@p.Categoria</td><td>@p.Departamento</td><td class="num col-monto">@p.Monto.ToString("N2")</td></tr>
+                        }
+                    </tbody>
+                    <tfoot><tr class="fila-total"><td colspan="4">Total del mes</td><td class="num">@previa.Sum(p => p.Monto).ToString("N2")</td></tr></tfoot>
+                </table>
+            }
+        </section>
+        <section class="tarjeta" aria-labelledby="titulo-corridas">
+            <h2 id="titulo-corridas">Depreciaciones grabadas</h2>
+            @if (corridas.Count == 0)
+            {
+                <p class="estado-vacio">Todavía no se ha grabado ninguna depreciación.</p>
+            }
+            else
+            {
+                var ultima = corridas.Where(c => c.Estado == "V").OrderByDescending(c => c.Anio * 100 + c.Mes).FirstOrDefault();
+                <table class="tabla-datos">
+                    <thead><tr><th>Mes</th><th class="num col-estado">Activos</th><th class="num col-monto">Total</th><th>Póliza</th><th>Grabada</th><th class="col-estado">Estado</th><th class="col-acciones">Acción</th></tr></thead>
+                    <tbody>
+                        @foreach (var c in corridas)
+                        {
+                            <tr>
+                                <td>@c.Mes.ToString("00")/@c.Anio</td>
+                                <td class="num col-estado">@c.Activos</td>
+                                <td class="num col-monto">@c.Total.ToString("N2")</td>
+                                <td>@if (c.AsiId is not null) {<a href="contabilidad/polizas?id=@c.AsiId">#@c.AsiId</a>}</td>
+                                <td>@c.Grabada.ToString("dd/MM/yyyy HH:mm") · @c.Usuario</td>
+                                <td class="col-estado"><span class="estado-badge @(c.Estado == "V" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.Estado == "V" ? "Vigente" : "Anulada")</span></td>
+                                <td class="col-acciones">
+                                    @if (c.AdcId == ultima?.AdcId)
+                                    {
+                                        <BotonIcono Icono="ban" Tooltip="Anular esta depreciación y su póliza" Variante="peligro" Confirmacion="¿Anular la depreciación del mes y su póliza?" OnClick="() => AnularCorridaAsync(c)" />
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+        break;
+
+    case "categorias":
+        <section class="tarjeta" aria-labelledby="titulo-categorias">
+            <div class="maestro-detalle-encabezado">
+                <h2 id="titulo-categorias">Categorías</h2>
+                <BotonIcono Icono="plus" Tooltip="Nueva categoría" Etiqueta="Nueva categoría" OnClick="() => categoria = new CategoriaActivo { Porcentaje = 10 }" />
+            </div>
+            <p class="texto-ayuda">Porcentajes máximos anuales del ISR (Decreto 10-2012, art. 28): edificios 5 %; maquinaria, vehículos, mobiliario y equipo 20 %; equipo de computación 33.33 %; herramientas 25 %; demás bienes 10 %.</p>
+            @if (categoria is not null)
+            {
+                <div class="panel-formulario panel-ancho cch-gasto">
+                    <div class="campo"><label for="afc-codigo">Código</label><input id="afc-codigo" maxlength="10" @bind="categoria.Codigo" /></div>
+                    <div class="campo campo-ancho"><label for="afc-nombre">Nombre</label><input id="afc-nombre" maxlength="100" @bind="categoria.Nombre" /></div>
+                    <div class="campo"><label for="afc-porcentaje">Depreciación anual (%)</label><input id="afc-porcentaje" type="number" step="0.01" min="0" max="100" @bind="categoria.Porcentaje" /></div>
+                    <div class="campo">
+                        <label for="afc-activo">Cuenta del activo</label>
+                        <select id="afc-activo" @bind="categoria.CtaIdActivo">
+                            <option value="0">Seleccione...</option>
+                            @foreach (var c in cuentasDetalle.Where(c => c.CtaTipo == "A" && c.CtaNaturaleza == "D"))
+                            {
+                                <option value="@c.CtaId">@c.CtaCodigo — @c.CtaNombre</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label for="afc-depreciacion">Depreciación acumulada</label>
+                        <select id="afc-depreciacion" @bind="categoria.CtaIdDepreciacion">
+                            <option value="">(No se deprecia)</option>
+                            @foreach (var c in cuentasDetalle.Where(c => c.CtaTipo == "A" && c.CtaNaturaleza == "H"))
+                            {
+                                <option value="@c.CtaId">@c.CtaCodigo — @c.CtaNombre</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label for="afc-gasto">Gasto de depreciación</label>
+                        <select id="afc-gasto" @bind="categoria.CtaIdGasto">
+                            <option value="">(No se deprecia)</option>
+                            @foreach (var c in cuentasDetalle.Where(c => c.CtaTipo == "G"))
+                            {
+                                <option value="@c.CtaId">@c.CtaCodigo — @c.CtaNombre</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label for="afc-estado">Estado</label>
+                        <select id="afc-estado" @bind="categoria.Estado"><option value="A">Activa</option><option value="I">Inactiva</option></select>
+                    </div>
+                    <div class="acciones-fila">
+                        <BotonIcono Icono="save" Tooltip="Guardar la categoría" Etiqueta="Guardar" Variante="primario" Deshabilitado="guardando" OnClick="GuardarCategoriaAsync" />
+                        <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => categoria = null" />
+                    </div>
+                </div>
+            }
+            <table class="tabla-datos">
+                <thead><tr><th class="col-codigo">Código</th><th>Nombre</th><th class="num col-estado">% anual</th><th>Cuentas (activo / dep. acumulada / gasto)</th><th class="num col-estado">En uso</th><th class="col-estado">Estado</th><th class="col-acciones">Editar</th></tr></thead>
+                <tbody>
+                    @foreach (var c in categorias)
+                    {
+                        <tr>
+                            <td class="col-codigo">@c.Codigo</td>
+                            <td>@c.Nombre</td>
+                            <td class="num col-estado">@c.Porcentaje.ToString("0.##")</td>
+                            <td><span class="texto-tenue">@c.CuentaActivo<br />@(c.CuentaDepreciacion ?? "—")<br />@(c.CuentaGasto ?? "—")</span></td>
+                            <td class="num col-estado">@c.Activos</td>
+                            <td class="col-estado"><span class="estado-badge @(c.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.Estado == "A" ? "Activa" : "Inactiva")</span></td>
+                            <td class="col-acciones"><BotonIcono Icono="pencil" Tooltip="Editar la categoría" OnClick="() => EditarCategoria(c)" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+        break;
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private static readonly IReadOnlyList<PestanaItem> Pestanas = new[]
+    {
+        new PestanaItem("activos", "Activos"), new PestanaItem("depreciacion", "Depreciación mensual"), new PestanaItem("categorias", "Categorías")
+    };
+
+    private string pestana = "activos";
+    private IReadOnlyList<CategoriaActivo> categorias = Array.Empty<CategoriaActivo>();
+    private IReadOnlyList<ActivoFijo> activos = Array.Empty<ActivoFijo>();
+    private IReadOnlyList<DepreciacionMes> historial = Array.Empty<DepreciacionMes>();
+    private IReadOnlyList<DepreciacionPrevia> previa = Array.Empty<DepreciacionPrevia>();
+    private IReadOnlyList<DepreciacionCorrida> corridas = Array.Empty<DepreciacionCorrida>();
+    private IReadOnlyList<SucursalDetalle> sucursales = Array.Empty<SucursalDetalle>();
+    private IReadOnlyList<Departamento> departamentos = Array.Empty<Departamento>();
+    private IReadOnlyList<CuentaContable> cuentasDetalle = Array.Empty<CuentaContable>();
+    private IReadOnlyList<CuentaContable> cuentasContrapartida = Array.Empty<CuentaContable>();
+    private IReadOnlyList<CuentaContable> cuentasCobro = Array.Empty<CuentaContable>();
+    private string filtroCategoria = "";
+    private string filtroEstado = "A";
+    private string? filtroTexto;
+    private int pagina = 1;
+    private int? historialDe;
+    private ActivoFijo? edicion;
+    private bool edicionDepreciada;
+    private CategoriaActivo? categoria;
+    private Baja? baja;
+    private int anioDep = DateTime.Today.AddMonths(-1).Year;
+    private int mesDep = DateTime.Today.AddMonths(-1).Month;
+    private decimal tasaIva = 12m;
+    private bool guardando;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private sealed class Baja
+    {
+        public ActivoFijo Activo { get; set; } = new();
+        public string Tipo { get; set; } = "B";
+        public DateTime Fecha { get; set; } = DateTime.Today;
+        public string Motivo { get; set; } = "";
+        public decimal? Precio { get; set; }
+        public int? CtaIdCobro { get; set; }
+    }
+
+    private decimal MaximoCategoria => categorias.FirstOrDefault(c => c.AfcId == edicion?.AfcId)?.Porcentaje ?? 0;
+    private decimal CuotaMensual => edicion is null ? 0 : Math.Round((edicion.Costo - edicion.ValorResidual) * edicion.Porcentaje / 1200m, 2, MidpointRounding.AwayFromZero);
+    // Con compra o póliza de alta el costo y la categoría salen de esa póliza.
+    private bool BloqueadoContable => edicion is not null && edicion.AfaId != 0 && (edicion.EncId is not null || edicion.AsiIdAlta is not null || edicionDepreciada);
+    private bool BloqueadoDepreciacion => edicion is not null && edicionDepreciada;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (AuthenticationStateTask is not null)
+                tasaIva = (await GeneralRepository.ConsultarParametrosAsync((await AuthenticationStateTask).User.ObtenerSucId())).CiaPorcIva;
+            categorias = await ActivosRepository.ConsultarCategoriasAsync(soloActivas: false);
+            sucursales = await GeneralRepository.ConsultarSucursalesAsync(null, soloActivas: true);
+            departamentos = await RrhhRepository.ConsultarDepartamentosAsync(soloActivos: true);
+            cuentasDetalle = (await GeneralRepository.ConsultarCuentasContablesAsync()).Where(c => c.CtaAceptaMovimiento && c.CtaEstado == "A").OrderBy(c => c.CtaCodigo).ToList();
+            cuentasContrapartida = cuentasDetalle.Where(c => c.CtaTipo is "P" or "K" || c.CtaCodigo.StartsWith("11")).ToList();
+            cuentasCobro = cuentasDetalle.Where(c => c.CtaCodigo.StartsWith("11")).ToList();
+            await ConsultarAsync();
+            // Propone el mes siguiente a la última depreciación grabada (sin pasar del mes actual).
+            var ultima = (await ActivosRepository.ConsultarCorridasAsync()).Where(c => c.Estado == "V").OrderByDescending(c => c.Anio * 100 + c.Mes).FirstOrDefault();
+            if (ultima is not null)
+            {
+                var siguiente = new DateTime(ultima.Anio, ultima.Mes, 1).AddMonths(1);
+                if (siguiente <= DateTime.Today) { anioDep = siguiente.Year; mesDep = siguiente.Month; }
+            }
+            await CargarDepreciacionAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private void MostrarOk(string texto)
+    {
+        mensaje = texto;
+        esMensajeError = false;
+    }
+
+    private async Task ConsultarAsync()
+    {
+        try
+        {
+            activos = await ActivosRepository.ConsultarAsync(null, int.TryParse(filtroCategoria, out var afc) ? afc : null, null, filtroEstado, filtroTexto);
+            pagina = 1;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task CargarDepreciacionAsync()
+    {
+        previa = await ActivosRepository.ConsultarDepreciacionPreviaAsync(anioDep, mesDep);
+        corridas = await ActivosRepository.ConsultarCorridasAsync();
+    }
+
+    private void NuevoActivo()
+    {
+        mensaje = null;
+        baja = null;
+        edicionDepreciada = false;
+        var cate = categorias.FirstOrDefault(c => c.Estado == "A");
+        edicion = new ActivoFijo { SucId = sucursales.FirstOrDefault()?.SucId ?? 0, AfcId = cate?.AfcId ?? 0, Porcentaje = cate?.Porcentaje ?? 0 };
+    }
+
+    private void Editar(ActivoFijo a)
+    {
+        mensaje = null;
+        baja = null;
+        edicionDepreciada = a.UltimoMes is not null;
+        edicion = new ActivoFijo
+        {
+            AfaId = a.AfaId, Codigo = a.Codigo, Descripcion = a.Descripcion, AfcId = a.AfcId, SucId = a.SucId, IdDepartamento = a.IdDepartamento,
+            Responsable = a.Responsable, Serie = a.Serie, Ubicacion = a.Ubicacion, FechaAdquisicion = a.FechaAdquisicion, Costo = a.Costo,
+            ValorResidual = a.ValorResidual, Porcentaje = a.Porcentaje, DepreciacionInicial = a.DepreciacionInicial, Documento = a.EncId is null ? a.Documento : null,
+            EncId = a.EncId, AsiIdAlta = a.AsiIdAlta
+        };
+    }
+
+    private void CambiarCategoria(ChangeEventArgs e)
+    {
+        if (edicion is null) return;
+        edicion.AfcId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        edicion.Porcentaje = MaximoCategoria;
+    }
+
+    private async Task GuardarAsync()
+    {
+        if (edicion is null) return;
+        if (edicion.AfcId == 0 || string.IsNullOrWhiteSpace(edicion.Descripcion) || edicion.Costo <= 0)
+        {
+            mensaje = "Complete la descripción, la categoría y el costo.";
+            esMensajeError = true;
+            return;
+        }
+        guardando = true;
+        try
+        {
+            var nuevo = edicion.AfaId == 0;
+            await ActivosRepository.GuardarAsync(edicion, await ObtenerUsuIdActualAsync());
+            MostrarOk(nuevo ? (edicion.CtaIdContrapartida is null ? "Activo registrado (sin póliza: ya estaba en libros)." : "Activo registrado con su póliza de alta.") : "Activo guardado.");
+            edicion = null;
+            await ConsultarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task VerHistorialAsync(ActivoFijo a)
+    {
+        if (historialDe == a.AfaId) { historialDe = null; return; }
+        try
+        {
+            historial = await ActivosRepository.ConsultarHistorialAsync(a.AfaId);
+            historialDe = a.AfaId;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void IniciarBaja(ActivoFijo a)
+    {
+        mensaje = null;
+        edicion = null;
+        baja = new Baja { Activo = a };
+    }
+
+    private string ResultadoBaja()
+    {
+        if (baja is null) return "";
+        var libros = baja.Activo.ValorLibros;
+        if (baja.Tipo == "B")
+            return $"Póliza: Debe depreciación acumulada Q {baja.Activo.Acumulada:N2} y pérdida Q {libros:N2} / Haber el activo Q {baja.Activo.Costo:N2}.";
+        var precio = baja.Precio ?? 0;
+        var iva = Math.Round(precio * tasaIva / (100 + tasaIva), 2, MidpointRounding.AwayFromZero);
+        var resultado = precio - iva - libros;
+        return $"IVA débito Q {iva:N2}. {(resultado >= 0 ? "Ganancia" : "Pérdida")} en la venta: Q {Math.Abs(resultado):N2} (precio sin IVA menos valor en libros).";
+    }
+
+    private async Task DarDeBajaAsync()
+    {
+        if (baja is null) return;
+        guardando = true;
+        try
+        {
+            await ActivosRepository.DarDeBajaAsync(baja.Activo.AfaId, baja.Tipo, baja.Fecha, baja.Motivo.Trim(), baja.Tipo == "V" ? baja.Precio : null,
+                baja.Tipo == "V" ? baja.CtaIdCobro : null, await ObtenerUsuIdActualAsync());
+            MostrarOk($"{baja.Activo.Codigo} {(baja.Tipo == "V" ? "vendido" : "dado de baja")} con su póliza.");
+            baja = null;
+            await ConsultarAsync();
+            await CargarDepreciacionAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task CambiarMesAsync(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse($"{e.Value}-01", out var fecha))
+        {
+            anioDep = fecha.Year;
+            mesDep = fecha.Month;
+        }
+        try { previa = await ActivosRepository.ConsultarDepreciacionPreviaAsync(anioDep, mesDep); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task DepreciarAsync()
+    {
+        guardando = true;
+        try
+        {
+            await ActivosRepository.DepreciarAsync(anioDep, mesDep, await ObtenerUsuIdActualAsync());
+            MostrarOk($"Depreciación de {mesDep:00}/{anioDep} grabada con su póliza.");
+            await CargarDepreciacionAsync();
+            await ConsultarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task AnularCorridaAsync(DepreciacionCorrida c)
+    {
+        try
+        {
+            await ActivosRepository.AnularCorridaAsync(c.AdcId, await ObtenerUsuIdActualAsync());
+            MostrarOk($"Depreciación de {c.Mes:00}/{c.Anio} anulada junto con su póliza.");
+            await CargarDepreciacionAsync();
+            await ConsultarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void EditarCategoria(CategoriaActivo c)
+    {
+        categoria = new CategoriaActivo
+        {
+            AfcId = c.AfcId, Codigo = c.Codigo, Nombre = c.Nombre, Porcentaje = c.Porcentaje, CtaIdActivo = c.CtaIdActivo,
+            CtaIdDepreciacion = c.CtaIdDepreciacion, CtaIdGasto = c.CtaIdGasto, Estado = c.Estado
+        };
+    }
+
+    private async Task GuardarCategoriaAsync()
+    {
+        if (categoria is null) return;
+        guardando = true;
+        try
+        {
+            await ActivosRepository.GuardarCategoriaAsync(categoria, await ObtenerUsuIdActualAsync());
+            MostrarOk("Categoría guardada.");
+            categoria = null;
+            categorias = await ActivosRepository.ConsultarCategoriasAsync(soloActivas: false);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+}

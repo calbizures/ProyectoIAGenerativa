@@ -1,0 +1,153 @@
+@* Botón de acción con ícono + tooltip. Uso tipico en filas de tabla:
+   <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => Editar(fila)" />
+   Para acciones principales (una sola vez por pantalla, ej. "Nuevo") pasar Etiqueta
+   para mostrar además un texto junto al ícono.
+   Para acciones que no se pueden deshacer (eliminar, anular) pasar Confirmacion con
+   la pregunta: el primer clic la muestra junto al botón y la acción corre con "Sí".
+   Mientras la acción está en curso el botón queda deshabilitado e ignora otros
+   clics: un doble clic no graba dos veces la misma factura, pago o póliza.
+   Si la acción lanza un error que la pantalla no atrapó, se muestra como aviso
+   flotante y la pantalla sigue funcionando (sin esto la conexión se cerraba y
+   había que recargar la página).
+   Un botón Guardar (ícono save) queda deshabilitado después de grabar, para no
+   grabar dos veces lo mismo. Se vuelve a habilitar al pulsar Editar o Nuevo
+   en la pantalla, al cambiar un campo del mismo formulario o si aparece un
+   mensaje de error (la grabación falló y se puede corregir y reintentar). *@
+@implements IAsyncDisposable
+@inject AvisosServicio Avisos
+@inject EdicionServicio Edicion
+@inject IJSRuntime JS
+@inject ILogger<BotonIcono> Bitacora
+@if (confirmando)
+{
+    <span class="confirmacion-en-linea" role="group" aria-label="@Confirmacion">
+        <span class="confirmacion-texto">@Confirmacion</span>
+        <button type="button" class="boton-mini boton-mini-peligro" @onclick="ConfirmarAsync" @ref="botonSi">Sí</button>
+        <button type="button" class="boton-mini" @onclick="() => confirmando = false">No</button>
+    </span>
+}
+else
+{
+    <button type="@TipoBoton" @ref="boton"
+            title="@(guardado ? "Ya se guardó. Para volver a guardar pulse Editar o cambie algún dato." : null)"
+            class="boton-icono boton-icono-@Variante @(string.IsNullOrEmpty(Etiqueta) ? "" : "boton-icono-con-etiqueta")"
+            aria-label="@(string.IsNullOrEmpty(Etiqueta) ? Tooltip : null)"
+            disabled="@(Deshabilitado || ejecutando || guardado)"
+            aria-busy="@(ejecutando ? "true" : null)"
+            @onclick="ClicAsync">
+        <Icono Nombre="@Icono" Tamano="@TamanoIcono" />
+        @if (!string.IsNullOrEmpty(Etiqueta))
+        {
+            <span class="boton-icono-etiqueta">@Etiqueta</span>
+        }
+        @if (string.IsNullOrEmpty(Etiqueta))
+        {
+            <span class="boton-icono-tip" aria-hidden="true">@Tooltip</span>
+        }
+    </button>
+}
+
+@code {
+    [Parameter] public string Icono { get; set; } = "";
+    [Parameter] public string Tooltip { get; set; } = "";
+    [Parameter] public string? Etiqueta { get; set; }
+    [Parameter] public string Variante { get; set; } = "neutral";
+    [Parameter] public string TipoBoton { get; set; } = "button";
+    [Parameter] public int TamanoIcono { get; set; } = 17;
+    [Parameter] public bool Deshabilitado { get; set; }
+    [Parameter] public string? Confirmacion { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+    // Por omisión solo los botones Guardar se bloquean después de grabar.
+    [Parameter] public bool? BloquearTrasGuardar { get; set; }
+
+    private bool confirmando;
+    private bool ejecutando;
+    private bool enfocarSi;
+    private ElementReference botonSi;
+    private ElementReference boton;
+    private bool guardado;
+    private bool vigilando;
+    private DotNetObjectReference<BotonIcono>? referencia;
+
+    private bool Bloquea => BloquearTrasGuardar ?? Icono == "save";
+    private bool Reabre => Icono is "pencil" or "plus";
+
+    protected override void OnInitialized()
+    {
+        if (Bloquea) Edicion.Reabierta += AlReabrir;
+    }
+
+    private void AlReabrir() => Desbloquear();
+
+    [JSInvokable]
+    public void Desbloquear()
+    {
+        if (!guardado) return;
+        guardado = false;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ClicAsync()
+    {
+        if (ejecutando || guardado) return;
+        if (Reabre) Edicion.Reabrir();
+        if (string.IsNullOrEmpty(Confirmacion))
+        {
+            await EjecutarAsync();
+            return;
+        }
+        confirmando = true;
+        enfocarSi = true;
+    }
+
+    private async Task ConfirmarAsync()
+    {
+        if (ejecutando) return;
+        confirmando = false;
+        await EjecutarAsync();
+    }
+
+    // La marca se pone antes del primer await, así un segundo clic que llegue
+    // mientras la base responde ya la encuentra puesta.
+    private async Task EjecutarAsync()
+    {
+        ejecutando = true;
+        try
+        {
+            await OnClick.InvokeAsync();
+            // Si la pantalla muestra un error, guardado.js vuelve a habilitarlo.
+            if (Bloquea) guardado = true;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Bitacora.LogError(ex, "Error no atrapado en la acción {Accion}", string.IsNullOrEmpty(Etiqueta) ? Tooltip : Etiqueta);
+            Avisos.MostrarError(MensajesError.Traducir(ex));
+        }
+        finally { ejecutando = false; }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Bloquea && !vigilando && !confirmando)
+        {
+            vigilando = true;
+            referencia ??= DotNetObjectReference.Create(this);
+            try { await JS.InvokeVoidAsync("erpGuardar.vigilar", boton, referencia); }
+            catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException or TaskCanceledException) { }
+        }
+        if (!enfocarSi) return;
+        enfocarSi = false;
+        try { await botonSi.FocusAsync(); } catch (InvalidOperationException) { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Edicion.Reabierta -= AlReabrir;
+        if (vigilando)
+        {
+            try { await JS.InvokeVoidAsync("erpGuardar.olvidar", boton); }
+            catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException or TaskCanceledException) { }
+        }
+        referencia?.Dispose();
+    }
+}

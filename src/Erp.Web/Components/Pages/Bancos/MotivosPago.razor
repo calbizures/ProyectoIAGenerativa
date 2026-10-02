@@ -1,0 +1,126 @@
+@page "/bancos/motivos"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:BANCOS_ADMIN")]
+@using Erp.Data.Bancos
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IBancosRepository BancosRepository
+
+<PageTitle>Motivos de pago</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Motivos de pago</h1>
+    <p>Catálogo del motivo de cada cheque (pago a proveedores, servicios, nómina, etc.).</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<section class="tarjeta" aria-labelledby="titulo-motivos">
+    <div class="maestro-detalle-encabezado">
+        <h2 id="titulo-motivos">Motivos</h2>
+        <BotonIcono Icono="plus" Tooltip="Nuevo motivo" Etiqueta="Nuevo motivo" Variante="primario" OnClick="Nuevo" />
+    </div>
+    @if (editandoId is not null)
+    {
+        <div class="fila-edicion">
+            <input @bind="descripcion" maxlength="64" placeholder="Descripción del motivo" aria-label="Descripción del motivo" />
+            <select @bind="estado" aria-label="Estado">
+                <option value="A">Activo</option>
+                <option value="I">Inactivo</option>
+            </select>
+            <BotonIcono Icono="save" Tooltip="Guardar motivo" Variante="primario" OnClick="GuardarAsync" />
+            <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => editandoId = null" />
+        </div>
+    }
+    @if (motivos.Count == 0)
+    {
+        <p class="estado-vacio">No hay motivos registrados.</p>
+    }
+    else
+    {
+        <table class="tabla-datos">
+            <thead><tr><th>Descripción</th><th class="num col-estado">Cheques</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+            <tbody>
+                @foreach (var m in motivos)
+                {
+                    <tr>
+                        <td>@m.Descripcion</td>
+                        <td class="num col-estado">@m.Cheques</td>
+                        <td class="col-estado"><span class="estado-badge @(m.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(m.Estado == "A" ? "Activo" : "Inactivo")</span></td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                <BotonIcono Icono="pencil" Tooltip="Editar motivo" OnClick="() => Editar(m)" />
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<MotivoPago> motivos = Array.Empty<MotivoPago>();
+    // 0 = nuevo, null = sin edición.
+    private int? editandoId;
+    private string descripcion = "";
+    private string estado = "A";
+    private string? mensaje;
+    private bool esMensajeError;
+
+    protected override Task OnInitializedAsync() => CargarAsync();
+
+    private async Task CargarAsync()
+    {
+        try { motivos = await BancosRepository.ConsultarMotivosAsync(soloActivos: false); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private void Nuevo()
+    {
+        mensaje = null;
+        editandoId = 0;
+        descripcion = "";
+        estado = "A";
+    }
+
+    private void Editar(MotivoPago m)
+    {
+        mensaje = null;
+        editandoId = m.BmpId;
+        descripcion = m.Descripcion;
+        estado = m.Estado;
+    }
+
+    private async Task GuardarAsync()
+    {
+        if (string.IsNullOrWhiteSpace(descripcion))
+        {
+            mensaje = "Ingrese la descripción del motivo.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            var usuId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+            await BancosRepository.GuardarMotivoAsync(editandoId == 0 ? null : editandoId, descripcion.Trim(), estado, usuId);
+            mensaje = editandoId == 0 ? "Motivo creado." : "Motivo actualizado.";
+            esMensajeError = false;
+            editandoId = null;
+            await CargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

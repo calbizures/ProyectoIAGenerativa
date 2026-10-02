@@ -1,0 +1,57 @@
+@* Balanza de comprobación: saldo inicial, movimientos y saldo final (deudor / acreedor). *@
+@using Erp.Data.Contabilidad
+
+@if (Filas.Count == 0)
+{
+    <p class="estado-vacio">No hay saldos ni movimientos en ese rango.</p>
+}
+else
+{
+    var raiz = Filas.Where(f => f.Nivel == Filas.Min(x => x.Nivel)).ToList();
+    <div class="tabla-desplazable" tabindex="0" aria-label="Balanza de comprobación">
+        <table class="tabla-datos tabla-contable">
+            <thead>
+                <tr><th rowspan="2" class="col-codigo">Cuenta</th><th rowspan="2">Nombre</th><th colspan="2" class="centrado">Saldo inicial</th><th colspan="2" class="centrado">Movimientos</th><th colspan="2" class="centrado">Saldo final</th></tr>
+                <tr><th class="num col-monto">Deudor</th><th class="num col-monto">Acreedor</th><th class="num col-monto">Debe</th><th class="num col-monto">Haber</th><th class="num col-monto">Deudor</th><th class="num col-monto">Acreedor</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var f in Filas)
+                {
+                    <tr class="@ClaseNivel(f.Nivel)">
+                        <td class="col-codigo">@f.Codigo</td>
+                        <td class="sangria-@f.Nivel">@f.Cuenta</td>
+                        <td class="num col-monto">@Monto(f.InicialDeudor)</td>
+                        <td class="num col-monto">@Monto(f.InicialAcreedor)</td>
+                        <td class="num col-monto">@Monto(f.Debe)</td>
+                        <td class="num col-monto">@Monto(f.Haber)</td>
+                        <td class="num col-monto">@Monto(f.FinalDeudor)</td>
+                        <td class="num col-monto">@Monto(f.FinalAcreedor)</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                @* Sumas de las cuentas de primer nivel: deudor = acreedor si la contabilidad cuadra. *@
+                <tr class="fila-total">
+                    <td colspan="2">Sumas iguales</td>
+                    <td class="num">@raiz.Sum(f => f.InicialDeudor).ToString("N2")</td>
+                    <td class="num">@raiz.Sum(f => f.InicialAcreedor).ToString("N2")</td>
+                    <td class="num">@raiz.Sum(f => f.Debe).ToString("N2")</td>
+                    <td class="num">@raiz.Sum(f => f.Haber).ToString("N2")</td>
+                    <td class="num">@raiz.Sum(f => f.FinalDeudor).ToString("N2")</td>
+                    <td class="num">@raiz.Sum(f => f.FinalAcreedor).ToString("N2")</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    @if (raiz.Sum(f => f.FinalDeudor) != raiz.Sum(f => f.FinalAcreedor) || raiz.Sum(f => f.Debe) != raiz.Sum(f => f.Haber))
+    {
+        <p class="mensaje-error" role="alert">La balanza no cuadra: revise Contabilidad &gt; Revisión de integridad.</p>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<BalanzaFila> Filas { get; set; } = Array.Empty<BalanzaFila>();
+
+    private static string Monto(decimal valor) => valor == 0 ? "" : valor.ToString("N2");
+    private string ClaseNivel(int nivel) => nivel < Filas.Max(f => f.Nivel) ? $"fila-nivel fila-nivel-{nivel}" : "";
+}

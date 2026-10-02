@@ -1,0 +1,63 @@
+@page "/rrhh/libro-salarios/imprimir"
+@layout Erp.Web.Components.Layout.ReporteLayout
+@attribute [Authorize(Policy = "Permiso:RRHH_ADMIN")]
+@using Erp.Data.Rrhh
+@inject IRrhhRepository RrhhRepository
+
+@* Folios del libro de salarios para imprimir en las hojas autorizadas por el
+   Ministerio de Trabajo o guardar en PDF: carta horizontal, un trabajador
+   por hoja. *@
+<PageTitle>Libro de salarios @Anio</PageTitle>
+
+<div class="reporte-acciones">
+    <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
+        <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir o guardar PDF</span>
+    </button>
+</div>
+
+@if (error is not null)
+{
+    <p class="mensaje-error" role="alert">@error</p>
+}
+else if (libro?.Patrono is { } patrono)
+{
+    <style>@@page { size: letter landscape; margin: 9mm 10mm; }</style>
+    @if (libro.Trabajadores.Count == 0)
+    {
+        <p class="estado-vacio">No hay nóminas aprobadas en @Anio.</p>
+    }
+    @foreach (var t in libro.Trabajadores)
+    {
+        <div class="libro-hoja">
+            <div class="reporte-encabezado">
+                <div>
+                    <LogoCompania CiaId="patrono.CiaId" Clase="reporte-logo" />
+                    <h1>Libro de salarios</h1>
+                </div>
+                <div class="reporte-meta">
+                    Código de Trabajo, art. 102 · Acuerdo Ministerial 124-2019<br />
+                    @patrono.Direccion
+                </div>
+            </div>
+            <LibroSalariosFolio Patrono="patrono" Trabajador="t" Renglones="libro.RenglonesDe(t.IdEmpleado).ToList()" ConFirma="true" />
+        </div>
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "cia")] public int Cia { get; set; }
+    [SupplyParameterFromQuery] public int Anio { get; set; }
+    [SupplyParameterFromQuery] public int? Empleado { get; set; }
+
+    private LibroSalarios? libro;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            libro = await RrhhRepository.ConsultarLibroSalariosAsync(Cia, Anio, Empleado);
+        }
+        catch (Exception ex) { error = MensajesError.Traducir(ex); }
+    }
+}
