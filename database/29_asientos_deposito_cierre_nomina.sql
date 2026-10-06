@@ -7,7 +7,7 @@
 --   * Depósito de caja a banco (paCajaDepositoInsertar):
 --         Debe  DEPOSITO_BANCOS   valor depositado
 --         Haber DEPOSITO_CAJA     valor depositado
---   * Cierre de caja con diferencia dentro de la tolerancia (sp_pos_caja_cerrar).
+--   * Cierre de caja con diferencia dentro de la tolerancia (paCajaCerrar).
 --     Si cuadra exacto no hay partida.
 --         Faltante: Debe CAJA_FALTANTE / Haber COBRO_CAJA
 --         Sobrante: Debe COBRO_CAJA    / Haber CAJA_SOBRANTE
@@ -61,29 +61,29 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_cont_asiento_enc_orige
 	CREATE INDEX [IX_cont_asiento_enc_origen_id] ON dbo.cont_asiento_enc ([asi_origen], [asi_origen_id]) WHERE [asi_origen_id] IS NOT NULL;
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[sp_contabilidad_insertar_asiento]
-	@asi_fecha			DATE,
-	@asi_descripcion	VARCHAR(256) = NULL,
-	@asi_origen			VARCHAR(20) = 'MANUAL',
-	@enc_id				INT = NULL,
-	@pdo_id				INT = NULL,
-	@usu_id				INT = NULL,
-	@detalle			dbo.cont_asiento_det_type READONLY,
-	@asi_id				INT OUTPUT,
-	@asi_origen_id		INT = NULL
+CREATE OR ALTER PROCEDURE [dbo].[paContabilidadAsientoInsertar]
+	@AsiFecha			DATE,
+	@AsiDescripcion	VARCHAR(256) = NULL,
+	@AsiOrigen			VARCHAR(20) = 'MANUAL',
+	@EncId				INT = NULL,
+	@PdoId				INT = NULL,
+	@UsuId				INT = NULL,
+	@Detalle			dbo.cont_asiento_det_type READONLY,
+	@AsiId				INT OUTPUT,
+	@AsiOrigenId		INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
 	SET XACT_ABORT ON;
 
-	IF NOT EXISTS (SELECT 1 FROM @detalle)
+	IF NOT EXISTS (SELECT 1 FROM @Detalle)
 		THROW 51301, 'El asiento debe tener al menos una línea.', 1;
 
-	IF (SELECT ISNULL(SUM(asd_debe), 0) FROM @detalle) <> (SELECT ISNULL(SUM(asd_haber), 0) FROM @detalle)
+	IF (SELECT ISNULL(SUM(asd_debe), 0) FROM @Detalle) <> (SELECT ISNULL(SUM(asd_haber), 0) FROM @Detalle)
 		THROW 51302, 'El asiento no está balanceado: la suma del Debe debe ser igual a la suma del Haber.', 1;
 
-	IF @pdo_id IS NULL
-		EXEC dbo.sp_contabilidad_obtener_o_crear_periodo @fecha = @asi_fecha, @usu_id = @usu_id, @pdo_id = @pdo_id OUTPUT;
+	IF @PdoId IS NULL
+		EXEC dbo.paContabilidadPeriodoObtenerOCrear @Fecha = @AsiFecha, @UsuId = @UsuId, @PdoId = @PdoId OUTPUT;
 
 	BEGIN TRY
 		BEGIN TRANSACTION;
@@ -91,13 +91,13 @@ BEGIN
 		INSERT INTO dbo.cont_asiento_enc
 			(asi_fecha, asi_descripcion, asi_origen, asi_origen_id, enc_id, pdo_id, usu_id, InsUsuario, InsFechaHora)
 		VALUES
-			(@asi_fecha, @asi_descripcion, @asi_origen, @asi_origen_id, @enc_id, @pdo_id, @usu_id, @usu_id, SYSDATETIME());
+			(@AsiFecha, @AsiDescripcion, @AsiOrigen, @AsiOrigenId, @EncId, @PdoId, @UsuId, @UsuId, SYSDATETIME());
 
-		SET @asi_id = SCOPE_IDENTITY();
+		SET @AsiId = SCOPE_IDENTITY();
 
 		INSERT INTO dbo.cont_asiento_det (asi_id, cta_id, asd_debe, asd_haber, asd_descripcion, InsUsuario, InsFechaHora)
-		SELECT @asi_id, cta_id, asd_debe, asd_haber, asd_descripcion, @usu_id, SYSDATETIME()
-		FROM @detalle;
+		SELECT @AsiId, cta_id, asd_debe, asd_haber, asd_descripcion, @UsuId, SYSDATETIME()
+		FROM @Detalle;
 
 		COMMIT TRANSACTION;
 	END TRY
@@ -166,9 +166,9 @@ BEGIN
 	VALUES (@cta_banco, @pcd_valor_deposito, 0, @referencia),
 		   (@cta_caja, 0, @pcd_valor_deposito, @referencia);
 
-	EXEC dbo.sp_contabilidad_insertar_asiento
-		@asi_fecha = @pcd_fecha_deposito, @asi_descripcion = @referencia, @asi_origen = 'DEPOSITO', @asi_origen_id = @pcd_id,
-		@usu_id = @usu_id, @detalle = @detalle, @asi_id = @asi_id OUTPUT;
+	EXEC dbo.paContabilidadAsientoInsertar
+		@AsiFecha = @pcd_fecha_deposito, @AsiDescripcion = @referencia, @AsiOrigen = 'DEPOSITO', @AsiOrigenId = @pcd_id,
+		@UsuId = @usu_id, @Detalle = @detalle, @AsiId = @asi_id OUTPUT;
 
 	COMMIT TRANSACTION;
 END;
@@ -177,21 +177,21 @@ GO
 ------------------------------------------------------------
 -- 3. Cierre de caja: faltante o sobrante dentro de la tolerancia
 ------------------------------------------------------------
-CREATE OR ALTER PROCEDURE [dbo].[sp_pos_caja_cerrar]
-	@pca_id	INT,
-	@usu_id	INT
+CREATE OR ALTER PROCEDURE [dbo].[paCajaCerrar]
+	@PcaId	INT,
+	@UsuId	INT
 AS
 BEGIN
 	SET NOCOUNT ON;
 	SET XACT_ABORT ON;
 
-	IF NOT EXISTS (SELECT 1 FROM dbo.pos_caja_apertura WHERE pca_id = @pca_id AND pca_estado = 'A')
+	IF NOT EXISTS (SELECT 1 FROM dbo.pos_caja_apertura WHERE pca_id = @PcaId AND pca_estado = 'A')
 		THROW 51702, 'La apertura de caja indicada no existe o ya está cerrada.', 1;
 
 	DECLARE @cuadre TABLE (MontoInicial NUMERIC(12, 2), EfectivoCobrado NUMERIC(12, 2), Depositos NUMERIC(12, 2), Cheques NUMERIC(12, 2),
 		Tarjetas NUMERIC(12, 2), OtrasFormas NUMERIC(12, 2), TeoricoTotal NUMERIC(12, 2), FisicoEfectivo NUMERIC(12, 2),
 		FisicoOtrasFormas NUMERIC(12, 2), FisicoTotal NUMERIC(12, 2), Diferencia NUMERIC(12, 2), Tolerancia NUMERIC(12, 2), Cuadra BIT);
-	INSERT INTO @cuadre EXEC dbo.paCorteCajaCuadreConsultar @pca_id = @pca_id;
+	INSERT INTO @cuadre EXEC dbo.paCorteCajaCuadreConsultar @pca_id = @PcaId;
 
 	DECLARE @teorico NUMERIC(12, 2), @fisico NUMERIC(12, 2), @diferencia NUMERIC(12, 2), @tolerancia NUMERIC(12, 2), @cuadra BIT;
 	SELECT @teorico = TeoricoTotal, @fisico = FisicoTotal, @diferencia = Diferencia, @tolerancia = Tolerancia, @cuadra = Cuadra FROM @cuadre;
@@ -214,15 +214,15 @@ BEGIN
 		BEGIN
 			EXEC dbo.paCuentaParametroObtener @Codigo = 'CAJA_FALTANTE', @CtaId = @cta_diferencia OUTPUT;
 			INSERT INTO @detalle (cta_id, asd_debe, asd_haber, asd_descripcion)
-			VALUES (@cta_diferencia, -@diferencia, 0, CONCAT('Faltante al cerrar la apertura ', @pca_id)),
-				   (@cta_caja, 0, -@diferencia, CONCAT('Faltante al cerrar la apertura ', @pca_id));
+			VALUES (@cta_diferencia, -@diferencia, 0, CONCAT('Faltante al cerrar la apertura ', @PcaId)),
+				   (@cta_caja, 0, -@diferencia, CONCAT('Faltante al cerrar la apertura ', @PcaId));
 		END
 		ELSE
 		BEGIN
 			EXEC dbo.paCuentaParametroObtener @Codigo = 'CAJA_SOBRANTE', @CtaId = @cta_diferencia OUTPUT;
 			INSERT INTO @detalle (cta_id, asd_debe, asd_haber, asd_descripcion)
-			VALUES (@cta_caja, @diferencia, 0, CONCAT('Sobrante al cerrar la apertura ', @pca_id)),
-				   (@cta_diferencia, 0, @diferencia, CONCAT('Sobrante al cerrar la apertura ', @pca_id));
+			VALUES (@cta_caja, @diferencia, 0, CONCAT('Sobrante al cerrar la apertura ', @PcaId)),
+				   (@cta_diferencia, 0, @diferencia, CONCAT('Sobrante al cerrar la apertura ', @PcaId));
 		END
 	END
 
@@ -232,20 +232,20 @@ BEGIN
 	   SET pca_estado = 'C',
 		   pca_fecha_corte = SYSDATETIME(),
 		   pca_fecha_cierre = SYSDATETIME(),
-		   usu_id_cierre = @usu_id,
+		   usu_id_cierre = @UsuId,
 		   pca_monto_teorico_total = @teorico,
 		   pca_monto_fisico_total = @fisico,
 		   pca_diferencia = @diferencia,
-		   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
-	 WHERE pca_id = @pca_id;
+		   UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME()
+	 WHERE pca_id = @PcaId;
 
 	IF EXISTS (SELECT 1 FROM @detalle)
 	BEGIN
 		DECLARE @fecha DATE = CAST(GETDATE() AS DATE);
-		DECLARE @descripcion VARCHAR(256) = CONCAT('Diferencia en el cierre de caja, apertura ', @pca_id);
-		EXEC dbo.sp_contabilidad_insertar_asiento
-			@asi_fecha = @fecha, @asi_descripcion = @descripcion, @asi_origen = 'CIERRE_CAJA', @asi_origen_id = @pca_id,
-			@usu_id = @usu_id, @detalle = @detalle, @asi_id = @asi_id OUTPUT;
+		DECLARE @descripcion VARCHAR(256) = CONCAT('Diferencia en el cierre de caja, apertura ', @PcaId);
+		EXEC dbo.paContabilidadAsientoInsertar
+			@AsiFecha = @fecha, @AsiDescripcion = @descripcion, @AsiOrigen = 'CIERRE_CAJA', @AsiOrigenId = @PcaId,
+			@UsuId = @UsuId, @Detalle = @detalle, @AsiId = @asi_id OUTPUT;
 	END
 
 	COMMIT TRANSACTION;
@@ -327,9 +327,9 @@ BEGIN
 	 WHERE IdNomina = @IdNomina;
 
 	DECLARE @descripcion VARCHAR(256) = CONCAT('Nómina ', @descripcion_nomina);
-	EXEC dbo.sp_contabilidad_insertar_asiento
-		@asi_fecha = @fecha, @asi_descripcion = @descripcion, @asi_origen = 'NOMINA', @asi_origen_id = @IdNomina,
-		@usu_id = @UsuId, @detalle = @detalle, @asi_id = @asi_id OUTPUT;
+	EXEC dbo.paContabilidadAsientoInsertar
+		@AsiFecha = @fecha, @AsiDescripcion = @descripcion, @AsiOrigen = 'NOMINA', @AsiOrigenId = @IdNomina,
+		@UsuId = @UsuId, @Detalle = @detalle, @AsiId = @asi_id OUTPUT;
 
 	COMMIT TRANSACTION;
 END;

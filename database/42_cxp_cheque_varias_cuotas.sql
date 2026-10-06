@@ -199,10 +199,10 @@ BEGIN
 
 		DECLARE @asi_descripcion VARCHAR(256) = LEFT(CONCAT('Pago a proveedor con cheque ', @Numero,
 			CASE WHEN @facturas > 1 THEN CONCAT(' (', @facturas, ' facturas)') END), 256);
-		EXEC dbo.sp_contabilidad_insertar_asiento
-			@asi_fecha = @hoy, @asi_descripcion = @asi_descripcion,
-			@asi_origen = 'PAGO_PROVEEDOR', @asi_origen_id = @BceId, @enc_id = @enc_unico,
-			@usu_id = @UsuId, @detalle = @partida, @asi_id = @asi_id OUTPUT;
+		EXEC dbo.paContabilidadAsientoInsertar
+			@AsiFecha = @hoy, @AsiDescripcion = @asi_descripcion,
+			@AsiOrigen = 'PAGO_PROVEEDOR', @AsiOrigenId = @BceId, @EncId = @enc_unico,
+			@UsuId = @UsuId, @Detalle = @partida, @AsiId = @asi_id OUTPUT;
 
 		COMMIT TRANSACTION;
 	END TRY

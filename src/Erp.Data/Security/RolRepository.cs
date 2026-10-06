@@ -9,49 +9,49 @@ public sealed class RolRepository(IDbConnectionFactory connectionFactory) : IRol
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new DynamicParameters();
-		parametros.Add("@rol_codigo", codigo);
-		parametros.Add("@rol_nombre", nombre);
-		parametros.Add("@usu_id", usuarioAccionId);
-		parametros.Add("@rol_id", dbType: DbType.Int32, direction: ParameterDirection.Output);
+		parametros.Add("@RolCodigo", codigo);
+		parametros.Add("@RolNombre", nombre);
+		parametros.Add("@UsuId", usuarioAccionId);
+		parametros.Add("@RolId", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-		await connection.ExecuteAsync("dbo.sp_rol_insertar", parametros, commandType: CommandType.StoredProcedure);
-		return parametros.Get<int>("@rol_id");
+		await connection.ExecuteAsync("dbo.paRolInsertar", parametros, commandType: CommandType.StoredProcedure);
+		return parametros.Get<int>("@RolId");
 	}
 
 	public async Task ActualizarAsync(int rolId, string nombre, int? usuarioAccionId)
 	{
 		using var connection = connectionFactory.CreateConnection();
-		var parametros = new { rol_id = rolId, rol_nombre = nombre, usu_id = usuarioAccionId };
-		await connection.ExecuteAsync("dbo.sp_rol_actualizar", parametros, commandType: CommandType.StoredProcedure);
+		var parametros = new { RolId = rolId, RolNombre = nombre, UsuId = usuarioAccionId };
+		await connection.ExecuteAsync("dbo.paRolActualizar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
 	public async Task EliminarAsync(int rolId, int? usuarioAccionId)
 	{
 		using var connection = connectionFactory.CreateConnection();
-		var parametros = new { rol_id = rolId, usu_id = usuarioAccionId };
-		await connection.ExecuteAsync("dbo.sp_rol_eliminar", parametros, commandType: CommandType.StoredProcedure);
+		var parametros = new { RolId = rolId, UsuId = usuarioAccionId };
+		await connection.ExecuteAsync("dbo.paRolEliminar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
 	public async Task<IReadOnlyList<Rol>> ConsultarAsync(string? estado)
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var filas = await connection.QueryAsync<Rol>(
-			"dbo.sp_rol_consultar", new { rol_estado = estado }, commandType: CommandType.StoredProcedure);
+			"dbo.paRolConsultar", new { RolEstado = estado }, commandType: CommandType.StoredProcedure);
 		return filas.ToList();
 	}
 
 	public async Task AsignarPermisoAsync(int rolId, int perId, int? usuarioAccionId)
 	{
 		using var connection = connectionFactory.CreateConnection();
-		var parametros = new { rol_id = rolId, per_id = perId, usu_id = usuarioAccionId };
-		await connection.ExecuteAsync("dbo.sp_rol_asignar_permiso", parametros, commandType: CommandType.StoredProcedure);
+		var parametros = new { RolId = rolId, PerId = perId, UsuId = usuarioAccionId };
+		await connection.ExecuteAsync("dbo.paRolPermisoAsignar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
 	public async Task RevocarPermisoAsync(int rolId, int perId)
 	{
 		using var connection = connectionFactory.CreateConnection();
-		var parametros = new { rol_id = rolId, per_id = perId };
-		await connection.ExecuteAsync("dbo.sp_rol_revocar_permiso", parametros, commandType: CommandType.StoredProcedure);
+		var parametros = new { RolId = rolId, PerId = perId };
+		await connection.ExecuteAsync("dbo.paRolPermisoRevocar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
 	// No hay un procedimiento dedicado para esta lectura simple (sin lógica de

@@ -14,7 +14,7 @@
      permiso COMPRAS_ORDEN_APROBAR. Una orden en borrador se puede editar.
    - Recepción (paOrdenCompraRecibir): con la factura del proveedor se recibe
      todo o parte de lo pendiente. Crea la compra (COMP) con
-     sp_compras_crear_documento en la misma transacción: entra el inventario a
+     paCompraDocumentoCrear en la misma transacción: entra el inventario a
      la bodega de la orden, se genera la cuenta por pagar y la póliza.
    - Corrección: el total de una compra es el de la factura del proveedor
      (costo con IVA por unidad × cantidad); antes podía diferir un centavo.
@@ -219,7 +219,7 @@ BEGIN
 	IF @suc_id IS NULL
 		THROW 54507, 'Elija una bodega activa para recibir la orden.', 1;
 
-	SET @MonId = ISNULL(@MonId, dbo.fn_moneda_local());
+	SET @MonId = ISNULL(@MonId, dbo.fnMonedaLocal());
 	DECLARE @total NUMERIC(14, 2) = (SELECT SUM(ROUND(cantidad * costo_unitario, 2)) FROM @Detalle);
 
 	BEGIN TRANSACTION;
@@ -446,43 +446,43 @@ GO
 ------------------------------------------------------------
 -- 5. Total de la compra igual al de la factura del proveedor
 ------------------------------------------------------------
-CREATE OR ALTER PROCEDURE [dbo].[sp_compras_crear_documento]
-	@enc_fecha_docto				DATE,
-	@enc_numero_autorizacion		VARCHAR(64) = NULL,
-	@enc_serie_docto				VARCHAR(32) = NULL,
-	@enc_numero_docto				VARCHAR(32) = NULL,
-	@prv_id							INT,
-	@prv_enc_nombres_proveedor		VARCHAR(128) = NULL,
-	@prv_enc_apellidos_proveedor	VARCHAR(128) = NULL,
-	@prv_nit						VARCHAR(16) = NULL,
-	@tdo_id							INT,
-	@enc_fecha_primer_pago			DATE = NULL,
-	@enc_monto_enganche				NUMERIC(12, 2) = 0,
-	@enc_numero_cuotas				INT = 1,
-	@enc_valor_descuento			NUMERIC(13, 2) = 0,
-	@mon_id							INT = NULL,
-	@usu_id							INT = NULL,
-	@detalle						dbo.compra_det_type READONLY,
-	@enc_id							INT OUTPUT
+CREATE OR ALTER PROCEDURE [dbo].[paCompraDocumentoCrear]
+	@EncFechaDocto				DATE,
+	@EncNumeroAutorizacion		VARCHAR(64) = NULL,
+	@EncSerieDocto				VARCHAR(32) = NULL,
+	@EncNumeroDocto				VARCHAR(32) = NULL,
+	@PrvId							INT,
+	@PrvEncNombresProveedor		VARCHAR(128) = NULL,
+	@PrvEncApellidosProveedor	VARCHAR(128) = NULL,
+	@PrvNit						VARCHAR(16) = NULL,
+	@TdoId							INT,
+	@EncFechaPrimerPago			DATE = NULL,
+	@EncMontoEnganche				NUMERIC(12, 2) = 0,
+	@EncNumeroCuotas				INT = 1,
+	@EncValorDescuento			NUMERIC(13, 2) = 0,
+	@MonId							INT = NULL,
+	@UsuId							INT = NULL,
+	@Detalle						dbo.compra_det_type READONLY,
+	@EncId							INT OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
 	SET XACT_ABORT ON;
 
-	IF NOT EXISTS (SELECT 1 FROM @detalle)
+	IF NOT EXISTS (SELECT 1 FROM @Detalle)
 		THROW 51411, 'La compra debe tener al menos una línea de detalle.', 1;
 
-	IF @mon_id IS NULL
-		SET @mon_id = dbo.fn_moneda_local();
+	IF @MonId IS NULL
+		SET @MonId = dbo.fnMonedaLocal();
 
 	-- El total es el de la factura del proveedor: costo unitario con IVA
 	-- redondeado a centavos × cantidad, menos el descuento con IVA (igual que
-	-- en sp_ventas_crear_factura desde el script 52). El asiento sigue
+	-- en paVentaFacturaCrear desde el script 52). El asiento sigue
 	-- cuadrado: inventario o gasto = total - IVA.
 	DECLARE @monto_total NUMERIC(12, 2) = (
 		SELECT SUM(ROUND(ROUND(det_precio_unitario * (1 + ISNULL(det_porc_iva, 0) / 100.0), 2) * det_cantidad, 2)
 				 - ROUND(det_valor_descuento * (1 + ISNULL(det_porc_iva, 0) / 100.0), 2))
-		FROM @detalle
+		FROM @Detalle
 	);
 
 	BEGIN TRY
@@ -495,35 +495,35 @@ BEGIN
 			 enc_valor_descuento, mon_id, usu_id_creacion,
 			 InsUsuario, InsFechaHora)
 		VALUES
-			(@enc_fecha_docto, @enc_numero_autorizacion, @enc_serie_docto, @enc_numero_docto,
-			 @prv_id, @prv_enc_nombres_proveedor, @prv_enc_apellidos_proveedor, @prv_nit, @tdo_id,
-			 @enc_fecha_primer_pago, @enc_monto_enganche, @enc_numero_cuotas, @monto_total,
-			 @enc_valor_descuento, @mon_id, @usu_id,
-			 @usu_id, SYSDATETIME());
+			(@EncFechaDocto, @EncNumeroAutorizacion, @EncSerieDocto, @EncNumeroDocto,
+			 @PrvId, @PrvEncNombresProveedor, @PrvEncApellidosProveedor, @PrvNit, @TdoId,
+			 @EncFechaPrimerPago, @EncMontoEnganche, @EncNumeroCuotas, @monto_total,
+			 @EncValorDescuento, @MonId, @UsuId,
+			 @UsuId, SYSDATETIME());
 
-		SET @enc_id = SCOPE_IDENTITY();
+		SET @EncId = SCOPE_IDENTITY();
 
 		INSERT INTO dbo.inv_documento_det
 			(enc_id, det_item, det_bien_o_servicio, det_cantidad, det_descripcion,
 			 det_precio_unitario, det_valor_descuento, det_sub_total, det_porc_iva, bod_id, pro_id,
 			 InsUsuario, InsFechaHora)
 		SELECT
-			@enc_id, det_item, det_bien_o_servicio, det_cantidad, det_descripcion,
+			@EncId, det_item, det_bien_o_servicio, det_cantidad, det_descripcion,
 			det_precio_unitario, det_valor_descuento, det_sub_total, det_porc_iva, bod_id, pro_id,
-			@usu_id, SYSDATETIME()
-		FROM @detalle;
+			@UsuId, SYSDATETIME()
+		FROM @Detalle;
 
-		EXEC dbo.sp_inv_generar_plan_pagos_proveedor @enc_id = @enc_id, @usu_id = @usu_id;
+		EXEC dbo.paProveedorPlanPagosGenerar @EncId = @EncId, @UsuId = @UsuId;
 
 		UPDATE dbo.inv_documento_enc
 		   SET enc_estado = 'G',
-			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
-		 WHERE enc_id = @enc_id;
+			   UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME()
+		 WHERE enc_id = @EncId;
 
-		EXEC dbo.sp_inventario_ajustar_existencia_documento @enc_id = @enc_id, @usu_id = @usu_id;
+		EXEC dbo.paInventarioExistenciaDocumentoAjustar @EncId = @EncId, @UsuId = @UsuId;
 
 		DECLARE @asi_id INT;
-		EXEC dbo.sp_contabilidad_generar_asiento_documento @enc_id = @enc_id, @usu_id = @usu_id, @asi_id = @asi_id OUTPUT;
+		EXEC dbo.paContabilidadAsientoDocumentoGenerar @EncId = @EncId, @UsuId = @UsuId, @AsiId = @asi_id OUTPUT;
 
 		COMMIT TRANSACTION;
 	END TRY
@@ -610,13 +610,13 @@ BEGIN
 	INNER JOIN dbo.cmp_orden_compra_det deta ON deta.ocd_id = line.ocd_id
 	WHERE line.cantidad > 0;
 
-	EXEC dbo.sp_compras_crear_documento
-		@enc_fecha_docto = @Fecha, @enc_numero_autorizacion = @Autorizacion,
-		@enc_serie_docto = @Serie, @enc_numero_docto = @NumeroDocumento,
-		@prv_id = @prv_id, @prv_enc_nombres_proveedor = @nombre, @prv_enc_apellidos_proveedor = NULL, @prv_nit = @nit,
-		@tdo_id = @tdo_id, @enc_fecha_primer_pago = @FechaPrimerPago, @enc_monto_enganche = @Enganche,
-		@enc_numero_cuotas = @NumeroCuotas, @enc_valor_descuento = 0, @mon_id = @mon_id, @usu_id = @UsuId,
-		@detalle = @detalle, @enc_id = @EncId OUTPUT;
+	EXEC dbo.paCompraDocumentoCrear
+		@EncFechaDocto = @Fecha, @EncNumeroAutorizacion = @Autorizacion,
+		@EncSerieDocto = @Serie, @EncNumeroDocto = @NumeroDocumento,
+		@PrvId = @prv_id, @PrvEncNombresProveedor = @nombre, @PrvEncApellidosProveedor = NULL, @PrvNit = @nit,
+		@TdoId = @tdo_id, @EncFechaPrimerPago = @FechaPrimerPago, @EncMontoEnganche = @Enganche,
+		@EncNumeroCuotas = @NumeroCuotas, @EncValorDescuento = 0, @MonId = @mon_id, @UsuId = @UsuId,
+		@Detalle = @detalle, @EncId = @EncId OUTPUT;
 
 	DECLARE @ocr_id INT;
 	INSERT INTO dbo.cmp_orden_compra_recepcion (ocp_id, enc_id, ocr_fecha, usu_id, InsUsuario, InsFechaHora)

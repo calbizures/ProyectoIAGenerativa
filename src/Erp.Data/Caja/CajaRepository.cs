@@ -70,13 +70,13 @@ public sealed class CajaRepository(IDbConnectionFactory connectionFactory) : ICa
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new DynamicParameters();
-		parametros.Add("@pcr_id", pcrId);
-		parametros.Add("@usu_id", usuarioId);
-		parametros.Add("@pca_monto_inicial", montoInicial);
-		parametros.Add("@pca_id", dbType: DbType.Int32, direction: ParameterDirection.Output);
+		parametros.Add("@PcrId", pcrId);
+		parametros.Add("@UsuId", usuarioId);
+		parametros.Add("@PcaMontoInicial", montoInicial);
+		parametros.Add("@PcaId", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-		await connection.ExecuteAsync("dbo.sp_pos_caja_abrir", parametros, commandType: CommandType.StoredProcedure);
-		return parametros.Get<int>("@pca_id");
+		await connection.ExecuteAsync("dbo.paCajaAbrir", parametros, commandType: CommandType.StoredProcedure);
+		return parametros.Get<int>("@PcaId");
 	}
 
 	public async Task<IReadOnlyList<CajaAperturaActiva>> ConsultarAperturaActivaPorSucursalAsync(int sucId)
@@ -99,8 +99,8 @@ public sealed class CajaRepository(IDbConnectionFactory connectionFactory) : ICa
 	public async Task CerrarCajaAsync(int pcaId, int? usuarioId)
 	{
 		using var connection = connectionFactory.CreateConnection();
-		var parametros = new { pca_id = pcaId, usu_id = usuarioId };
-		await connection.ExecuteAsync("dbo.sp_pos_caja_cerrar", parametros, commandType: CommandType.StoredProcedure);
+		var parametros = new { PcaId = pcaId, UsuId = usuarioId };
+		await connection.ExecuteAsync("dbo.paCajaCerrar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
 	public async Task<IReadOnlyList<FormaPagoTeorico>> ConsultarTeoricoAsync(int pcaId)

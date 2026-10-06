@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------
 -- 16_activar_usuario.sql
 --
--- Agrega paUsuarioActivar (faltaba el complemento de sp_usuario_eliminar):
+-- Agrega paUsuarioActivar (faltaba el complemento de paUsuarioEliminar):
 -- reactiva un usuario que fue desactivado desde el mantenimiento de Usuarios.
 --
 -- Usa el estándar de nomenclatura vigente para procedimientos nuevos

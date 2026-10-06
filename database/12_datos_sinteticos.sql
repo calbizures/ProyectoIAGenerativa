@@ -164,9 +164,9 @@ GO
 -- parámetro ahora se resuelve primero en una variable.
 DECLARE @bcb_id INT;
 DECLARE @gef_bi_id INT = (SELECT gef_id FROM dbo.gen_entidad_financiera WHERE gef_codigo = 'BI');
-EXEC dbo.sp_cuenta_bancaria_insertar
-	@bcb_numero_cuenta = '301-0001122-3', @bcb_descripcion = 'Cuenta monetaria BI',
-	@gef_id = @gef_bi_id, @bcb_id = @bcb_id OUTPUT;
+EXEC dbo.paCuentaBancariaInsertar
+	@BcbNumeroCuenta = '301-0001122-3', @BcbDescripcion = 'Cuenta monetaria BI',
+	@GefId = @gef_bi_id, @BcbId = @bcb_id OUTPUT;
 
 INSERT INTO dbo.bco_cuenta_bancaria_chequera (cbc_cheque_del, cbc_cheque_al, cbc_fecha_recepcion_chequera, bcb_id)
 VALUES (1001, 1100, DATEADD(MONTH, -3, GETDATE()), @bcb_id);
@@ -257,10 +257,10 @@ INSERT INTO dbo.sec_permiso (per_modulo, per_codigo, per_descripcion) VALUES
 GO
 
 DECLARE @rol_admin INT, @rol_vendedor INT, @rol_cajero INT, @rol_contador INT;
-EXEC dbo.sp_rol_insertar @rol_codigo = 'ADMIN', @rol_nombre = 'Administrador', @rol_id = @rol_admin OUTPUT;
-EXEC dbo.sp_rol_insertar @rol_codigo = 'VENDEDOR', @rol_nombre = 'Vendedor', @rol_id = @rol_vendedor OUTPUT;
-EXEC dbo.sp_rol_insertar @rol_codigo = 'CAJERO', @rol_nombre = 'Cajero', @rol_id = @rol_cajero OUTPUT;
-EXEC dbo.sp_rol_insertar @rol_codigo = 'CONTADOR', @rol_nombre = 'Contador', @rol_id = @rol_contador OUTPUT;
+EXEC dbo.paRolInsertar @RolCodigo = 'ADMIN', @RolNombre = 'Administrador', @RolId = @rol_admin OUTPUT;
+EXEC dbo.paRolInsertar @RolCodigo = 'VENDEDOR', @RolNombre = 'Vendedor', @RolId = @rol_vendedor OUTPUT;
+EXEC dbo.paRolInsertar @RolCodigo = 'CAJERO', @RolNombre = 'Cajero', @RolId = @rol_cajero OUTPUT;
+EXEC dbo.paRolInsertar @RolCodigo = 'CONTADOR', @RolNombre = 'Contador', @RolId = @rol_contador OUTPUT;
 
 INSERT INTO dbo.sec_rol_permiso (rol_id, per_id)
 SELECT @rol_admin, per_id FROM dbo.sec_permiso;
@@ -275,10 +275,10 @@ INSERT INTO dbo.sec_rol_permiso (rol_id, per_id)
 SELECT @rol_cajero, per_id FROM dbo.sec_permiso WHERE per_codigo IN ('BANCOS_CAJA_ADMIN', 'VENTAS_FACTURA_CREAR', 'CXC_ADMIN');
 
 DECLARE @usu_admin INT, @usu_vendedor INT, @usu_cajero INT, @usu_contador INT;
-EXEC dbo.sp_usuario_insertar @usu_codigo = 'ADMIN', @usu_usuario = 'admin', @usu_password = 'Demo#2024', @usu_email = 'admin@siq.com.gt', @usu_id = @usu_admin OUTPUT;
-EXEC dbo.sp_usuario_insertar @usu_codigo = 'VEND01', @usu_usuario = 'jperez', @usu_password = 'Demo#2024', @usu_email = 'jperez@siq.com.gt', @usu_id = @usu_vendedor OUTPUT;
-EXEC dbo.sp_usuario_insertar @usu_codigo = 'CAJA01', @usu_usuario = 'mgarcia', @usu_password = 'Demo#2024', @usu_email = 'mgarcia@siq.com.gt', @usu_id = @usu_cajero OUTPUT;
-EXEC dbo.sp_usuario_insertar @usu_codigo = 'CONT01', @usu_usuario = 'lrodriguez', @usu_password = 'Demo#2024', @usu_email = 'lrodriguez@siq.com.gt', @usu_id = @usu_contador OUTPUT;
+EXEC dbo.paUsuarioInsertar @UsuCodigo = 'ADMIN', @UsuUsuario = 'admin', @UsuPassword = 'Demo#2024', @UsuEmail = 'admin@siq.com.gt', @UsuId = @usu_admin OUTPUT;
+EXEC dbo.paUsuarioInsertar @UsuCodigo = 'VEND01', @UsuUsuario = 'jperez', @UsuPassword = 'Demo#2024', @UsuEmail = 'jperez@siq.com.gt', @UsuId = @usu_vendedor OUTPUT;
+EXEC dbo.paUsuarioInsertar @UsuCodigo = 'CAJA01', @UsuUsuario = 'mgarcia', @UsuPassword = 'Demo#2024', @UsuEmail = 'mgarcia@siq.com.gt', @UsuId = @usu_cajero OUTPUT;
+EXEC dbo.paUsuarioInsertar @UsuCodigo = 'CONT01', @UsuUsuario = 'lrodriguez', @UsuPassword = 'Demo#2024', @UsuEmail = 'lrodriguez@siq.com.gt', @UsuId = @usu_contador OUTPUT;
 
 INSERT INTO dbo.sec_usuario_rol (usu_id, rol_id) VALUES
 (@usu_admin, @rol_admin), (@usu_vendedor, @rol_vendedor), (@usu_cajero, @rol_cajero), (@usu_contador, @rol_contador);
@@ -292,10 +292,10 @@ GO
 DECLARE @bod1 INT, @bod2 INT;
 DECLARE @suc1_id INT = (SELECT suc_id FROM dbo.gen_sucursal WHERE suc_codigo = 'SUC01');
 DECLARE @suc2_id INT = (SELECT suc_id FROM dbo.gen_sucursal WHERE suc_codigo = 'SUC02');
-EXEC dbo.sp_bodega_insertar @bod_codigo = 'BOD01', @bod_descripcion = 'Bodega principal Zona 10',
-	@suc_id = @suc1_id, @bod_id = @bod1 OUTPUT;
-EXEC dbo.sp_bodega_insertar @bod_codigo = 'BOD02', @bod_descripcion = 'Bodega sucursal Mixco',
-	@suc_id = @suc2_id, @bod_id = @bod2 OUTPUT;
+EXEC dbo.paBodegaInsertar @BodCodigo = 'BOD01', @BodDescripcion = 'Bodega principal Zona 10',
+	@SucId = @suc1_id, @BodId = @bod1 OUTPUT;
+EXEC dbo.paBodegaInsertar @BodCodigo = 'BOD02', @BodDescripcion = 'Bodega sucursal Mixco',
+	@SucId = @suc2_id, @BodId = @bod2 OUTPUT;
 GO
 
 INSERT INTO dbo.pos_vendedor (pve_codigo, pve_nombres, pve_apellidos, pve_fecha_ingreso, pve_porc_comision) VALUES
@@ -344,12 +344,12 @@ GO
 -- Proveedores
 ------------------------------------------------------------
 DECLARE @p1 INT, @p2 INT, @p3 INT, @p4 INT, @p5 INT, @p6 INT;
-EXEC dbo.sp_proveedor_insertar @prv_codigo='PRV01', @prv_nombre_comercial='TecnoDistribuciones, S.A.', @prv_nit='1122334-0', @prv_contacto='Roberto Aguilar', @prv_telefono_oficina='23456789', @prv_id=@p1 OUTPUT;
-EXEC dbo.sp_proveedor_insertar @prv_codigo='PRV02', @prv_nombre_comercial='Importadora de Cómputo Maya', @prv_nit='2233445-9', @prv_contacto='Sofía Ramírez', @prv_telefono_oficina='23456790', @prv_id=@p2 OUTPUT;
-EXEC dbo.sp_proveedor_insertar @prv_codigo='PRV03', @prv_nombre_comercial='Software Licencias Centroamérica', @prv_nit='3344556-7', @prv_contacto='Diego Herrera', @prv_telefono_oficina='23456791', @prv_id=@p3 OUTPUT;
-EXEC dbo.sp_proveedor_insertar @prv_codigo='PRV04', @prv_nombre_comercial='Redes y Conectividad GT', @prv_nit='4455667-5', @prv_contacto='Paola Castillo', @prv_telefono_oficina='23456792', @prv_id=@p4 OUTPUT;
-EXEC dbo.sp_proveedor_insertar @prv_codigo='PRV05', @prv_nombre_comercial='Suministros de Oficina El Pilar', @prv_nit='5566778-3', @prv_contacto='Manuel Ordóñez', @prv_telefono_oficina='23456793', @prv_id=@p5 OUTPUT;
-EXEC dbo.sp_proveedor_insertar @prv_codigo='PRV06', @prv_nombre_comercial='Servicios de Internet Fibra Óptica', @prv_nit='6677889-1', @prv_contacto='Karla Vásquez', @prv_telefono_oficina='23456794', @prv_id=@p6 OUTPUT;
+EXEC dbo.paProveedorInsertar @PrvCodigo='PRV01', @PrvNombreComercial='TecnoDistribuciones, S.A.', @PrvNit='1122334-0', @PrvContacto='Roberto Aguilar', @PrvTelefonoOficina='23456789', @PrvId=@p1 OUTPUT;
+EXEC dbo.paProveedorInsertar @PrvCodigo='PRV02', @PrvNombreComercial='Importadora de Cómputo Maya', @PrvNit='2233445-9', @PrvContacto='Sofía Ramírez', @PrvTelefonoOficina='23456790', @PrvId=@p2 OUTPUT;
+EXEC dbo.paProveedorInsertar @PrvCodigo='PRV03', @PrvNombreComercial='Software Licencias Centroamérica', @PrvNit='3344556-7', @PrvContacto='Diego Herrera', @PrvTelefonoOficina='23456791', @PrvId=@p3 OUTPUT;
+EXEC dbo.paProveedorInsertar @PrvCodigo='PRV04', @PrvNombreComercial='Redes y Conectividad GT', @PrvNit='4455667-5', @PrvContacto='Paola Castillo', @PrvTelefonoOficina='23456792', @PrvId=@p4 OUTPUT;
+EXEC dbo.paProveedorInsertar @PrvCodigo='PRV05', @PrvNombreComercial='Suministros de Oficina El Pilar', @PrvNit='5566778-3', @PrvContacto='Manuel Ordóñez', @PrvTelefonoOficina='23456793', @PrvId=@p5 OUTPUT;
+EXEC dbo.paProveedorInsertar @PrvCodigo='PRV06', @PrvNombreComercial='Servicios de Internet Fibra Óptica', @PrvNit='6677889-1', @PrvContacto='Karla Vásquez', @PrvTelefonoOficina='23456794', @PrvId=@p6 OUTPUT;
 GO
 
 ------------------------------------------------------------
@@ -359,7 +359,7 @@ CREATE TABLE #producto_precio (pro_id INT, precio NUMERIC(12,2));
 GO
 
 DECLARE @pro_id INT, @bod1 INT = (SELECT bod_id FROM dbo.inv_bodega WHERE bod_codigo='BOD01'), @bod2 INT = (SELECT bod_id FROM dbo.inv_bodega WHERE bod_codigo='BOD02');
-DECLARE @mon_local INT = dbo.fn_moneda_local();
+DECLARE @mon_local INT = dbo.fnMonedaLocal();
 
 -- Cada bloque: inserta el producto y su precio de venta en ambas bodegas.
 DECLARE @codigo VARCHAR(64), @desc VARCHAR(256), @prt VARCHAR(8), @tipo CHAR(1), @maneja BIT, @precio NUMERIC(12,2);
@@ -397,10 +397,10 @@ BEGIN
 	DECLARE @prt_id_sel INT;
 	SELECT @prt_id_sel = prt_id FROM dbo.inv_producto_tipo WHERE prt_codigo = @prt;
 
-	EXEC dbo.sp_producto_insertar
-		@pro_codigo = @codigo, @pro_descripcion = @desc,
-		@prt_id = @prt_id_sel,
-		@pro_tipo_item = @tipo, @pro_maneja_existencia = @maneja, @pro_id = @pro_id OUTPUT;
+	EXEC dbo.paProductoInsertar
+		@ProCodigo = @codigo, @ProDescripcion = @desc,
+		@PrtId = @prt_id_sel,
+		@ProTipoItem = @tipo, @ProManejaExistencia = @maneja, @ProId = @pro_id OUTPUT;
 
 	INSERT INTO dbo.inv_producto_precio (ppr_precio_unitario_venta, ppr_descripcion, ppr_vigencia_desde, pro_id, bod_id, mon_id)
 	VALUES (@precio, 'Precio de lista', DATEADD(MONTH, -6, GETDATE()), @pro_id, @bod1, @mon_local);
@@ -455,9 +455,9 @@ OPEN clientes_cur;
 FETCH NEXT FROM clientes_cur INTO @codigo, @nombres, @apellidos, @nit;
 WHILE @@FETCH_STATUS = 0
 BEGIN
-	EXEC dbo.sp_cliente_insertar
-		@cli_codigo = @codigo, @cli_nombres = @nombres, @cli_apellidos = @apellidos, @cli_nit = @nit,
-		@cli_limite_credito = 15000.00, @cli_direccion_pais = @gt_pais, @cli_id = @cli_id OUTPUT;
+	EXEC dbo.paClienteInsertar
+		@CliCodigo = @codigo, @CliNombres = @nombres, @CliApellidos = @apellidos, @CliNit = @nit,
+		@CliLimiteCredito = 15000.00, @CliDireccionPais = @gt_pais, @CliId = @cli_id OUTPUT;
 	INSERT INTO #cliente VALUES (@cli_id);
 	FETCH NEXT FROM clientes_cur INTO @codigo, @nombres, @apellidos, @nit;
 END
@@ -470,10 +470,10 @@ GO
 DECLARE @pca_id INT;
 DECLARE @pcr1_id INT = (SELECT TOP 1 pcr_id FROM dbo.pos_caja_receptora ORDER BY pcr_id);
 DECLARE @usu_cajero_id INT = (SELECT usu_id FROM dbo.gen_usuario WHERE usu_usuario = 'mgarcia');
-EXEC dbo.sp_pos_caja_abrir
-	@pcr_id = @pcr1_id,
-	@usu_id = @usu_cajero_id,
-	@pca_id = @pca_id OUTPUT;
+EXEC dbo.paCajaAbrir
+	@PcrId = @pcr1_id,
+	@UsuId = @usu_cajero_id,
+	@PcaId = @pca_id OUTPUT;
 GO
 
 ------------------------------------------------------------
@@ -496,12 +496,12 @@ WHERE pro.pro_maneja_existencia = 1;
 DECLARE @enc_compra_inicial INT;
 DECLARE @prv1_id INT = (SELECT TOP 1 prv_id FROM dbo.inv_proveedor ORDER BY prv_id);
 DECLARE @tdo_comp_id INT = (SELECT tdo_id FROM dbo.inv_documento_tipo WHERE tdo_codigo='COMP');
-EXEC dbo.sp_compras_crear_documento
-	@enc_fecha_docto = @fecha_compra, @enc_numero_docto = 'INV-INICIAL-001',
-	@prv_id = @prv1_id,
-	@tdo_id = @tdo_comp_id,
-	@enc_fecha_primer_pago = @primer_pago_inicial,
-	@enc_numero_cuotas = 1, @detalle = @det, @enc_id = @enc_compra_inicial OUTPUT;
+EXEC dbo.paCompraDocumentoCrear
+	@EncFechaDocto = @fecha_compra, @EncNumeroDocto = 'INV-INICIAL-001',
+	@PrvId = @prv1_id,
+	@TdoId = @tdo_comp_id,
+	@EncFechaPrimerPago = @primer_pago_inicial,
+	@EncNumeroCuotas = 1, @Detalle = @det, @EncId = @enc_compra_inicial OUTPUT;
 GO
 
 ------------------------------------------------------------
@@ -539,12 +539,12 @@ BEGIN
 		FROM dbo.inv_producto WHERE pro_id = @pro_sel;
 
 		DECLARE @enc_compra INT;
-		EXEC dbo.sp_compras_crear_documento
-			@enc_fecha_docto = @fecha_compra_i,
-			@enc_numero_docto = @numero_docto_compra,
-			@prv_id = @prv_sel, @tdo_id = @tdo_comp,
-			@enc_fecha_primer_pago = @primer_pago_compra, @enc_numero_cuotas = 1,
-			@detalle = @det2, @enc_id = @enc_compra OUTPUT;
+		EXEC dbo.paCompraDocumentoCrear
+			@EncFechaDocto = @fecha_compra_i,
+			@EncNumeroDocto = @numero_docto_compra,
+			@PrvId = @prv_sel, @TdoId = @tdo_comp,
+			@EncFechaPrimerPago = @primer_pago_compra, @EncNumeroCuotas = 1,
+			@Detalle = @det2, @EncId = @enc_compra OUTPUT;
 	END TRY
 	BEGIN CATCH
 		PRINT 'Compra de reabastecimiento #' + CAST(@i AS VARCHAR) + ' omitida: ' + ERROR_MESSAGE();
@@ -597,13 +597,13 @@ BEGIN
 		BEGIN
 			DECLARE @enc_venta INT, @numero_unico VARCHAR(16), @numero_docto_venta VARCHAR(32) = CONCAT('FAC-', @i);
 			DECLARE @formas_vacio_venta dbo.pago_forma_type;
-			EXEC dbo.sp_ventas_crear_factura
-				@enc_fecha_docto = @fecha_venta, @enc_numero_docto = @numero_docto_venta,
-				@cli_id = @cli_sel, @tdo_id = @tdo_fcam, @pve_id = @vend_sel,
-				@enc_fecha_primer_pago = @fecha_primer_pago, @enc_numero_cuotas = @cuotas,
-				@usu_id = @usu_vend_id,
-				@detalle = @det3, @formas_pago = @formas_vacio_venta,
-				@enc_id = @enc_venta OUTPUT, @enc_numero_unico = @numero_unico OUTPUT;
+			EXEC dbo.paVentaFacturaCrear
+				@EncFechaDocto = @fecha_venta, @EncNumeroDocto = @numero_docto_venta,
+				@CliId = @cli_sel, @TdoId = @tdo_fcam, @PveId = @vend_sel,
+				@EncFechaPrimerPago = @fecha_primer_pago, @EncNumeroCuotas = @cuotas,
+				@UsuId = @usu_vend_id,
+				@Detalle = @det3, @FormasPago = @formas_vacio_venta,
+				@EncId = @enc_venta OUTPUT, @EncNumeroUnico = @numero_unico OUTPUT;
 		END
 	END TRY
 	BEGIN CATCH
@@ -633,7 +633,7 @@ FETCH NEXT FROM cuotas_cur INTO @cpp_id, @saldo;
 WHILE @@FETCH_STATUS = 0
 BEGIN
 	BEGIN TRY
-		EXEC dbo.sp_pos_registrar_pago_cuota @cpp_id = @cpp_id, @valor_pago = @saldo, @pca_id = @pca_id, @usu_id = @usu_cajero, @formas_pago = @formas_vacio_cuota, @ppe_id = @ppe_id OUTPUT;
+		EXEC dbo.paClienteCuotaPagoRegistrar @CppId = @cpp_id, @ValorPago = @saldo, @PcaId = @pca_id, @UsuId = @usu_cajero, @FormasPago = @formas_vacio_cuota, @PpeId = @ppe_id OUTPUT;
 	END TRY
 	BEGIN CATCH
 		PRINT 'Cobro de cuota ' + CAST(@cpp_id AS VARCHAR) + ' omitido: ' + ERROR_MESSAGE();
@@ -666,12 +666,12 @@ BEGIN
 		-- parámetro con nombre; el número de cheque se calcula antes.
 		DECLARE @numero_cheque VARCHAR(16) = CAST(@numero_cheque_base + @contador AS VARCHAR(16));
 
-		EXEC dbo.sp_bancos_emitir_cheque_pago_proveedor
-			@ppg_id = @ppg_id, @cbc_id = @cbc_id,
-			@bce_numero_cheque = @numero_cheque,
-			@valor_pago = @valor_pend,
-			@bmp_id = @bmp_pago_id,
-			@usu_id = @usu_admin, @bce_id = @bce_id OUTPUT;
+		EXEC dbo.paBancoChequePagoProveedorEmitir
+			@PpgId = @ppg_id, @CbcId = @cbc_id,
+			@BceNumeroCheque = @numero_cheque,
+			@ValorPago = @valor_pend,
+			@BmpId = @bmp_pago_id,
+			@UsuId = @usu_admin, @BceId = @bce_id OUTPUT;
 	END TRY
 	BEGIN CATCH
 		PRINT 'Pago a proveedor (cuota ' + CAST(@ppg_id AS VARCHAR) + ') omitido: ' + ERROR_MESSAGE();
@@ -683,15 +683,15 @@ CLOSE pagos_cur; DEALLOCATE pagos_cur;
 GO
 
 ------------------------------------------------------------
--- Anulación de un par de documentos (demuestra sp_documento_anular)
+-- Anulación de un par de documentos (demuestra paDocumentoAnular)
 ------------------------------------------------------------
 DECLARE @enc_a INT, @enc_b INT;
 DECLARE @usu_admin_id INT = (SELECT usu_id FROM dbo.gen_usuario WHERE usu_usuario='admin');
 SELECT TOP 1 @enc_a = enc_id FROM dbo.inv_documento_enc WHERE enc_estado = 'G' AND tdo_id = (SELECT tdo_id FROM dbo.inv_documento_tipo WHERE tdo_codigo='FCAM') ORDER BY enc_id DESC;
-IF @enc_a IS NOT NULL EXEC dbo.sp_documento_anular @enc_id = @enc_a, @usu_id = @usu_admin_id;
+IF @enc_a IS NOT NULL EXEC dbo.paDocumentoAnular @EncId = @enc_a, @UsuId = @usu_admin_id;
 
 SELECT TOP 1 @enc_b = enc_id FROM dbo.inv_documento_enc WHERE enc_estado = 'G' AND tdo_id = (SELECT tdo_id FROM dbo.inv_documento_tipo WHERE tdo_codigo='FCAM') ORDER BY enc_id ASC;
-IF @enc_b IS NOT NULL AND @enc_b <> @enc_a EXEC dbo.sp_documento_anular @enc_id = @enc_b, @usu_id = @usu_admin_id;
+IF @enc_b IS NOT NULL AND @enc_b <> @enc_a EXEC dbo.paDocumentoAnular @EncId = @enc_b, @UsuId = @usu_admin_id;
 GO
 
 ------------------------------------------------------------

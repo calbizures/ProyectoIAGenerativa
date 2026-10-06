@@ -496,7 +496,7 @@
 
     private decimal Subtotal => lineas.Sum(l => l.SubTotal);
     private decimal TotalDescuento => lineas.Sum(l => l.ValorDescuento);
-    // Total que grabará sp_compras_crear_documento: el costo se guarda sin IVA a
+    // Total que grabará paCompraDocumentoCrear: el costo se guarda sin IVA a
     // centavos y el total vuelve a sumarle el IVA por unidad, así que puede
     // diferir un centavo de la suma de los costos con IVA.
     private decimal Total => lineas.Sum(TotalLineaDocumento);
@@ -706,7 +706,7 @@
             return;
         }
 
-        // sp_producto_consultar combina código y descripción con AND (pensado
+        // paProductoConsultar combina código y descripción con AND (pensado
         // para el filtro avanzado de Productos.razor); aquí se busca por
         // nombre O código, así que se consulta cada campo por separado.
         var porCodigo = await ProductoRepository.ConsultarAsync(texto, null, prtId: null, estado: "A", pagina: 1, tamanioPagina: 20);

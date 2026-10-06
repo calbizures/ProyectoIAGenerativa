@@ -172,12 +172,12 @@ BEGIN
 	DECLARE @enc INT, @numero VARCHAR(16), @paso VARCHAR(64), @cli_nuevo INT, @nuevo BIT;
 	BEGIN TRY
 		BEGIN TRANSACTION;
-		SET @paso = 'Grabar la factura (sp_ventas_crear_factura)';
-		EXEC dbo.sp_ventas_crear_factura @enc_fecha_docto = @hoy, @enc_numero_autorizacion = NULL, @enc_serie_docto = NULL, @enc_numero_docto = NULL,
-			@cli_id = @cli, @enc_nombres_cliente = NULL, @enc_apellidos_cliente = NULL, @cli_nit = NULL, @tdo_id = @tdo, @pve_id = NULL,
-			@enc_fecha_primer_pago = @primer, @enc_monto_enganche = 0, @enc_numero_cuotas = 1, @enc_valor_descuento = 0,
-			@enc_direccion_cliente = NULL, @mon_id = @mon, @usu_id = @usu, @detalle = @detalle, @pca_id = NULL, @formas_pago = @formas,
-			@enc_id = @enc OUTPUT, @enc_numero_unico = @numero OUTPUT;
+		SET @paso = 'Grabar la factura (paVentaFacturaCrear)';
+		EXEC dbo.paVentaFacturaCrear @EncFechaDocto = @hoy, @EncNumeroAutorizacion = NULL, @EncSerieDocto = NULL, @EncNumeroDocto = NULL,
+			@CliId = @cli, @EncNombresCliente = NULL, @EncApellidosCliente = NULL, @CliNit = NULL, @TdoId = @tdo, @PveId = NULL,
+			@EncFechaPrimerPago = @primer, @EncMontoEnganche = 0, @EncNumeroCuotas = 1, @EncValorDescuento = 0,
+			@EncDireccionCliente = NULL, @MonId = @mon, @UsuId = @usu, @Detalle = @detalle, @PcaId = NULL, @FormasPago = @formas,
+			@EncId = @enc OUTPUT, @EncNumeroUnico = @numero OUTPUT;
 		SET @paso = 'Registrar un cliente por NIT (paClienteRegistrarPorNit)';
 		EXEC dbo.paClienteRegistrarPorNit @Nit = '7654321-8', @Nombre = 'PRUEBA,DIAGNOSTICO,,CLIENTE,', @UsuId = @usu,
 			@CliId = @cli_nuevo OUTPUT, @Nuevo = @nuevo OUTPUT;

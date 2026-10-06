@@ -303,7 +303,7 @@ CREATE TABLE [dbo].[inv_documento_enc](
 GO
 
 -- Índice único FILTRADO (no una UNIQUE constraint corriente): las compras
--- (sp_compras_crear_documento) nunca llenan enc_numero_unico a propósito, así
+-- (paCompraDocumentoCrear) nunca llenan enc_numero_unico a propósito, así
 -- que con una UNIQUE constraint normal (que en SQL Server solo permite UN
 -- NULL en toda la tabla) apenas la primera compra de la vida del sistema
 -- podía insertarse; cualquier compra o factura siguiente chocaba contra ese

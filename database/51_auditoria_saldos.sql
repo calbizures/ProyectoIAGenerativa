@@ -29,7 +29,7 @@
       las dos pasaban la validación del saldo; la segunda se grababa por su
       total pero solo rebajaba lo que quedaba en las cuotas (póliza mayor
       que lo aplicado). Ahora se rechaza si no alcanza a aplicarse completa.
-      El cheque de una sola cuota (sp_bancos_emitir_cheque_pago_proveedor,
+      El cheque de una sola cuota (paBancoChequePagoProveedorEmitir,
       lo usan los datos de prueba) sobrescribía el pago de otro cheque
       simultáneo; ahora lo detecta y se rechaza. Control 13 en la pantalla
       Contabilidad > Integridad: notas ya grabadas con este defecto.
@@ -472,53 +472,53 @@ BEGIN
 
 	DECLARE @origen VARCHAR(20) = CASE WHEN @es_credito = 1 THEN 'NOTA_CREDITO' ELSE 'NOTA_DEBITO' END;
 	DECLARE @descripcion VARCHAR(256) = CONCAT(@referencia, ' - ', LTRIM(RTRIM(@Motivo)));
-	EXEC dbo.sp_contabilidad_insertar_asiento
-		@asi_fecha = @Fecha, @asi_descripcion = @descripcion, @asi_origen = @origen, @asi_origen_id = @EncId, @enc_id = @EncId,
-		@usu_id = @UsuId, @detalle = @partida, @asi_id = @asi_id OUTPUT;
+	EXEC dbo.paContabilidadAsientoInsertar
+		@AsiFecha = @Fecha, @AsiDescripcion = @descripcion, @AsiOrigen = @origen, @AsiOrigenId = @EncId, @EncId = @EncId,
+		@UsuId = @UsuId, @Detalle = @partida, @AsiId = @asi_id OUTPUT;
 
 	COMMIT TRANSACTION;
 END;
 GO
 
 -- Cheque a proveedor por una sola cuota (lo usan los datos de prueba).
-CREATE OR ALTER PROCEDURE [dbo].[sp_bancos_emitir_cheque_pago_proveedor]
-	@ppg_id				INT,
-	@cbc_id				INT,
-	@bce_numero_cheque	VARCHAR(16),
-	@valor_pago			NUMERIC(12, 2),
-	@bmp_id				INT = NULL,
-	@usu_id				INT = NULL,
-	@bce_id				INT OUTPUT
+CREATE OR ALTER PROCEDURE [dbo].[paBancoChequePagoProveedorEmitir]
+	@PpgId				INT,
+	@CbcId				INT,
+	@BceNumeroCheque	VARCHAR(16),
+	@ValorPago			NUMERIC(12, 2),
+	@BmpId				INT = NULL,
+	@UsuId				INT = NULL,
+	@BceId				INT OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
 	SET XACT_ABORT ON;
 
-	IF @valor_pago <= 0
+	IF @ValorPago <= 0
 		THROW 51601, 'El valor del pago debe ser mayor a cero.', 1;
 
 	DECLARE @enc_id INT, @valor_programado NUMERIC(12, 2), @valor_pagado NUMERIC(12, 2), @estado CHAR(1);
 	SELECT @enc_id = enc_id, @valor_programado = ppg_valor_pago, @valor_pagado = ISNULL(ppg_valor_real_pago, 0), @estado = ppg_estado
-	FROM dbo.inv_proveedor_plan_pago WHERE ppg_id = @ppg_id;
+	FROM dbo.inv_proveedor_plan_pago WHERE ppg_id = @PpgId;
 
 	IF @enc_id IS NULL
 		THROW 51602, 'La cuota de proveedor indicada no existe.', 1;
 	IF @estado = 'A' OR @valor_programado - @valor_pagado <= 0
 		THROW 51603, 'La cuota de proveedor indicada ya está pagada por completo.', 1;
-	IF @valor_pago > @valor_programado - @valor_pagado
+	IF @ValorPago > @valor_programado - @valor_pagado
 	BEGIN
-		DECLARE @msg NVARCHAR(200) = CONCAT(N'El pago (Q', FORMAT(@valor_pago, 'N2'), N') supera el saldo de la cuota (Q',
+		DECLARE @msg NVARCHAR(200) = CONCAT(N'El pago (Q', FORMAT(@ValorPago, 'N2'), N') supera el saldo de la cuota (Q',
 			FORMAT(@valor_programado - @valor_pagado, 'N2'), N').');
 		THROW 51604, @msg, 1;
 	END
 	IF EXISTS (SELECT 1 FROM dbo.inv_documento_enc WHERE enc_id = @enc_id AND enc_estado <> 'G')
 		THROW 53217, 'La compra de esa cuota está anulada.', 1;
-	IF NOT EXISTS (SELECT 1 FROM dbo.bco_cuenta_bancaria_chequera WHERE cbc_id = @cbc_id)
+	IF NOT EXISTS (SELECT 1 FROM dbo.bco_cuenta_bancaria_chequera WHERE cbc_id = @CbcId)
 		THROW 51606, 'La chequera indicada no existe.', 1;
 	-- Chequera activa, número dentro del rango y sin repetir (vacío = siguiente).
-	EXEC dbo.paBcoChequeValidarNumero @CbcId = @cbc_id, @Numero = @bce_numero_cheque OUTPUT;
+	EXEC dbo.paBcoChequeValidarNumero @CbcId = @CbcId, @Numero = @BceNumeroCheque OUTPUT;
 
-	DECLARE @cta_proveedores INT, @cta_bancos INT = dbo.fnBcoCuentaContable((SELECT bcb_id FROM dbo.bco_cuenta_bancaria_chequera WHERE cbc_id = @cbc_id));
+	DECLARE @cta_proveedores INT, @cta_bancos INT = dbo.fnBcoCuentaContable((SELECT bcb_id FROM dbo.bco_cuenta_bancaria_chequera WHERE cbc_id = @CbcId));
 	EXEC dbo.paCuentaParametroObtener @Codigo = 'PAGO_PROVEEDORES', @CtaId = @cta_proveedores OUTPUT;
 	IF @cta_bancos IS NULL
 		EXEC dbo.paCuentaParametroObtener @Codigo = 'PAGO_BANCOS', @CtaId = @cta_bancos OUTPUT;
@@ -532,24 +532,24 @@ BEGIN
 		INSERT INTO dbo.bco_cheque_emitido_enc
 			(cbc_id, bce_fecha_emision, usu_id, bce_numero_cheque, bce_documento_ref, bce_valor, bmp_id, bce_tipo, bce_beneficiario, InsUsuario, InsFechaHora)
 		VALUES
-			(@cbc_id, CAST(GETDATE() AS DATE), @usu_id, @bce_numero_cheque, CAST(@enc_id AS VARCHAR(16)), @valor_pago, @bmp_id, 'P', @beneficiario, @usu_id, SYSDATETIME());
+			(@CbcId, CAST(GETDATE() AS DATE), @UsuId, @BceNumeroCheque, CAST(@enc_id AS VARCHAR(16)), @ValorPago, @BmpId, 'P', @beneficiario, @UsuId, SYSDATETIME());
 
-		SET @bce_id = SCOPE_IDENTITY();
+		SET @BceId = SCOPE_IDENTITY();
 
 		INSERT INTO dbo.bco_cheque_emitido_det (bce_id, bmp_id, enc_id, ppg_id, ced_valor, ced_abono_cancelacion, InsUsuario, InsFechaHora)
-		VALUES (@bce_id, @bmp_id, @enc_id, @ppg_id, @valor_pago,
-				CASE WHEN @valor_pagado + @valor_pago >= @valor_programado THEN 'C' ELSE 'A' END,
-				@usu_id, SYSDATETIME());
+		VALUES (@BceId, @BmpId, @enc_id, @PpgId, @ValorPago,
+				CASE WHEN @valor_pagado + @ValorPago >= @valor_programado THEN 'C' ELSE 'A' END,
+				@UsuId, SYSDATETIME());
 
 		UPDATE dbo.inv_proveedor_plan_pago
-		   SET ppg_valor_real_pago = @valor_pagado + @valor_pago,
+		   SET ppg_valor_real_pago = @valor_pagado + @ValorPago,
 			   ppg_fecha_real_pago = CAST(GETDATE() AS DATE),
-			   ppg_numero_cheque = @bce_numero_cheque,
-			   cbc_id = @cbc_id,
-			   ppg_estado = CASE WHEN @valor_pagado + @valor_pago >= @valor_programado THEN 'A' ELSE ppg_estado END,
-			   UpdUsuario = @usu_id,
+			   ppg_numero_cheque = @BceNumeroCheque,
+			   cbc_id = @CbcId,
+			   ppg_estado = CASE WHEN @valor_pagado + @ValorPago >= @valor_programado THEN 'A' ELSE ppg_estado END,
+			   UpdUsuario = @UsuId,
 			   UpdFechaHora = SYSDATETIME()
-		 WHERE ppg_id = @ppg_id
+		 WHERE ppg_id = @PpgId
 		   AND ISNULL(ppg_valor_real_pago, 0) = @valor_pagado;
 		-- El pagado se leyó antes de la transacción: si otro cheque pagó la
 		-- misma cuota mientras tanto, no se sobrescribe su pago.
@@ -557,15 +557,15 @@ BEGIN
 			THROW 54303, 'Otro usuario pagó la misma cuota mientras se emitía el cheque. Vuelva a consultarla e intente de nuevo.', 1;
 
 		DECLARE @asi_id INT, @partida dbo.cont_asiento_det_type, @fecha_hoy DATE = CAST(GETDATE() AS DATE);
-		DECLARE @referencia VARCHAR(64) = 'Pago a proveedor - cheque ' + @bce_numero_cheque;
+		DECLARE @referencia VARCHAR(64) = 'Pago a proveedor - cheque ' + @BceNumeroCheque;
 		INSERT INTO @partida (cta_id, asd_debe, asd_haber, asd_descripcion)
-		VALUES (@cta_proveedores, @valor_pago, 0, @referencia), (@cta_bancos, 0, @valor_pago, @referencia);
+		VALUES (@cta_proveedores, @ValorPago, 0, @referencia), (@cta_bancos, 0, @ValorPago, @referencia);
 
-		DECLARE @asi_descripcion VARCHAR(256) = 'Pago a proveedor con cheque ' + @bce_numero_cheque;
-		EXEC dbo.sp_contabilidad_insertar_asiento
-			@asi_fecha = @fecha_hoy, @asi_descripcion = @asi_descripcion,
-			@asi_origen = 'PAGO_PROVEEDOR', @asi_origen_id = @bce_id, @enc_id = @enc_id,
-			@usu_id = @usu_id, @detalle = @partida, @asi_id = @asi_id OUTPUT;
+		DECLARE @asi_descripcion VARCHAR(256) = 'Pago a proveedor con cheque ' + @BceNumeroCheque;
+		EXEC dbo.paContabilidadAsientoInsertar
+			@AsiFecha = @fecha_hoy, @AsiDescripcion = @asi_descripcion,
+			@AsiOrigen = 'PAGO_PROVEEDOR', @AsiOrigenId = @BceId, @EncId = @enc_id,
+			@UsuId = @UsuId, @Detalle = @partida, @AsiId = @asi_id OUTPUT;
 
 		COMMIT TRANSACTION;
 	END TRY
@@ -688,11 +688,11 @@ GO
 -- 6. Apertura y cierre de caja simultáneos
 ------------------------------------------------------------
 -- Apertura de caja: monto inicial libre.
-CREATE OR ALTER PROCEDURE [dbo].[sp_pos_caja_abrir]
-	@pcr_id				INT,
-	@usu_id				INT,
-	@pca_monto_inicial	NUMERIC(12, 2) = 0,
-	@pca_id				INT OUTPUT
+CREATE OR ALTER PROCEDURE [dbo].[paCajaAbrir]
+	@PcrId				INT,
+	@UsuId				INT,
+	@PcaMontoInicial	NUMERIC(12, 2) = 0,
+	@PcaId				INT OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -701,33 +701,33 @@ BEGIN
 	BEGIN TRANSACTION;
 	-- El bloqueo de rango (UPDLOCK, HOLDLOCK) hace que una segunda apertura
 	-- simultánea de la misma caja espere a la primera y luego la encuentre.
-	IF EXISTS (SELECT 1 FROM dbo.pos_caja_apertura WITH (UPDLOCK, HOLDLOCK) WHERE pcr_id = @pcr_id AND pca_estado = 'A')
+	IF EXISTS (SELECT 1 FROM dbo.pos_caja_apertura WITH (UPDLOCK, HOLDLOCK) WHERE pcr_id = @PcrId AND pca_estado = 'A')
 		THROW 51701, 'Ya existe una apertura de caja activa para esta caja receptora. Debe cerrarse antes de abrir una nueva.', 1;
 
 	INSERT INTO dbo.pos_caja_apertura (pcr_id, usu_id_apertura, pca_monto_inicial, InsUsuario, InsFechaHora)
-	VALUES (@pcr_id, @usu_id, ISNULL(@pca_monto_inicial, 0), @usu_id, SYSDATETIME());
+	VALUES (@PcrId, @UsuId, ISNULL(@PcaMontoInicial, 0), @UsuId, SYSDATETIME());
 
-	SET @pca_id = SCOPE_IDENTITY();
+	SET @PcaId = SCOPE_IDENTITY();
 	COMMIT TRANSACTION;
 END;
 GO
 
 -- Cierre de caja: faltante o sobrante dentro de la tolerancia.
-CREATE OR ALTER PROCEDURE [dbo].[sp_pos_caja_cerrar]
-	@pca_id	INT,
-	@usu_id	INT
+CREATE OR ALTER PROCEDURE [dbo].[paCajaCerrar]
+	@PcaId	INT,
+	@UsuId	INT
 AS
 BEGIN
 	SET NOCOUNT ON;
 	SET XACT_ABORT ON;
 
-	IF NOT EXISTS (SELECT 1 FROM dbo.pos_caja_apertura WHERE pca_id = @pca_id AND pca_estado = 'A')
+	IF NOT EXISTS (SELECT 1 FROM dbo.pos_caja_apertura WHERE pca_id = @PcaId AND pca_estado = 'A')
 		THROW 51702, 'La apertura de caja indicada no existe o ya está cerrada.', 1;
 
 	DECLARE @cuadre TABLE (MontoInicial NUMERIC(12, 2), EfectivoCobrado NUMERIC(12, 2), Depositos NUMERIC(12, 2), Cheques NUMERIC(12, 2),
 		Tarjetas NUMERIC(12, 2), OtrasFormas NUMERIC(12, 2), TeoricoTotal NUMERIC(12, 2), FisicoEfectivo NUMERIC(12, 2),
 		FisicoOtrasFormas NUMERIC(12, 2), FisicoTotal NUMERIC(12, 2), Diferencia NUMERIC(12, 2), Tolerancia NUMERIC(12, 2), Cuadra BIT);
-	INSERT INTO @cuadre EXEC dbo.paCorteCajaCuadreConsultar @pca_id = @pca_id;
+	INSERT INTO @cuadre EXEC dbo.paCorteCajaCuadreConsultar @pca_id = @PcaId;
 
 	DECLARE @teorico NUMERIC(12, 2), @fisico NUMERIC(12, 2), @diferencia NUMERIC(12, 2), @tolerancia NUMERIC(12, 2), @cuadra BIT;
 	SELECT @teorico = TeoricoTotal, @fisico = FisicoTotal, @diferencia = Diferencia, @tolerancia = Tolerancia, @cuadra = Cuadra FROM @cuadre;
@@ -750,15 +750,15 @@ BEGIN
 		BEGIN
 			EXEC dbo.paCuentaParametroObtener @Codigo = 'CAJA_FALTANTE', @CtaId = @cta_diferencia OUTPUT;
 			INSERT INTO @detalle (cta_id, asd_debe, asd_haber, asd_descripcion)
-			VALUES (@cta_diferencia, -@diferencia, 0, CONCAT('Faltante al cerrar la apertura ', @pca_id)),
-				   (@cta_caja, 0, -@diferencia, CONCAT('Faltante al cerrar la apertura ', @pca_id));
+			VALUES (@cta_diferencia, -@diferencia, 0, CONCAT('Faltante al cerrar la apertura ', @PcaId)),
+				   (@cta_caja, 0, -@diferencia, CONCAT('Faltante al cerrar la apertura ', @PcaId));
 		END
 		ELSE
 		BEGIN
 			EXEC dbo.paCuentaParametroObtener @Codigo = 'CAJA_SOBRANTE', @CtaId = @cta_diferencia OUTPUT;
 			INSERT INTO @detalle (cta_id, asd_debe, asd_haber, asd_descripcion)
-			VALUES (@cta_caja, @diferencia, 0, CONCAT('Sobrante al cerrar la apertura ', @pca_id)),
-				   (@cta_diferencia, 0, @diferencia, CONCAT('Sobrante al cerrar la apertura ', @pca_id));
+			VALUES (@cta_caja, @diferencia, 0, CONCAT('Sobrante al cerrar la apertura ', @PcaId)),
+				   (@cta_diferencia, 0, @diferencia, CONCAT('Sobrante al cerrar la apertura ', @PcaId));
 		END
 	END
 
@@ -768,12 +768,12 @@ BEGIN
 	   SET pca_estado = 'C',
 		   pca_fecha_corte = SYSDATETIME(),
 		   pca_fecha_cierre = SYSDATETIME(),
-		   usu_id_cierre = @usu_id,
+		   usu_id_cierre = @UsuId,
 		   pca_monto_teorico_total = @teorico,
 		   pca_monto_fisico_total = @fisico,
 		   pca_diferencia = @diferencia,
-		   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
-	 WHERE pca_id = @pca_id AND pca_estado = 'A';
+		   UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME()
+	 WHERE pca_id = @PcaId AND pca_estado = 'A';
 	-- Dos cierres simultáneos pasan la validación de arriba; solo el primero
 	-- cierra y graba la póliza de la diferencia.
 	IF @@ROWCOUNT = 0
@@ -782,10 +782,10 @@ BEGIN
 	IF EXISTS (SELECT 1 FROM @detalle)
 	BEGIN
 		DECLARE @fecha DATE = CAST(GETDATE() AS DATE);
-		DECLARE @descripcion VARCHAR(256) = CONCAT('Diferencia en el cierre de caja, apertura ', @pca_id);
-		EXEC dbo.sp_contabilidad_insertar_asiento
-			@asi_fecha = @fecha, @asi_descripcion = @descripcion, @asi_origen = 'CIERRE_CAJA', @asi_origen_id = @pca_id,
-			@usu_id = @usu_id, @detalle = @detalle, @asi_id = @asi_id OUTPUT;
+		DECLARE @descripcion VARCHAR(256) = CONCAT('Diferencia en el cierre de caja, apertura ', @PcaId);
+		EXEC dbo.paContabilidadAsientoInsertar
+			@AsiFecha = @fecha, @AsiDescripcion = @descripcion, @AsiOrigen = 'CIERRE_CAJA', @AsiOrigenId = @PcaId,
+			@UsuId = @UsuId, @Detalle = @detalle, @AsiId = @asi_id OUTPUT;
 	END
 
 	COMMIT TRANSACTION;

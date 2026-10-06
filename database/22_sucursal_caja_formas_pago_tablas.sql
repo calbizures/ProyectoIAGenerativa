@@ -31,7 +31,7 @@
 --      contado o el enganche de crédito al momento de facturar — antes
 --      solo se podía pagar (pos_pago_det) una cuota ya generada, y una
 --      factura de contado o el enganche de una de crédito no generan
---      cuota propia (ver sp_pos_generar_plan_pagos_cliente).
+--      cuota propia (ver paClientePlanPagosGenerar).
 --
 -- Idempotente: se puede correr sobre una base recién creada con 00-21 (donde
 -- 07 ya creó IX_pos_caja_receptora_suc_id) o volver a correr sin error.

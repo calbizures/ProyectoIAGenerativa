@@ -18,7 +18,7 @@ GO
 
 -- Id de la moneda local/funcional de la compañía, usada como valor por
 -- defecto en los procedimientos de negocio cuando no se indica moneda.
-CREATE OR ALTER FUNCTION [dbo].[fn_moneda_local]()
+CREATE OR ALTER FUNCTION [dbo].[fnMonedaLocal]()
 RETURNS INT
 AS
 BEGIN
@@ -26,122 +26,122 @@ BEGIN
 END;
 GO
 
--- select dbo.fn_direccion_completa_cliente(2)
-CREATE OR ALTER FUNCTION [dbo].[fn_direccion_completa_cliente] (@cli_id INT)
+-- select dbo.fnClienteDireccionCompleta(2)
+CREATE OR ALTER FUNCTION [dbo].[fnClienteDireccionCompleta] (@CliId INT)
 RETURNS VARCHAR(1000)
 AS
 BEGIN
 	DECLARE @DireccionCompleta VARCHAR(1000);
 
-	SELECT @DireccionCompleta = ISNULL(cli.cli_direccion, '')
-			+ ISNULL(', ' + prv.prov_nombre, '')
-			+ ISNULL(', ' + est.est_nombre, '')
-	FROM dbo.pos_cliente cli
-	LEFT JOIN dbo.gen_provincia prv ON prv.prov_id = cli.cli_direccion_provincia
-	LEFT JOIN dbo.gen_estado est ON est.est_id = cli.cli_direccion_estado
-	WHERE cli.cli_id = @cli_id;
+	SELECT @DireccionCompleta = ISNULL(clie.cli_direccion, '')
+			+ ISNULL(', ' + prov.prov_nombre, '')
+			+ ISNULL(', ' + esta.est_nombre, '')
+	FROM dbo.pos_cliente clie
+	LEFT JOIN dbo.gen_provincia prov ON prov.prov_id = clie.cli_direccion_provincia
+	LEFT JOIN dbo.gen_estado esta ON esta.est_id = clie.cli_direccion_estado
+	WHERE clie.cli_id = @CliId;
 
 	RETURN @DireccionCompleta;
 END;
 GO
 
--- select dbo.fn_nombre_completo_cliente(2)
-CREATE OR ALTER FUNCTION [dbo].[fn_nombre_completo_cliente] (@cli_id INT)
+-- select dbo.fnClienteNombreCompleto(2)
+CREATE OR ALTER FUNCTION [dbo].[fnClienteNombreCompleto] (@CliId INT)
 RETURNS VARCHAR(200)
 AS
 BEGIN
 	DECLARE @NombreCompleto VARCHAR(200);
 
-	SELECT @NombreCompleto = ISNULL(cli.cli_nombres, '') + ISNULL(' ' + cli.cli_apellidos, '')
-	FROM dbo.pos_cliente cli
-	WHERE cli.cli_id = @cli_id;
+	SELECT @NombreCompleto = ISNULL(clie.cli_nombres, '') + ISNULL(' ' + clie.cli_apellidos, '')
+	FROM dbo.pos_cliente clie
+	WHERE clie.cli_id = @CliId;
 
 	RETURN @NombreCompleto;
 END;
 GO
 
--- select dbo.fn_nombre_completo_cliente_encabezado(2)
-CREATE OR ALTER FUNCTION [dbo].[fn_nombre_completo_cliente_encabezado] (@enc_id INT)
+-- select dbo.fnDocumentoClienteNombreCompleto(2)
+CREATE OR ALTER FUNCTION [dbo].[fnDocumentoClienteNombreCompleto] (@EncId INT)
 RETURNS VARCHAR(256)
 AS
 BEGIN
 	DECLARE @NombreCompleto VARCHAR(256);
 
-	SELECT @NombreCompleto = ISNULL(enc.enc_nombres_cliente, '') + ISNULL(' ' + enc.enc_apellidos_cliente, '')
-	FROM dbo.inv_documento_enc enc
-	WHERE enc.enc_id = @enc_id;
+	SELECT @NombreCompleto = ISNULL(enca.enc_nombres_cliente, '') + ISNULL(' ' + enca.enc_apellidos_cliente, '')
+	FROM dbo.inv_documento_enc enca
+	WHERE enca.enc_id = @EncId;
 
 	RETURN @NombreCompleto;
 END;
 GO
 
--- select dbo.fn_ultimo_costo_unitario(51)
-CREATE OR ALTER FUNCTION [dbo].[fn_ultimo_costo_unitario] (@pro_id INT)
+-- select dbo.fnProductoUltimoCostoUnitario(51)
+CREATE OR ALTER FUNCTION [dbo].[fnProductoUltimoCostoUnitario] (@ProId INT)
 RETURNS NUMERIC(12, 5)
 AS
 BEGIN
 	DECLARE @costo_unitario NUMERIC(12, 5);
 
-	SELECT TOP 1 @costo_unitario = ISNULL(det.det_precio_unitario, det.det_costo_unitario)
-	FROM dbo.inv_documento_det det
-	INNER JOIN dbo.inv_documento_enc enc ON enc.enc_id = det.enc_id
-	INNER JOIN dbo.inv_documento_tipo tip ON tip.tdo_id = enc.tdo_id
-	WHERE tip.tdo_naturaleza = '+'
-	  AND det.pro_id = @pro_id
-	  AND enc.enc_estado = 'G'
-	ORDER BY enc.enc_fecha_docto DESC;
+	SELECT TOP 1 @costo_unitario = ISNULL(deta.det_precio_unitario, deta.det_costo_unitario)
+	FROM dbo.inv_documento_det deta
+	INNER JOIN dbo.inv_documento_enc enca ON enca.enc_id = deta.enc_id
+	INNER JOIN dbo.inv_documento_tipo tipo ON tipo.tdo_id = enca.tdo_id
+	WHERE tipo.tdo_naturaleza = '+'
+	  AND deta.pro_id = @ProId
+	  AND enca.enc_estado = 'G'
+	ORDER BY enca.enc_fecha_docto DESC;
 
 	RETURN @costo_unitario;
 END;
 GO
 
--- select dbo.fn_descripcion_ultimo_movimiento(52)
-CREATE OR ALTER FUNCTION [dbo].[fn_descripcion_ultimo_movimiento] (@pro_id INT)
+-- select dbo.fnProductoUltimoMovimientoDescripcion(52)
+CREATE OR ALTER FUNCTION [dbo].[fnProductoUltimoMovimientoDescripcion] (@ProId INT)
 RETURNS VARCHAR(100)
 AS
 BEGIN
 	DECLARE @tdo_descripcion VARCHAR(128);
 
-	SELECT TOP 1 @tdo_descripcion = tip.tdo_descripcion
-	FROM dbo.inv_documento_det det
-	INNER JOIN dbo.inv_documento_enc enc ON enc.enc_id = det.enc_id
-	INNER JOIN dbo.inv_documento_tipo tip ON tip.tdo_id = enc.tdo_id
-	WHERE tip.tdo_naturaleza = '+'
-	  AND det.pro_id = @pro_id
-	  AND enc.enc_estado = 'G'
-	ORDER BY enc.enc_fecha_docto DESC;
+	SELECT TOP 1 @tdo_descripcion = tipo.tdo_descripcion
+	FROM dbo.inv_documento_det deta
+	INNER JOIN dbo.inv_documento_enc enca ON enca.enc_id = deta.enc_id
+	INNER JOIN dbo.inv_documento_tipo tipo ON tipo.tdo_id = enca.tdo_id
+	WHERE tipo.tdo_naturaleza = '+'
+	  AND deta.pro_id = @ProId
+	  AND enca.enc_estado = 'G'
+	ORDER BY enca.enc_fecha_docto DESC;
 
 	RETURN @tdo_descripcion;
 END;
 GO
 
--- select dbo.fn_fecha_ultimo_movimiento(51)
-CREATE OR ALTER FUNCTION [dbo].[fn_fecha_ultimo_movimiento] (@pro_id INT)
+-- select dbo.fnProductoUltimoMovimientoFecha(51)
+CREATE OR ALTER FUNCTION [dbo].[fnProductoUltimoMovimientoFecha] (@ProId INT)
 RETURNS DATE
 AS
 BEGIN
 	DECLARE @fecha_documento DATE;
 
-	SELECT TOP 1 @fecha_documento = enc.enc_fecha_docto
-	FROM dbo.inv_documento_det det
-	INNER JOIN dbo.inv_documento_enc enc ON enc.enc_id = det.enc_id
-	INNER JOIN dbo.inv_documento_tipo tip ON tip.tdo_id = enc.tdo_id
-	WHERE tip.tdo_naturaleza = '+'
-	  AND det.pro_id = @pro_id
-	  AND enc.enc_estado = 'G'
-	ORDER BY enc.enc_fecha_docto DESC;
+	SELECT TOP 1 @fecha_documento = enca.enc_fecha_docto
+	FROM dbo.inv_documento_det deta
+	INNER JOIN dbo.inv_documento_enc enca ON enca.enc_id = deta.enc_id
+	INNER JOIN dbo.inv_documento_tipo tipo ON tipo.tdo_id = enca.tdo_id
+	WHERE tipo.tdo_naturaleza = '+'
+	  AND deta.pro_id = @ProId
+	  AND enca.enc_estado = 'G'
+	ORDER BY enca.enc_fecha_docto DESC;
 
 	RETURN @fecha_documento;
 END;
 GO
 
 /*
-	select dbo.fn_numeros_a_letras(13525.43)
+	select dbo.fnNumeroALetras(13525.43)
 	Convierte un monto a letras en Quetzales. Práctico hasta 999,999,999.99;
 	no se extendió a billones porque ningún monto del modelo llega a esa
 	magnitud.
 */
-CREATE OR ALTER FUNCTION [dbo].[fn_numeros_a_letras]
+CREATE OR ALTER FUNCTION [dbo].[fnNumeroALetras]
 (
 	@Numero DECIMAL(18, 2)
 )

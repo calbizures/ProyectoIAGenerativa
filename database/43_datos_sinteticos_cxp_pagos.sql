@@ -63,11 +63,11 @@ BEGIN
 					 (3, @cable, 2 + @orden, 895.00)) line (item, pro_id, cantidad, precio)
 		INNER JOIN dbo.inv_producto prod ON prod.pro_id = line.pro_id;
 
-		EXEC dbo.sp_compras_crear_documento
-			@enc_fecha_docto = @fecha, @enc_serie_docto = 'A', @enc_numero_docto = @numero,
-			@prv_id = @prv, @tdo_id = @tdo,
-			@enc_fecha_primer_pago = @fecha_primer_pago, @enc_numero_cuotas = @cuotas,
-			@usu_id = @usu, @detalle = @det, @enc_id = @enc_id OUTPUT;
+		EXEC dbo.paCompraDocumentoCrear
+			@EncFechaDocto = @fecha, @EncSerieDocto = 'A', @EncNumeroDocto = @numero,
+			@PrvId = @prv, @TdoId = @tdo,
+			@EncFechaPrimerPago = @fecha_primer_pago, @EncNumeroCuotas = @cuotas,
+			@UsuId = @usu, @Detalle = @det, @EncId = @enc_id OUTPUT;
 
 		INSERT INTO @relacionados EXEC dbo.paProductoProveedorRegistrarCompra @EncId = @enc_id, @Relacionar = 1, @UsuId = @usu;
 		PRINT CONCAT('Compra A-', @numero, ' de PRV04 creada con ', @cuotas, ' cuotas.');

@@ -120,10 +120,10 @@ BEGIN
 	VALUES (2, 'S', 3.5, 'Instalación y configuración del equipo en sitio', 200.00, 700.00, @iva, @bod, NULL, @hr),
 		   (3, 'S', 1, 'Capacitación básica de uso (grupo de 5 personas)', 450.00, 450.00, @iva, @bod, NULL, @srv);
 
-	EXEC dbo.sp_ventas_crear_factura
-		@enc_fecha_docto = @hoy, @enc_numero_docto = 'FAC-SERV-1', @cli_id = @cli, @tdo_id = @tdo, @pve_id = @vend,
-		@enc_fecha_primer_pago = @primer_pago, @enc_numero_cuotas = 2, @usu_id = @usu_vendedor,
-		@detalle = @det, @formas_pago = @formas, @enc_id = @enc OUTPUT, @enc_numero_unico = @numero OUTPUT;
+	EXEC dbo.paVentaFacturaCrear
+		@EncFechaDocto = @hoy, @EncNumeroDocto = 'FAC-SERV-1', @CliId = @cli, @TdoId = @tdo, @PveId = @vend,
+		@EncFechaPrimerPago = @primer_pago, @EncNumeroCuotas = 2, @UsuId = @usu_vendedor,
+		@Detalle = @det, @FormasPago = @formas, @EncId = @enc OUTPUT, @EncNumeroUnico = @numero OUTPUT;
 	PRINT CONCAT('Factura con servicios: ', @numero);
 END
 GO

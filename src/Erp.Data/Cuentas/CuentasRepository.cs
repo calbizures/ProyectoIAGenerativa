@@ -30,14 +30,14 @@ public sealed class CuentasRepository(IDbConnectionFactory connectionFactory) : 
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new DynamicParameters();
-		parametros.Add("@cpp_id", cppId);
-		parametros.Add("@valor_pago", valor);
-		parametros.Add("@pca_id", pcaId);
-		parametros.Add("@usu_id", usuarioAccionId);
-		parametros.Add("@formas_pago", CajaRepository.ConstruirTablaFormasPago(formasPago).AsTableValuedParameter("dbo.pago_forma_type"));
-		parametros.Add("@ppe_id", dbType: DbType.Int32, direction: ParameterDirection.Output);
-		await connection.ExecuteAsync("dbo.sp_pos_registrar_pago_cuota", parametros, commandType: CommandType.StoredProcedure);
-		return parametros.Get<int>("@ppe_id");
+		parametros.Add("@CppId", cppId);
+		parametros.Add("@ValorPago", valor);
+		parametros.Add("@PcaId", pcaId);
+		parametros.Add("@UsuId", usuarioAccionId);
+		parametros.Add("@FormasPago", CajaRepository.ConstruirTablaFormasPago(formasPago).AsTableValuedParameter("dbo.pago_forma_type"));
+		parametros.Add("@PpeId", dbType: DbType.Int32, direction: ParameterDirection.Output);
+		await connection.ExecuteAsync("dbo.paClienteCuotaPagoRegistrar", parametros, commandType: CommandType.StoredProcedure);
+		return parametros.Get<int>("@PpeId");
 	}
 
 	public Task<IReadOnlyList<CuotaPendiente>> ConsultarCuotasPendientesClienteAsync(int cliId) =>

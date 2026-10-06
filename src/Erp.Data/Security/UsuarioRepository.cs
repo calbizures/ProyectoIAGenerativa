@@ -9,15 +9,15 @@ public sealed class UsuarioRepository(IDbConnectionFactory connectionFactory) : 
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new DynamicParameters();
-		parametros.Add("@usu_codigo", codigo);
-		parametros.Add("@usu_usuario", usuario);
-		parametros.Add("@usu_password", password);
-		parametros.Add("@usu_email", email);
-		parametros.Add("@usu_id_accion", usuarioAccionId);
-		parametros.Add("@usu_id", dbType: DbType.Int32, direction: ParameterDirection.Output);
+		parametros.Add("@UsuCodigo", codigo);
+		parametros.Add("@UsuUsuario", usuario);
+		parametros.Add("@UsuPassword", password);
+		parametros.Add("@UsuEmail", email);
+		parametros.Add("@UsuIdAccion", usuarioAccionId);
+		parametros.Add("@UsuId", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-		await connection.ExecuteAsync("dbo.sp_usuario_insertar", parametros, commandType: CommandType.StoredProcedure);
-		return parametros.Get<int>("@usu_id");
+		await connection.ExecuteAsync("dbo.paUsuarioInsertar", parametros, commandType: CommandType.StoredProcedure);
+		return parametros.Get<int>("@UsuId");
 	}
 
 	public async Task ActualizarAsync(int usuId, string usuario, string? email, int? usuarioAccionId)
@@ -25,19 +25,19 @@ public sealed class UsuarioRepository(IDbConnectionFactory connectionFactory) : 
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new
 		{
-			usu_id = usuId,
-			usu_usuario = usuario,
-			usu_email = email,
-			usu_id_accion = usuarioAccionId
+			UsuId = usuId,
+			UsuUsuario = usuario,
+			UsuEmail = email,
+			UsuIdAccion = usuarioAccionId
 		};
-		await connection.ExecuteAsync("dbo.sp_usuario_actualizar", parametros, commandType: CommandType.StoredProcedure);
+		await connection.ExecuteAsync("dbo.paUsuarioActualizar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
 	public async Task EliminarAsync(int usuId, int? usuarioAccionId)
 	{
 		using var connection = connectionFactory.CreateConnection();
-		var parametros = new { usu_id = usuId, usu_id_accion = usuarioAccionId };
-		await connection.ExecuteAsync("dbo.sp_usuario_eliminar", parametros, commandType: CommandType.StoredProcedure);
+		var parametros = new { UsuId = usuId, UsuIdAccion = usuarioAccionId };
+		await connection.ExecuteAsync("dbo.paUsuarioEliminar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
 	public async Task ActivarAsync(int usuId, int? usuarioAccionId)
@@ -52,11 +52,11 @@ public sealed class UsuarioRepository(IDbConnectionFactory connectionFactory) : 
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new
 		{
-			usu_id = usuId,
-			password_actual = passwordActual,
-			password_nuevo = passwordNuevo
+			UsuId = usuId,
+			PasswordActual = passwordActual,
+			PasswordNuevo = passwordNuevo
 		};
-		await connection.ExecuteAsync("dbo.sp_usuario_cambiar_password", parametros, commandType: CommandType.StoredProcedure);
+		await connection.ExecuteAsync("dbo.paUsuarioPasswordCambiar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
 	public async Task<IReadOnlyList<Usuario>> ConsultarAsync(string? usuario, string? estado, int pagina, int tamanioPagina)
@@ -64,12 +64,12 @@ public sealed class UsuarioRepository(IDbConnectionFactory connectionFactory) : 
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new
 		{
-			usu_usuario = usuario,
-			usu_estado = estado,
-			pagina,
-			tamanio_pagina = tamanioPagina
+			UsuUsuario = usuario,
+			UsuEstado = estado,
+			Pagina = pagina,
+			TamanioPagina = tamanioPagina
 		};
-		var filas = await connection.QueryAsync<Usuario>("dbo.sp_usuario_consultar", parametros, commandType: CommandType.StoredProcedure);
+		var filas = await connection.QueryAsync<Usuario>("dbo.paUsuarioConsultar", parametros, commandType: CommandType.StoredProcedure);
 		return filas.ToList();
 	}
 
@@ -77,8 +77,8 @@ public sealed class UsuarioRepository(IDbConnectionFactory connectionFactory) : 
 	{
 		using var connection = connectionFactory.CreateConnection();
 		using var multi = await connection.QueryMultipleAsync(
-			"dbo.sp_usuario_consultar_por_id",
-			new { usu_id = usuId },
+			"dbo.paUsuarioConsultarPorId",
+			new { UsuId = usuId },
 			commandType: CommandType.StoredProcedure);
 
 		var usuarioEncontrado = await multi.ReadFirstOrDefaultAsync<Usuario>();
@@ -89,15 +89,15 @@ public sealed class UsuarioRepository(IDbConnectionFactory connectionFactory) : 
 	public async Task AsignarRolAsync(int usuId, int rolId, int? usuarioAccionId)
 	{
 		using var connection = connectionFactory.CreateConnection();
-		var parametros = new { usu_id = usuId, rol_id = rolId, usu_id_accion = usuarioAccionId };
-		await connection.ExecuteAsync("dbo.sp_usuario_asignar_rol", parametros, commandType: CommandType.StoredProcedure);
+		var parametros = new { UsuId = usuId, RolId = rolId, UsuIdAccion = usuarioAccionId };
+		await connection.ExecuteAsync("dbo.paUsuarioRolAsignar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
 	public async Task RevocarRolAsync(int usuId, int rolId)
 	{
 		using var connection = connectionFactory.CreateConnection();
-		var parametros = new { usu_id = usuId, rol_id = rolId };
-		await connection.ExecuteAsync("dbo.sp_usuario_revocar_rol", parametros, commandType: CommandType.StoredProcedure);
+		var parametros = new { UsuId = usuId, RolId = rolId };
+		await connection.ExecuteAsync("dbo.paUsuarioRolRevocar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
 	public async Task<IReadOnlyList<Sucursal>> ConsultarSucursalesAsignadasAsync(int usuId)

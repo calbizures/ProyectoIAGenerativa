@@ -524,7 +524,7 @@ BEGIN
 	IF @Estado = 'C' AND DATEFROMPARTS(@Anio, @Mes, 1) > CAST(GETDATE() AS DATE)
 		THROW 55015, 'No se cierra un período que todavía no empieza.', 1;
 	DECLARE @pdo_id INT, @inicio DATE = DATEFROMPARTS(@Anio, @Mes, 1);
-	EXEC dbo.sp_contabilidad_obtener_o_crear_periodo @fecha = @inicio, @usu_id = @UsuId, @pdo_id = @pdo_id OUTPUT;
+	EXEC dbo.paContabilidadPeriodoObtenerOCrear @Fecha = @inicio, @UsuId = @UsuId, @PdoId = @pdo_id OUTPUT;
 	UPDATE dbo.cont_periodo_contable
 	   SET pdo_estado = @Estado,
 		   pdo_fecha_cierre = IIF(@Estado = 'C', SYSDATETIME(), NULL), usu_id_cierre = IIF(@Estado = 'C', @UsuId, NULL),

@@ -171,8 +171,8 @@ BEGIN
 	DECLARE @partida dbo.cont_asiento_det_type, @asi_id INT;
 	INSERT INTO @partida (cta_id, asd_debe, asd_haber, asd_descripcion)
 	VALUES (@CtaDebe, @Valor, 0, @Texto), (@CtaHaber, 0, @Valor, @Texto);
-	EXEC dbo.sp_contabilidad_insertar_asiento @asi_fecha = @Fecha, @asi_descripcion = @Texto, @asi_origen = 'TRASLADO',
-		@asi_origen_id = @TraId, @enc_id = @EncId, @usu_id = @UsuId, @detalle = @partida, @asi_id = @asi_id OUTPUT;
+	EXEC dbo.paContabilidadAsientoInsertar @AsiFecha = @Fecha, @AsiDescripcion = @Texto, @AsiOrigen = 'TRASLADO',
+		@AsiOrigenId = @TraId, @EncId = @EncId, @UsuId = @UsuId, @Detalle = @partida, @AsiId = @asi_id OUTPUT;
 END;
 GO
 

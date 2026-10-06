@@ -9,8 +9,8 @@ public sealed class BodegaRepository(IDbConnectionFactory connectionFactory) : I
 	public async Task<IReadOnlyList<Bodega>> ConsultarAsync(int? sucId, string? estado)
 	{
 		using var connection = connectionFactory.CreateConnection();
-		var parametros = new { suc_id = sucId, bod_estado = estado };
-		var filas = await connection.QueryAsync<Bodega>("dbo.sp_bodega_consultar", parametros, commandType: CommandType.StoredProcedure);
+		var parametros = new { SucId = sucId, BodEstado = estado };
+		var filas = await connection.QueryAsync<Bodega>("dbo.paBodegaListar", parametros, commandType: CommandType.StoredProcedure);
 		return filas.ToList();
 	}
 

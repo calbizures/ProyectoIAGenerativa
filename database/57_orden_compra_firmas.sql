@@ -465,7 +465,7 @@ BEGIN
 	FETCH NEXT FROM cursor_usuarios INTO @codigo, @usuario, @correo;
 	WHILE @@FETCH_STATUS = 0
 	BEGIN
-		EXEC dbo.sp_usuario_insertar @usu_codigo = @codigo, @usu_usuario = @usuario, @usu_password = 'Demo#2024', @usu_email = @correo, @usu_id = @usu OUTPUT;
+		EXEC dbo.paUsuarioInsertar @UsuCodigo = @codigo, @UsuUsuario = @usuario, @UsuPassword = 'Demo#2024', @UsuEmail = @correo, @UsuId = @usu OUTPUT;
 		FETCH NEXT FROM cursor_usuarios INTO @codigo, @usuario, @correo;
 	END
 	CLOSE cursor_usuarios;

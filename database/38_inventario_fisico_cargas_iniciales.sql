@@ -10,7 +10,7 @@
 --          AJIS  Sobrante de inventario físico      (+)
 --          AJIF  Faltante de inventario físico      (-)
 --      paInvDocumentoInternoCrear graba el documento y mueve existencias y
---      costo promedio con sp_inventario_ajustar_existencia_documento.
+--      costo promedio con paInventarioExistenciaDocumentoAjustar.
 --
 --   2. Inventario físico por bodega (inv_toma_fisica): se abre una toma con
 --      los productos que manejan existencia, se registra el conteo y al
@@ -161,7 +161,7 @@ BEGIN
 			(enc_fecha_docto, enc_serie_docto, enc_numero_docto, tdo_id, enc_monto_total, mon_id, usu_id_creacion, enc_estado, enc_motivo,
 			 InsUsuario, InsFechaHora)
 		VALUES
-			(@Fecha, @TdoCodigo, CAST(@numero AS VARCHAR(32)), @tdo_id, (SELECT SUM(costo_total) FROM @Lineas WHERE cantidad > 0), dbo.fn_moneda_local(),
+			(@Fecha, @TdoCodigo, CAST(@numero AS VARCHAR(32)), @tdo_id, (SELECT SUM(costo_total) FROM @Lineas WHERE cantidad > 0), dbo.fnMonedaLocal(),
 			 @UsuId, 'G', @Motivo, @UsuId, SYSDATETIME());
 		SET @EncId = SCOPE_IDENTITY();
 
@@ -176,7 +176,7 @@ BEGIN
 
 		-- Un ingreso toma como costo subtotal / cantidad; un egreso, el costo
 		-- promedio del producto.
-		EXEC dbo.sp_inventario_ajustar_existencia_documento @enc_id = @EncId, @reversar = 0, @usu_id = @UsuId;
+		EXEC dbo.paInventarioExistenciaDocumentoAjustar @EncId = @EncId, @Reversar = 0, @UsuId = @UsuId;
 
 		IF @naturaleza = '-'
 			UPDATE enca
@@ -406,8 +406,8 @@ BEGIN
 				SET @texto = CONCAT('Sobrante de ', LOWER(@motivo));
 				INSERT INTO @partida (cta_id, asd_debe, asd_haber, asd_descripcion)
 				VALUES (@cta_inventario, @valor, 0, @texto), (@cta_sobrante, 0, @valor, @texto);
-				EXEC dbo.sp_contabilidad_insertar_asiento @asi_fecha = @fecha, @asi_descripcion = @texto, @asi_origen = 'AJUSTE_INVENTARIO',
-					@asi_origen_id = @TfiId, @enc_id = @enc_sobrante, @usu_id = @UsuId, @detalle = @partida, @asi_id = @asi_id OUTPUT;
+				EXEC dbo.paContabilidadAsientoInsertar @AsiFecha = @fecha, @AsiDescripcion = @texto, @AsiOrigen = 'AJUSTE_INVENTARIO',
+					@AsiOrigenId = @TfiId, @EncId = @enc_sobrante, @UsuId = @UsuId, @Detalle = @partida, @AsiId = @asi_id OUTPUT;
 			END
 		END
 
@@ -423,8 +423,8 @@ BEGIN
 				SET @texto = CONCAT('Faltante de ', LOWER(@motivo));
 				INSERT INTO @partida (cta_id, asd_debe, asd_haber, asd_descripcion)
 				VALUES (@cta_faltante, @valor, 0, @texto), (@cta_inventario, 0, @valor, @texto);
-				EXEC dbo.sp_contabilidad_insertar_asiento @asi_fecha = @fecha, @asi_descripcion = @texto, @asi_origen = 'AJUSTE_INVENTARIO',
-					@asi_origen_id = @TfiId, @enc_id = @enc_faltante, @usu_id = @UsuId, @detalle = @partida, @asi_id = @asi_id OUTPUT;
+				EXEC dbo.paContabilidadAsientoInsertar @AsiFecha = @fecha, @AsiDescripcion = @texto, @AsiOrigen = 'AJUSTE_INVENTARIO',
+					@AsiOrigenId = @TfiId, @EncId = @enc_faltante, @UsuId = @UsuId, @Detalle = @partida, @AsiId = @asi_id OUTPUT;
 			END
 		END
 
@@ -463,9 +463,9 @@ BEGIN
 	BEGIN TRY
 		BEGIN TRANSACTION;
 		IF @sobrante IS NOT NULL AND EXISTS (SELECT 1 FROM dbo.inv_documento_enc WHERE enc_id = @sobrante AND enc_estado = 'G')
-			EXEC dbo.sp_documento_anular @enc_id = @sobrante, @usu_id = @UsuId;
+			EXEC dbo.paDocumentoAnular @EncId = @sobrante, @UsuId = @UsuId;
 		IF @faltante IS NOT NULL AND EXISTS (SELECT 1 FROM dbo.inv_documento_enc WHERE enc_id = @faltante AND enc_estado = 'G')
-			EXEC dbo.sp_documento_anular @enc_id = @faltante, @usu_id = @UsuId;
+			EXEC dbo.paDocumentoAnular @EncId = @faltante, @UsuId = @UsuId;
 		UPDATE dbo.inv_toma_fisica
 		   SET tfi_estado = 'N', tfi_motivo_anulacion = LEFT(LTRIM(RTRIM(@Motivo)), 250), UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME()
 		 WHERE tfi_id = @TfiId;
@@ -597,7 +597,7 @@ BEGIN
 
 			-- Precio de venta (con IVA) de cada producto en su bodega: se
 			-- actualiza el vigente o se crea uno nuevo.
-			DECLARE @mon_id INT = dbo.fn_moneda_local();
+			DECLARE @mon_id INT = dbo.fnMonedaLocal();
 			UPDATE prec
 			   SET ppr_precio_unitario_venta = dato.PrecioVenta, UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME()
 			FROM dbo.inv_producto_precio prec
@@ -663,7 +663,7 @@ BEGIN
 				   INNER JOIN dbo.inv_documento_tipo tipo ON tipo.tdo_id = enca.tdo_id AND tipo.tdo_codigo = 'INVI'
 				   WHERE enca.enc_id = @EncId AND enca.enc_estado = 'G')
 		THROW 53510, 'La carga de inventario inicial no existe o ya está anulada.', 1;
-	EXEC dbo.sp_documento_anular @enc_id = @EncId, @usu_id = @UsuId;
+	EXEC dbo.paDocumentoAnular @EncId = @EncId, @UsuId = @UsuId;
 END;
 GO
 
@@ -780,8 +780,8 @@ BEGIN
 			IF @apertura IS NOT NULL
 				UPDATE dbo.cont_asiento_enc SET asi_estado = 'N', UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME() WHERE asi_id = @apertura;
 			DECLARE @descripcion VARCHAR(256) = CONCAT('Partida de apertura: saldos iniciales al ', FORMAT(@Fecha, 'dd/MM/yyyy'));
-			EXEC dbo.sp_contabilidad_insertar_asiento @asi_fecha = @Fecha, @asi_descripcion = @descripcion, @asi_origen = 'APERTURA',
-				@usu_id = @UsuId, @detalle = @partida, @asi_id = @asi_id OUTPUT;
+			EXEC dbo.paContabilidadAsientoInsertar @AsiFecha = @Fecha, @AsiDescripcion = @descripcion, @AsiOrigen = 'APERTURA',
+				@UsuId = @UsuId, @Detalle = @partida, @AsiId = @asi_id OUTPUT;
 			COMMIT TRANSACTION;
 		END TRY
 		BEGIN CATCH

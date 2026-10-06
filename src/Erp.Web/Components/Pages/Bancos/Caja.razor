@@ -408,7 +408,7 @@ else if (pestanaActiva == "cajasreceptoras")
     private decimal Diferencia => FisicoTotal - TeoricoTotal;
     private CuadreCaja? cuadre;
     private decimal ToleranciaCierre => cuadre?.Tolerancia ?? 0m;
-    // Misma regla que valida sp_pos_caja_cerrar: |físico − teórico| <= tolerancia de la compañía.
+    // Misma regla que valida paCajaCerrar: |físico − teórico| <= tolerancia de la compañía.
     private bool Cuadra => Math.Abs(Diferencia) <= ToleranciaCierre;
 
     private int pcaIdParaDeposito;

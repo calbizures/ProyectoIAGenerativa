@@ -510,52 +510,52 @@ END;
 GO
 
 -- Compra (script 53) con la lista opcional de líneas de activo fijo.
-CREATE OR ALTER PROCEDURE [dbo].[sp_compras_crear_documento]
-	@enc_fecha_docto				DATE,
-	@enc_numero_autorizacion		VARCHAR(64) = NULL,
-	@enc_serie_docto				VARCHAR(32) = NULL,
-	@enc_numero_docto				VARCHAR(32) = NULL,
-	@prv_id							INT,
-	@prv_enc_nombres_proveedor		VARCHAR(128) = NULL,
-	@prv_enc_apellidos_proveedor	VARCHAR(128) = NULL,
-	@prv_nit						VARCHAR(16) = NULL,
-	@tdo_id							INT,
-	@enc_fecha_primer_pago			DATE = NULL,
-	@enc_monto_enganche				NUMERIC(12, 2) = 0,
-	@enc_numero_cuotas				INT = 1,
-	@enc_valor_descuento			NUMERIC(13, 2) = 0,
-	@mon_id							INT = NULL,
-	@usu_id							INT = NULL,
-	@detalle						dbo.compra_det_type READONLY,
-	@enc_id							INT OUTPUT,
+CREATE OR ALTER PROCEDURE [dbo].[paCompraDocumentoCrear]
+	@EncFechaDocto				DATE,
+	@EncNumeroAutorizacion		VARCHAR(64) = NULL,
+	@EncSerieDocto				VARCHAR(32) = NULL,
+	@EncNumeroDocto				VARCHAR(32) = NULL,
+	@PrvId							INT,
+	@PrvEncNombresProveedor		VARCHAR(128) = NULL,
+	@PrvEncApellidosProveedor	VARCHAR(128) = NULL,
+	@PrvNit						VARCHAR(16) = NULL,
+	@TdoId							INT,
+	@EncFechaPrimerPago			DATE = NULL,
+	@EncMontoEnganche				NUMERIC(12, 2) = 0,
+	@EncNumeroCuotas				INT = 1,
+	@EncValorDescuento			NUMERIC(13, 2) = 0,
+	@MonId							INT = NULL,
+	@UsuId							INT = NULL,
+	@Detalle						dbo.compra_det_type READONLY,
+	@EncId							INT OUTPUT,
 	-- Líneas que son activo fijo (det_item → categoría y centro de costo).
-	@activos						dbo.compra_activo_type READONLY
+	@Activos						dbo.compra_activo_type READONLY
 AS
 BEGIN
 	SET NOCOUNT ON;
 	SET XACT_ABORT ON;
 
-	IF NOT EXISTS (SELECT 1 FROM @detalle)
+	IF NOT EXISTS (SELECT 1 FROM @Detalle)
 		THROW 51411, 'La compra debe tener al menos una línea de detalle.', 1;
 
-	IF @mon_id IS NULL
-		SET @mon_id = dbo.fn_moneda_local();
+	IF @MonId IS NULL
+		SET @MonId = dbo.fnMonedaLocal();
 
-	IF EXISTS (SELECT 1 FROM @activos acti LEFT JOIN @detalle deta ON deta.det_item = acti.det_item WHERE deta.det_item IS NULL)
+	IF EXISTS (SELECT 1 FROM @Activos acti LEFT JOIN @Detalle deta ON deta.det_item = acti.det_item WHERE deta.det_item IS NULL)
 		THROW 55221, 'Una línea marcada como activo fijo no existe en el detalle de la compra.', 1;
-	IF EXISTS (SELECT 1 FROM @activos acti LEFT JOIN dbo.afi_categoria cate ON cate.afc_id = acti.afc_id AND cate.afc_estado = 'A' WHERE cate.afc_id IS NULL)
+	IF EXISTS (SELECT 1 FROM @Activos acti LEFT JOIN dbo.afi_categoria cate ON cate.afc_id = acti.afc_id AND cate.afc_estado = 'A' WHERE cate.afc_id IS NULL)
 		THROW 55222, 'Elija una categoría de activo fijo activa para cada línea de activo.', 1;
-	IF EXISTS (SELECT 1 FROM @activos acti INNER JOIN @detalle deta ON deta.det_item = acti.det_item WHERE deta.pro_id IS NOT NULL)
+	IF EXISTS (SELECT 1 FROM @Activos acti INNER JOIN @Detalle deta ON deta.det_item = acti.det_item WHERE deta.pro_id IS NOT NULL)
 		THROW 55223, 'Una línea de activo fijo no lleva producto de inventario: escriba la descripción del bien.', 1;
 
 	-- El total es el de la factura del proveedor: costo unitario con IVA
 	-- redondeado a centavos × cantidad, menos el descuento con IVA (igual que
-	-- en sp_ventas_crear_factura desde el script 52). El asiento sigue
+	-- en paVentaFacturaCrear desde el script 52). El asiento sigue
 	-- cuadrado: inventario o gasto = total - IVA.
 	DECLARE @monto_total NUMERIC(12, 2) = (
 		SELECT SUM(ROUND(ROUND(det_precio_unitario * (1 + ISNULL(det_porc_iva, 0) / 100.0), 2) * det_cantidad, 2)
 				 - ROUND(det_valor_descuento * (1 + ISNULL(det_porc_iva, 0) / 100.0), 2))
-		FROM @detalle
+		FROM @Detalle
 	);
 
 	BEGIN TRY
@@ -568,42 +568,42 @@ BEGIN
 			 enc_valor_descuento, mon_id, usu_id_creacion,
 			 InsUsuario, InsFechaHora)
 		VALUES
-			(@enc_fecha_docto, @enc_numero_autorizacion, @enc_serie_docto, @enc_numero_docto,
-			 @prv_id, @prv_enc_nombres_proveedor, @prv_enc_apellidos_proveedor, @prv_nit, @tdo_id,
-			 @enc_fecha_primer_pago, @enc_monto_enganche, @enc_numero_cuotas, @monto_total,
-			 @enc_valor_descuento, @mon_id, @usu_id,
-			 @usu_id, SYSDATETIME());
+			(@EncFechaDocto, @EncNumeroAutorizacion, @EncSerieDocto, @EncNumeroDocto,
+			 @PrvId, @PrvEncNombresProveedor, @PrvEncApellidosProveedor, @PrvNit, @TdoId,
+			 @EncFechaPrimerPago, @EncMontoEnganche, @EncNumeroCuotas, @monto_total,
+			 @EncValorDescuento, @MonId, @UsuId,
+			 @UsuId, SYSDATETIME());
 
-		SET @enc_id = SCOPE_IDENTITY();
+		SET @EncId = SCOPE_IDENTITY();
 
 		INSERT INTO dbo.inv_documento_det
 			(enc_id, det_item, det_bien_o_servicio, det_cantidad, det_descripcion,
 			 det_precio_unitario, det_valor_descuento, det_sub_total, det_porc_iva, bod_id, pro_id,
 			 InsUsuario, InsFechaHora)
 		SELECT
-			@enc_id, det_item, det_bien_o_servicio, det_cantidad, det_descripcion,
+			@EncId, det_item, det_bien_o_servicio, det_cantidad, det_descripcion,
 			det_precio_unitario, det_valor_descuento, det_sub_total, det_porc_iva, bod_id, pro_id,
-			@usu_id, SYSDATETIME()
-		FROM @detalle;
+			@UsuId, SYSDATETIME()
+		FROM @Detalle;
 
 		UPDATE deta SET afc_id = acti.afc_id
-		FROM dbo.inv_documento_det deta INNER JOIN @activos acti ON acti.det_item = deta.det_item
-		WHERE deta.enc_id = @enc_id;
+		FROM dbo.inv_documento_det deta INNER JOIN @Activos acti ON acti.det_item = deta.det_item
+		WHERE deta.enc_id = @EncId;
 
-		EXEC dbo.sp_inv_generar_plan_pagos_proveedor @enc_id = @enc_id, @usu_id = @usu_id;
+		EXEC dbo.paProveedorPlanPagosGenerar @EncId = @EncId, @UsuId = @UsuId;
 
 		UPDATE dbo.inv_documento_enc
 		   SET enc_estado = 'G',
-			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
-		 WHERE enc_id = @enc_id;
+			   UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME()
+		 WHERE enc_id = @EncId;
 
-		EXEC dbo.sp_inventario_ajustar_existencia_documento @enc_id = @enc_id, @usu_id = @usu_id;
+		EXEC dbo.paInventarioExistenciaDocumentoAjustar @EncId = @EncId, @UsuId = @UsuId;
 
 		DECLARE @asi_id INT;
-		EXEC dbo.sp_contabilidad_generar_asiento_documento @enc_id = @enc_id, @usu_id = @usu_id, @asi_id = @asi_id OUTPUT;
+		EXEC dbo.paContabilidadAsientoDocumentoGenerar @EncId = @EncId, @UsuId = @UsuId, @AsiId = @asi_id OUTPUT;
 
-		IF EXISTS (SELECT 1 FROM @activos)
-			EXEC dbo.paActivoFijoCrearDesdeCompra @EncId = @enc_id, @Departamentos = @activos, @UsuId = @usu_id;
+		IF EXISTS (SELECT 1 FROM @Activos)
+			EXEC dbo.paActivoFijoCrearDesdeCompra @EncId = @EncId, @Departamentos = @Activos, @UsuId = @UsuId;
 
 		COMMIT TRANSACTION;
 	END TRY
@@ -616,22 +616,22 @@ GO
 
 -- Póliza de documento (script 35): las líneas de activo fijo de una compra
 -- van a la cuenta de activo de su categoría.
-CREATE OR ALTER PROCEDURE [dbo].[sp_contabilidad_generar_asiento_documento]
-	@enc_id	INT,
-	@usu_id	INT = NULL,
-	@asi_id	INT OUTPUT
+CREATE OR ALTER PROCEDURE [dbo].[paContabilidadAsientoDocumentoGenerar]
+	@EncId	INT,
+	@UsuId	INT = NULL,
+	@AsiId	INT OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
 
 	DECLARE @tdo_naturaleza CHAR(1), @afecta_costo CHAR(1), @fecha DATE, @monto_total NUMERIC(12, 2), @origen VARCHAR(20);
 
-	SELECT @tdo_naturaleza = tdo.tdo_naturaleza, @afecta_costo = tdo.afecta_costo,
-		   @fecha = enc.enc_fecha_docto, @monto_total = enc.enc_monto_total,
-		   @origen = CASE WHEN tdo.tdo_naturaleza = '+' THEN 'COMPRA' ELSE 'VENTA' END
-	FROM dbo.inv_documento_enc enc
-	INNER JOIN dbo.inv_documento_tipo tdo ON tdo.tdo_id = enc.tdo_id
-	WHERE enc.enc_id = @enc_id;
+	SELECT @tdo_naturaleza = tipo.tdo_naturaleza, @afecta_costo = tipo.afecta_costo,
+		   @fecha = enca.enc_fecha_docto, @monto_total = enca.enc_monto_total,
+		   @origen = CASE WHEN tipo.tdo_naturaleza = '+' THEN 'COMPRA' ELSE 'VENTA' END
+	FROM dbo.inv_documento_enc enca
+	INNER JOIN dbo.inv_documento_tipo tipo ON tipo.tdo_id = enca.tdo_id
+	WHERE enca.enc_id = @EncId;
 
 	IF @fecha IS NULL
 		THROW 51303, 'El documento indicado no existe.', 1;
@@ -641,9 +641,9 @@ BEGIN
 	WHERE ccp_codigo IN ('VENTA_CAJA','VENTA_CLIENTES','VENTA_INGRESO','VENTA_IVA_DEBITO','VENTA_COSTO','INVENTARIO',
 						 'COMPRA_GASTO','COMPRA_IVA_CREDITO','COMPRA_PROVEEDORES');
 
-	DECLARE @faltante VARCHAR(40) = (SELECT TOP 1 v.c FROM (VALUES ('VENTA_CAJA'),('VENTA_CLIENTES'),('VENTA_INGRESO'),('VENTA_IVA_DEBITO'),
-		('VENTA_COSTO'),('INVENTARIO'),('COMPRA_GASTO'),('COMPRA_IVA_CREDITO'),('COMPRA_PROVEEDORES')) v(c)
-		LEFT JOIN @cuentas cuen ON cuen.ccp_codigo = v.c WHERE cuen.cta_id IS NULL);
+	DECLARE @faltante VARCHAR(40) = (SELECT TOP 1 conc.codigo FROM (VALUES ('VENTA_CAJA'),('VENTA_CLIENTES'),('VENTA_INGRESO'),('VENTA_IVA_DEBITO'),
+		('VENTA_COSTO'),('INVENTARIO'),('COMPRA_GASTO'),('COMPRA_IVA_CREDITO'),('COMPRA_PROVEEDORES')) conc(codigo)
+		LEFT JOIN @cuentas cuen ON cuen.ccp_codigo = conc.codigo WHERE cuen.cta_id IS NULL);
 	IF @faltante IS NOT NULL
 	BEGIN
 		DECLARE @msg_faltante NVARCHAR(200) = CONCAT(N'El concepto contable ', @faltante, N' no tiene cuenta asignada; configúrelo en cont_cuenta_parametro.');
@@ -664,23 +664,23 @@ BEGIN
 	FROM @cuentas;
 
 	DECLARE @iva NUMERIC(14, 2) =
-		(SELECT ISNULL(SUM((det_sub_total - det_valor_descuento) * ISNULL(det_porc_iva, 0) / 100.0), 0) FROM dbo.inv_documento_det WHERE enc_id = @enc_id);
+		(SELECT ISNULL(SUM((det_sub_total - det_valor_descuento) * ISNULL(det_porc_iva, 0) / 100.0), 0) FROM dbo.inv_documento_det WHERE enc_id = @EncId);
 
 	DECLARE @costo_venta NUMERIC(14, 2);
-	SELECT @costo_venta = ISNULL(SUM(det.det_cantidad * COALESCE(det.det_costo_unitario, pro.pro_costo_unitario)), 0)
-	FROM dbo.inv_documento_det det
-	INNER JOIN dbo.inv_producto pro ON pro.pro_id = det.pro_id
-	WHERE det.enc_id = @enc_id AND pro.pro_maneja_existencia = 1;
+	SELECT @costo_venta = ISNULL(SUM(deta2.det_cantidad * COALESCE(deta2.det_costo_unitario, prod.pro_costo_unitario)), 0)
+	FROM dbo.inv_documento_det deta2
+	INNER JOIN dbo.inv_producto prod ON prod.pro_id = deta2.pro_id
+	WHERE deta2.enc_id = @EncId AND prod.pro_maneja_existencia = 1;
 
 	DECLARE @pdo_id INT;
-	EXEC dbo.sp_contabilidad_obtener_o_crear_periodo @fecha = @fecha, @usu_id = @usu_id, @pdo_id = @pdo_id OUTPUT;
+	EXEC dbo.paContabilidadPeriodoObtenerOCrear @Fecha = @fecha, @UsuId = @UsuId, @PdoId = @pdo_id OUTPUT;
 
 	DECLARE @detalle dbo.cont_asiento_det_type;
-	DECLARE @ref VARCHAR(10) = CAST(@enc_id AS VARCHAR(10));
+	DECLARE @ref VARCHAR(10) = CAST(@EncId AS VARCHAR(10));
 
 	IF @tdo_naturaleza = '-' -- venta
 	BEGIN
-		DECLARE @cobrado NUMERIC(12, 2) = (SELECT ISNULL(SUM(ppd_valor_aplicado), 0) FROM dbo.pos_pago_det WHERE enc_id = @enc_id);
+		DECLARE @cobrado NUMERIC(12, 2) = (SELECT ISNULL(SUM(ppd_valor_aplicado), 0) FROM dbo.pos_pago_det WHERE enc_id = @EncId);
 		IF @cobrado > @monto_total SET @cobrado = @monto_total;
 
 		IF @cobrado > 0
@@ -707,7 +707,7 @@ BEGIN
 		SELECT cate.cta_id_activo, SUM(deta.det_sub_total - deta.det_valor_descuento)
 		FROM dbo.inv_documento_det deta
 		INNER JOIN dbo.afi_categoria cate ON cate.afc_id = deta.afc_id
-		WHERE deta.enc_id = @enc_id
+		WHERE deta.enc_id = @EncId
 		GROUP BY cate.cta_id_activo;
 		DECLARE @neto_activos NUMERIC(14, 2) = ISNULL((SELECT SUM(neto) FROM @activos), 0);
 
@@ -726,9 +726,9 @@ BEGIN
 
 	DECLARE @asi_descripcion VARCHAR(256) = 'Generado automáticamente desde documento ' + @ref;
 
-	EXEC dbo.sp_contabilidad_insertar_asiento
-		@asi_fecha = @fecha, @asi_descripcion = @asi_descripcion, @asi_origen = @origen,
-		@enc_id = @enc_id, @pdo_id = @pdo_id, @usu_id = @usu_id, @detalle = @detalle, @asi_id = @asi_id OUTPUT;
+	EXEC dbo.paContabilidadAsientoInsertar
+		@AsiFecha = @fecha, @AsiDescripcion = @asi_descripcion, @AsiOrigen = @origen,
+		@EncId = @EncId, @PdoId = @pdo_id, @UsuId = @UsuId, @Detalle = @detalle, @AsiId = @AsiId OUTPUT;
 END;
 GO
 
@@ -1025,9 +1025,9 @@ BEGIN
 		INSERT INTO @detalle (det_item, det_bien_o_servicio, det_cantidad, det_descripcion, det_precio_unitario, det_valor_descuento, det_sub_total, det_porc_iva, bod_id, pro_id)
 		VALUES (1, 'B', 2, 'Computadora Dell Optiplex i7 16 GB', 7500, 0, 15000, 12, @bod_id, NULL);
 		INSERT INTO @activos (det_item, afc_id, IdDepartamento) VALUES (1, @comp, @depto);
-		EXEC dbo.sp_compras_crear_documento @enc_fecha_docto = '20260810', @enc_serie_docto = 'FC', @enc_numero_docto = '880123', @prv_id = @prv_id,
-			@tdo_id = @tdo_gasto, @enc_numero_cuotas = 1, @enc_fecha_primer_pago = '20260910', @usu_id = 1, @detalle = @detalle,
-			@enc_id = @enc_id OUTPUT, @activos = @activos;
+		EXEC dbo.paCompraDocumentoCrear @EncFechaDocto = '20260810', @EncSerieDocto = 'FC', @EncNumeroDocto = '880123', @PrvId = @prv_id,
+			@TdoId = @tdo_gasto, @EncNumeroCuotas = 1, @EncFechaPrimerPago = '20260910', @UsuId = 1, @Detalle = @detalle,
+			@EncId = @enc_id OUTPUT, @Activos = @activos;
 	END
 
 	EXEC dbo.paActivoFijoDepreciar @Anio = 2026, @Mes = 6, @UsuId = 1, @AdcId = @adc_id OUTPUT;

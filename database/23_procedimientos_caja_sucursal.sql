@@ -13,8 +13,8 @@
 --   * Depósitos parciales a banco (pos_caja_deposito).
 --
 -- Usa el estándar de nomenclatura vigente para procedimientos y alias
--- nuevos (pa + PascalCase, alias de 4+ caracteres). sp_pos_caja_abrir y
--- sp_pos_caja_cerrar ya existían con el nombre viejo: se extienden con
+-- nuevos (pa + PascalCase, alias de 4+ caracteres). paCajaAbrir y
+-- paCajaCerrar ya existían con el nombre viejo: se extienden con
 -- CREATE OR ALTER sin renombrarlos, tal como con los demás procedimientos
 -- ya desplegados.
 --
@@ -186,22 +186,22 @@ GO
 ------------------------------------------------------------
 -- Apertura de caja: monto inicial libre
 ------------------------------------------------------------
-CREATE OR ALTER PROCEDURE [dbo].[sp_pos_caja_abrir]
-	@pcr_id				INT,
-	@usu_id				INT,
-	@pca_monto_inicial	NUMERIC(12, 2) = 0,
-	@pca_id				INT OUTPUT
+CREATE OR ALTER PROCEDURE [dbo].[paCajaAbrir]
+	@PcrId				INT,
+	@UsuId				INT,
+	@PcaMontoInicial	NUMERIC(12, 2) = 0,
+	@PcaId				INT OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
 
-	IF EXISTS (SELECT 1 FROM dbo.pos_caja_apertura WHERE pcr_id = @pcr_id AND pca_estado = 'A')
+	IF EXISTS (SELECT 1 FROM dbo.pos_caja_apertura WHERE pcr_id = @PcrId AND pca_estado = 'A')
 		THROW 51701, 'Ya existe una apertura de caja activa para esta caja receptora. Debe cerrarse antes de abrir una nueva.', 1;
 
 	INSERT INTO dbo.pos_caja_apertura (pcr_id, usu_id_apertura, pca_monto_inicial, InsUsuario, InsFechaHora)
-	VALUES (@pcr_id, @usu_id, ISNULL(@pca_monto_inicial, 0), @usu_id, SYSDATETIME());
+	VALUES (@PcrId, @UsuId, ISNULL(@PcaMontoInicial, 0), @UsuId, SYSDATETIME());
 
-	SET @pca_id = SCOPE_IDENTITY();
+	SET @PcaId = SCOPE_IDENTITY();
 END;
 GO
 
@@ -312,32 +312,32 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[sp_pos_caja_cerrar]
-	@pca_id	INT,
-	@usu_id	INT
+CREATE OR ALTER PROCEDURE [dbo].[paCajaCerrar]
+	@PcaId	INT,
+	@UsuId	INT
 AS
 BEGIN
 	SET NOCOUNT ON;
 
-	IF NOT EXISTS (SELECT 1 FROM dbo.pos_caja_apertura WHERE pca_id = @pca_id AND pca_estado = 'A')
+	IF NOT EXISTS (SELECT 1 FROM dbo.pos_caja_apertura WHERE pca_id = @PcaId AND pca_estado = 'A')
 		THROW 51702, 'La apertura de caja indicada no existe o ya está cerrada.', 1;
 
 	DECLARE @monto_inicial NUMERIC(12, 2), @teorico_cobrado NUMERIC(12, 2), @fisico_efectivo NUMERIC(12, 2), @fisico_otras_formas NUMERIC(12, 2);
 
-	SELECT @monto_inicial = pca_monto_inicial FROM dbo.pos_caja_apertura WHERE pca_id = @pca_id;
+	SELECT @monto_inicial = pca_monto_inicial FROM dbo.pos_caja_apertura WHERE pca_id = @PcaId;
 
 	SELECT @teorico_cobrado = SUM(forma.ppf_monto)
 	FROM dbo.pos_pago_forma forma
 	INNER JOIN dbo.pos_pago_enc penc ON penc.ppe_id = forma.ppe_id
-	WHERE penc.pca_id = @pca_id;
+	WHERE penc.pca_id = @PcaId;
 
 	SELECT @fisico_efectivo = SUM(def_denominacion * def_cantidad)
 	FROM dbo.pos_caja_desglose_efectivo
-	WHERE pca_id = @pca_id;
+	WHERE pca_id = @PcaId;
 
 	SELECT @fisico_otras_formas = SUM(pcf_monto_fisico)
 	FROM dbo.pos_caja_corte_forma
-	WHERE pca_id = @pca_id;
+	WHERE pca_id = @PcaId;
 
 	DECLARE @monto_teorico_total NUMERIC(12, 2) = ISNULL(@monto_inicial, 0) + ISNULL(@teorico_cobrado, 0);
 	DECLARE @monto_fisico_total NUMERIC(12, 2) = ISNULL(@fisico_efectivo, 0) + ISNULL(@fisico_otras_formas, 0);
@@ -346,12 +346,12 @@ BEGIN
 	   SET pca_estado = 'C',
 		   pca_fecha_corte = SYSDATETIME(),
 		   pca_fecha_cierre = SYSDATETIME(),
-		   usu_id_cierre = @usu_id,
+		   usu_id_cierre = @UsuId,
 		   pca_monto_teorico_total = @monto_teorico_total,
 		   pca_monto_fisico_total = @monto_fisico_total,
 		   pca_diferencia = @monto_fisico_total - @monto_teorico_total,
-		   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
-	 WHERE pca_id = @pca_id;
+		   UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME()
+	 WHERE pca_id = @PcaId;
 END;
 GO
 

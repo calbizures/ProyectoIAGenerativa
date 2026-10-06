@@ -91,7 +91,7 @@ no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `4
 
 `25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `65` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
-versión anterior de `sp_pos_caja_cerrar` y `paCorteCajaTeoricoConsultar`
+versión anterior de `paCajaCerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
 cualquiera de los dos, vuelve a correr después `26` a `65`. Si vuelves a
 correr `12`, corre después `22` a `65` (el `12` vacía todas las tablas). Lo
@@ -130,23 +130,111 @@ Si la consulta no devuelve filas, corre `26_parametros_general_caja.sql`.
 La aplicación vuelve a leer los permisos de la sesión cada minuto, así que
 el menú aparece al recargar la página sin cerrar sesión.
 
-## Estándares de nomenclatura (a partir de este punto)
+## Estándares de nomenclatura
 
-A solicitud explícita, todo procedimiento almacenado **nuevo** y todo alias
-de tabla **nuevo** en el SQL que se agregue de aquí en adelante debe seguir:
+Todo el SQL del proyecto sigue este estándar:
 
 - **Procedimientos almacenados:** prefijo `pa` + PascalCase, sin guiones
-  bajos (ej. `paProductoInsertar`, `paClienteConsultarPorId`).
+  bajos, entidad y luego acción (ej. `paProductoInsertar`,
+  `paClienteConsultarPorId`, `paVentaFacturaCrear`).
+- **Funciones:** prefijo `fn` + PascalCase (ej. `fnMonedaLocal`).
+- **Parámetros** de procedimientos y funciones en PascalCase (`@EncId`,
+  `@UsuId`, `@FechaDocto`).
 - **Alias de tabla en consultas:** mínimo 4 caracteres (ej. `prod` en vez de
   `pro`, `enca` en vez de `enc`).
 
-Esto **no aplica retroactivamente**: los ~90 procedimientos `sp_<entidad>_
-<accion>` y los alias de 3 caracteres (`pro`, `cli`, `enc`, `bod`, `mon`,
-`tdo`, `prv`, `ppr`, `pca`, `ptc`, `peb`...) que ya están desplegados se
-dejan como están para no romper llamadas existentes desde `Erp.Data`. Si
-en algún momento se pide migrar los objetos existentes a este estándar,
-es un cambio aparte y coordinado (afecta la capa de datos del frontend a
-la vez), no algo para hacer de forma incremental sin avisar.
+### Estandarización de nombres (`66`)
+
+Los 62 procedimientos `sp_<entidad>_<accion>` y las 8 funciones `fn_<nombre>`
+de los primeros scripts se pasaron al estándar: nombre, parámetros y alias de
+tabla. Los scripts `00` a `65` ya usan los nombres nuevos (también las
+llamadas entre procedimientos y los datos de prueba) y la capa de datos de la
+aplicación (`Erp.Data`) llama a los nombres y parámetros nuevos.
+
+`66_estandarizacion_nombres.sql` es para las bases instaladas antes de este
+cambio: crea los 70 objetos con su nombre nuevo, vuelve a grabar los 30
+procedimientos que los llamaban y borra los nombres viejos. En una base nueva
+solo vuelve a grabar lo mismo. **Actualice base y aplicación juntas**: la
+aplicación de esta versión ya no encuentra los nombres viejos.
+
+Siguen fuera del estándar, a propósito: los tipos de tabla (`factura_det_type`,
+`compra_det_type`...), las vistas `vw_` y los triggers `trg_` (prefijos
+habituales en SQL Server), y algunos procedimientos `pa` antiguos con
+parámetros en snake_case (por ejemplo `paCorteCajaCuadreConsultar @pca_id`):
+cambiarlos rompe la aplicación sin ganancia y se dejan anotados.
+
+| Nombre anterior | Nombre nuevo |
+|---|---|
+| `fn_moneda_local` | `fnMonedaLocal` |
+| `fn_direccion_completa_cliente` | `fnClienteDireccionCompleta` |
+| `fn_nombre_completo_cliente` | `fnClienteNombreCompleto` |
+| `fn_nombre_completo_cliente_encabezado` | `fnDocumentoClienteNombreCompleto` |
+| `fn_ultimo_costo_unitario` | `fnProductoUltimoCostoUnitario` |
+| `fn_descripcion_ultimo_movimiento` | `fnProductoUltimoMovimientoDescripcion` |
+| `fn_fecha_ultimo_movimiento` | `fnProductoUltimoMovimientoFecha` |
+| `fn_numeros_a_letras` | `fnNumeroALetras` |
+| `sp_producto_insertar` | `paProductoInsertar` |
+| `sp_producto_actualizar` | `paProductoActualizar` |
+| `sp_producto_eliminar` | `paProductoEliminar` |
+| `sp_producto_consultar` | `paProductoConsultar` |
+| `sp_producto_consultar_por_id` | `paProductoConsultarPorId` |
+| `sp_cliente_insertar` | `paClienteInsertar` |
+| `sp_cliente_actualizar` | `paClienteActualizar` |
+| `sp_cliente_eliminar` | `paClienteEliminar` |
+| `sp_cliente_consultar` | `paClienteConsultar` |
+| `sp_cliente_consultar_por_id` | `paClienteConsultarPorId` |
+| `sp_proveedor_insertar` | `paProveedorInsertar` |
+| `sp_proveedor_actualizar` | `paProveedorActualizar` |
+| `sp_proveedor_eliminar` | `paProveedorEliminar` |
+| `sp_proveedor_consultar` | `paProveedorConsultar` |
+| `sp_proveedor_consultar_por_id` | `paProveedorConsultarPorId` |
+| `sp_usuario_insertar` | `paUsuarioInsertar` |
+| `sp_usuario_actualizar` | `paUsuarioActualizar` |
+| `sp_usuario_cambiar_password` | `paUsuarioPasswordCambiar` |
+| `sp_usuario_eliminar` | `paUsuarioEliminar` |
+| `sp_usuario_consultar` | `paUsuarioConsultar` |
+| `sp_usuario_consultar_por_id` | `paUsuarioConsultarPorId` |
+| `sp_bodega_insertar` | `paBodegaInsertar` |
+| `sp_bodega_actualizar` | `paBodegaActualizar` |
+| `sp_bodega_eliminar` | `paBodegaEliminar` |
+| `sp_bodega_consultar` | `paBodegaListar` |
+| `sp_bodega_consultar_por_id` | `paBodegaConsultarPorId` |
+| `sp_cuenta_bancaria_insertar` | `paCuentaBancariaInsertar` |
+| `sp_cuenta_bancaria_actualizar` | `paCuentaBancariaActualizar` |
+| `sp_cuenta_bancaria_eliminar` | `paCuentaBancariaEliminar` |
+| `sp_cuenta_bancaria_consultar` | `paCuentaBancariaConsultar` |
+| `sp_cuenta_bancaria_consultar_por_id` | `paCuentaBancariaConsultarPorId` |
+| `sp_cuenta_contable_insertar` | `paCuentaContableInsertar` |
+| `sp_cuenta_contable_actualizar` | `paCuentaContableActualizar` |
+| `sp_cuenta_contable_eliminar` | `paCuentaContableEliminar` |
+| `sp_cuenta_contable_consultar` | `paCuentaContableConsultar` |
+| `sp_cuenta_contable_consultar_por_id` | `paCuentaContableConsultarPorId` |
+| `sp_rol_insertar` | `paRolInsertar` |
+| `sp_rol_actualizar` | `paRolActualizar` |
+| `sp_rol_eliminar` | `paRolEliminar` |
+| `sp_rol_consultar` | `paRolConsultar` |
+| `sp_permiso_insertar` | `paPermisoInsertar` |
+| `sp_permiso_consultar` | `paPermisoConsultar` |
+| `sp_rol_asignar_permiso` | `paRolPermisoAsignar` |
+| `sp_rol_revocar_permiso` | `paRolPermisoRevocar` |
+| `sp_usuario_asignar_rol` | `paUsuarioRolAsignar` |
+| `sp_usuario_revocar_rol` | `paUsuarioRolRevocar` |
+| `sp_documento_consultar_por_id` | `paDocumentoConsultarPorId` |
+| `sp_inventario_ajustar_existencia_documento` | `paInventarioExistenciaDocumentoAjustar` |
+| `sp_inventario_recalcular_existencias_completo` | `paInventarioExistenciaRecalcular` |
+| `sp_pos_generar_plan_pagos_cliente` | `paClientePlanPagosGenerar` |
+| `sp_inv_generar_plan_pagos_proveedor` | `paProveedorPlanPagosGenerar` |
+| `sp_contabilidad_obtener_o_crear_periodo` | `paContabilidadPeriodoObtenerOCrear` |
+| `sp_contabilidad_insertar_asiento` | `paContabilidadAsientoInsertar` |
+| `sp_contabilidad_generar_asiento_documento` | `paContabilidadAsientoDocumentoGenerar` |
+| `sp_ventas_crear_factura` | `paVentaFacturaCrear` |
+| `sp_compras_crear_documento` | `paCompraDocumentoCrear` |
+| `sp_documento_anular` | `paDocumentoAnular` |
+| `sp_pos_registrar_pago_cuota` | `paClienteCuotaPagoRegistrar` |
+| `sp_bancos_emitir_cheque_pago_proveedor` | `paBancoChequePagoProveedorEmitir` |
+| `sp_pos_caja_abrir` | `paCajaAbrir` |
+| `sp_pos_caja_cerrar` | `paCajaCerrar` |
+| `sp_seguridad_login` | `paSeguridadLogin` |
 
 Cada archivo empieza con `USE [erp_db];` y usa `CREATE OR ALTER` en objetos
 programables, así que se pueden volver a correr sin borrar la base primero
@@ -246,26 +334,26 @@ Decisiones de diseño:
   `SYSDATETIME()`. En los procedimientos de `gen_usuario`, donde `@usu_id`
   ya identificaba la fila objetivo, el usuario que ejecuta la acción se
   recibe como `@usu_id_accion` para no chocar con ese nombre.
-  `sp_usuario_cambiar_password` graba `UpdUsuario = @usu_id` (el mismo
+  `paUsuarioPasswordCambiar` graba `UpdUsuario = @usu_id` (el mismo
   usuario, porque es un cambio que uno hace sobre su propia cuenta).
-  `sp_rol_asignar_permiso`/`sp_usuario_asignar_rol` también graban
+  `paRolPermisoAsignar`/`paUsuarioRolAsignar` también graban
   `InsUsuario`/`InsFechaHora` al insertar en las tablas de asignación;
   los procedimientos `_revocar_*` (`DELETE`) no aplican, porque la fila
   desaparece.
 - `11_procedimientos_procesos.sql` también está conectado: `@usu_id` se
-  graba en todas las filas que tocan `sp_ventas_crear_factura`,
-  `sp_compras_crear_documento` (encabezado y detalle del documento, el plan
+  graba en todas las filas que tocan `paVentaFacturaCrear`,
+  `paCompraDocumentoCrear` (encabezado y detalle del documento, el plan
   de cuotas que generan, el ajuste de existencias y el asiento contable
-  automático), `sp_documento_anular` (reversa de existencias y anulación del
-  asiento), `sp_pos_registrar_pago_cuota` (el pago y la cuota abonada),
-  `sp_bancos_emitir_cheque_pago_proveedor` (el cheque y la cuota pagada),
-  `sp_pos_caja_abrir`/`sp_pos_caja_cerrar` y `sp_seguridad_login` (que se
+  automático), `paDocumentoAnular` (reversa de existencias y anulación del
+  asiento), `paClienteCuotaPagoRegistrar` (el pago y la cuota abonada),
+  `paBancoChequePagoProveedorEmitir` (el cheque y la cuota pagada),
+  `paCajaAbrir`/`paCajaCerrar` y `paSeguridadLogin` (que se
   graba a sí mismo como `UpdUsuario`, tanto en un login exitoso como en uno
   fallido). Los procedimientos internos que antes no necesitaban saber quién
-  ejecuta la acción (`sp_inventario_ajustar_existencia_documento`,
-  `sp_inventario_recalcular_existencias_completo`,
-  `sp_pos_generar_plan_pagos_cliente`, `sp_inv_generar_plan_pagos_proveedor`,
-  `sp_contabilidad_obtener_o_crear_periodo`) ahora reciben `@usu_id` también,
+  ejecuta la acción (`paInventarioExistenciaDocumentoAjustar`,
+  `paInventarioExistenciaRecalcular`,
+  `paClientePlanPagosGenerar`, `paProveedorPlanPagosGenerar`,
+  `paContabilidadPeriodoObtenerOCrear`) ahora reciben `@usu_id` también,
   para poder pasarlo hacia abajo en la cadena de llamadas.
   `12_datos_sinteticos.sql` no necesitó cambios: todos los parámetros nuevos
   son opcionales y las llamadas existentes ya usaban argumentos con nombre.
@@ -276,26 +364,26 @@ Decisiones de diseño:
    hacían `UPDATE inv_documento_enc SET enc_estado = 'G'` sin filtrar por
    `enc_id`: cada factura o compra grabada marcaba **todos** los documentos
    de la tabla como "Grabado". Ahora todo `UPDATE` de estado lleva su
-   `WHERE enc_id = @enc_id` (`sp_ventas_crear_factura`,
-   `sp_compras_crear_documento`, `sp_documento_anular`).
+   `WHERE enc_id = @enc_id` (`paVentaFacturaCrear`,
+   `paCompraDocumentoCrear`, `paDocumentoAnular`).
 2. **Correlativo de facturación compartido y sin bloqueo.** `spr_guarda_factura`
    actualizaba `conf_correlativos` con una subconsulta a la misma tabla, sin
    `WHERE` y sin distinguir series por tipo de documento — con más de una
    serie el valor quedaba indeterminado, y dos facturas grabándose al mismo
    tiempo podían repetir número. Ahora `conf_correlativos` tiene una fila por
    `tdo_id` y se lee con `UPDLOCK, ROWLOCK` dentro de la transacción antes de
-   incrementarla (`sp_ventas_crear_factura`).
+   incrementarla (`paVentaFacturaCrear`).
 3. **Recalcular todo el inventario en cada venta.** `SPR_ACTUALIZA_EXISTENCIAS`
    recorría con un cursor **todo** el historial de documentos cada vez que se
    grababa una sola factura o compra. Se reemplaza por un ajuste incremental
-   (`sp_inventario_ajustar_existencia_documento`) que solo toca las líneas del
+   (`paInventarioExistenciaDocumentoAjustar`) que solo toca las líneas del
    documento que se está grabando; el recálculo completo se conserva como
-   `sp_inventario_recalcular_existencias_completo`, para usarse solo como
+   `paInventarioExistenciaRecalcular`, para usarse solo como
    utilidad de mantenimiento/reconciliación.
 4. **Contraseñas en texto plano.** `gen_usuario.usu_contrasenia` era
    `varchar(8)` y `SPR_LOGIN_USUARIO` comparaba el valor tal cual. Se
    reemplaza por `usu_password_hash` (`SHA2_256` + sal por usuario) y
-   `sp_seguridad_login` compara el hash, además de bloquear la cuenta tras 5
+   `paSeguridadLogin` compara el hash, además de bloquear la cuenta tras 5
    intentos fallidos.
 5. **Datos de tarjeta en texto plano.** `pos_pago_forma` guardaba el número
    completo de tarjeta y el código de verificación (CVV), lo cual viola
@@ -306,7 +394,7 @@ Decisiones de diseño:
 7. **`pos_pago_det` no tenía monto.** No se podía saber cuánto de un pago se
    aplicó a cada cuota. Se agrega `ppd_valor_aplicado`.
 8. **No existía forma de anular un documento** ya grabado. Se agrega
-   `sp_documento_anular`, que revierte el efecto en existencias y anula el
+   `paDocumentoAnular`, que revierte el efecto en existencias y anula el
    asiento contable asociado (no revierte automáticamente cuotas de plan de
    pago ya generadas: cancelar un documento no implica necesariamente
    cancelar un compromiso de pago ya acordado con el cliente/proveedor).
@@ -316,16 +404,16 @@ Decisiones de diseño:
 9. **`enc_numero_unico` con una `UNIQUE` constraint normal sobre columna
    nullable.** En SQL Server ese tipo de restricción solo permite **un**
    valor `NULL` en toda la tabla (a diferencia de PostgreSQL/Oracle). Como
-   `sp_compras_crear_documento` nunca llena esa columna (las compras no usan
+   `paCompraDocumentoCrear` nunca llena esa columna (las compras no usan
    ese correlativo), la primera compra de la vida del sistema la deja en
    `NULL`, y cualquier documento posterior que también intentara insertarse
    con `NULL` en ese instante (toda factura nueva, porque el `INSERT`
-   original de `sp_ventas_crear_factura` la dejaba en `NULL` momentáneamente
+   original de `paVentaFacturaCrear` la dejaba en `NULL` momentáneamente
    antes de un `UPDATE` posterior) chocaba contra ese primer `NULL` y fallaba
    con `Violation of UNIQUE KEY constraint ... duplicate key value is
    (<NULL>)`. Se cambia por un **índice único filtrado**
    (`WHERE enc_numero_unico IS NOT NULL`, ver `03_tablas_inventario.sql`) y
-   `sp_ventas_crear_factura` ahora graba `enc_numero_unico` directo en el
+   `paVentaFacturaCrear` ahora graba `enc_numero_unico` directo en el
    `INSERT` en vez de en un `UPDATE` posterior (`11_procedimientos_procesos.sql`).
    Quien ya haya corrido `00`-`12` antes de este cambio debe correr
    `13_correccion_numero_unico.sql` una sola vez contra su base existente.
@@ -337,22 +425,21 @@ Decisiones de diseño:
     `paVendedorConsultar`, `paVendedorConsultarPorId`) en vez de
     `sp_<entidad>_<accion>`. En ese momento fue el único módulo con ese
     estándar; desde la sección "Estándares de nomenclatura" arriba, es el
-    estándar para todo procedimiento nuevo — los ~90 procedimientos
-    `sp_<entidad>_<accion>` existentes no se renombraron para no romper
-    llamadas ya desplegadas. Quien ya haya corrido `00`-`12` debe correr
+    estándar de todo el proyecto (los procedimientos `sp_<entidad>_<accion>`
+    se renombraron en `66`). Quien ya haya corrido `00`-`12` debe correr
     `14_procedimientos_vendedor.sql` una sola vez.
 11. **Plan de pagos con el enganche/descuento mal aplicado.** Al exponer en
     el frontend los campos de crédito (enganche, cuotas, fecha del primer
-    pago) se encontró que `sp_pos_generar_plan_pagos_cliente` restaba el
+    pago) se encontró que `paClientePlanPagosGenerar` restaba el
     descuento dos veces (una porque `enc_monto_total` ya viene neto de
     descuento, y otra porque el procedimiento lo volvía a restar), y que
-    `sp_inv_generar_plan_pagos_proveedor` nunca restaba el enganche aunque
+    `paProveedorPlanPagosGenerar` nunca restaba el enganche aunque
     sí se captura y se guarda. Ambos quedan con la misma fórmula
     `valor_cuota = (monto_total - monto_enganche) / número_cuotas`
     (`11_procedimientos_procesos.sql`). Quien ya haya corrido `00`-`14` debe
     correr `15_correccion_plan_pagos.sql` una sola vez; no recalcula planes
     de pago ya generados.
-12. **Reactivar usuario.** `sp_usuario_eliminar` (baja lógica) no tenía
+12. **Reactivar usuario.** `paUsuarioEliminar` (baja lógica) no tenía
     contraparte para reactivar. Se agrega `paUsuarioActivar`
     (`10_procedimientos_crud.sql`). Quien ya haya corrido `00`-`15` debe
     correr `16_activar_usuario.sql` una sola vez.
@@ -393,7 +480,7 @@ Decisiones de diseño:
     `20_procedimiento_plan_pagos_consultar.sql` una sola vez.
 17. **Costo unitario y precio de lista sin registrar en el detalle de
     factura.** `inv_documento_det` ya tenía las columnas
-    `det_costo_unitario` y `ppr_id`, pero `sp_ventas_crear_factura` nunca
+    `det_costo_unitario` y `ppr_id`, pero `paVentaFacturaCrear` nunca
     las llenaba (quedaban `NULL`). Ahora `det_costo_unitario` guarda el
     costo unitario del producto al momento de la venta y `ppr_id` guarda
     el `inv_producto_precio.ppr_id` de la lista de precios con el que se
@@ -401,7 +488,7 @@ Decisiones de diseño:
     `det_bien_o_servicio` ya se llenaba bien desde el tipo de producto).
     Como `dbo.factura_det_type` es un parámetro con tipo de tabla, no se
     puede alterar in-place: el script quita temporalmente
-    `sp_ventas_crear_factura`, recrea el tipo con la columna nueva y
+    `paVentaFacturaCrear`, recrea el tipo con la columna nueva y
     vuelve a crear el procedimiento. Quien ya haya corrido `00`-`20` debe
     correr `21_costo_unitario_ppr_id_factura.sql` una sola vez.
 18. **Login por sucursal, apertura de caja con fondo inicial, depósitos y
@@ -415,10 +502,10 @@ Decisiones de diseño:
       activas para no romper accesos existentes; un administrador ajusta
       después los accesos reales desde Usuarios.
     - `pos_caja_apertura` agrega el monto inicial (fondo de caja, libre)
-      y los totales de corte (teórico/físico/diferencia). `sp_pos_caja_abrir`
+      y los totales de corte (teórico/físico/diferencia). `paCajaAbrir`
       ya validaba que no hubiera otra apertura activa para la misma caja
       receptora (esa es la regla de "no abrir si no se cerró el día
-      anterior"); solo se le agregó el monto inicial. `sp_pos_caja_cerrar`
+      anterior"); solo se le agregó el monto inicial. `paCajaCerrar`
       ahora calcula el corte (teórico desde `pos_pago_forma`, físico desde
       `pos_caja_desglose_efectivo` + la nueva `pos_caja_corte_forma`)
       antes de cerrar.
@@ -428,7 +515,7 @@ Decisiones de diseño:
       ahora puede referenciar directamente una factura además de una
       cuota, para poder registrar el pago de contado o el enganche de
       crédito (que antes no generaban cuota propia, así que no se podían
-      pagar). `sp_ventas_crear_factura` y `sp_pos_registrar_pago_cuota`
+      pagar). `paVentaFacturaCrear` y `paClienteCuotaPagoRegistrar`
       reciben las formas de pago usadas.
     - CRUD nuevo de cajas receptoras (`paCajaReceptora*`, antes solo se
       podían insertar a mano) y de sucursales por usuario
@@ -460,11 +547,11 @@ Decisiones de diseño:
     caja abierta de la sucursal del usuario; si no hay caja abierta, la
     factura se graba igual pero sin registrar el pago en caja. **No** se
     construyó una pantalla de cobro de cuotas con formas de pago (el
-    procedimiento `sp_pos_registrar_pago_cuota` ya las acepta a nivel de
+    procedimiento `paClienteCuotaPagoRegistrar` ya las acepta a nivel de
     base de datos, pero no hay UI todavía).
 19. **Corrección: un parámetro de tabla (TVP) no puede tener valor por
     defecto en SQL Server.** `@formas_pago dbo.pago_forma_type READONLY
-    = NULL` en `sp_ventas_crear_factura` y `sp_pos_registrar_pago_cuota`
+    = NULL` en `paVentaFacturaCrear` y `paClienteCuotaPagoRegistrar`
     (punto 18) no es sintaxis válida — SQL Server la rechaza con "Incorrect
     syntax near '='" al crear el procedimiento, y como el `CREATE
     PROCEDURE` completo falla, arrastra errores de "must declare the
@@ -536,7 +623,7 @@ teórico = monto inicial + ventas/cobros en efectivo − depósitos al banco
 ```
 
 y lo compara con lo contado (desglose de efectivo + conteo de otras
-formas). `sp_pos_caja_cerrar` rechaza el cierre (error 51703, con el
+formas). `paCajaCerrar` rechaza el cierre (error 51703, con el
 teórico, lo contado y la diferencia en el mensaje) cuando
 `|contado − teórico| > cia_tolerancia_cierre_caja`. La pantalla de Caja
 muestra el mismo desglose y deshabilita **Cerrar caja** mientras no cuadre.
@@ -608,7 +695,7 @@ de caja y nómina»).
 
 Las cuentas no están fijas en el procedimiento: la tabla
 `cont_cuenta_parametro` relaciona cada concepto con una cuenta y se mantiene
-en **General > Cuentas de pólizas**. `sp_contabilidad_generar_asiento_documento`
+en **General > Cuentas de pólizas**. `paContabilidadAsientoDocumentoGenerar`
 rechaza el documento (error 51304) si falta la cuenta de algún concepto.
 
 ### Nomenclatura contable (`28`)
@@ -800,7 +887,7 @@ el documento pagado.
 - **Cobro de varias cuotas en un recibo** (`paCxcCobroRegistrar`, TVP
   `cobro_cuota_type`): una sola póliza por el total. El saldo de cada cuota
   se vuelve a comprobar al rebajarlo, por si otro cajero la cobró al mismo
-  tiempo. `sp_pos_registrar_pago_cuota` queda como atajo de una cuota; sin
+  tiempo. `paClienteCuotaPagoRegistrar` queda como atajo de una cuota; sin
   formas de pago toma el monto como Efectivo.
 - **Anulación de recibos** (`paCxcReciboAnular`): solo mientras la caja donde
   se cobró siga abierta y con motivo de al menos 5 caracteres. Devuelve el
@@ -1160,7 +1247,7 @@ consulta al certificador y registra al cliente (errores `53808`-`53810`).
 
 - `paCxpProveedoresConSaldoConsultar`: solo proveedores con saldo, con lo
   vencido y el número de facturas (lista de **Pagos a proveedores**).
-- `sp_usuario_consultar` devuelve el empleado (nombre completo) y el código
+- `paUsuarioConsultar` devuelve el empleado (nombre completo) y el código
   de vendedor. El nombre del vendedor vinculado a un empleado se toma del
   empleado (triggers), para no tenerlo escrito dos veces.
 - Permisos nuevos: `COMPRAS_DOCUMENTO_ANULAR`, `VENTAS_VENDEDOR_ADMIN`,
@@ -1405,7 +1492,7 @@ Auditoría de todo el sistema (`00` a `50` y las pantallas). Errores
   quedaba en las cuotas, y la póliza no cuadraba con la cartera. Ahora se
   rechaza (54302). El control **13** de la pantalla de integridad muestra
   las notas que ya se grabaron así.
-- **Cheque de una cuota** (`sp_bancos_emitir_cheque_pago_proveedor`, solo
+- **Cheque de una cuota** (`paBancoChequePagoProveedorEmitir`, solo
   lo usan los datos de prueba): ya no sobrescribe el pago de otro cheque
   simultáneo (54303).
 - **Caja**: dos aperturas simultáneas de la misma caja quedaban activas las
@@ -1443,7 +1530,7 @@ Errores `54401`-`54412`.
   días (15 por defecto, se cambia en General › Compañías); vence el día
   fecha + vigencia y ese día todavía es válida.
 - Estados: V vigente (X = vencida, se calcula), F facturada, A anulada.
-- `sp_ventas_crear_factura` recibe `@cot_id`: en la misma transacción de
+- `paVentaFacturaCrear` recibe `@cot_id`: en la misma transacción de
   la factura marca la cotización como facturada. Si venció, ya se facturó
   o se anuló, la factura no se graba (54412). La cotización no aparta
   existencia; se valida al facturar.
@@ -1463,7 +1550,7 @@ Errores `54501`-`54522`.
   parte" y "Recibida" se **calculan** de las compras vigentes: si se anula
   una compra que vino de la orden, lo que recibió vuelve a quedar pendiente.
 - `paOrdenCompraRecibir`: con la factura del proveedor se recibe todo o
-  parte de lo pendiente; crea la compra (COMP) con `sp_compras_crear_documento`
+  parte de lo pendiente; crea la compra (COMP) con `paCompraDocumentoCrear`
   en la misma transacción (inventario, cuenta por pagar y póliza). No
   acepta recibir más de lo pendiente (54521) ni una factura del proveedor
   ya registrada (54522).
@@ -1699,13 +1786,13 @@ no cuadra (19).
   se necesite auditar).
 - **Multi-moneda (`gen_moneda`, `gen_tipo_cambio`)**: cada documento
   (`inv_documento_enc`) y cada precio de producto (`inv_producto_precio`)
-  quedan ligados a una moneda; `fn_moneda_local()` resuelve la moneda
+  quedan ligados a una moneda; `fnMonedaLocal()` resuelve la moneda
   funcional de la compañía para usarla como valor por defecto.
 - **Contabilidad (`cont_*`)**: catálogo de cuentas, períodos contables y un
   libro de asientos de partida doble. Un trigger (`trg_cont_asiento_det_valida_balance`)
   impide que quede grabado un asiento donde Debe ≠ Haber — por eso el detalle
-  de un asiento siempre se inserta en una sola sentencia (`sp_contabilidad_insertar_asiento`),
-  nunca línea por línea. `sp_contabilidad_generar_asiento_documento` genera
+  de un asiento siempre se inserta en una sola sentencia (`paContabilidadAsientoInsertar`),
+  nunca línea por línea. `paContabilidadAsientoDocumentoGenerar` genera
   automáticamente el asiento de cada venta/compra con las subcuentas que
   cada concepto tiene asignadas en `cont_cuenta_parametro` (ver
   «Nomenclatura contable»). Es una
@@ -1721,12 +1808,12 @@ no cuadra (19).
   mantienen con `INSERT`/`UPDATE` directos, sin un procedimiento dedicado por
   cada uno.
 - **Procesos de negocio** (`11_procedimientos_procesos.sql`): crear factura
-  (`sp_ventas_crear_factura`) y compra (`sp_compras_crear_documento`) con
+  (`paVentaFacturaCrear`) y compra (`paCompraDocumentoCrear`) con
   ajuste de inventario, generación de plan de pagos y asiento contable
   automático, todo dentro de una sola transacción (`TRY/CATCH` +
   `XACT_ABORT`); anular documento; registrar cobro de cuota
-  (`sp_pos_registrar_pago_cuota`); emitir cheque a proveedor
-  (`sp_bancos_emitir_cheque_pago_proveedor`); apertura/cierre de caja; login
+  (`paClienteCuotaPagoRegistrar`); emitir cheque a proveedor
+  (`paBancoChequePagoProveedorEmitir`); apertura/cierre de caja; login
   seguro.
 
 ## Datos sintéticos (`12_datos_sinteticos.sql`)
@@ -1744,7 +1831,7 @@ de datos sirva también como prueba de humo de todo el paquete:
    factura de contado se prueba desde la pantalla de Facturas.
 4. Cobro de hasta 15 cuotas de clientes.
 5. Pago con cheque de hasta 10 cuotas de proveedores.
-6. Anulación de 1-2 facturas, para probar `sp_documento_anular`.
+6. Anulación de 1-2 facturas, para probar `paDocumentoAnular`.
 
 Las compras se graban con fecha de primer pago, para que generen su plan de
 pagos al proveedor y haya cuotas que pagar con cheque.

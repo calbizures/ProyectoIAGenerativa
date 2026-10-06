@@ -8,7 +8,7 @@
 --      se completan como Efectivo: sin forma de pago el cobro no entraba al
 --      cuadre de caja.
 --   2. Cobro de varias cuotas en un solo recibo (paCxcCobroRegistrar, TVP
---      cobro_cuota_type) con una sola póliza. sp_pos_registrar_pago_cuota
+--      cobro_cuota_type) con una sola póliza. paClienteCuotaPagoRegistrar
 --      queda como atajo de una cuota; si no recibe formas de pago toma el
 --      monto como Efectivo.
 --   3. Anulación de recibos (paCxcReciboAnular): solo mientras la caja donde
@@ -216,10 +216,10 @@ BEGIN
 		INSERT INTO @partida (cta_id, asd_debe, asd_haber, asd_descripcion)
 		VALUES (@cta_caja, @total, 0, @referencia), (@cta_clientes, 0, @total, @referencia);
 
-		EXEC dbo.sp_contabilidad_insertar_asiento
-			@asi_fecha = @fecha_hoy, @asi_descripcion = 'Cobro a cliente',
-			@asi_origen = 'PAGO_CLIENTE', @asi_origen_id = @PpeId, @enc_id = @enc_id,
-			@usu_id = @UsuId, @detalle = @partida, @asi_id = @asi_id OUTPUT;
+		EXEC dbo.paContabilidadAsientoInsertar
+			@AsiFecha = @fecha_hoy, @AsiDescripcion = 'Cobro a cliente',
+			@AsiOrigen = 'PAGO_CLIENTE', @AsiOrigenId = @PpeId, @EncId = @enc_id,
+			@UsuId = @UsuId, @Detalle = @partida, @AsiId = @asi_id OUTPUT;
 
 		COMMIT TRANSACTION;
 	END TRY
@@ -232,30 +232,30 @@ GO
 
 -- Atajo de una sola cuota (lo usan los datos de prueba). Sin formas de pago
 -- el monto se toma como Efectivo.
-CREATE OR ALTER PROCEDURE [dbo].[sp_pos_registrar_pago_cuota]
-	@cpp_id			INT,
-	@valor_pago		NUMERIC(12, 2),
-	@pca_id			INT,
-	@usu_id			INT = NULL,
-	@formas_pago	dbo.pago_forma_type READONLY,
-	@ppe_id			INT OUTPUT
+CREATE OR ALTER PROCEDURE [dbo].[paClienteCuotaPagoRegistrar]
+	@CppId			INT,
+	@ValorPago		NUMERIC(12, 2),
+	@PcaId			INT,
+	@UsuId			INT = NULL,
+	@FormasPago	dbo.pago_forma_type READONLY,
+	@PpeId			INT OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
 
-	DECLARE @cli_id INT = (SELECT cli_id FROM dbo.pos_cliente_plan_pagos WHERE cpp_id = @cpp_id);
+	DECLARE @cli_id INT = (SELECT cli_id FROM dbo.pos_cliente_plan_pagos WHERE cpp_id = @CppId);
 	IF @cli_id IS NULL
 		THROW 51502, 'La cuota indicada no existe.', 1;
 
 	DECLARE @cuotas dbo.cobro_cuota_type, @formas dbo.pago_forma_type;
-	INSERT INTO @cuotas (cpp_id, monto) VALUES (@cpp_id, @valor_pago);
-	INSERT INTO @formas SELECT * FROM @formas_pago;
+	INSERT INTO @cuotas (cpp_id, monto) VALUES (@CppId, @ValorPago);
+	INSERT INTO @formas SELECT * FROM @FormasPago;
 	IF NOT EXISTS (SELECT 1 FROM @formas)
 		INSERT INTO @formas (pft_id, ppf_monto)
-		SELECT pft_id, @valor_pago FROM dbo.pos_pago_forma_tipo WHERE pft_descripcion = 'Efectivo';
+		SELECT pft_id, @ValorPago FROM dbo.pos_pago_forma_tipo WHERE pft_descripcion = 'Efectivo';
 
-	EXEC dbo.paCxcCobroRegistrar @CliId = @cli_id, @PcaId = @pca_id, @UsuId = @usu_id,
-		@Cuotas = @cuotas, @Formas = @formas, @PpeId = @ppe_id OUTPUT;
+	EXEC dbo.paCxcCobroRegistrar @CliId = @cli_id, @PcaId = @PcaId, @UsuId = @UsuId,
+		@Cuotas = @cuotas, @Formas = @formas, @PpeId = @PpeId OUTPUT;
 END;
 GO
 
@@ -426,43 +426,43 @@ GO
 ------------------------------------------------------------
 -- 4. Cheques a proveedor: emisión con cuota, consulta y anulación
 ------------------------------------------------------------
-CREATE OR ALTER PROCEDURE [dbo].[sp_bancos_emitir_cheque_pago_proveedor]
-	@ppg_id				INT,
-	@cbc_id				INT,
-	@bce_numero_cheque	VARCHAR(16),
-	@valor_pago			NUMERIC(12, 2),
-	@bmp_id				INT = NULL,
-	@usu_id				INT = NULL,
-	@bce_id				INT OUTPUT
+CREATE OR ALTER PROCEDURE [dbo].[paBancoChequePagoProveedorEmitir]
+	@PpgId				INT,
+	@CbcId				INT,
+	@BceNumeroCheque	VARCHAR(16),
+	@ValorPago			NUMERIC(12, 2),
+	@BmpId				INT = NULL,
+	@UsuId				INT = NULL,
+	@BceId				INT OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
 	SET XACT_ABORT ON;
 
-	IF @valor_pago <= 0
+	IF @ValorPago <= 0
 		THROW 51601, 'El valor del pago debe ser mayor a cero.', 1;
-	IF ISNULL(LTRIM(RTRIM(@bce_numero_cheque)), '') = ''
+	IF ISNULL(LTRIM(RTRIM(@BceNumeroCheque)), '') = ''
 		THROW 51605, 'Ingrese el número de cheque.', 1;
 
 	DECLARE @enc_id INT, @valor_programado NUMERIC(12, 2), @valor_pagado NUMERIC(12, 2), @estado CHAR(1);
 	SELECT @enc_id = enc_id, @valor_programado = ppg_valor_pago, @valor_pagado = ISNULL(ppg_valor_real_pago, 0), @estado = ppg_estado
-	FROM dbo.inv_proveedor_plan_pago WHERE ppg_id = @ppg_id;
+	FROM dbo.inv_proveedor_plan_pago WHERE ppg_id = @PpgId;
 
 	IF @enc_id IS NULL
 		THROW 51602, 'La cuota de proveedor indicada no existe.', 1;
 	IF @estado = 'A' OR @valor_programado - @valor_pagado <= 0
 		THROW 51603, 'La cuota de proveedor indicada ya está pagada por completo.', 1;
-	IF @valor_pago > @valor_programado - @valor_pagado
+	IF @ValorPago > @valor_programado - @valor_pagado
 	BEGIN
-		DECLARE @msg NVARCHAR(200) = CONCAT(N'El pago (Q', FORMAT(@valor_pago, 'N2'), N') supera el saldo de la cuota (Q',
+		DECLARE @msg NVARCHAR(200) = CONCAT(N'El pago (Q', FORMAT(@ValorPago, 'N2'), N') supera el saldo de la cuota (Q',
 			FORMAT(@valor_programado - @valor_pagado, 'N2'), N').');
 		THROW 51604, @msg, 1;
 	END
 	IF EXISTS (SELECT 1 FROM dbo.inv_documento_enc WHERE enc_id = @enc_id AND enc_estado <> 'G')
 		THROW 53217, 'La compra de esa cuota está anulada.', 1;
-	IF NOT EXISTS (SELECT 1 FROM dbo.bco_cuenta_bancaria_chequera WHERE cbc_id = @cbc_id)
+	IF NOT EXISTS (SELECT 1 FROM dbo.bco_cuenta_bancaria_chequera WHERE cbc_id = @CbcId)
 		THROW 51606, 'La chequera indicada no existe.', 1;
-	IF EXISTS (SELECT 1 FROM dbo.bco_cheque_emitido_enc WHERE cbc_id = @cbc_id AND bce_numero_cheque = @bce_numero_cheque)
+	IF EXISTS (SELECT 1 FROM dbo.bco_cheque_emitido_enc WHERE cbc_id = @CbcId AND bce_numero_cheque = @BceNumeroCheque)
 		THROW 51607, 'Ese número de cheque ya fue emitido en la chequera.', 1;
 
 	DECLARE @cta_proveedores INT, @cta_bancos INT;
@@ -475,35 +475,35 @@ BEGIN
 		INSERT INTO dbo.bco_cheque_emitido_enc
 			(cbc_id, bce_fecha_emision, usu_id, bce_numero_cheque, bce_documento_ref, bce_valor, bmp_id, InsUsuario, InsFechaHora)
 		VALUES
-			(@cbc_id, CAST(GETDATE() AS DATE), @usu_id, @bce_numero_cheque, CAST(@enc_id AS VARCHAR(16)), @valor_pago, @bmp_id, @usu_id, SYSDATETIME());
+			(@CbcId, CAST(GETDATE() AS DATE), @UsuId, @BceNumeroCheque, CAST(@enc_id AS VARCHAR(16)), @ValorPago, @BmpId, @UsuId, SYSDATETIME());
 
-		SET @bce_id = SCOPE_IDENTITY();
+		SET @BceId = SCOPE_IDENTITY();
 
 		INSERT INTO dbo.bco_cheque_emitido_det (bce_id, bmp_id, enc_id, ppg_id, ced_valor, ced_abono_cancelacion, InsUsuario, InsFechaHora)
-		VALUES (@bce_id, @bmp_id, @enc_id, @ppg_id, @valor_pago,
-				CASE WHEN @valor_pagado + @valor_pago >= @valor_programado THEN 'C' ELSE 'A' END,
-				@usu_id, SYSDATETIME());
+		VALUES (@BceId, @BmpId, @enc_id, @PpgId, @ValorPago,
+				CASE WHEN @valor_pagado + @ValorPago >= @valor_programado THEN 'C' ELSE 'A' END,
+				@UsuId, SYSDATETIME());
 
 		UPDATE dbo.inv_proveedor_plan_pago
-		   SET ppg_valor_real_pago = @valor_pagado + @valor_pago,
+		   SET ppg_valor_real_pago = @valor_pagado + @ValorPago,
 			   ppg_fecha_real_pago = CAST(GETDATE() AS DATE),
-			   ppg_numero_cheque = @bce_numero_cheque,
-			   cbc_id = @cbc_id,
-			   ppg_estado = CASE WHEN @valor_pagado + @valor_pago >= @valor_programado THEN 'A' ELSE ppg_estado END,
-			   UpdUsuario = @usu_id,
+			   ppg_numero_cheque = @BceNumeroCheque,
+			   cbc_id = @CbcId,
+			   ppg_estado = CASE WHEN @valor_pagado + @ValorPago >= @valor_programado THEN 'A' ELSE ppg_estado END,
+			   UpdUsuario = @UsuId,
 			   UpdFechaHora = SYSDATETIME()
-		 WHERE ppg_id = @ppg_id;
+		 WHERE ppg_id = @PpgId;
 
 		DECLARE @asi_id INT, @partida dbo.cont_asiento_det_type, @fecha_hoy DATE = CAST(GETDATE() AS DATE);
-		DECLARE @referencia VARCHAR(64) = 'Pago a proveedor - cheque ' + @bce_numero_cheque;
+		DECLARE @referencia VARCHAR(64) = 'Pago a proveedor - cheque ' + @BceNumeroCheque;
 		INSERT INTO @partida (cta_id, asd_debe, asd_haber, asd_descripcion)
-		VALUES (@cta_proveedores, @valor_pago, 0, @referencia), (@cta_bancos, 0, @valor_pago, @referencia);
+		VALUES (@cta_proveedores, @ValorPago, 0, @referencia), (@cta_bancos, 0, @ValorPago, @referencia);
 
-		DECLARE @asi_descripcion VARCHAR(256) = 'Pago a proveedor con cheque ' + @bce_numero_cheque;
-		EXEC dbo.sp_contabilidad_insertar_asiento
-			@asi_fecha = @fecha_hoy, @asi_descripcion = @asi_descripcion,
-			@asi_origen = 'PAGO_PROVEEDOR', @asi_origen_id = @bce_id, @enc_id = @enc_id,
-			@usu_id = @usu_id, @detalle = @partida, @asi_id = @asi_id OUTPUT;
+		DECLARE @asi_descripcion VARCHAR(256) = 'Pago a proveedor con cheque ' + @BceNumeroCheque;
+		EXEC dbo.paContabilidadAsientoInsertar
+			@AsiFecha = @fecha_hoy, @AsiDescripcion = @asi_descripcion,
+			@AsiOrigen = 'PAGO_PROVEEDOR', @AsiOrigenId = @BceId, @EncId = @enc_id,
+			@UsuId = @UsuId, @Detalle = @partida, @AsiId = @asi_id OUTPUT;
 
 		COMMIT TRANSACTION;
 	END TRY
@@ -836,9 +836,9 @@ GO
 ------------------------------------------------------------
 -- 6. Anulación de facturas y compras con pagos
 ------------------------------------------------------------
-CREATE OR ALTER PROCEDURE [dbo].[sp_documento_anular]
-	@enc_id	INT,
-	@usu_id	INT = NULL
+CREATE OR ALTER PROCEDURE [dbo].[paDocumentoAnular]
+	@EncId	INT,
+	@UsuId	INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -847,7 +847,7 @@ BEGIN
 	DECLARE @estado_actual CHAR(1), @es_nota BIT;
 	SELECT @estado_actual = enca.enc_estado, @es_nota = tipo.tdo_es_nota
 	FROM dbo.inv_documento_enc enca INNER JOIN dbo.inv_documento_tipo tipo ON tipo.tdo_id = enca.tdo_id
-	WHERE enca.enc_id = @enc_id;
+	WHERE enca.enc_id = @EncId;
 
 	IF @estado_actual IS NULL
 		THROW 51421, 'El documento indicado no existe.', 1;
@@ -855,21 +855,21 @@ BEGIN
 		THROW 51422, 'Solo se pueden anular documentos que estén en estado Grabado.', 1;
 	IF @es_nota = 1
 		THROW 51423, 'Una nota de crédito o débito no se anula; emita la nota contraria.', 1;
-	IF EXISTS (SELECT 1 FROM dbo.inv_documento_enc WHERE enc_id_referencia = @enc_id AND enc_estado = 'G')
+	IF EXISTS (SELECT 1 FROM dbo.inv_documento_enc WHERE enc_id_referencia = @EncId AND enc_estado = 'G')
 		THROW 51424, 'El documento tiene notas de crédito o débito; no se puede anular.', 1;
 	IF EXISTS (SELECT 1 FROM dbo.pos_pago_det deta
 			   INNER JOIN dbo.pos_pago_enc pago ON pago.ppe_id = deta.ppe_id AND pago.ppe_estado = 'A'
 			   INNER JOIN dbo.pos_cliente_plan_pagos cuot ON cuot.cpp_id = deta.cpp_id
-			   WHERE cuot.enc_id = @enc_id)
+			   WHERE cuot.enc_id = @EncId)
 		THROW 53227, 'La factura tiene cobros de cuotas; anule primero esos recibos en Cuentas por cobrar › Cobros.', 1;
 	IF EXISTS (SELECT 1 FROM dbo.pos_pago_det deta
 			   INNER JOIN dbo.pos_pago_enc pago ON pago.ppe_id = deta.ppe_id AND pago.ppe_estado = 'A'
 			   LEFT JOIN dbo.pos_caja_apertura aper ON aper.pca_id = pago.pca_id
-			   WHERE deta.enc_id = @enc_id AND ISNULL(aper.pca_estado, 'C') <> 'A')
+			   WHERE deta.enc_id = @EncId AND ISNULL(aper.pca_estado, 'C') <> 'A')
 		THROW 53228, 'El pago de esta factura entró a una caja que ya se cerró; no se puede anular: emita una nota de crédito.', 1;
 	IF EXISTS (SELECT 1 FROM dbo.bco_cheque_emitido_det chdt
 			   INNER JOIN dbo.bco_cheque_emitido_enc cheq ON cheq.bce_id = chdt.bce_id AND cheq.bce_estado_cheque <> 'A'
-			   WHERE chdt.enc_id = @enc_id)
+			   WHERE chdt.enc_id = @EncId)
 		THROW 53229, 'La compra tiene cheques emitidos; anule primero esos cheques en Cuentas por pagar › Pagos.', 1;
 
 	BEGIN TRY
@@ -880,27 +880,27 @@ BEGIN
 		DECLARE recibos CURSOR LOCAL FAST_FORWARD FOR
 			SELECT DISTINCT deta.ppe_id FROM dbo.pos_pago_det deta
 			INNER JOIN dbo.pos_pago_enc pago ON pago.ppe_id = deta.ppe_id AND pago.ppe_estado = 'A'
-			WHERE deta.enc_id = @enc_id;
+			WHERE deta.enc_id = @EncId;
 		OPEN recibos;
 		FETCH NEXT FROM recibos INTO @ppe_id;
 		WHILE @@FETCH_STATUS = 0
 		BEGIN
-			EXEC dbo.paCxcReciboReversar @PpeId = @ppe_id, @Motivo = 'Anulación de la factura', @UsuId = @usu_id;
+			EXEC dbo.paCxcReciboReversar @PpeId = @ppe_id, @Motivo = 'Anulación de la factura', @UsuId = @UsuId;
 			FETCH NEXT FROM recibos INTO @ppe_id;
 		END
 		CLOSE recibos; DEALLOCATE recibos;
 
-		EXEC dbo.sp_inventario_ajustar_existencia_documento @enc_id = @enc_id, @reversar = 1, @usu_id = @usu_id;
+		EXEC dbo.paInventarioExistenciaDocumentoAjustar @EncId = @EncId, @Reversar = 1, @UsuId = @UsuId;
 
 		UPDATE dbo.inv_documento_enc
 		   SET enc_estado = 'A',
-			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
-		 WHERE enc_id = @enc_id;
+			   UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME()
+		 WHERE enc_id = @EncId;
 
 		UPDATE dbo.cont_asiento_enc
 		   SET asi_estado = 'N',
-			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
-		 WHERE enc_id = @enc_id;
+			   UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME()
+		 WHERE enc_id = @EncId;
 
 		COMMIT TRANSACTION;
 	END TRY
@@ -940,77 +940,77 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[sp_ventas_crear_factura]
-	@enc_fecha_docto			DATE,
-	@enc_numero_autorizacion	VARCHAR(64) = NULL,
-	@enc_serie_docto			VARCHAR(32) = NULL,
-	@enc_numero_docto			VARCHAR(32) = NULL,
-	@cli_id						INT,
-	@enc_nombres_cliente		VARCHAR(128) = NULL,
-	@enc_apellidos_cliente		VARCHAR(128) = NULL,
-	@cli_nit					VARCHAR(16) = NULL,
-	@tdo_id						INT,
-	@pve_id						INT = NULL,
-	@enc_fecha_primer_pago		DATE = NULL,
-	@enc_monto_enganche			NUMERIC(12, 2) = 0,
-	@enc_numero_cuotas			INT = 1,
-	@enc_valor_descuento		NUMERIC(13, 2) = 0,
-	@enc_direccion_cliente		VARCHAR(256) = NULL,
-	@mon_id						INT = NULL,
-	@usu_id						INT = NULL,
-	@detalle					dbo.factura_det_type READONLY,
-	@pca_id						INT = NULL,				-- apertura de caja activa donde se recibe el pago inicial
-	@formas_pago				dbo.pago_forma_type READONLY,	-- pago de contado, o enganche si es a crédito; pasar tabla vacía si no aplica
-	@enc_id						INT OUTPUT,
-	@enc_numero_unico			VARCHAR(16) OUTPUT
+CREATE OR ALTER PROCEDURE [dbo].[paVentaFacturaCrear]
+	@EncFechaDocto			DATE,
+	@EncNumeroAutorizacion	VARCHAR(64) = NULL,
+	@EncSerieDocto			VARCHAR(32) = NULL,
+	@EncNumeroDocto			VARCHAR(32) = NULL,
+	@CliId						INT,
+	@EncNombresCliente		VARCHAR(128) = NULL,
+	@EncApellidosCliente		VARCHAR(128) = NULL,
+	@CliNit					VARCHAR(16) = NULL,
+	@TdoId						INT,
+	@PveId						INT = NULL,
+	@EncFechaPrimerPago		DATE = NULL,
+	@EncMontoEnganche			NUMERIC(12, 2) = 0,
+	@EncNumeroCuotas			INT = 1,
+	@EncValorDescuento		NUMERIC(13, 2) = 0,
+	@EncDireccionCliente		VARCHAR(256) = NULL,
+	@MonId						INT = NULL,
+	@UsuId						INT = NULL,
+	@Detalle					dbo.factura_det_type READONLY,
+	@PcaId						INT = NULL,				-- apertura de caja activa donde se recibe el pago inicial
+	@FormasPago				dbo.pago_forma_type READONLY,	-- pago de contado, o enganche si es a crédito; pasar tabla vacía si no aplica
+	@EncId						INT OUTPUT,
+	@EncNumeroUnico			VARCHAR(16) OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
 	SET XACT_ABORT ON;
 
-	IF NOT EXISTS (SELECT 1 FROM @detalle)
+	IF NOT EXISTS (SELECT 1 FROM @Detalle)
 		THROW 51401, 'La factura debe tener al menos una línea de detalle.', 1;
-	IF EXISTS (SELECT 1 FROM @detalle WHERE det_bien_o_servicio NOT IN ('B', 'S'))
+	IF EXISTS (SELECT 1 FROM @Detalle WHERE det_bien_o_servicio NOT IN ('B', 'S'))
 		THROW 53031, 'Cada línea debe ser bien (B) o servicio (S).', 1;
-	IF EXISTS (SELECT 1 FROM @detalle WHERE det_bien_o_servicio = 'B' AND pro_id IS NULL)
+	IF EXISTS (SELECT 1 FROM @Detalle WHERE det_bien_o_servicio = 'B' AND pro_id IS NULL)
 		THROW 53032, 'Una línea de bien debe indicar el producto.', 1;
-	IF EXISTS (SELECT 1 FROM @detalle WHERE LTRIM(RTRIM(det_descripcion)) = '')
+	IF EXISTS (SELECT 1 FROM @Detalle WHERE LTRIM(RTRIM(det_descripcion)) = '')
 		THROW 53033, 'Toda línea debe tener descripción; en un servicio, describa el servicio prestado.', 1;
-	IF EXISTS (SELECT 1 FROM @detalle WHERE det_cantidad <= 0 OR det_precio_unitario < 0)
+	IF EXISTS (SELECT 1 FROM @Detalle WHERE det_cantidad <= 0 OR det_precio_unitario < 0)
 		THROW 53034, 'La cantidad debe ser mayor a cero y el precio no puede ser negativo.', 1;
-	IF EXISTS (SELECT 1 FROM @detalle deta INNER JOIN dbo.inv_producto prod ON prod.pro_id = deta.pro_id
+	IF EXISTS (SELECT 1 FROM @Detalle deta INNER JOIN dbo.inv_producto prod ON prod.pro_id = deta.pro_id
 			   WHERE prod.pro_maneja_existencia = 1 AND deta.det_cantidad <> ROUND(deta.det_cantidad, 0))
 		THROW 53035, 'Los productos con existencia se venden en cantidades enteras.', 1;
 
-	IF @mon_id IS NULL
-		SET @mon_id = dbo.fn_moneda_local();
+	IF @MonId IS NULL
+		SET @MonId = dbo.fnMonedaLocal();
 
 	IF EXISTS (
 		SELECT 1
-		FROM (SELECT pro_id, bod_id, SUM(det_cantidad) AS cantidad FROM @detalle WHERE pro_id IS NOT NULL GROUP BY pro_id, bod_id) d
-		INNER JOIN dbo.inv_producto p ON p.pro_id = d.pro_id
-		LEFT JOIN dbo.inv_producto_existencia_bodega e ON e.pro_id = d.pro_id AND e.bod_id = d.bod_id
-		WHERE p.pro_maneja_existencia = 1
-		  AND ISNULL(e.existencia, 0) < d.cantidad
+		FROM (SELECT pro_id, bod_id, SUM(det_cantidad) AS cantidad FROM @Detalle WHERE pro_id IS NOT NULL GROUP BY pro_id, bod_id) pedi
+		INNER JOIN dbo.inv_producto prod2 ON prod2.pro_id = pedi.pro_id
+		LEFT JOIN dbo.inv_producto_existencia_bodega exis ON exis.pro_id = pedi.pro_id AND exis.bod_id = pedi.bod_id
+		WHERE prod2.pro_maneja_existencia = 1
+		  AND ISNULL(exis.existencia, 0) < pedi.cantidad
 	)
 		THROW 51402, 'No hay existencia suficiente para uno o más productos del detalle.', 1;
 
 	-- El monto total del documento es el neto (subtotal - descuento) más el
 	-- IVA de cada línea; los precios unitarios se manejan sin impuesto
-	-- incluido (ver también sp_contabilidad_generar_asiento_documento).
+	-- incluido (ver también paContabilidadAsientoDocumentoGenerar).
 	DECLARE @monto_total NUMERIC(12, 2) = (
 		SELECT SUM((det_sub_total - det_valor_descuento) * (1 + ISNULL(det_porc_iva, 0) / 100.0))
-		FROM @detalle
+		FROM @Detalle
 	);
 
 	-- Contado: las formas de pago cubren el total. Crédito: cubren el enganche
 	-- y el resto (lo financiado) no puede pasar del crédito disponible.
-	DECLARE @es_credito BIT = CASE WHEN @enc_fecha_primer_pago IS NOT NULL AND ISNULL(@enc_numero_cuotas, 0) > 0 THEN 1 ELSE 0 END;
-	DECLARE @a_pagar NUMERIC(12, 2) = CASE WHEN @es_credito = 1 THEN ISNULL(@enc_monto_enganche, 0) ELSE @monto_total END;
-	DECLARE @formas_total NUMERIC(12, 2) = (SELECT SUM(ppf_monto) FROM @formas_pago);
+	DECLARE @es_credito BIT = CASE WHEN @EncFechaPrimerPago IS NOT NULL AND ISNULL(@EncNumeroCuotas, 0) > 0 THEN 1 ELSE 0 END;
+	DECLARE @a_pagar NUMERIC(12, 2) = CASE WHEN @es_credito = 1 THEN ISNULL(@EncMontoEnganche, 0) ELSE @monto_total END;
+	DECLARE @formas_total NUMERIC(12, 2) = (SELECT SUM(ppf_monto) FROM @FormasPago);
 	DECLARE @msg NVARCHAR(400);
 
-	IF @es_credito = 1 AND (ISNULL(@enc_monto_enganche, 0) < 0 OR ISNULL(@enc_monto_enganche, 0) >= @monto_total)
+	IF @es_credito = 1 AND (ISNULL(@EncMontoEnganche, 0) < 0 OR ISNULL(@EncMontoEnganche, 0) >= @monto_total)
 		THROW 53222, 'El enganche debe ser mayor o igual a cero y menor que el total de la factura.', 1;
 	IF @a_pagar > 0 AND @formas_total IS NULL
 		THROW 53223, 'Registre la forma de pago del contado o del enganche.', 1;
@@ -1020,18 +1020,18 @@ BEGIN
 			CASE WHEN @es_credito = 1 THEN N' (enganche).' ELSE N' (total de la factura).' END);
 		THROW 53224, @msg, 1;
 	END
-	IF @formas_total IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.pos_caja_apertura WHERE pca_id = @pca_id AND pca_estado = 'A')
+	IF @formas_total IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.pos_caja_apertura WHERE pca_id = @PcaId AND pca_estado = 'A')
 		THROW 53225, 'No hay una caja abierta para recibir el pago de la factura.', 1;
 
 	IF @es_credito = 1
 	BEGIN
 		DECLARE @limite NUMERIC(14, 2), @saldo_actual NUMERIC(14, 2);
-		SELECT @limite = credito.Limite, @saldo_actual = credito.Saldo FROM dbo.fnClienteCredito(@cli_id) credito;
-		IF @limite > 0 AND @saldo_actual + (@monto_total - ISNULL(@enc_monto_enganche, 0)) > @limite
+		SELECT @limite = credito.Limite, @saldo_actual = credito.Saldo FROM dbo.fnClienteCredito(@CliId) credito;
+		IF @limite > 0 AND @saldo_actual + (@monto_total - ISNULL(@EncMontoEnganche, 0)) > @limite
 		BEGIN
 			SET @msg = CONCAT(N'La factura excede el límite de crédito del cliente: límite Q', FORMAT(@limite, 'N2'),
 				N', saldo actual Q', FORMAT(@saldo_actual, 'N2'), N', disponible Q', FORMAT(IIF(@limite - @saldo_actual > 0, @limite - @saldo_actual, 0), 'N2'),
-				N', a financiar Q', FORMAT(@monto_total - ISNULL(@enc_monto_enganche, 0), 'N2'), N'.');
+				N', a financiar Q', FORMAT(@monto_total - ISNULL(@EncMontoEnganche, 0), 'N2'), N'.');
 			THROW 53226, @msg, 1;
 		END
 	END
@@ -1043,18 +1043,18 @@ BEGIN
 
 		SELECT @serie = serie, @correlativo = correlativo + 1
 		FROM dbo.conf_correlativos WITH (UPDLOCK, ROWLOCK)
-		WHERE tdo_id = @tdo_id;
+		WHERE tdo_id = @TdoId;
 
 		IF @serie IS NULL
 			THROW 51403, 'No existe una serie de correlativos configurada para este tipo de documento.', 1;
 
 		UPDATE dbo.conf_correlativos
 		   SET correlativo = @correlativo,
-			   UpdUsuario = @usu_id,
+			   UpdUsuario = @UsuId,
 			   UpdFechaHora = SYSDATETIME()
-		 WHERE tdo_id = @tdo_id;
+		 WHERE tdo_id = @TdoId;
 
-		SET @enc_numero_unico = @serie + '-' + CAST(@correlativo AS VARCHAR(20));
+		SET @EncNumeroUnico = @serie + '-' + CAST(@correlativo AS VARCHAR(20));
 
 		INSERT INTO dbo.inv_documento_enc
 			(enc_fecha_docto, enc_numero_autorizacion, enc_serie_docto, enc_numero_docto,
@@ -1063,56 +1063,56 @@ BEGIN
 			 enc_valor_descuento, enc_direccion_cliente, mon_id, usu_id_creacion, enc_numero_unico,
 			 InsUsuario, InsFechaHora)
 		VALUES
-			(@enc_fecha_docto, @enc_numero_autorizacion, @enc_serie_docto, @enc_numero_docto,
-			 @cli_id, @enc_nombres_cliente, @enc_apellidos_cliente, @cli_nit, @tdo_id, @pve_id,
-			 @enc_fecha_primer_pago, @enc_monto_enganche, @enc_numero_cuotas, @monto_total,
-			 @enc_valor_descuento, @enc_direccion_cliente, @mon_id, @usu_id, @enc_numero_unico,
-			 @usu_id, SYSDATETIME());
+			(@EncFechaDocto, @EncNumeroAutorizacion, @EncSerieDocto, @EncNumeroDocto,
+			 @CliId, @EncNombresCliente, @EncApellidosCliente, @CliNit, @TdoId, @PveId,
+			 @EncFechaPrimerPago, @EncMontoEnganche, @EncNumeroCuotas, @monto_total,
+			 @EncValorDescuento, @EncDireccionCliente, @MonId, @UsuId, @EncNumeroUnico,
+			 @UsuId, SYSDATETIME());
 
-		SET @enc_id = SCOPE_IDENTITY();
+		SET @EncId = SCOPE_IDENTITY();
 
 		INSERT INTO dbo.inv_documento_det
 			(enc_id, det_item, det_bien_o_servicio, det_cantidad, det_descripcion,
 			 det_precio_unitario, det_valor_descuento, det_sub_total, det_costo_unitario, det_porc_iva, bod_id, pro_id, ppr_id, ume_id,
 			 InsUsuario, InsFechaHora)
 		SELECT
-			@enc_id, deta.det_item, deta.det_bien_o_servicio, deta.det_cantidad, deta.det_descripcion,
+			@EncId, deta.det_item, deta.det_bien_o_servicio, deta.det_cantidad, deta.det_descripcion,
 			deta.det_precio_unitario, deta.det_valor_descuento, deta.det_sub_total, deta.det_costo_unitario, deta.det_porc_iva,
 			deta.bod_id, deta.pro_id, deta.ppr_id, COALESCE(deta.ume_id, prod.ume_id),
-			@usu_id, SYSDATETIME()
-		FROM @detalle deta
+			@UsuId, SYSDATETIME()
+		FROM @Detalle deta
 		LEFT JOIN dbo.inv_producto prod ON prod.pro_id = deta.pro_id;
 
-		IF @pca_id IS NOT NULL AND EXISTS (SELECT 1 FROM @formas_pago)
+		IF @PcaId IS NOT NULL AND EXISTS (SELECT 1 FROM @FormasPago)
 		BEGIN
 			DECLARE @ppe_id INT;
 
 			INSERT INTO dbo.pos_pago_enc (cli_id, pca_id, usu_id, InsUsuario, InsFechaHora)
-			VALUES (@cli_id, @pca_id, @usu_id, @usu_id, SYSDATETIME());
+			VALUES (@CliId, @PcaId, @UsuId, @UsuId, SYSDATETIME());
 
 			SET @ppe_id = SCOPE_IDENTITY();
 
 			INSERT INTO dbo.pos_pago_forma
 				(gef_id, ppf_numero_tarjeta_ult4, ppf_fecha_vencimiento_tarjeta, ppf_numero_cheque, ppf_monto, ppe_id, pft_id, InsUsuario, InsFechaHora)
-			SELECT gef_id, ppf_numero_tarjeta_ult4, ppf_fecha_vencimiento_tarjeta, ppf_numero_cheque, ppf_monto, @ppe_id, pft_id, @usu_id, SYSDATETIME()
-			FROM @formas_pago;
+			SELECT gef_id, ppf_numero_tarjeta_ult4, ppf_fecha_vencimiento_tarjeta, ppf_numero_cheque, ppf_monto, @ppe_id, pft_id, @UsuId, SYSDATETIME()
+			FROM @FormasPago;
 
 			INSERT INTO dbo.pos_pago_det (ppe_id, enc_id, ppd_valor_aplicado, InsUsuario, InsFechaHora)
-			SELECT @ppe_id, @enc_id, SUM(ppf_monto), @usu_id, SYSDATETIME()
-			FROM @formas_pago;
+			SELECT @ppe_id, @EncId, SUM(ppf_monto), @UsuId, SYSDATETIME()
+			FROM @FormasPago;
 		END
 
-		EXEC dbo.sp_pos_generar_plan_pagos_cliente @enc_id = @enc_id, @usu_id = @usu_id;
+		EXEC dbo.paClientePlanPagosGenerar @EncId = @EncId, @UsuId = @UsuId;
 
 		UPDATE dbo.inv_documento_enc
 		   SET enc_estado = 'G',
-			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
-		 WHERE enc_id = @enc_id;
+			   UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME()
+		 WHERE enc_id = @EncId;
 
-		EXEC dbo.sp_inventario_ajustar_existencia_documento @enc_id = @enc_id, @usu_id = @usu_id;
+		EXEC dbo.paInventarioExistenciaDocumentoAjustar @EncId = @EncId, @UsuId = @UsuId;
 
 		DECLARE @asi_id INT;
-		EXEC dbo.sp_contabilidad_generar_asiento_documento @enc_id = @enc_id, @usu_id = @usu_id, @asi_id = @asi_id OUTPUT;
+		EXEC dbo.paContabilidadAsientoDocumentoGenerar @EncId = @EncId, @UsuId = @UsuId, @AsiId = @asi_id OUTPUT;
 
 		COMMIT TRANSACTION;
 	END TRY

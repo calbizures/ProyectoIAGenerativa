@@ -824,7 +824,7 @@
     // cliente; no se suma aparte. El total es simplemente subtotal - descuento,
     // y el IVA que se muestra es solo informativo (extraído del total, no
     // sumado a él). Internamente sí se envía como precio neto + %IVA al SP,
-    // porque así espera los datos sp_ventas_crear_factura para el asiento
+    // porque así espera los datos paVentaFacturaCrear para el asiento
     // contable (ver GrabarFacturaAsync).
     // Se toma de gen_compania.cia_porc_iva (General > Compañías) al iniciar.
     private decimal PorcentajeIva = 12m;
@@ -832,7 +832,7 @@
 
     private decimal Subtotal => lineas.Sum(l => l.SubTotal);
     private decimal TotalDescuento => lineas.Sum(l => l.ValorDescuento);
-    // Total que grabará sp_ventas_crear_factura y certificará FEL: el precio se
+    // Total que grabará paVentaFacturaCrear y certificará FEL: el precio se
     // guarda sin IVA a centavos y el total vuelve a sumarle el IVA por unidad,
     // así que puede diferir un centavo de la suma de los precios con IVA.
     private decimal Total => lineas.Sum(TotalLineaDocumento);
@@ -1180,7 +1180,7 @@
             return;
         }
 
-        // sp_producto_consultar combina código y descripción con AND (pensado
+        // paProductoConsultar combina código y descripción con AND (pensado
         // para el filtro avanzado de dos cajas de Productos.razor). Aquí se
         // quiere buscar por nombre O código, así que se consulta cada campo
         // por separado y se combinan los resultados sin duplicados.

@@ -236,9 +236,9 @@ BEGIN
 	VALUES (@cta_banco, @pcd_valor_deposito, 0, @referencia),
 		   (@cta_caja, 0, @pcd_valor_deposito, @referencia);
 
-	EXEC dbo.sp_contabilidad_insertar_asiento
-		@asi_fecha = @pcd_fecha_deposito, @asi_descripcion = @referencia, @asi_origen = 'DEPOSITO', @asi_origen_id = @pcd_id,
-		@usu_id = @usu_id, @detalle = @detalle, @asi_id = @asi_id OUTPUT;
+	EXEC dbo.paContabilidadAsientoInsertar
+		@AsiFecha = @pcd_fecha_deposito, @AsiDescripcion = @referencia, @AsiOrigen = 'DEPOSITO', @AsiOrigenId = @pcd_id,
+		@UsuId = @usu_id, @Detalle = @detalle, @AsiId = @asi_id OUTPUT;
 
 	COMMIT TRANSACTION;
 END;

@@ -65,8 +65,8 @@ BEGIN
 	BEGIN
 		DELETE FROM @formas;
 		INSERT INTO @formas (pft_id, ppf_monto) VALUES (@pft_efectivo, @saldo);
-		EXEC dbo.sp_pos_registrar_pago_cuota @cpp_id = @cpp_id, @valor_pago = @saldo, @pca_id = @pca_id, @usu_id = @usu_cajero,
-			@formas_pago = @formas, @ppe_id = @ppe_id OUTPUT;
+		EXEC dbo.paClienteCuotaPagoRegistrar @CppId = @cpp_id, @ValorPago = @saldo, @PcaId = @pca_id, @UsuId = @usu_cajero,
+			@FormasPago = @formas, @PpeId = @ppe_id OUTPUT;
 		FETCH NEXT FROM cobros_cur INTO @cpp_id, @saldo;
 	END
 	CLOSE cobros_cur; DEALLOCATE cobros_cur;
@@ -96,10 +96,10 @@ BEGIN
 		   ('M', 0.01, (@contado - FLOOR(@contado)) * 100);
 	EXEC dbo.paCajaDesgloseEfectivoGuardar @pca_id = @pca_id, @denominaciones = @denominaciones, @usu_id = @usu_cajero;
 
-	EXEC dbo.sp_pos_caja_cerrar @pca_id = @pca_id, @usu_id = @usu_cajero;
+	EXEC dbo.paCajaCerrar @PcaId = @pca_id, @UsuId = @usu_cajero;
 
 	DECLARE @pca_nueva INT;
-	EXEC dbo.sp_pos_caja_abrir @pcr_id = @pcr_id, @usu_id = @usu_cajero, @pca_monto_inicial = 0, @pca_id = @pca_nueva OUTPUT;
+	EXEC dbo.paCajaAbrir @PcrId = @pcr_id, @UsuId = @usu_cajero, @PcaMontoInicial = 0, @PcaId = @pca_nueva OUTPUT;
 END
 GO
 

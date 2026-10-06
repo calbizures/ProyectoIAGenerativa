@@ -166,7 +166,7 @@ public sealed class GeneralRepository(IDbConnectionFactory connectionFactory) : 
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var filas = await connection.QueryAsync<CuentaContable>(
-			"dbo.sp_cuenta_contable_consultar", new { cta_tipo = (string?)null, cta_estado = "A" }, commandType: CommandType.StoredProcedure);
+			"dbo.paCuentaContableConsultar", new { CtaTipo = (string?)null, CtaEstado = "A" }, commandType: CommandType.StoredProcedure);
 		return filas.ToList();
 	}
 

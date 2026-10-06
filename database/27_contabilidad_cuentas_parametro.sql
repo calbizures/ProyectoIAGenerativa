@@ -3,7 +3,7 @@
 --
 -- Cuentas contables parametrizadas para las partidas automáticas.
 --
--- Antes, sp_contabilidad_generar_asiento_documento buscaba las cuentas por
+-- Antes, paContabilidadAsientoDocumentoGenerar buscaba las cuentas por
 -- código fijo en el procedimiento ('1205', '4105'...): cambiar el catálogo de
 -- cuentas obligaba a editar el SQL. Ahora cada concepto contable apunta a
 -- una cuenta en cont_cuenta_parametro y el módulo de contabilidad solo tiene
@@ -15,7 +15,7 @@
 --     que nace la obligación (devengo), no cuando se cobra. Lo cobrado al
 --     facturar (contado o enganche) va a Caja; el resto, a Clientes.
 --   * Compra: al grabar el documento de compra.
---   * Anulación: sp_documento_anular anula la partida del documento.
+--   * Anulación: paDocumentoAnular anula la partida del documento.
 --   * Cobro de cuota: sus conceptos COBRO_* se configuran aquí.
 --   * Depósito, diferencia de cierre de caja y nómina aprobada: sus
 --     conceptos (DEPOSITO_*, CAJA_*, NOMINA_*) se configuran aquí y las
@@ -133,22 +133,22 @@ GO
 ------------------------------------------------------------
 -- Partida automática de ventas y compras, ahora con cuentas parametrizadas.
 ------------------------------------------------------------
-CREATE OR ALTER PROCEDURE [dbo].[sp_contabilidad_generar_asiento_documento]
-	@enc_id	INT,
-	@usu_id	INT = NULL,
-	@asi_id	INT OUTPUT
+CREATE OR ALTER PROCEDURE [dbo].[paContabilidadAsientoDocumentoGenerar]
+	@EncId	INT,
+	@UsuId	INT = NULL,
+	@AsiId	INT OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
 
 	DECLARE @tdo_naturaleza CHAR(1), @afecta_costo CHAR(1), @fecha DATE, @monto_total NUMERIC(12, 2), @origen VARCHAR(20);
 
-	SELECT @tdo_naturaleza = tdo.tdo_naturaleza, @afecta_costo = tdo.afecta_costo,
-		   @fecha = enc.enc_fecha_docto, @monto_total = enc.enc_monto_total,
-		   @origen = CASE WHEN tdo.tdo_naturaleza = '+' THEN 'COMPRA' ELSE 'VENTA' END
-	FROM dbo.inv_documento_enc enc
-	INNER JOIN dbo.inv_documento_tipo tdo ON tdo.tdo_id = enc.tdo_id
-	WHERE enc.enc_id = @enc_id;
+	SELECT @tdo_naturaleza = tipo.tdo_naturaleza, @afecta_costo = tipo.afecta_costo,
+		   @fecha = enca.enc_fecha_docto, @monto_total = enca.enc_monto_total,
+		   @origen = CASE WHEN tipo.tdo_naturaleza = '+' THEN 'COMPRA' ELSE 'VENTA' END
+	FROM dbo.inv_documento_enc enca
+	INNER JOIN dbo.inv_documento_tipo tipo ON tipo.tdo_id = enca.tdo_id
+	WHERE enca.enc_id = @EncId;
 
 	IF @fecha IS NULL
 		THROW 51303, 'El documento indicado no existe.', 1;
@@ -160,9 +160,9 @@ BEGIN
 	WHERE ccp_codigo IN ('VENTA_CAJA','VENTA_CLIENTES','VENTA_INGRESO','VENTA_IVA_DEBITO','VENTA_COSTO','INVENTARIO',
 						 'COMPRA_GASTO','COMPRA_IVA_CREDITO','COMPRA_PROVEEDORES');
 
-	DECLARE @faltante VARCHAR(40) = (SELECT TOP 1 v.c FROM (VALUES ('VENTA_CAJA'),('VENTA_CLIENTES'),('VENTA_INGRESO'),('VENTA_IVA_DEBITO'),
-		('VENTA_COSTO'),('INVENTARIO'),('COMPRA_GASTO'),('COMPRA_IVA_CREDITO'),('COMPRA_PROVEEDORES')) v(c)
-		LEFT JOIN @cuentas cuen ON cuen.ccp_codigo = v.c WHERE cuen.cta_id IS NULL);
+	DECLARE @faltante VARCHAR(40) = (SELECT TOP 1 conc.codigo FROM (VALUES ('VENTA_CAJA'),('VENTA_CLIENTES'),('VENTA_INGRESO'),('VENTA_IVA_DEBITO'),
+		('VENTA_COSTO'),('INVENTARIO'),('COMPRA_GASTO'),('COMPRA_IVA_CREDITO'),('COMPRA_PROVEEDORES')) conc(codigo)
+		LEFT JOIN @cuentas cuen ON cuen.ccp_codigo = conc.codigo WHERE cuen.cta_id IS NULL);
 	IF @faltante IS NOT NULL
 	BEGIN
 		DECLARE @msg_faltante NVARCHAR(200) = CONCAT(N'El concepto contable ', @faltante, N' no tiene cuenta asignada; configúrelo en cont_cuenta_parametro.');
@@ -184,28 +184,28 @@ BEGIN
 
 	-- El precio unitario se maneja sin impuesto incluido: el IVA se calcula
 	-- sobre el subtotal neto de descuento y se sube aparte al total del
-	-- documento (ver @monto_total en sp_ventas_crear_factura / sp_compras_crear_documento).
+	-- documento (ver @monto_total en paVentaFacturaCrear / paCompraDocumentoCrear).
 	DECLARE @iva NUMERIC(14, 2) =
-		(SELECT ISNULL(SUM((det_sub_total - det_valor_descuento) * ISNULL(det_porc_iva, 0) / 100.0), 0) FROM dbo.inv_documento_det WHERE enc_id = @enc_id);
+		(SELECT ISNULL(SUM((det_sub_total - det_valor_descuento) * ISNULL(det_porc_iva, 0) / 100.0), 0) FROM dbo.inv_documento_det WHERE enc_id = @EncId);
 
 	DECLARE @costo_venta NUMERIC(14, 2);
-	SELECT @costo_venta = ISNULL(SUM(det.det_cantidad * pro.pro_costo_unitario), 0)
-	FROM dbo.inv_documento_det det
-	INNER JOIN dbo.inv_producto pro ON pro.pro_id = det.pro_id
-	WHERE det.enc_id = @enc_id AND pro.pro_maneja_existencia = 1;
+	SELECT @costo_venta = ISNULL(SUM(deta.det_cantidad * prod.pro_costo_unitario), 0)
+	FROM dbo.inv_documento_det deta
+	INNER JOIN dbo.inv_producto prod ON prod.pro_id = deta.pro_id
+	WHERE deta.enc_id = @EncId AND prod.pro_maneja_existencia = 1;
 
 	DECLARE @pdo_id INT;
-	EXEC dbo.sp_contabilidad_obtener_o_crear_periodo @fecha = @fecha, @usu_id = @usu_id, @pdo_id = @pdo_id OUTPUT;
+	EXEC dbo.paContabilidadPeriodoObtenerOCrear @Fecha = @fecha, @UsuId = @UsuId, @PdoId = @pdo_id OUTPUT;
 
 	DECLARE @detalle dbo.cont_asiento_det_type;
-	DECLARE @ref VARCHAR(10) = CAST(@enc_id AS VARCHAR(10));
+	DECLARE @ref VARCHAR(10) = CAST(@EncId AS VARCHAR(10));
 
 	IF @tdo_naturaleza = '-' -- venta
 	BEGIN
-		-- Lo cobrado al momento de facturar (sp_ventas_crear_factura registra
+		-- Lo cobrado al momento de facturar (paVentaFacturaCrear registra
 		-- el pago antes de llamar a este procedimiento) entra a Caja; el resto
 		-- queda como cuenta por cobrar al cliente.
-		DECLARE @cobrado NUMERIC(12, 2) = (SELECT ISNULL(SUM(ppd_valor_aplicado), 0) FROM dbo.pos_pago_det WHERE enc_id = @enc_id);
+		DECLARE @cobrado NUMERIC(12, 2) = (SELECT ISNULL(SUM(ppd_valor_aplicado), 0) FROM dbo.pos_pago_det WHERE enc_id = @EncId);
 		IF @cobrado > @monto_total SET @cobrado = @monto_total;
 
 		IF @cobrado > 0
@@ -238,14 +238,14 @@ BEGIN
 	-- valor de un parámetro con nombre; se calcula antes en una variable.
 	DECLARE @asi_descripcion VARCHAR(256) = 'Generado automáticamente desde documento ' + @ref;
 
-	EXEC dbo.sp_contabilidad_insertar_asiento
-		@asi_fecha = @fecha,
-		@asi_descripcion = @asi_descripcion,
-		@asi_origen = @origen,
-		@enc_id = @enc_id,
-		@pdo_id = @pdo_id,
-		@usu_id = @usu_id,
-		@detalle = @detalle,
-		@asi_id = @asi_id OUTPUT;
+	EXEC dbo.paContabilidadAsientoInsertar
+		@AsiFecha = @fecha,
+		@AsiDescripcion = @asi_descripcion,
+		@AsiOrigen = @origen,
+		@EncId = @EncId,
+		@PdoId = @pdo_id,
+		@UsuId = @UsuId,
+		@Detalle = @detalle,
+		@AsiId = @AsiId OUTPUT;
 END;
 GO

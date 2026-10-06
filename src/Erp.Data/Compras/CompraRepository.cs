@@ -8,8 +8,8 @@ public sealed class CompraRepository(IDbConnectionFactory connectionFactory) : I
 	public async Task<IReadOnlyList<Proveedor>> ConsultarProveedoresAsync(string? texto, string? estado)
 	{
 		using var connection = connectionFactory.CreateConnection();
-		var parametros = new { texto, prv_estado = estado };
-		var filas = await connection.QueryAsync<Proveedor>("dbo.sp_proveedor_consultar", parametros, commandType: CommandType.StoredProcedure);
+		var parametros = new { Texto = texto, PrvEstado = estado };
+		var filas = await connection.QueryAsync<Proveedor>("dbo.paProveedorConsultar", parametros, commandType: CommandType.StoredProcedure);
 		return filas.ToList();
 	}
 
@@ -39,23 +39,23 @@ public sealed class CompraRepository(IDbConnectionFactory connectionFactory) : I
 		var tablaDetalle = ConstruirTablaDetalle(detalle);
 
 		var parametros = new DynamicParameters();
-		parametros.Add("@enc_fecha_docto", encabezado.FechaDocumento);
-		parametros.Add("@enc_numero_autorizacion", encabezado.NumeroAutorizacion);
-		parametros.Add("@enc_serie_docto", encabezado.SerieDocumento);
-		parametros.Add("@enc_numero_docto", encabezado.NumeroDocumento);
-		parametros.Add("@prv_id", encabezado.PrvId);
-		parametros.Add("@prv_enc_nombres_proveedor", encabezado.NombreProveedor);
-		parametros.Add("@prv_enc_apellidos_proveedor", (string?)null);
-		parametros.Add("@prv_nit", encabezado.Nit);
-		parametros.Add("@tdo_id", encabezado.TdoId);
-		parametros.Add("@enc_fecha_primer_pago", encabezado.FechaPrimerPago);
-		parametros.Add("@enc_monto_enganche", encabezado.MontoEnganche);
-		parametros.Add("@enc_numero_cuotas", encabezado.NumeroCuotas);
-		parametros.Add("@enc_valor_descuento", encabezado.ValorDescuento);
-		parametros.Add("@mon_id", encabezado.MonId);
-		parametros.Add("@usu_id", usuarioAccionId);
-		parametros.Add("@detalle", tablaDetalle.AsTableValuedParameter("dbo.compra_det_type"));
-		parametros.Add("@enc_id", dbType: DbType.Int32, direction: ParameterDirection.Output);
+		parametros.Add("@EncFechaDocto", encabezado.FechaDocumento);
+		parametros.Add("@EncNumeroAutorizacion", encabezado.NumeroAutorizacion);
+		parametros.Add("@EncSerieDocto", encabezado.SerieDocumento);
+		parametros.Add("@EncNumeroDocto", encabezado.NumeroDocumento);
+		parametros.Add("@PrvId", encabezado.PrvId);
+		parametros.Add("@PrvEncNombresProveedor", encabezado.NombreProveedor);
+		parametros.Add("@PrvEncApellidosProveedor", (string?)null);
+		parametros.Add("@PrvNit", encabezado.Nit);
+		parametros.Add("@TdoId", encabezado.TdoId);
+		parametros.Add("@EncFechaPrimerPago", encabezado.FechaPrimerPago);
+		parametros.Add("@EncMontoEnganche", encabezado.MontoEnganche);
+		parametros.Add("@EncNumeroCuotas", encabezado.NumeroCuotas);
+		parametros.Add("@EncValorDescuento", encabezado.ValorDescuento);
+		parametros.Add("@MonId", encabezado.MonId);
+		parametros.Add("@UsuId", usuarioAccionId);
+		parametros.Add("@Detalle", tablaDetalle.AsTableValuedParameter("dbo.compra_det_type"));
+		parametros.Add("@EncId", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
 		// Líneas de activo fijo: det_item (posición) → categoría y centro de costo.
 		var tablaActivos = new DataTable();
@@ -65,17 +65,17 @@ public sealed class CompraRepository(IDbConnectionFactory connectionFactory) : I
 		for (var i = 0; i < detalle.Count; i++)
 			if (detalle[i].AfcId is int afcId)
 				tablaActivos.Rows.Add(i + 1, afcId, (object?)detalle[i].IdDepartamento ?? DBNull.Value);
-		parametros.Add("@activos", tablaActivos.AsTableValuedParameter("dbo.compra_activo_type"));
+		parametros.Add("@Activos", tablaActivos.AsTableValuedParameter("dbo.compra_activo_type"));
 
-		await connection.ExecuteAsync("dbo.sp_compras_crear_documento", parametros, commandType: CommandType.StoredProcedure);
-		return parametros.Get<int>("@enc_id");
+		await connection.ExecuteAsync("dbo.paCompraDocumentoCrear", parametros, commandType: CommandType.StoredProcedure);
+		return parametros.Get<int>("@EncId");
 	}
 
 	public async Task AnularAsync(int encId, int? usuarioAccionId)
 	{
 		using var connection = connectionFactory.CreateConnection();
-		var parametros = new { enc_id = encId, usu_id = usuarioAccionId };
-		await connection.ExecuteAsync("dbo.sp_documento_anular", parametros, commandType: CommandType.StoredProcedure);
+		var parametros = new { EncId = encId, UsuId = usuarioAccionId };
+		await connection.ExecuteAsync("dbo.paDocumentoAnular", parametros, commandType: CommandType.StoredProcedure);
 	}
 
 	// paDocumentoConsultar filtra por un único @tdo_id; como Compras agrupa
@@ -116,8 +116,8 @@ public sealed class CompraRepository(IDbConnectionFactory connectionFactory) : I
 	{
 		using var connection = connectionFactory.CreateConnection();
 		using var multi = await connection.QueryMultipleAsync(
-			"dbo.sp_documento_consultar_por_id",
-			new { enc_id = encId },
+			"dbo.paDocumentoConsultarPorId",
+			new { EncId = encId },
 			commandType: CommandType.StoredProcedure);
 
 		var encabezado = await multi.ReadFirstOrDefaultAsync<CompraEncabezadoDetalle>();

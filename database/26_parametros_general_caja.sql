@@ -404,20 +404,20 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[sp_pos_caja_cerrar]
-	@pca_id	INT,
-	@usu_id	INT
+CREATE OR ALTER PROCEDURE [dbo].[paCajaCerrar]
+	@PcaId	INT,
+	@UsuId	INT
 AS
 BEGIN
 	SET NOCOUNT ON;
 
-	IF NOT EXISTS (SELECT 1 FROM dbo.pos_caja_apertura WHERE pca_id = @pca_id AND pca_estado = 'A')
+	IF NOT EXISTS (SELECT 1 FROM dbo.pos_caja_apertura WHERE pca_id = @PcaId AND pca_estado = 'A')
 		THROW 51702, 'La apertura de caja indicada no existe o ya está cerrada.', 1;
 
 	DECLARE @cuadre TABLE (MontoInicial NUMERIC(12, 2), EfectivoCobrado NUMERIC(12, 2), Depositos NUMERIC(12, 2), Cheques NUMERIC(12, 2),
 		Tarjetas NUMERIC(12, 2), OtrasFormas NUMERIC(12, 2), TeoricoTotal NUMERIC(12, 2), FisicoEfectivo NUMERIC(12, 2),
 		FisicoOtrasFormas NUMERIC(12, 2), FisicoTotal NUMERIC(12, 2), Diferencia NUMERIC(12, 2), Tolerancia NUMERIC(12, 2), Cuadra BIT);
-	INSERT INTO @cuadre EXEC dbo.paCorteCajaCuadreConsultar @pca_id = @pca_id;
+	INSERT INTO @cuadre EXEC dbo.paCorteCajaCuadreConsultar @pca_id = @PcaId;
 
 	DECLARE @teorico NUMERIC(12, 2), @fisico NUMERIC(12, 2), @diferencia NUMERIC(12, 2), @tolerancia NUMERIC(12, 2), @cuadra BIT;
 	SELECT @teorico = TeoricoTotal, @fisico = FisicoTotal, @diferencia = Diferencia, @tolerancia = Tolerancia, @cuadra = Cuadra FROM @cuadre;
@@ -434,12 +434,12 @@ BEGIN
 	   SET pca_estado = 'C',
 		   pca_fecha_corte = SYSDATETIME(),
 		   pca_fecha_cierre = SYSDATETIME(),
-		   usu_id_cierre = @usu_id,
+		   usu_id_cierre = @UsuId,
 		   pca_monto_teorico_total = @teorico,
 		   pca_monto_fisico_total = @fisico,
 		   pca_diferencia = @diferencia,
-		   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
-	 WHERE pca_id = @pca_id;
+		   UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME()
+	 WHERE pca_id = @PcaId;
 END;
 GO
 

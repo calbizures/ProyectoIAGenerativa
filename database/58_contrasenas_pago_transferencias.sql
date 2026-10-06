@@ -891,10 +891,10 @@ BEGIN
 
 		DECLARE @asi_descripcion VARCHAR(256) = LEFT(CONCAT('Pago a proveedores por transferencia ', @Numero,
 			' (', (SELECT COUNT(*) FROM @conts), ' contraseña', IIF((SELECT COUNT(*) FROM @conts) = 1, '', 's'), ')'), 256);
-		EXEC dbo.sp_contabilidad_insertar_asiento
-			@asi_fecha = @Fecha, @asi_descripcion = @asi_descripcion,
-			@asi_origen = 'PAGO_TRANSFERENCIA', @asi_origen_id = @BltId,
-			@usu_id = @UsuId, @detalle = @partida, @asi_id = @asi_id OUTPUT;
+		EXEC dbo.paContabilidadAsientoInsertar
+			@AsiFecha = @Fecha, @AsiDescripcion = @asi_descripcion,
+			@AsiOrigen = 'PAGO_TRANSFERENCIA', @AsiOrigenId = @BltId,
+			@UsuId = @UsuId, @Detalle = @partida, @AsiId = @asi_id OUTPUT;
 
 		COMMIT TRANSACTION;
 	END TRY
@@ -1372,9 +1372,9 @@ GO
 
 -- Igual que en 34; una compra pagada por transferencia o en una contraseña
 -- pendiente no se anula sin anular antes el lote o la contraseña.
-CREATE OR ALTER PROCEDURE [dbo].[sp_documento_anular]
-	@enc_id	INT,
-	@usu_id	INT = NULL
+CREATE OR ALTER PROCEDURE [dbo].[paDocumentoAnular]
+	@EncId	INT,
+	@UsuId	INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -1383,7 +1383,7 @@ BEGIN
 	DECLARE @estado_actual CHAR(1), @es_nota BIT;
 	SELECT @estado_actual = enca.enc_estado, @es_nota = tipo.tdo_es_nota
 	FROM dbo.inv_documento_enc enca INNER JOIN dbo.inv_documento_tipo tipo ON tipo.tdo_id = enca.tdo_id
-	WHERE enca.enc_id = @enc_id;
+	WHERE enca.enc_id = @EncId;
 
 	IF @estado_actual IS NULL
 		THROW 51421, 'El documento indicado no existe.', 1;
@@ -1391,30 +1391,30 @@ BEGIN
 		THROW 51422, 'Solo se pueden anular documentos que estén en estado Grabado.', 1;
 	IF @es_nota = 1
 		THROW 51423, 'Una nota de crédito o débito no se anula; emita la nota contraria.', 1;
-	IF EXISTS (SELECT 1 FROM dbo.inv_documento_enc WHERE enc_id_referencia = @enc_id AND enc_estado = 'G')
+	IF EXISTS (SELECT 1 FROM dbo.inv_documento_enc WHERE enc_id_referencia = @EncId AND enc_estado = 'G')
 		THROW 51424, 'El documento tiene notas de crédito o débito; no se puede anular.', 1;
 	IF EXISTS (SELECT 1 FROM dbo.pos_pago_det deta
 			   INNER JOIN dbo.pos_pago_enc pago ON pago.ppe_id = deta.ppe_id AND pago.ppe_estado = 'A'
 			   INNER JOIN dbo.pos_cliente_plan_pagos cuot ON cuot.cpp_id = deta.cpp_id
-			   WHERE cuot.enc_id = @enc_id)
+			   WHERE cuot.enc_id = @EncId)
 		THROW 53227, 'La factura tiene cobros de cuotas; anule primero esos recibos en Cuentas por cobrar › Cobros.', 1;
 	IF EXISTS (SELECT 1 FROM dbo.pos_pago_det deta
 			   INNER JOIN dbo.pos_pago_enc pago ON pago.ppe_id = deta.ppe_id AND pago.ppe_estado = 'A'
 			   LEFT JOIN dbo.pos_caja_apertura aper ON aper.pca_id = pago.pca_id
-			   WHERE deta.enc_id = @enc_id AND ISNULL(aper.pca_estado, 'C') <> 'A')
+			   WHERE deta.enc_id = @EncId AND ISNULL(aper.pca_estado, 'C') <> 'A')
 		THROW 53228, 'El pago de esta factura entró a una caja que ya se cerró; no se puede anular: emita una nota de crédito.', 1;
 	IF EXISTS (SELECT 1 FROM dbo.bco_cheque_emitido_det chdt
 			   INNER JOIN dbo.bco_cheque_emitido_enc cheq ON cheq.bce_id = chdt.bce_id AND cheq.bce_estado_cheque <> 'A'
-			   WHERE chdt.enc_id = @enc_id)
+			   WHERE chdt.enc_id = @EncId)
 		THROW 53229, 'La compra tiene cheques emitidos; anule primero esos cheques en Cuentas por pagar › Pagos.', 1;
 	IF EXISTS (SELECT 1 FROM dbo.bco_lote_transferencia_cuota blcu
 			   INNER JOIN dbo.bco_lote_transferencia_det line ON line.bld_id = blcu.bld_id
 			   INNER JOIN dbo.bco_lote_transferencia lote ON lote.blt_id = line.blt_id AND lote.blt_estado = 'A'
-			   WHERE blcu.enc_id = @enc_id)
+			   WHERE blcu.enc_id = @EncId)
 		THROW 54838, 'La compra se pagó por transferencia; anule primero ese lote en Cuentas por pagar › Pagos programados.', 1;
 	IF EXISTS (SELECT 1 FROM dbo.cxp_contrasena_det deta
 			   INNER JOIN dbo.cxp_contrasena_enc cont ON cont.cpa_id = deta.cpa_id AND cont.cpa_estado = 'E'
-			   WHERE deta.enc_id = @enc_id)
+			   WHERE deta.enc_id = @EncId)
 		THROW 54839, 'La compra está en una contraseña de pago pendiente; anule primero la contraseña.', 1;
 
 	BEGIN TRY
@@ -1425,27 +1425,27 @@ BEGIN
 		DECLARE recibos CURSOR LOCAL FAST_FORWARD FOR
 			SELECT DISTINCT deta.ppe_id FROM dbo.pos_pago_det deta
 			INNER JOIN dbo.pos_pago_enc pago ON pago.ppe_id = deta.ppe_id AND pago.ppe_estado = 'A'
-			WHERE deta.enc_id = @enc_id;
+			WHERE deta.enc_id = @EncId;
 		OPEN recibos;
 		FETCH NEXT FROM recibos INTO @ppe_id;
 		WHILE @@FETCH_STATUS = 0
 		BEGIN
-			EXEC dbo.paCxcReciboReversar @PpeId = @ppe_id, @Motivo = 'Anulación de la factura', @UsuId = @usu_id;
+			EXEC dbo.paCxcReciboReversar @PpeId = @ppe_id, @Motivo = 'Anulación de la factura', @UsuId = @UsuId;
 			FETCH NEXT FROM recibos INTO @ppe_id;
 		END
 		CLOSE recibos; DEALLOCATE recibos;
 
-		EXEC dbo.sp_inventario_ajustar_existencia_documento @enc_id = @enc_id, @reversar = 1, @usu_id = @usu_id;
+		EXEC dbo.paInventarioExistenciaDocumentoAjustar @EncId = @EncId, @Reversar = 1, @UsuId = @UsuId;
 
 		UPDATE dbo.inv_documento_enc
 		   SET enc_estado = 'A',
-			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
-		 WHERE enc_id = @enc_id;
+			   UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME()
+		 WHERE enc_id = @EncId;
 
 		UPDATE dbo.cont_asiento_enc
 		   SET asi_estado = 'N',
-			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
-		 WHERE enc_id = @enc_id;
+			   UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME()
+		 WHERE enc_id = @EncId;
 
 		COMMIT TRANSACTION;
 	END TRY

@@ -295,95 +295,95 @@ END;
 GO
 
 -- Producto: se agrega la unidad de medida (opcional; si no viene se deja la actual).
-CREATE OR ALTER PROCEDURE [dbo].[sp_producto_insertar]
-	@pro_codigo				VARCHAR(64),
-	@pro_descripcion		VARCHAR(256),
-	@prt_id					INT,
-	@pro_tipo_item			CHAR(1) = 'B',
-	@pro_maneja_existencia	BIT = 1,
-	@pro_id_padre			INT = NULL,
-	@usu_id					INT = NULL,
-	@pro_id					INT OUTPUT,
-	@ume_id					INT = NULL
+CREATE OR ALTER PROCEDURE [dbo].[paProductoInsertar]
+	@ProCodigo				VARCHAR(64),
+	@ProDescripcion		VARCHAR(256),
+	@PrtId					INT,
+	@ProTipoItem			CHAR(1) = 'B',
+	@ProManejaExistencia	BIT = 1,
+	@ProIdPadre			INT = NULL,
+	@UsuId					INT = NULL,
+	@ProId					INT OUTPUT,
+	@UmeId					INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
 
-	IF EXISTS (SELECT 1 FROM dbo.inv_producto WHERE pro_codigo = @pro_codigo)
+	IF EXISTS (SELECT 1 FROM dbo.inv_producto WHERE pro_codigo = @ProCodigo)
 		THROW 51001, 'Ya existe un producto con ese código.', 1;
 
-	IF @ume_id IS NULL
-		SET @ume_id = (SELECT ume_id FROM dbo.inv_unidad_medida WHERE ume_codigo = CASE WHEN @pro_tipo_item = 'S' THEN 'SRV' ELSE 'UND' END);
+	IF @UmeId IS NULL
+		SET @UmeId = (SELECT ume_id FROM dbo.inv_unidad_medida WHERE ume_codigo = CASE WHEN @ProTipoItem = 'S' THEN 'SRV' ELSE 'UND' END);
 
 	INSERT INTO dbo.inv_producto
 		(pro_codigo, pro_descripcion, prt_id, pro_tipo_item, pro_maneja_existencia, pro_id_padre, ume_id, InsUsuario, InsFechaHora)
 	VALUES
-		(@pro_codigo, @pro_descripcion, @prt_id, @pro_tipo_item, @pro_maneja_existencia, @pro_id_padre, @ume_id, @usu_id, SYSDATETIME());
+		(@ProCodigo, @ProDescripcion, @PrtId, @ProTipoItem, @ProManejaExistencia, @ProIdPadre, @UmeId, @UsuId, SYSDATETIME());
 
-	SET @pro_id = SCOPE_IDENTITY();
+	SET @ProId = SCOPE_IDENTITY();
 END;
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[sp_producto_actualizar]
-	@pro_id					INT,
-	@pro_codigo				VARCHAR(64),
-	@pro_descripcion		VARCHAR(256),
-	@prt_id					INT,
-	@pro_tipo_item			CHAR(1),
-	@pro_maneja_existencia	BIT,
-	@pro_id_padre			INT = NULL,
-	@pro_ptje_rentabilidad	NUMERIC(8, 2) = NULL,
-	@usu_id					INT = NULL,
-	@ume_id					INT = NULL
+CREATE OR ALTER PROCEDURE [dbo].[paProductoActualizar]
+	@ProId					INT,
+	@ProCodigo				VARCHAR(64),
+	@ProDescripcion		VARCHAR(256),
+	@PrtId					INT,
+	@ProTipoItem			CHAR(1),
+	@ProManejaExistencia	BIT,
+	@ProIdPadre			INT = NULL,
+	@ProPtjeRentabilidad	NUMERIC(8, 2) = NULL,
+	@UsuId					INT = NULL,
+	@UmeId					INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
 
-	IF NOT EXISTS (SELECT 1 FROM dbo.inv_producto WHERE pro_id = @pro_id)
+	IF NOT EXISTS (SELECT 1 FROM dbo.inv_producto WHERE pro_id = @ProId)
 		THROW 51002, 'El producto indicado no existe.', 1;
 
-	IF EXISTS (SELECT 1 FROM dbo.inv_producto WHERE pro_codigo = @pro_codigo AND pro_id <> @pro_id)
+	IF EXISTS (SELECT 1 FROM dbo.inv_producto WHERE pro_codigo = @ProCodigo AND pro_id <> @ProId)
 		THROW 51001, 'Ya existe otro producto con ese código.', 1;
 
 	UPDATE dbo.inv_producto
-	   SET pro_codigo = @pro_codigo,
-		   pro_descripcion = @pro_descripcion,
-		   prt_id = @prt_id,
-		   pro_tipo_item = @pro_tipo_item,
-		   pro_maneja_existencia = @pro_maneja_existencia,
-		   pro_id_padre = @pro_id_padre,
-		   pro_ptje_rentabilidad = @pro_ptje_rentabilidad,
-		   ume_id = ISNULL(@ume_id, ume_id),
-		   UpdUsuario = @usu_id,
+	   SET pro_codigo = @ProCodigo,
+		   pro_descripcion = @ProDescripcion,
+		   prt_id = @PrtId,
+		   pro_tipo_item = @ProTipoItem,
+		   pro_maneja_existencia = @ProManejaExistencia,
+		   pro_id_padre = @ProIdPadre,
+		   pro_ptje_rentabilidad = @ProPtjeRentabilidad,
+		   ume_id = ISNULL(@UmeId, ume_id),
+		   UpdUsuario = @UsuId,
 		   UpdFechaHora = SYSDATETIME()
-	 WHERE pro_id = @pro_id;
+	 WHERE pro_id = @ProId;
 END;
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[sp_producto_consultar]
-	@pro_codigo			VARCHAR(64) = NULL,
-	@pro_descripcion	VARCHAR(256) = NULL,
-	@prt_id				INT = NULL,
-	@pro_estado			CHAR(1) = 'A',
-	@pagina				INT = 1,
-	@tamanio_pagina		INT = 50
+CREATE OR ALTER PROCEDURE [dbo].[paProductoConsultar]
+	@ProCodigo			VARCHAR(64) = NULL,
+	@ProDescripcion	VARCHAR(256) = NULL,
+	@PrtId				INT = NULL,
+	@ProEstado			CHAR(1) = 'A',
+	@Pagina				INT = 1,
+	@TamanioPagina		INT = 50
 AS
 BEGIN
 	SET NOCOUNT ON;
 
-	SELECT pro.pro_id, pro.pro_codigo, pro.pro_descripcion, pro.pro_tipo_item,
-		   pro.pro_maneja_existencia, pro.pro_total_cantidad, pro.pro_costo_unitario,
-		   pro.prt_id, prt.prt_descripcion, pro.pro_estado,
-		   pro.ume_id, unid.ume_codigo, unid.ume_descripcion
-	FROM dbo.inv_producto pro
-	INNER JOIN dbo.inv_producto_tipo prt ON prt.prt_id = pro.prt_id
-	LEFT JOIN dbo.inv_unidad_medida unid ON unid.ume_id = pro.ume_id
-	WHERE (@pro_codigo IS NULL OR pro.pro_codigo LIKE '%' + @pro_codigo + '%')
-	  AND (@pro_descripcion IS NULL OR pro.pro_descripcion LIKE '%' + @pro_descripcion + '%')
-	  AND (@prt_id IS NULL OR pro.prt_id = @prt_id)
-	  AND (@pro_estado IS NULL OR pro.pro_estado = @pro_estado)
-	ORDER BY pro.pro_descripcion
-	OFFSET (@pagina - 1) * @tamanio_pagina ROWS FETCH NEXT @tamanio_pagina ROWS ONLY;
+	SELECT prod.pro_id, prod.pro_codigo, prod.pro_descripcion, prod.pro_tipo_item,
+		   prod.pro_maneja_existencia, prod.pro_total_cantidad, prod.pro_costo_unitario,
+		   prod.prt_id, ptip.prt_descripcion, prod.pro_estado,
+		   prod.ume_id, unid.ume_codigo, unid.ume_descripcion
+	FROM dbo.inv_producto prod
+	INNER JOIN dbo.inv_producto_tipo ptip ON ptip.prt_id = prod.prt_id
+	LEFT JOIN dbo.inv_unidad_medida unid ON unid.ume_id = prod.ume_id
+	WHERE (@ProCodigo IS NULL OR prod.pro_codigo LIKE '%' + @ProCodigo + '%')
+	  AND (@ProDescripcion IS NULL OR prod.pro_descripcion LIKE '%' + @ProDescripcion + '%')
+	  AND (@PrtId IS NULL OR prod.prt_id = @PrtId)
+	  AND (@ProEstado IS NULL OR prod.pro_estado = @ProEstado)
+	ORDER BY prod.pro_descripcion
+	OFFSET (@Pagina - 1) * @TamanioPagina ROWS FETCH NEXT @TamanioPagina ROWS ONLY;
 END;
 GO
 
@@ -393,7 +393,7 @@ GO
 -- El tipo de tabla no se puede alterar: se quita el procedimiento que lo
 -- usa, se recrea con la cantidad decimal y la unidad, y se vuelve a crear
 -- el procedimiento (21 hace lo mismo con la versión anterior).
-DROP PROCEDURE IF EXISTS [dbo].[sp_ventas_crear_factura];
+DROP PROCEDURE IF EXISTS [dbo].[paVentaFacturaCrear];
 GO
 DROP TYPE IF EXISTS [dbo].[factura_det_type];
 GO
@@ -415,67 +415,67 @@ CREATE TYPE [dbo].[factura_det_type] AS TABLE
 );
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[sp_ventas_crear_factura]
-	@enc_fecha_docto			DATE,
-	@enc_numero_autorizacion	VARCHAR(64) = NULL,
-	@enc_serie_docto			VARCHAR(32) = NULL,
-	@enc_numero_docto			VARCHAR(32) = NULL,
-	@cli_id						INT,
-	@enc_nombres_cliente		VARCHAR(128) = NULL,
-	@enc_apellidos_cliente		VARCHAR(128) = NULL,
-	@cli_nit					VARCHAR(16) = NULL,
-	@tdo_id						INT,
-	@pve_id						INT = NULL,
-	@enc_fecha_primer_pago		DATE = NULL,
-	@enc_monto_enganche			NUMERIC(12, 2) = 0,
-	@enc_numero_cuotas			INT = 1,
-	@enc_valor_descuento		NUMERIC(13, 2) = 0,
-	@enc_direccion_cliente		VARCHAR(256) = NULL,
-	@mon_id						INT = NULL,
-	@usu_id						INT = NULL,
-	@detalle					dbo.factura_det_type READONLY,
-	@pca_id						INT = NULL,				-- apertura de caja activa donde se recibe el pago inicial
-	@formas_pago				dbo.pago_forma_type READONLY,	-- pago de contado, o enganche si es a crédito; pasar tabla vacía si no aplica
-	@enc_id						INT OUTPUT,
-	@enc_numero_unico			VARCHAR(16) OUTPUT
+CREATE OR ALTER PROCEDURE [dbo].[paVentaFacturaCrear]
+	@EncFechaDocto			DATE,
+	@EncNumeroAutorizacion	VARCHAR(64) = NULL,
+	@EncSerieDocto			VARCHAR(32) = NULL,
+	@EncNumeroDocto			VARCHAR(32) = NULL,
+	@CliId						INT,
+	@EncNombresCliente		VARCHAR(128) = NULL,
+	@EncApellidosCliente		VARCHAR(128) = NULL,
+	@CliNit					VARCHAR(16) = NULL,
+	@TdoId						INT,
+	@PveId						INT = NULL,
+	@EncFechaPrimerPago		DATE = NULL,
+	@EncMontoEnganche			NUMERIC(12, 2) = 0,
+	@EncNumeroCuotas			INT = 1,
+	@EncValorDescuento		NUMERIC(13, 2) = 0,
+	@EncDireccionCliente		VARCHAR(256) = NULL,
+	@MonId						INT = NULL,
+	@UsuId						INT = NULL,
+	@Detalle					dbo.factura_det_type READONLY,
+	@PcaId						INT = NULL,				-- apertura de caja activa donde se recibe el pago inicial
+	@FormasPago				dbo.pago_forma_type READONLY,	-- pago de contado, o enganche si es a crédito; pasar tabla vacía si no aplica
+	@EncId						INT OUTPUT,
+	@EncNumeroUnico			VARCHAR(16) OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
 	SET XACT_ABORT ON;
 
-	IF NOT EXISTS (SELECT 1 FROM @detalle)
+	IF NOT EXISTS (SELECT 1 FROM @Detalle)
 		THROW 51401, 'La factura debe tener al menos una línea de detalle.', 1;
-	IF EXISTS (SELECT 1 FROM @detalle WHERE det_bien_o_servicio NOT IN ('B', 'S'))
+	IF EXISTS (SELECT 1 FROM @Detalle WHERE det_bien_o_servicio NOT IN ('B', 'S'))
 		THROW 53031, 'Cada línea debe ser bien (B) o servicio (S).', 1;
-	IF EXISTS (SELECT 1 FROM @detalle WHERE det_bien_o_servicio = 'B' AND pro_id IS NULL)
+	IF EXISTS (SELECT 1 FROM @Detalle WHERE det_bien_o_servicio = 'B' AND pro_id IS NULL)
 		THROW 53032, 'Una línea de bien debe indicar el producto.', 1;
-	IF EXISTS (SELECT 1 FROM @detalle WHERE LTRIM(RTRIM(det_descripcion)) = '')
+	IF EXISTS (SELECT 1 FROM @Detalle WHERE LTRIM(RTRIM(det_descripcion)) = '')
 		THROW 53033, 'Toda línea debe tener descripción; en un servicio, describa el servicio prestado.', 1;
-	IF EXISTS (SELECT 1 FROM @detalle WHERE det_cantidad <= 0 OR det_precio_unitario < 0)
+	IF EXISTS (SELECT 1 FROM @Detalle WHERE det_cantidad <= 0 OR det_precio_unitario < 0)
 		THROW 53034, 'La cantidad debe ser mayor a cero y el precio no puede ser negativo.', 1;
-	IF EXISTS (SELECT 1 FROM @detalle deta INNER JOIN dbo.inv_producto prod ON prod.pro_id = deta.pro_id
+	IF EXISTS (SELECT 1 FROM @Detalle deta INNER JOIN dbo.inv_producto prod ON prod.pro_id = deta.pro_id
 			   WHERE prod.pro_maneja_existencia = 1 AND deta.det_cantidad <> ROUND(deta.det_cantidad, 0))
 		THROW 53035, 'Los productos con existencia se venden en cantidades enteras.', 1;
 
-	IF @mon_id IS NULL
-		SET @mon_id = dbo.fn_moneda_local();
+	IF @MonId IS NULL
+		SET @MonId = dbo.fnMonedaLocal();
 
 	IF EXISTS (
 		SELECT 1
-		FROM (SELECT pro_id, bod_id, SUM(det_cantidad) AS cantidad FROM @detalle WHERE pro_id IS NOT NULL GROUP BY pro_id, bod_id) d
-		INNER JOIN dbo.inv_producto p ON p.pro_id = d.pro_id
-		LEFT JOIN dbo.inv_producto_existencia_bodega e ON e.pro_id = d.pro_id AND e.bod_id = d.bod_id
-		WHERE p.pro_maneja_existencia = 1
-		  AND ISNULL(e.existencia, 0) < d.cantidad
+		FROM (SELECT pro_id, bod_id, SUM(det_cantidad) AS cantidad FROM @Detalle WHERE pro_id IS NOT NULL GROUP BY pro_id, bod_id) pedi
+		INNER JOIN dbo.inv_producto prod2 ON prod2.pro_id = pedi.pro_id
+		LEFT JOIN dbo.inv_producto_existencia_bodega exis ON exis.pro_id = pedi.pro_id AND exis.bod_id = pedi.bod_id
+		WHERE prod2.pro_maneja_existencia = 1
+		  AND ISNULL(exis.existencia, 0) < pedi.cantidad
 	)
 		THROW 51402, 'No hay existencia suficiente para uno o más productos del detalle.', 1;
 
 	-- El monto total del documento es el neto (subtotal - descuento) más el
 	-- IVA de cada línea; los precios unitarios se manejan sin impuesto
-	-- incluido (ver también sp_contabilidad_generar_asiento_documento).
+	-- incluido (ver también paContabilidadAsientoDocumentoGenerar).
 	DECLARE @monto_total NUMERIC(12, 2) = (
 		SELECT SUM((det_sub_total - det_valor_descuento) * (1 + ISNULL(det_porc_iva, 0) / 100.0))
-		FROM @detalle
+		FROM @Detalle
 	);
 
 	BEGIN TRY
@@ -485,18 +485,18 @@ BEGIN
 
 		SELECT @serie = serie, @correlativo = correlativo + 1
 		FROM dbo.conf_correlativos WITH (UPDLOCK, ROWLOCK)
-		WHERE tdo_id = @tdo_id;
+		WHERE tdo_id = @TdoId;
 
 		IF @serie IS NULL
 			THROW 51403, 'No existe una serie de correlativos configurada para este tipo de documento.', 1;
 
 		UPDATE dbo.conf_correlativos
 		   SET correlativo = @correlativo,
-			   UpdUsuario = @usu_id,
+			   UpdUsuario = @UsuId,
 			   UpdFechaHora = SYSDATETIME()
-		 WHERE tdo_id = @tdo_id;
+		 WHERE tdo_id = @TdoId;
 
-		SET @enc_numero_unico = @serie + '-' + CAST(@correlativo AS VARCHAR(20));
+		SET @EncNumeroUnico = @serie + '-' + CAST(@correlativo AS VARCHAR(20));
 
 		INSERT INTO dbo.inv_documento_enc
 			(enc_fecha_docto, enc_numero_autorizacion, enc_serie_docto, enc_numero_docto,
@@ -505,56 +505,56 @@ BEGIN
 			 enc_valor_descuento, enc_direccion_cliente, mon_id, usu_id_creacion, enc_numero_unico,
 			 InsUsuario, InsFechaHora)
 		VALUES
-			(@enc_fecha_docto, @enc_numero_autorizacion, @enc_serie_docto, @enc_numero_docto,
-			 @cli_id, @enc_nombres_cliente, @enc_apellidos_cliente, @cli_nit, @tdo_id, @pve_id,
-			 @enc_fecha_primer_pago, @enc_monto_enganche, @enc_numero_cuotas, @monto_total,
-			 @enc_valor_descuento, @enc_direccion_cliente, @mon_id, @usu_id, @enc_numero_unico,
-			 @usu_id, SYSDATETIME());
+			(@EncFechaDocto, @EncNumeroAutorizacion, @EncSerieDocto, @EncNumeroDocto,
+			 @CliId, @EncNombresCliente, @EncApellidosCliente, @CliNit, @TdoId, @PveId,
+			 @EncFechaPrimerPago, @EncMontoEnganche, @EncNumeroCuotas, @monto_total,
+			 @EncValorDescuento, @EncDireccionCliente, @MonId, @UsuId, @EncNumeroUnico,
+			 @UsuId, SYSDATETIME());
 
-		SET @enc_id = SCOPE_IDENTITY();
+		SET @EncId = SCOPE_IDENTITY();
 
 		INSERT INTO dbo.inv_documento_det
 			(enc_id, det_item, det_bien_o_servicio, det_cantidad, det_descripcion,
 			 det_precio_unitario, det_valor_descuento, det_sub_total, det_costo_unitario, det_porc_iva, bod_id, pro_id, ppr_id, ume_id,
 			 InsUsuario, InsFechaHora)
 		SELECT
-			@enc_id, deta.det_item, deta.det_bien_o_servicio, deta.det_cantidad, deta.det_descripcion,
+			@EncId, deta.det_item, deta.det_bien_o_servicio, deta.det_cantidad, deta.det_descripcion,
 			deta.det_precio_unitario, deta.det_valor_descuento, deta.det_sub_total, deta.det_costo_unitario, deta.det_porc_iva,
 			deta.bod_id, deta.pro_id, deta.ppr_id, COALESCE(deta.ume_id, prod.ume_id),
-			@usu_id, SYSDATETIME()
-		FROM @detalle deta
+			@UsuId, SYSDATETIME()
+		FROM @Detalle deta
 		LEFT JOIN dbo.inv_producto prod ON prod.pro_id = deta.pro_id;
 
-		IF @pca_id IS NOT NULL AND EXISTS (SELECT 1 FROM @formas_pago)
+		IF @PcaId IS NOT NULL AND EXISTS (SELECT 1 FROM @FormasPago)
 		BEGIN
 			DECLARE @ppe_id INT;
 
 			INSERT INTO dbo.pos_pago_enc (cli_id, pca_id, usu_id, InsUsuario, InsFechaHora)
-			VALUES (@cli_id, @pca_id, @usu_id, @usu_id, SYSDATETIME());
+			VALUES (@CliId, @PcaId, @UsuId, @UsuId, SYSDATETIME());
 
 			SET @ppe_id = SCOPE_IDENTITY();
 
 			INSERT INTO dbo.pos_pago_forma
 				(gef_id, ppf_numero_tarjeta_ult4, ppf_fecha_vencimiento_tarjeta, ppf_numero_cheque, ppf_monto, ppe_id, pft_id, InsUsuario, InsFechaHora)
-			SELECT gef_id, ppf_numero_tarjeta_ult4, ppf_fecha_vencimiento_tarjeta, ppf_numero_cheque, ppf_monto, @ppe_id, pft_id, @usu_id, SYSDATETIME()
-			FROM @formas_pago;
+			SELECT gef_id, ppf_numero_tarjeta_ult4, ppf_fecha_vencimiento_tarjeta, ppf_numero_cheque, ppf_monto, @ppe_id, pft_id, @UsuId, SYSDATETIME()
+			FROM @FormasPago;
 
 			INSERT INTO dbo.pos_pago_det (ppe_id, enc_id, ppd_valor_aplicado, InsUsuario, InsFechaHora)
-			SELECT @ppe_id, @enc_id, SUM(ppf_monto), @usu_id, SYSDATETIME()
-			FROM @formas_pago;
+			SELECT @ppe_id, @EncId, SUM(ppf_monto), @UsuId, SYSDATETIME()
+			FROM @FormasPago;
 		END
 
-		EXEC dbo.sp_pos_generar_plan_pagos_cliente @enc_id = @enc_id, @usu_id = @usu_id;
+		EXEC dbo.paClientePlanPagosGenerar @EncId = @EncId, @UsuId = @UsuId;
 
 		UPDATE dbo.inv_documento_enc
 		   SET enc_estado = 'G',
-			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
-		 WHERE enc_id = @enc_id;
+			   UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME()
+		 WHERE enc_id = @EncId;
 
-		EXEC dbo.sp_inventario_ajustar_existencia_documento @enc_id = @enc_id, @usu_id = @usu_id;
+		EXEC dbo.paInventarioExistenciaDocumentoAjustar @EncId = @EncId, @UsuId = @UsuId;
 
 		DECLARE @asi_id INT;
-		EXEC dbo.sp_contabilidad_generar_asiento_documento @enc_id = @enc_id, @usu_id = @usu_id, @asi_id = @asi_id OUTPUT;
+		EXEC dbo.paContabilidadAsientoDocumentoGenerar @EncId = @EncId, @UsuId = @UsuId, @AsiId = @asi_id OUTPUT;
 
 		COMMIT TRANSACTION;
 	END TRY

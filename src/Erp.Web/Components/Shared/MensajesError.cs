@@ -109,7 +109,7 @@ public static partial class MensajesError
 		}
 	}
 
-	// "(error SQL 1934 en dbo.sp_cliente_insertar, línea 25)" para el soporte.
+	// "(error SQL 1934 en dbo.paClienteInsertar, línea 25)" para el soporte.
 	private static string Referencia(SqlException sql) =>
 		$" (error SQL {sql.Number}{(string.IsNullOrEmpty(sql.Procedure) ? "" : $" en {sql.Procedure}")}{(sql.LineNumber > 0 ? $", línea {sql.LineNumber}" : "")})";
 

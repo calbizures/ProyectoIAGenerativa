@@ -9,8 +9,8 @@ public sealed class AuthRepository(IDbConnectionFactory connectionFactory) : IAu
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var resultado = await connection.QueryFirstAsync<LoginResultado>(
-			"dbo.sp_seguridad_login",
-			new { usu_usuario = usuario, usu_password = password },
+			"dbo.paSeguridadLogin",
+			new { UsuUsuario = usuario, UsuPassword = password },
 			commandType: CommandType.StoredProcedure);
 		return resultado;
 	}

@@ -44,20 +44,20 @@ GO
 ------------------------------------------------------------
 -- 1. Costo unitario en ventas y compras
 ------------------------------------------------------------
-CREATE OR ALTER PROCEDURE [dbo].[sp_inventario_ajustar_existencia_documento]
-	@enc_id		INT,
-	@reversar	BIT = 0,	-- 1 = revertir el efecto (usado al anular un documento)
-	@usu_id		INT = NULL
+CREATE OR ALTER PROCEDURE [dbo].[paInventarioExistenciaDocumentoAjustar]
+	@EncId		INT,
+	@Reversar	BIT = 0,	-- 1 = revertir el efecto (usado al anular un documento)
+	@UsuId		INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
 
-	DECLARE @naturaleza_signo INT, @reversar_signo INT = CASE WHEN @reversar = 1 THEN -1 ELSE 1 END;
+	DECLARE @naturaleza_signo INT, @reversar_signo INT = CASE WHEN @Reversar = 1 THEN -1 ELSE 1 END;
 
-	SELECT @naturaleza_signo = CASE WHEN tdo.tdo_naturaleza = '+' THEN 1 ELSE -1 END
-	FROM dbo.inv_documento_enc enc
-	INNER JOIN dbo.inv_documento_tipo tdo ON tdo.tdo_id = enc.tdo_id
-	WHERE enc.enc_id = @enc_id;
+	SELECT @naturaleza_signo = CASE WHEN tipo.tdo_naturaleza = '+' THEN 1 ELSE -1 END
+	FROM dbo.inv_documento_enc enca
+	INNER JOIN dbo.inv_documento_tipo tipo ON tipo.tdo_id = enca.tdo_id
+	WHERE enca.enc_id = @EncId;
 
 	IF @naturaleza_signo IS NULL
 		THROW 51201, 'El documento indicado no existe.', 1;
@@ -65,14 +65,14 @@ BEGIN
 	-- Al grabar, cada línea con producto guarda su costo unitario: en un
 	-- ingreso (compra) es lo pagado sin IVA y neto de descuento; en un egreso
 	-- (venta) es el costo promedio del producto en este momento.
-	IF @reversar = 0
+	IF @Reversar = 0
 		UPDATE deta
 		   SET det_costo_unitario = CASE WHEN @naturaleza_signo = 1
 										 THEN (deta.det_sub_total - ISNULL(deta.det_valor_descuento, 0)) / NULLIF(deta.det_cantidad, 0)
 										 ELSE prod.pro_costo_unitario END
 		FROM dbo.inv_documento_det deta
 		INNER JOIN dbo.inv_producto prod WITH (UPDLOCK) ON prod.pro_id = deta.pro_id
-		WHERE deta.enc_id = @enc_id AND deta.det_cantidad > 0;
+		WHERE deta.enc_id = @EncId AND deta.det_cantidad > 0;
 
 	DECLARE @movimientos TABLE (
 		[pro_id]	INT				NOT NULL,
@@ -83,26 +83,26 @@ BEGIN
 	);
 
 	INSERT INTO @movimientos ([pro_id], [bod_id], [cantidad], [costo])
-	SELECT det.pro_id, det.bod_id,
-		   SUM(det.det_cantidad) * @naturaleza_signo * @reversar_signo,
-		   SUM(det.det_cantidad * COALESCE(det.det_costo_unitario, pro.pro_costo_unitario)) * @naturaleza_signo * @reversar_signo
-	FROM dbo.inv_documento_det det
-	INNER JOIN dbo.inv_producto pro ON pro.pro_id = det.pro_id
-	WHERE det.enc_id = @enc_id
-	  AND det.pro_id IS NOT NULL
-	  AND pro.pro_maneja_existencia = 1
-	GROUP BY det.pro_id, det.bod_id;
+	SELECT deta2.pro_id, deta2.bod_id,
+		   SUM(deta2.det_cantidad) * @naturaleza_signo * @reversar_signo,
+		   SUM(deta2.det_cantidad * COALESCE(deta2.det_costo_unitario, prod2.pro_costo_unitario)) * @naturaleza_signo * @reversar_signo
+	FROM dbo.inv_documento_det deta2
+	INNER JOIN dbo.inv_producto prod2 ON prod2.pro_id = deta2.pro_id
+	WHERE deta2.enc_id = @EncId
+	  AND deta2.pro_id IS NOT NULL
+	  AND prod2.pro_maneja_existencia = 1
+	GROUP BY deta2.pro_id, deta2.bod_id;
 
 	MERGE dbo.inv_producto_existencia_bodega AS destino
 	USING @movimientos AS origen
 		ON destino.pro_id = origen.pro_id AND destino.bod_id = origen.bod_id
 	WHEN MATCHED THEN
 		UPDATE SET existencia = destino.existencia + origen.cantidad,
-				   UpdUsuario = @usu_id,
+				   UpdUsuario = @UsuId,
 				   UpdFechaHora = SYSDATETIME()
 	WHEN NOT MATCHED THEN
 		INSERT (bod_id, pro_id, existencia, InsUsuario, InsFechaHora)
-		VALUES (origen.bod_id, origen.pro_id, origen.cantidad, @usu_id, SYSDATETIME());
+		VALUES (origen.bod_id, origen.pro_id, origen.cantidad, @UsuId, SYSDATETIME());
 
 	-- Costo promedio ponderado: (costo acumulado + costo del movimiento) /
 	-- (cantidad acumulada + cantidad del movimiento). Sin existencia el
@@ -112,36 +112,36 @@ BEGIN
 		FROM @movimientos
 		GROUP BY pro_id
 	)
-	UPDATE p
-	   SET p.pro_total_cantidad = p.pro_total_cantidad + t.cantidad,
-		   p.pro_total_costo = CASE WHEN p.pro_total_cantidad + t.cantidad > 0 THEN p.pro_total_costo + t.costo ELSE 0 END,
-		   p.pro_costo_unitario = CASE WHEN p.pro_total_cantidad + t.cantidad > 0
-									   THEN (p.pro_total_costo + t.costo) / (p.pro_total_cantidad + t.cantidad)
-									   ELSE p.pro_costo_unitario END,
-		   p.UpdUsuario = @usu_id,
-		   p.UpdFechaHora = SYSDATETIME()
-	FROM dbo.inv_producto p
-	INNER JOIN totales t ON t.pro_id = p.pro_id;
+	UPDATE prod3
+	   SET prod3.pro_total_cantidad = prod3.pro_total_cantidad + tota.cantidad,
+		   prod3.pro_total_costo = CASE WHEN prod3.pro_total_cantidad + tota.cantidad > 0 THEN prod3.pro_total_costo + tota.costo ELSE 0 END,
+		   prod3.pro_costo_unitario = CASE WHEN prod3.pro_total_cantidad + tota.cantidad > 0
+									   THEN (prod3.pro_total_costo + tota.costo) / (prod3.pro_total_cantidad + tota.cantidad)
+									   ELSE prod3.pro_costo_unitario END,
+		   prod3.UpdUsuario = @UsuId,
+		   prod3.UpdFechaHora = SYSDATETIME()
+	FROM dbo.inv_producto prod3
+	INNER JOIN totales tota ON tota.pro_id = prod3.pro_id;
 END;
 GO
 
 -- La partida de la venta usa el costo grabado en cada línea.
-CREATE OR ALTER PROCEDURE [dbo].[sp_contabilidad_generar_asiento_documento]
-	@enc_id	INT,
-	@usu_id	INT = NULL,
-	@asi_id	INT OUTPUT
+CREATE OR ALTER PROCEDURE [dbo].[paContabilidadAsientoDocumentoGenerar]
+	@EncId	INT,
+	@UsuId	INT = NULL,
+	@AsiId	INT OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
 
 	DECLARE @tdo_naturaleza CHAR(1), @afecta_costo CHAR(1), @fecha DATE, @monto_total NUMERIC(12, 2), @origen VARCHAR(20);
 
-	SELECT @tdo_naturaleza = tdo.tdo_naturaleza, @afecta_costo = tdo.afecta_costo,
-		   @fecha = enc.enc_fecha_docto, @monto_total = enc.enc_monto_total,
-		   @origen = CASE WHEN tdo.tdo_naturaleza = '+' THEN 'COMPRA' ELSE 'VENTA' END
-	FROM dbo.inv_documento_enc enc
-	INNER JOIN dbo.inv_documento_tipo tdo ON tdo.tdo_id = enc.tdo_id
-	WHERE enc.enc_id = @enc_id;
+	SELECT @tdo_naturaleza = tipo.tdo_naturaleza, @afecta_costo = tipo.afecta_costo,
+		   @fecha = enca.enc_fecha_docto, @monto_total = enca.enc_monto_total,
+		   @origen = CASE WHEN tipo.tdo_naturaleza = '+' THEN 'COMPRA' ELSE 'VENTA' END
+	FROM dbo.inv_documento_enc enca
+	INNER JOIN dbo.inv_documento_tipo tipo ON tipo.tdo_id = enca.tdo_id
+	WHERE enca.enc_id = @EncId;
 
 	IF @fecha IS NULL
 		THROW 51303, 'El documento indicado no existe.', 1;
@@ -151,9 +151,9 @@ BEGIN
 	WHERE ccp_codigo IN ('VENTA_CAJA','VENTA_CLIENTES','VENTA_INGRESO','VENTA_IVA_DEBITO','VENTA_COSTO','INVENTARIO',
 						 'COMPRA_GASTO','COMPRA_IVA_CREDITO','COMPRA_PROVEEDORES');
 
-	DECLARE @faltante VARCHAR(40) = (SELECT TOP 1 v.c FROM (VALUES ('VENTA_CAJA'),('VENTA_CLIENTES'),('VENTA_INGRESO'),('VENTA_IVA_DEBITO'),
-		('VENTA_COSTO'),('INVENTARIO'),('COMPRA_GASTO'),('COMPRA_IVA_CREDITO'),('COMPRA_PROVEEDORES')) v(c)
-		LEFT JOIN @cuentas cuen ON cuen.ccp_codigo = v.c WHERE cuen.cta_id IS NULL);
+	DECLARE @faltante VARCHAR(40) = (SELECT TOP 1 conc.codigo FROM (VALUES ('VENTA_CAJA'),('VENTA_CLIENTES'),('VENTA_INGRESO'),('VENTA_IVA_DEBITO'),
+		('VENTA_COSTO'),('INVENTARIO'),('COMPRA_GASTO'),('COMPRA_IVA_CREDITO'),('COMPRA_PROVEEDORES')) conc(codigo)
+		LEFT JOIN @cuentas cuen ON cuen.ccp_codigo = conc.codigo WHERE cuen.cta_id IS NULL);
 	IF @faltante IS NOT NULL
 	BEGIN
 		DECLARE @msg_faltante NVARCHAR(200) = CONCAT(N'El concepto contable ', @faltante, N' no tiene cuenta asignada; configúrelo en cont_cuenta_parametro.');
@@ -174,23 +174,23 @@ BEGIN
 	FROM @cuentas;
 
 	DECLARE @iva NUMERIC(14, 2) =
-		(SELECT ISNULL(SUM((det_sub_total - det_valor_descuento) * ISNULL(det_porc_iva, 0) / 100.0), 0) FROM dbo.inv_documento_det WHERE enc_id = @enc_id);
+		(SELECT ISNULL(SUM((det_sub_total - det_valor_descuento) * ISNULL(det_porc_iva, 0) / 100.0), 0) FROM dbo.inv_documento_det WHERE enc_id = @EncId);
 
 	DECLARE @costo_venta NUMERIC(14, 2);
-	SELECT @costo_venta = ISNULL(SUM(det.det_cantidad * COALESCE(det.det_costo_unitario, pro.pro_costo_unitario)), 0)
-	FROM dbo.inv_documento_det det
-	INNER JOIN dbo.inv_producto pro ON pro.pro_id = det.pro_id
-	WHERE det.enc_id = @enc_id AND pro.pro_maneja_existencia = 1;
+	SELECT @costo_venta = ISNULL(SUM(deta.det_cantidad * COALESCE(deta.det_costo_unitario, prod.pro_costo_unitario)), 0)
+	FROM dbo.inv_documento_det deta
+	INNER JOIN dbo.inv_producto prod ON prod.pro_id = deta.pro_id
+	WHERE deta.enc_id = @EncId AND prod.pro_maneja_existencia = 1;
 
 	DECLARE @pdo_id INT;
-	EXEC dbo.sp_contabilidad_obtener_o_crear_periodo @fecha = @fecha, @usu_id = @usu_id, @pdo_id = @pdo_id OUTPUT;
+	EXEC dbo.paContabilidadPeriodoObtenerOCrear @Fecha = @fecha, @UsuId = @UsuId, @PdoId = @pdo_id OUTPUT;
 
 	DECLARE @detalle dbo.cont_asiento_det_type;
-	DECLARE @ref VARCHAR(10) = CAST(@enc_id AS VARCHAR(10));
+	DECLARE @ref VARCHAR(10) = CAST(@EncId AS VARCHAR(10));
 
 	IF @tdo_naturaleza = '-' -- venta
 	BEGIN
-		DECLARE @cobrado NUMERIC(12, 2) = (SELECT ISNULL(SUM(ppd_valor_aplicado), 0) FROM dbo.pos_pago_det WHERE enc_id = @enc_id);
+		DECLARE @cobrado NUMERIC(12, 2) = (SELECT ISNULL(SUM(ppd_valor_aplicado), 0) FROM dbo.pos_pago_det WHERE enc_id = @EncId);
 		IF @cobrado > @monto_total SET @cobrado = @monto_total;
 
 		IF @cobrado > 0
@@ -221,9 +221,9 @@ BEGIN
 
 	DECLARE @asi_descripcion VARCHAR(256) = 'Generado automáticamente desde documento ' + @ref;
 
-	EXEC dbo.sp_contabilidad_insertar_asiento
-		@asi_fecha = @fecha, @asi_descripcion = @asi_descripcion, @asi_origen = @origen,
-		@enc_id = @enc_id, @pdo_id = @pdo_id, @usu_id = @usu_id, @detalle = @detalle, @asi_id = @asi_id OUTPUT;
+	EXEC dbo.paContabilidadAsientoInsertar
+		@AsiFecha = @fecha, @AsiDescripcion = @asi_descripcion, @AsiOrigen = @origen,
+		@EncId = @EncId, @PdoId = @pdo_id, @UsuId = @UsuId, @Detalle = @detalle, @AsiId = @AsiId OUTPUT;
 END;
 GO
 

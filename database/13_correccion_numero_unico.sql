@@ -5,11 +5,11 @@
 -- frontend: la restricción UQ_inv_documento_enc_numero_unico era una UNIQUE
 -- constraint normal sobre una columna nullable. En SQL Server ese tipo de
 -- restricción solo permite UN valor NULL en toda la tabla (no varios, como
--- en PostgreSQL/Oracle). Como sp_compras_crear_documento nunca llena
+-- en PostgreSQL/Oracle). Como paCompraDocumentoCrear nunca llena
 -- enc_numero_unico (las compras no usan ese correlativo), la primera compra
 -- de la vida del sistema deja esa columna en NULL, y CUALQUIER documento
 -- posterior que también intente insertarse con NULL en ese instante (toda
--- factura nueva, porque el INSERT original de sp_ventas_crear_factura lo
+-- factura nueva, porque el INSERT original de paVentaFacturaCrear lo
 -- dejaba en NULL momentáneamente) choca contra ese primer NULL y falla con:
 --   "Violation of UNIQUE KEY constraint 'UQ_inv_documento_enc_numero_unico'.
 --    Cannot insert duplicate key... The duplicate key value is (<NULL>)."
@@ -24,7 +24,7 @@
 -- Este script:
 --   1) Cambia esa restricción por un ÍNDICE ÚNICO FILTRADO (permite muchos
 --      NULL, pero sigue evitando que dos documentos comparta un número real).
---   2) Redespliega sp_ventas_crear_factura ya corregido (graba
+--   2) Redespliega paVentaFacturaCrear ya corregido (graba
 --      enc_numero_unico directo en el INSERT en vez de dejarlo en NULL y
 --      actualizarlo después).
 --
@@ -63,54 +63,54 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[sp_ventas_crear_factura]
-	@enc_fecha_docto			DATE,
-	@enc_numero_autorizacion	VARCHAR(64) = NULL,
-	@enc_serie_docto			VARCHAR(32) = NULL,
-	@enc_numero_docto			VARCHAR(32) = NULL,
-	@cli_id						INT,
-	@enc_nombres_cliente		VARCHAR(128) = NULL,
-	@enc_apellidos_cliente		VARCHAR(128) = NULL,
-	@cli_nit					VARCHAR(16) = NULL,
-	@tdo_id						INT,
-	@pve_id						INT = NULL,
-	@enc_fecha_primer_pago		DATE = NULL,
-	@enc_monto_enganche			NUMERIC(12, 2) = 0,
-	@enc_numero_cuotas			INT = 1,
-	@enc_valor_descuento		NUMERIC(13, 2) = 0,
-	@enc_direccion_cliente		VARCHAR(256) = NULL,
-	@mon_id						INT = NULL,
-	@usu_id						INT = NULL,
-	@detalle					dbo.factura_det_type READONLY,
-	@enc_id						INT OUTPUT,
-	@enc_numero_unico			VARCHAR(16) OUTPUT
+CREATE OR ALTER PROCEDURE [dbo].[paVentaFacturaCrear]
+	@EncFechaDocto			DATE,
+	@EncNumeroAutorizacion	VARCHAR(64) = NULL,
+	@EncSerieDocto			VARCHAR(32) = NULL,
+	@EncNumeroDocto			VARCHAR(32) = NULL,
+	@CliId						INT,
+	@EncNombresCliente		VARCHAR(128) = NULL,
+	@EncApellidosCliente		VARCHAR(128) = NULL,
+	@CliNit					VARCHAR(16) = NULL,
+	@TdoId						INT,
+	@PveId						INT = NULL,
+	@EncFechaPrimerPago		DATE = NULL,
+	@EncMontoEnganche			NUMERIC(12, 2) = 0,
+	@EncNumeroCuotas			INT = 1,
+	@EncValorDescuento		NUMERIC(13, 2) = 0,
+	@EncDireccionCliente		VARCHAR(256) = NULL,
+	@MonId						INT = NULL,
+	@UsuId						INT = NULL,
+	@Detalle					dbo.factura_det_type READONLY,
+	@EncId						INT OUTPUT,
+	@EncNumeroUnico			VARCHAR(16) OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
 	SET XACT_ABORT ON;
 
-	IF NOT EXISTS (SELECT 1 FROM @detalle)
+	IF NOT EXISTS (SELECT 1 FROM @Detalle)
 		THROW 51401, 'La factura debe tener al menos una línea de detalle.', 1;
 
-	IF @mon_id IS NULL
-		SET @mon_id = dbo.fn_moneda_local();
+	IF @MonId IS NULL
+		SET @MonId = dbo.fnMonedaLocal();
 
 	IF EXISTS (
 		SELECT 1
-		FROM @detalle d
-		INNER JOIN dbo.inv_producto p ON p.pro_id = d.pro_id
-		LEFT JOIN dbo.inv_producto_existencia_bodega e ON e.pro_id = d.pro_id AND e.bod_id = d.bod_id
-		WHERE p.pro_maneja_existencia = 1
-		  AND ISNULL(e.existencia, 0) < d.det_cantidad
+		FROM @Detalle line
+		INNER JOIN dbo.inv_producto prod ON prod.pro_id = line.pro_id
+		LEFT JOIN dbo.inv_producto_existencia_bodega exis ON exis.pro_id = line.pro_id AND exis.bod_id = line.bod_id
+		WHERE prod.pro_maneja_existencia = 1
+		  AND ISNULL(exis.existencia, 0) < line.det_cantidad
 	)
 		THROW 51402, 'No hay existencia suficiente para uno o más productos del detalle.', 1;
 
 	-- El monto total del documento es el neto (subtotal - descuento) más el
 	-- IVA de cada línea; los precios unitarios se manejan sin impuesto
-	-- incluido (ver también sp_contabilidad_generar_asiento_documento).
+	-- incluido (ver también paContabilidadAsientoDocumentoGenerar).
 	DECLARE @monto_total NUMERIC(12, 2) = (
 		SELECT SUM((det_sub_total - det_valor_descuento) * (1 + ISNULL(det_porc_iva, 0) / 100.0))
-		FROM @detalle
+		FROM @Detalle
 	);
 
 	BEGIN TRY
@@ -120,18 +120,18 @@ BEGIN
 
 		SELECT @serie = serie, @correlativo = correlativo + 1
 		FROM dbo.conf_correlativos WITH (UPDLOCK, ROWLOCK)
-		WHERE tdo_id = @tdo_id;
+		WHERE tdo_id = @TdoId;
 
 		IF @serie IS NULL
 			THROW 51403, 'No existe una serie de correlativos configurada para este tipo de documento.', 1;
 
 		UPDATE dbo.conf_correlativos
 		   SET correlativo = @correlativo,
-			   UpdUsuario = @usu_id,
+			   UpdUsuario = @UsuId,
 			   UpdFechaHora = SYSDATETIME()
-		 WHERE tdo_id = @tdo_id;
+		 WHERE tdo_id = @TdoId;
 
-		SET @enc_numero_unico = @serie + '-' + CAST(@correlativo AS VARCHAR(20));
+		SET @EncNumeroUnico = @serie + '-' + CAST(@correlativo AS VARCHAR(20));
 
 		INSERT INTO dbo.inv_documento_enc
 			(enc_fecha_docto, enc_numero_autorizacion, enc_serie_docto, enc_numero_docto,
@@ -140,35 +140,35 @@ BEGIN
 			 enc_valor_descuento, enc_direccion_cliente, mon_id, usu_id_creacion, enc_numero_unico,
 			 InsUsuario, InsFechaHora)
 		VALUES
-			(@enc_fecha_docto, @enc_numero_autorizacion, @enc_serie_docto, @enc_numero_docto,
-			 @cli_id, @enc_nombres_cliente, @enc_apellidos_cliente, @cli_nit, @tdo_id, @pve_id,
-			 @enc_fecha_primer_pago, @enc_monto_enganche, @enc_numero_cuotas, @monto_total,
-			 @enc_valor_descuento, @enc_direccion_cliente, @mon_id, @usu_id, @enc_numero_unico,
-			 @usu_id, SYSDATETIME());
+			(@EncFechaDocto, @EncNumeroAutorizacion, @EncSerieDocto, @EncNumeroDocto,
+			 @CliId, @EncNombresCliente, @EncApellidosCliente, @CliNit, @TdoId, @PveId,
+			 @EncFechaPrimerPago, @EncMontoEnganche, @EncNumeroCuotas, @monto_total,
+			 @EncValorDescuento, @EncDireccionCliente, @MonId, @UsuId, @EncNumeroUnico,
+			 @UsuId, SYSDATETIME());
 
-		SET @enc_id = SCOPE_IDENTITY();
+		SET @EncId = SCOPE_IDENTITY();
 
 		INSERT INTO dbo.inv_documento_det
 			(enc_id, det_item, det_bien_o_servicio, det_cantidad, det_descripcion,
 			 det_precio_unitario, det_valor_descuento, det_sub_total, det_porc_iva, bod_id, pro_id, ppr_id,
 			 InsUsuario, InsFechaHora)
 		SELECT
-			@enc_id, det_item, det_bien_o_servicio, det_cantidad, det_descripcion,
+			@EncId, det_item, det_bien_o_servicio, det_cantidad, det_descripcion,
 			det_precio_unitario, det_valor_descuento, det_sub_total, det_porc_iva, bod_id, pro_id, ppr_id,
-			@usu_id, SYSDATETIME()
-		FROM @detalle;
+			@UsuId, SYSDATETIME()
+		FROM @Detalle;
 
-		EXEC dbo.sp_pos_generar_plan_pagos_cliente @enc_id = @enc_id, @usu_id = @usu_id;
+		EXEC dbo.paClientePlanPagosGenerar @EncId = @EncId, @UsuId = @UsuId;
 
 		UPDATE dbo.inv_documento_enc
 		   SET enc_estado = 'G',
-			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
-		 WHERE enc_id = @enc_id;
+			   UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME()
+		 WHERE enc_id = @EncId;
 
-		EXEC dbo.sp_inventario_ajustar_existencia_documento @enc_id = @enc_id, @usu_id = @usu_id;
+		EXEC dbo.paInventarioExistenciaDocumentoAjustar @EncId = @EncId, @UsuId = @UsuId;
 
 		DECLARE @asi_id INT;
-		EXEC dbo.sp_contabilidad_generar_asiento_documento @enc_id = @enc_id, @usu_id = @usu_id, @asi_id = @asi_id OUTPUT;
+		EXEC dbo.paContabilidadAsientoDocumentoGenerar @EncId = @EncId, @UsuId = @UsuId, @AsiId = @asi_id OUTPUT;
 
 		COMMIT TRANSACTION;
 	END TRY
@@ -224,11 +224,11 @@ BEGIN
 		FROM dbo.inv_producto WHERE pro_id = @pro_sel;
 
 		DECLARE @enc_compra INT;
-		EXEC dbo.sp_compras_crear_documento
-			@enc_fecha_docto = @fecha_compra_i,
-			@enc_numero_docto = @numero_docto_compra,
-			@prv_id = @prv_sel, @tdo_id = @tdo_comp, @enc_numero_cuotas = 1,
-			@detalle = @det2, @enc_id = @enc_compra OUTPUT;
+		EXEC dbo.paCompraDocumentoCrear
+			@EncFechaDocto = @fecha_compra_i,
+			@EncNumeroDocto = @numero_docto_compra,
+			@PrvId = @prv_sel, @TdoId = @tdo_comp, @EncNumeroCuotas = 1,
+			@Detalle = @det2, @EncId = @enc_compra OUTPUT;
 
 		SET @compras_creadas = @compras_creadas + 1;
 	END TRY

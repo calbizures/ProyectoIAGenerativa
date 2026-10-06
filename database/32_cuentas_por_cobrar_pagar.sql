@@ -467,9 +467,9 @@ BEGIN
 
 	DECLARE @origen VARCHAR(20) = CASE WHEN @es_credito = 1 THEN 'NOTA_CREDITO' ELSE 'NOTA_DEBITO' END;
 	DECLARE @descripcion VARCHAR(256) = CONCAT(@referencia, ' - ', LTRIM(RTRIM(@Motivo)));
-	EXEC dbo.sp_contabilidad_insertar_asiento
-		@asi_fecha = @Fecha, @asi_descripcion = @descripcion, @asi_origen = @origen, @asi_origen_id = @EncId, @enc_id = @EncId,
-		@usu_id = @UsuId, @detalle = @partida, @asi_id = @asi_id OUTPUT;
+	EXEC dbo.paContabilidadAsientoInsertar
+		@AsiFecha = @Fecha, @AsiDescripcion = @descripcion, @AsiOrigen = @origen, @AsiOrigenId = @EncId, @EncId = @EncId,
+		@UsuId = @UsuId, @Detalle = @partida, @AsiId = @asi_id OUTPUT;
 
 	COMMIT TRANSACTION;
 END;
@@ -477,9 +477,9 @@ GO
 
 -- Anular: las notas no se anulan (se corrige con la nota contraria) y un
 -- documento con notas tampoco, porque su plan de pagos ya las incluye.
-CREATE OR ALTER PROCEDURE [dbo].[sp_documento_anular]
-	@enc_id	INT,
-	@usu_id	INT = NULL
+CREATE OR ALTER PROCEDURE [dbo].[paDocumentoAnular]
+	@EncId	INT,
+	@UsuId	INT = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -488,7 +488,7 @@ BEGIN
 	DECLARE @estado_actual CHAR(1), @es_nota BIT;
 	SELECT @estado_actual = enca.enc_estado, @es_nota = tipo.tdo_es_nota
 	FROM dbo.inv_documento_enc enca INNER JOIN dbo.inv_documento_tipo tipo ON tipo.tdo_id = enca.tdo_id
-	WHERE enca.enc_id = @enc_id;
+	WHERE enca.enc_id = @EncId;
 
 	IF @estado_actual IS NULL
 		THROW 51421, 'El documento indicado no existe.', 1;
@@ -496,23 +496,23 @@ BEGIN
 		THROW 51422, 'Solo se pueden anular documentos que estén en estado Grabado.', 1;
 	IF @es_nota = 1
 		THROW 51423, 'Una nota de crédito o débito no se anula; emita la nota contraria.', 1;
-	IF EXISTS (SELECT 1 FROM dbo.inv_documento_enc WHERE enc_id_referencia = @enc_id AND enc_estado = 'G')
+	IF EXISTS (SELECT 1 FROM dbo.inv_documento_enc WHERE enc_id_referencia = @EncId AND enc_estado = 'G')
 		THROW 51424, 'El documento tiene notas de crédito o débito; no se puede anular.', 1;
 
 	BEGIN TRY
 		BEGIN TRANSACTION;
 
-		EXEC dbo.sp_inventario_ajustar_existencia_documento @enc_id = @enc_id, @reversar = 1, @usu_id = @usu_id;
+		EXEC dbo.paInventarioExistenciaDocumentoAjustar @EncId = @EncId, @Reversar = 1, @UsuId = @UsuId;
 
 		UPDATE dbo.inv_documento_enc
 		   SET enc_estado = 'A',
-			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
-		 WHERE enc_id = @enc_id;
+			   UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME()
+		 WHERE enc_id = @EncId;
 
 		UPDATE dbo.cont_asiento_enc
 		   SET asi_estado = 'N',
-			   UpdUsuario = @usu_id, UpdFechaHora = SYSDATETIME()
-		 WHERE enc_id = @enc_id;
+			   UpdUsuario = @UsuId, UpdFechaHora = SYSDATETIME()
+		 WHERE enc_id = @EncId;
 
 		COMMIT TRANSACTION;
 	END TRY
@@ -526,37 +526,37 @@ GO
 ------------------------------------------------------------
 -- 3. Cobro de cuota y pago con cheque con validación del saldo
 ------------------------------------------------------------
-CREATE OR ALTER PROCEDURE [dbo].[sp_pos_registrar_pago_cuota]
-	@cpp_id			INT,
-	@valor_pago		NUMERIC(12, 2),
-	@pca_id			INT,
-	@usu_id			INT = NULL,
-	@formas_pago	dbo.pago_forma_type READONLY,	-- pasar tabla vacía si no aplica
-	@ppe_id			INT OUTPUT
+CREATE OR ALTER PROCEDURE [dbo].[paClienteCuotaPagoRegistrar]
+	@CppId			INT,
+	@ValorPago		NUMERIC(12, 2),
+	@PcaId			INT,
+	@UsuId			INT = NULL,
+	@FormasPago	dbo.pago_forma_type READONLY,	-- pasar tabla vacía si no aplica
+	@PpeId			INT OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
 	SET XACT_ABORT ON;
 
-	IF @valor_pago <= 0
+	IF @ValorPago <= 0
 		THROW 51501, 'El valor del pago debe ser mayor a cero.', 1;
 
 	DECLARE @cli_id INT, @saldo NUMERIC(12, 2), @estado CHAR(1), @enc_id INT;
 	SELECT @cli_id = cli_id, @saldo = cpp_saldo_cuota, @estado = cpp_estado, @enc_id = enc_id
-	FROM dbo.pos_cliente_plan_pagos WHERE cpp_id = @cpp_id;
+	FROM dbo.pos_cliente_plan_pagos WHERE cpp_id = @CppId;
 
 	IF @cli_id IS NULL
 		THROW 51502, 'La cuota indicada no existe.', 1;
 	IF @estado = 'A' OR @saldo <= 0
 		THROW 51503, 'La cuota indicada ya está abonada por completo.', 1;
-	IF @valor_pago > @saldo
+	IF @ValorPago > @saldo
 	BEGIN
-		DECLARE @msg NVARCHAR(200) = CONCAT(N'El pago (Q', FORMAT(@valor_pago, 'N2'), N') supera el saldo de la cuota (Q', FORMAT(@saldo, 'N2'), N').');
+		DECLARE @msg NVARCHAR(200) = CONCAT(N'El pago (Q', FORMAT(@ValorPago, 'N2'), N') supera el saldo de la cuota (Q', FORMAT(@saldo, 'N2'), N').');
 		THROW 51504, @msg, 1;
 	END
-	IF EXISTS (SELECT 1 FROM @formas_pago) AND (SELECT SUM(ppf_monto) FROM @formas_pago) <> @valor_pago
+	IF EXISTS (SELECT 1 FROM @FormasPago) AND (SELECT SUM(ppf_monto) FROM @FormasPago) <> @ValorPago
 		THROW 51505, 'La suma de las formas de pago debe ser igual al valor del pago.', 1;
-	IF NOT EXISTS (SELECT 1 FROM dbo.pos_caja_apertura WHERE pca_id = @pca_id AND pca_estado = 'A')
+	IF NOT EXISTS (SELECT 1 FROM dbo.pos_caja_apertura WHERE pca_id = @PcaId AND pca_estado = 'A')
 		THROW 51506, 'No hay una caja abierta para recibir el pago.', 1;
 	IF EXISTS (SELECT 1 FROM dbo.inv_documento_enc WHERE enc_id = @enc_id AND enc_estado <> 'G')
 		THROW 51507, 'La factura de esa cuota está anulada.', 1;
@@ -569,35 +569,35 @@ BEGIN
 		BEGIN TRANSACTION;
 
 		INSERT INTO dbo.pos_pago_enc (cli_id, pca_id, usu_id, InsUsuario, InsFechaHora)
-		VALUES (@cli_id, @pca_id, @usu_id, @usu_id, SYSDATETIME());
+		VALUES (@cli_id, @PcaId, @UsuId, @UsuId, SYSDATETIME());
 
-		SET @ppe_id = SCOPE_IDENTITY();
+		SET @PpeId = SCOPE_IDENTITY();
 
 		INSERT INTO dbo.pos_pago_det (ppe_id, cpp_id, ppd_valor_aplicado, InsUsuario, InsFechaHora)
-		VALUES (@ppe_id, @cpp_id, @valor_pago, @usu_id, SYSDATETIME());
+		VALUES (@PpeId, @CppId, @ValorPago, @UsuId, SYSDATETIME());
 
 		INSERT INTO dbo.pos_pago_forma
 			(gef_id, ppf_numero_tarjeta_ult4, ppf_fecha_vencimiento_tarjeta, ppf_numero_cheque, ppf_monto, ppe_id, pft_id, InsUsuario, InsFechaHora)
-		SELECT gef_id, ppf_numero_tarjeta_ult4, ppf_fecha_vencimiento_tarjeta, ppf_numero_cheque, ppf_monto, @ppe_id, pft_id, @usu_id, SYSDATETIME()
-		FROM @formas_pago;
+		SELECT gef_id, ppf_numero_tarjeta_ult4, ppf_fecha_vencimiento_tarjeta, ppf_numero_cheque, ppf_monto, @PpeId, pft_id, @UsuId, SYSDATETIME()
+		FROM @FormasPago;
 
 		UPDATE dbo.pos_cliente_plan_pagos
-		   SET cpp_saldo_cuota = cpp_saldo_cuota - @valor_pago,
-			   cpp_fecha_real_pago = CASE WHEN cpp_saldo_cuota - @valor_pago <= 0 THEN CAST(GETDATE() AS DATE) ELSE cpp_fecha_real_pago END,
-			   cpp_estado = CASE WHEN cpp_saldo_cuota - @valor_pago <= 0 THEN 'A' ELSE cpp_estado END,
-			   UpdUsuario = @usu_id,
+		   SET cpp_saldo_cuota = cpp_saldo_cuota - @ValorPago,
+			   cpp_fecha_real_pago = CASE WHEN cpp_saldo_cuota - @ValorPago <= 0 THEN CAST(GETDATE() AS DATE) ELSE cpp_fecha_real_pago END,
+			   cpp_estado = CASE WHEN cpp_saldo_cuota - @ValorPago <= 0 THEN 'A' ELSE cpp_estado END,
+			   UpdUsuario = @UsuId,
 			   UpdFechaHora = SYSDATETIME()
-		 WHERE cpp_id = @cpp_id;
+		 WHERE cpp_id = @CppId;
 
 		DECLARE @asi_id INT, @detalle dbo.cont_asiento_det_type, @fecha_hoy DATE = CAST(GETDATE() AS DATE);
-		DECLARE @referencia VARCHAR(64) = CONCAT('Recibo ', @ppe_id, ' - cuota ', @cpp_id);
+		DECLARE @referencia VARCHAR(64) = CONCAT('Recibo ', @PpeId, ' - cuota ', @CppId);
 		INSERT INTO @detalle (cta_id, asd_debe, asd_haber, asd_descripcion)
-		VALUES (@cta_caja, @valor_pago, 0, @referencia), (@cta_clientes, 0, @valor_pago, @referencia);
+		VALUES (@cta_caja, @ValorPago, 0, @referencia), (@cta_clientes, 0, @ValorPago, @referencia);
 
-		EXEC dbo.sp_contabilidad_insertar_asiento
-			@asi_fecha = @fecha_hoy, @asi_descripcion = 'Cobro cuota de cliente',
-			@asi_origen = 'PAGO_CLIENTE', @asi_origen_id = @ppe_id, @enc_id = @enc_id,
-			@usu_id = @usu_id, @detalle = @detalle, @asi_id = @asi_id OUTPUT;
+		EXEC dbo.paContabilidadAsientoInsertar
+			@AsiFecha = @fecha_hoy, @AsiDescripcion = 'Cobro cuota de cliente',
+			@AsiOrigen = 'PAGO_CLIENTE', @AsiOrigenId = @PpeId, @EncId = @enc_id,
+			@UsuId = @UsuId, @Detalle = @detalle, @AsiId = @asi_id OUTPUT;
 
 		COMMIT TRANSACTION;
 	END TRY
@@ -608,41 +608,41 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[sp_bancos_emitir_cheque_pago_proveedor]
-	@ppg_id				INT,
-	@cbc_id				INT,
-	@bce_numero_cheque	VARCHAR(16),
-	@valor_pago			NUMERIC(12, 2),
-	@bmp_id				INT = NULL,
-	@usu_id				INT = NULL,
-	@bce_id				INT OUTPUT
+CREATE OR ALTER PROCEDURE [dbo].[paBancoChequePagoProveedorEmitir]
+	@PpgId				INT,
+	@CbcId				INT,
+	@BceNumeroCheque	VARCHAR(16),
+	@ValorPago			NUMERIC(12, 2),
+	@BmpId				INT = NULL,
+	@UsuId				INT = NULL,
+	@BceId				INT OUTPUT
 AS
 BEGIN
 	SET NOCOUNT ON;
 	SET XACT_ABORT ON;
 
-	IF @valor_pago <= 0
+	IF @ValorPago <= 0
 		THROW 51601, 'El valor del pago debe ser mayor a cero.', 1;
-	IF ISNULL(LTRIM(RTRIM(@bce_numero_cheque)), '') = ''
+	IF ISNULL(LTRIM(RTRIM(@BceNumeroCheque)), '') = ''
 		THROW 51605, 'Ingrese el número de cheque.', 1;
 
 	DECLARE @enc_id INT, @valor_programado NUMERIC(12, 2), @valor_pagado NUMERIC(12, 2), @estado CHAR(1);
 	SELECT @enc_id = enc_id, @valor_programado = ppg_valor_pago, @valor_pagado = ISNULL(ppg_valor_real_pago, 0), @estado = ppg_estado
-	FROM dbo.inv_proveedor_plan_pago WHERE ppg_id = @ppg_id;
+	FROM dbo.inv_proveedor_plan_pago WHERE ppg_id = @PpgId;
 
 	IF @enc_id IS NULL
 		THROW 51602, 'La cuota de proveedor indicada no existe.', 1;
 	IF @estado = 'A' OR @valor_programado - @valor_pagado <= 0
 		THROW 51603, 'La cuota de proveedor indicada ya está pagada por completo.', 1;
-	IF @valor_pago > @valor_programado - @valor_pagado
+	IF @ValorPago > @valor_programado - @valor_pagado
 	BEGIN
-		DECLARE @msg NVARCHAR(200) = CONCAT(N'El pago (Q', FORMAT(@valor_pago, 'N2'), N') supera el saldo de la cuota (Q',
+		DECLARE @msg NVARCHAR(200) = CONCAT(N'El pago (Q', FORMAT(@ValorPago, 'N2'), N') supera el saldo de la cuota (Q',
 			FORMAT(@valor_programado - @valor_pagado, 'N2'), N').');
 		THROW 51604, @msg, 1;
 	END
-	IF NOT EXISTS (SELECT 1 FROM dbo.bco_cuenta_bancaria_chequera WHERE cbc_id = @cbc_id)
+	IF NOT EXISTS (SELECT 1 FROM dbo.bco_cuenta_bancaria_chequera WHERE cbc_id = @CbcId)
 		THROW 51606, 'La chequera indicada no existe.', 1;
-	IF EXISTS (SELECT 1 FROM dbo.bco_cheque_emitido_enc WHERE cbc_id = @cbc_id AND bce_numero_cheque = @bce_numero_cheque)
+	IF EXISTS (SELECT 1 FROM dbo.bco_cheque_emitido_enc WHERE cbc_id = @CbcId AND bce_numero_cheque = @BceNumeroCheque)
 		THROW 51607, 'Ese número de cheque ya fue emitido en la chequera.', 1;
 
 	DECLARE @cta_proveedores INT, @cta_bancos INT;
@@ -655,35 +655,35 @@ BEGIN
 		INSERT INTO dbo.bco_cheque_emitido_enc
 			(cbc_id, bce_fecha_emision, usu_id, bce_numero_cheque, bce_documento_ref, bce_valor, bmp_id, InsUsuario, InsFechaHora)
 		VALUES
-			(@cbc_id, CAST(GETDATE() AS DATE), @usu_id, @bce_numero_cheque, CAST(@enc_id AS VARCHAR(16)), @valor_pago, @bmp_id, @usu_id, SYSDATETIME());
+			(@CbcId, CAST(GETDATE() AS DATE), @UsuId, @BceNumeroCheque, CAST(@enc_id AS VARCHAR(16)), @ValorPago, @BmpId, @UsuId, SYSDATETIME());
 
-		SET @bce_id = SCOPE_IDENTITY();
+		SET @BceId = SCOPE_IDENTITY();
 
 		INSERT INTO dbo.bco_cheque_emitido_det (bce_id, bmp_id, enc_id, ced_valor, ced_abono_cancelacion, InsUsuario, InsFechaHora)
-		VALUES (@bce_id, @bmp_id, @enc_id, @valor_pago,
-				CASE WHEN @valor_pagado + @valor_pago >= @valor_programado THEN 'C' ELSE 'A' END,
-				@usu_id, SYSDATETIME());
+		VALUES (@BceId, @BmpId, @enc_id, @ValorPago,
+				CASE WHEN @valor_pagado + @ValorPago >= @valor_programado THEN 'C' ELSE 'A' END,
+				@UsuId, SYSDATETIME());
 
 		UPDATE dbo.inv_proveedor_plan_pago
-		   SET ppg_valor_real_pago = @valor_pagado + @valor_pago,
+		   SET ppg_valor_real_pago = @valor_pagado + @ValorPago,
 			   ppg_fecha_real_pago = CAST(GETDATE() AS DATE),
-			   ppg_numero_cheque = @bce_numero_cheque,
-			   cbc_id = @cbc_id,
-			   ppg_estado = CASE WHEN @valor_pagado + @valor_pago >= @valor_programado THEN 'A' ELSE ppg_estado END,
-			   UpdUsuario = @usu_id,
+			   ppg_numero_cheque = @BceNumeroCheque,
+			   cbc_id = @CbcId,
+			   ppg_estado = CASE WHEN @valor_pagado + @ValorPago >= @valor_programado THEN 'A' ELSE ppg_estado END,
+			   UpdUsuario = @UsuId,
 			   UpdFechaHora = SYSDATETIME()
-		 WHERE ppg_id = @ppg_id;
+		 WHERE ppg_id = @PpgId;
 
 		DECLARE @asi_id INT, @detalle dbo.cont_asiento_det_type, @fecha_hoy DATE = CAST(GETDATE() AS DATE);
-		DECLARE @referencia VARCHAR(64) = 'Pago a proveedor - cheque ' + @bce_numero_cheque;
+		DECLARE @referencia VARCHAR(64) = 'Pago a proveedor - cheque ' + @BceNumeroCheque;
 		INSERT INTO @detalle (cta_id, asd_debe, asd_haber, asd_descripcion)
-		VALUES (@cta_proveedores, @valor_pago, 0, @referencia), (@cta_bancos, 0, @valor_pago, @referencia);
+		VALUES (@cta_proveedores, @ValorPago, 0, @referencia), (@cta_bancos, 0, @ValorPago, @referencia);
 
-		DECLARE @asi_descripcion VARCHAR(256) = 'Pago a proveedor con cheque ' + @bce_numero_cheque;
-		EXEC dbo.sp_contabilidad_insertar_asiento
-			@asi_fecha = @fecha_hoy, @asi_descripcion = @asi_descripcion,
-			@asi_origen = 'PAGO_PROVEEDOR', @asi_origen_id = @bce_id, @enc_id = @enc_id,
-			@usu_id = @usu_id, @detalle = @detalle, @asi_id = @asi_id OUTPUT;
+		DECLARE @asi_descripcion VARCHAR(256) = 'Pago a proveedor con cheque ' + @BceNumeroCheque;
+		EXEC dbo.paContabilidadAsientoInsertar
+			@AsiFecha = @fecha_hoy, @AsiDescripcion = @asi_descripcion,
+			@AsiOrigen = 'PAGO_PROVEEDOR', @AsiOrigenId = @BceId, @EncId = @enc_id,
+			@UsuId = @UsuId, @Detalle = @detalle, @AsiId = @asi_id OUTPUT;
 
 		COMMIT TRANSACTION;
 	END TRY

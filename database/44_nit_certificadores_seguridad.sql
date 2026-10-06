@@ -569,8 +569,8 @@ BEGIN
 		DECLARE @nit_grabar VARCHAR(16) = CASE WHEN @n = 'CF' THEN 'CF'
 											   WHEN LEN(@n) = 13 THEN @n
 											   ELSE CONCAT(LEFT(@n, LEN(@n) - 1), '-', RIGHT(@n, 1)) END;
-		EXEC dbo.sp_cliente_insertar @cli_codigo = @codigo, @cli_nombres = @nombres, @cli_apellidos = @apellidos,
-			@cli_direccion = @Direccion, @cli_nit = @nit_grabar, @usu_id = @UsuId, @cli_id = @CliId OUTPUT;
+		EXEC dbo.paClienteInsertar @CliCodigo = @codigo, @CliNombres = @nombres, @CliApellidos = @apellidos,
+			@CliDireccion = @Direccion, @CliNit = @nit_grabar, @UsuId = @UsuId, @CliId = @CliId OUTPUT;
 		SET @Nuevo = 1;
 		COMMIT TRANSACTION;
 	END TRY
@@ -604,11 +604,11 @@ GO
 ------------------------------------------------------------
 -- 6. Usuarios con su empleado y vendedor
 ------------------------------------------------------------
-CREATE OR ALTER PROCEDURE [dbo].[sp_usuario_consultar]
-	@usu_usuario	VARCHAR(128) = NULL,
-	@usu_estado		CHAR(1) = 'A',
-	@pagina			INT = 1,
-	@tamanio_pagina	INT = 50
+CREATE OR ALTER PROCEDURE [dbo].[paUsuarioConsultar]
+	@UsuUsuario	VARCHAR(128) = NULL,
+	@UsuEstado		CHAR(1) = 'A',
+	@Pagina			INT = 1,
+	@TamanioPagina	INT = 50
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -624,11 +624,11 @@ BEGIN
 	OUTER APPLY (SELECT TOP 1 vend.pve_codigo FROM dbo.pos_vendedor vend
 				 WHERE vend.IdEmpleado = usua.IdEmpleado AND usua.IdEmpleado IS NOT NULL
 				 ORDER BY CASE vend.pve_estado WHEN 'A' THEN 0 ELSE 1 END, vend.pve_id) vend
-	WHERE (@usu_estado IS NULL OR usua.usu_estado = @usu_estado)
-	  AND (@usu_usuario IS NULL OR usua.usu_usuario LIKE '%' + @usu_usuario + '%'
-		   OR CONCAT_WS(' ', empl.PrimerNombre, empl.SegundoNombre, empl.PrimerApellido, empl.SegundoApellido) LIKE '%' + @usu_usuario + '%')
+	WHERE (@UsuEstado IS NULL OR usua.usu_estado = @UsuEstado)
+	  AND (@UsuUsuario IS NULL OR usua.usu_usuario LIKE '%' + @UsuUsuario + '%'
+		   OR CONCAT_WS(' ', empl.PrimerNombre, empl.SegundoNombre, empl.PrimerApellido, empl.SegundoApellido) LIKE '%' + @UsuUsuario + '%')
 	ORDER BY usua.usu_usuario
-	OFFSET (@pagina - 1) * @tamanio_pagina ROWS FETCH NEXT @tamanio_pagina ROWS ONLY;
+	OFFSET (@Pagina - 1) * @TamanioPagina ROWS FETCH NEXT @TamanioPagina ROWS ONLY;
 END;
 GO
 

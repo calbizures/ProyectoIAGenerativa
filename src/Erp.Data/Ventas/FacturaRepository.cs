@@ -9,8 +9,8 @@ public sealed class FacturaRepository(IDbConnectionFactory connectionFactory) : 
 	public async Task<IReadOnlyList<Cliente>> ConsultarClientesAsync(string? texto, string? estado)
 	{
 		using var connection = connectionFactory.CreateConnection();
-		var parametros = new { texto, cli_estado = estado };
-		var filas = await connection.QueryAsync<Cliente>("dbo.sp_cliente_consultar", parametros, commandType: CommandType.StoredProcedure);
+		var parametros = new { Texto = texto, CliEstado = estado };
+		var filas = await connection.QueryAsync<Cliente>("dbo.paClienteConsultar", parametros, commandType: CommandType.StoredProcedure);
 		return filas.ToList();
 	}
 
@@ -50,39 +50,39 @@ public sealed class FacturaRepository(IDbConnectionFactory connectionFactory) : 
 		var tablaFormasPago = CajaRepository.ConstruirTablaFormasPago(formasPago ?? Array.Empty<FormaPagoCaptura>());
 
 		var parametros = new DynamicParameters();
-		parametros.Add("@enc_fecha_docto", encabezado.FechaDocumento);
-		parametros.Add("@enc_numero_autorizacion", encabezado.NumeroAutorizacion);
-		parametros.Add("@enc_serie_docto", encabezado.SerieDocumento);
-		parametros.Add("@enc_numero_docto", encabezado.NumeroDocumento);
-		parametros.Add("@cli_id", encabezado.CliId);
-		parametros.Add("@enc_nombres_cliente", encabezado.NombresCliente);
-		parametros.Add("@enc_apellidos_cliente", encabezado.ApellidosCliente);
-		parametros.Add("@cli_nit", encabezado.Nit);
-		parametros.Add("@tdo_id", encabezado.TdoId);
-		parametros.Add("@pve_id", encabezado.PveId);
-		parametros.Add("@enc_fecha_primer_pago", encabezado.FechaPrimerPago);
-		parametros.Add("@enc_monto_enganche", encabezado.MontoEnganche);
-		parametros.Add("@enc_numero_cuotas", encabezado.NumeroCuotas);
-		parametros.Add("@enc_valor_descuento", encabezado.ValorDescuento);
-		parametros.Add("@enc_direccion_cliente", encabezado.DireccionCliente);
-		parametros.Add("@mon_id", encabezado.MonId);
-		parametros.Add("@usu_id", usuarioAccionId);
-		parametros.Add("@cot_id", encabezado.CotId);
-		parametros.Add("@detalle", tablaDetalle.AsTableValuedParameter("dbo.factura_det_type"));
-		parametros.Add("@pca_id", pcaId);
-		parametros.Add("@formas_pago", tablaFormasPago.AsTableValuedParameter("dbo.pago_forma_type"));
-		parametros.Add("@enc_id", dbType: DbType.Int32, direction: ParameterDirection.Output);
-		parametros.Add("@enc_numero_unico", dbType: DbType.String, size: 16, direction: ParameterDirection.Output);
+		parametros.Add("@EncFechaDocto", encabezado.FechaDocumento);
+		parametros.Add("@EncNumeroAutorizacion", encabezado.NumeroAutorizacion);
+		parametros.Add("@EncSerieDocto", encabezado.SerieDocumento);
+		parametros.Add("@EncNumeroDocto", encabezado.NumeroDocumento);
+		parametros.Add("@CliId", encabezado.CliId);
+		parametros.Add("@EncNombresCliente", encabezado.NombresCliente);
+		parametros.Add("@EncApellidosCliente", encabezado.ApellidosCliente);
+		parametros.Add("@CliNit", encabezado.Nit);
+		parametros.Add("@TdoId", encabezado.TdoId);
+		parametros.Add("@PveId", encabezado.PveId);
+		parametros.Add("@EncFechaPrimerPago", encabezado.FechaPrimerPago);
+		parametros.Add("@EncMontoEnganche", encabezado.MontoEnganche);
+		parametros.Add("@EncNumeroCuotas", encabezado.NumeroCuotas);
+		parametros.Add("@EncValorDescuento", encabezado.ValorDescuento);
+		parametros.Add("@EncDireccionCliente", encabezado.DireccionCliente);
+		parametros.Add("@MonId", encabezado.MonId);
+		parametros.Add("@UsuId", usuarioAccionId);
+		parametros.Add("@CotId", encabezado.CotId);
+		parametros.Add("@Detalle", tablaDetalle.AsTableValuedParameter("dbo.factura_det_type"));
+		parametros.Add("@PcaId", pcaId);
+		parametros.Add("@FormasPago", tablaFormasPago.AsTableValuedParameter("dbo.pago_forma_type"));
+		parametros.Add("@EncId", dbType: DbType.Int32, direction: ParameterDirection.Output);
+		parametros.Add("@EncNumeroUnico", dbType: DbType.String, size: 16, direction: ParameterDirection.Output);
 
-		await connection.ExecuteAsync("dbo.sp_ventas_crear_factura", parametros, commandType: CommandType.StoredProcedure);
-		return (parametros.Get<int>("@enc_id"), parametros.Get<string>("@enc_numero_unico"));
+		await connection.ExecuteAsync("dbo.paVentaFacturaCrear", parametros, commandType: CommandType.StoredProcedure);
+		return (parametros.Get<int>("@EncId"), parametros.Get<string>("@EncNumeroUnico"));
 	}
 
 	public async Task AnularAsync(int encId, int? usuarioAccionId)
 	{
 		using var connection = connectionFactory.CreateConnection();
-		var parametros = new { enc_id = encId, usu_id = usuarioAccionId };
-		await connection.ExecuteAsync("dbo.sp_documento_anular", parametros, commandType: CommandType.StoredProcedure);
+		var parametros = new { EncId = encId, UsuId = usuarioAccionId };
+		await connection.ExecuteAsync("dbo.paDocumentoAnular", parametros, commandType: CommandType.StoredProcedure);
 	}
 
 	public async Task<IReadOnlyList<FacturaEncabezado>> ConsultarAsync(int tdoId, int? cliId, DateTime? fechaDesde, DateTime? fechaHasta, string? estado, int pagina, int tamanioPagina)
@@ -106,8 +106,8 @@ public sealed class FacturaRepository(IDbConnectionFactory connectionFactory) : 
 	{
 		using var connection = connectionFactory.CreateConnection();
 		using var multi = await connection.QueryMultipleAsync(
-			"dbo.sp_documento_consultar_por_id",
-			new { enc_id = encId },
+			"dbo.paDocumentoConsultarPorId",
+			new { EncId = encId },
 			commandType: CommandType.StoredProcedure);
 
 		var encabezado = await multi.ReadFirstOrDefaultAsync<FacturaEncabezadoDetalle>();
