@@ -2573,7 +2573,8 @@ a.boton-icono { text-decoration: none; }
 .col-acciones .boton-icono:last-child .boton-icono-tip,
 .barra-herramientas > .boton-icono:last-child .boton-icono-tip,
 .barra-filtros > .boton-icono:last-child .boton-icono-tip,
-.maestro-detalle-encabezado > .boton-icono:last-child .boton-icono-tip {
+.maestro-detalle-encabezado > .boton-icono:last-child .boton-icono-tip,
+.paginador-botones > .boton-icono:last-child .boton-icono-tip {
     left: auto;
     right: 0;
     transform: translateY(4px);
@@ -2582,7 +2583,8 @@ a.boton-icono { text-decoration: none; }
 .col-acciones .boton-icono:last-child .boton-icono-tip::after,
 .barra-herramientas > .boton-icono:last-child .boton-icono-tip::after,
 .barra-filtros > .boton-icono:last-child .boton-icono-tip::after,
-.maestro-detalle-encabezado > .boton-icono:last-child .boton-icono-tip::after {
+.maestro-detalle-encabezado > .boton-icono:last-child .boton-icono-tip::after,
+.paginador-botones > .boton-icono:last-child .boton-icono-tip::after {
     left: auto;
     right: 12px;
     transform: none;
@@ -3267,3 +3269,36 @@ fieldset.sin-borde { border: 0; padding: 0; margin: 0; min-width: 0; }
     .conciliacion-resumen { grid-template-columns: 1fr; }
 }
 @media (max-width: 600px) { .casilla input[type=checkbox] { width: 28px; height: 28px; } }
+
+/* Fase 4: mantenimiento de permisos. */
+.permisos-maestro { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.permisos-maestro > .tarjeta { min-width: 0; }
+.permisos-maestro .barra-filtros { flex-wrap: wrap; }
+.permisos-maestro .barra-filtros input[type="search"] { flex: 1 1 14rem; }
+.permisos-maestro h3 { margin: 1.1rem 0 0.5rem; font-size: 0.95rem; }
+.permiso-codigo { display: block; font-size: 0.8rem; overflow-wrap: anywhere; min-width: 12rem; }
+.permisos-maestro .texto-tenue.permisos-auditoria { font-size: 0.8rem; margin: 0.4rem 0 0; }
+.permiso-descripcion { display: block; font-size: 0.75rem; }
+@media (max-width: 1180px) { .permisos-maestro { grid-template-columns: 1fr; } }
+.permisos-maestro .celda-fecha { white-space: nowrap; }
+
+/* Fase 4: kardex de inventario. */
+.kardex-tabla td, .kardex-tabla th { white-space: nowrap; }
+.kardex-tabla .kardex-detalle { display: block; font-size: 0.72rem; white-space: normal; max-width: 22rem; }
+.kardex-tabla tr.kardex-reversa td { color: var(--texto-tenue); font-style: italic; }
+.kardex-tabla tr.kardex-saldo-anterior td { background: var(--superficie-suave); font-style: italic; }
+.kardex-tabla tfoot td { font-weight: 700; border-top: 2px solid var(--borde); }
+.kpi .kpi-detalle { display: block; font-size: 0.75rem; color: var(--texto-tenue); margin-top: 0.15rem; }
+
+/* Pagos a proveedores: forma de pago (cheque o transferencia) y comprobante adjunto. */
+.forma-pago-opciones { display: inline-flex; flex-wrap: wrap; gap: 0; margin: 0 0 1rem; padding: 0; border: 1px solid var(--borde-suave, #d0d7e2); border-radius: var(--radio); overflow: hidden; }
+.forma-pago-opciones label { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; cursor: pointer; font-size: 0.9rem; color: var(--si-navy-700); background: #fff; }
+.forma-pago-opciones label + label { border-left: 1px solid var(--borde-suave, #d0d7e2); }
+.forma-pago-opciones label.activa { background: var(--si-navy-700); color: #fff; font-weight: 600; }
+.forma-pago-opciones input[type=radio] { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.forma-pago-opciones label:focus-within { outline: 2px solid var(--si-navy-700); outline-offset: -4px; }
+.campo .etiqueta-campo { font-size: 0.78rem; font-weight: 600; color: var(--si-navy-700); }
+.comprobante-adjunto { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+.comprobante-adjunto label.boton-icono { font-size: 0.85rem; font-weight: 500; color: inherit; }
+.tarjeta .fel-formulario.formulario-transferencia { margin-bottom: 0.75rem; align-items: start; }
+.comprobante-nombre { display: inline-flex; align-items: center; gap: 0.35rem; overflow-wrap: anywhere; }

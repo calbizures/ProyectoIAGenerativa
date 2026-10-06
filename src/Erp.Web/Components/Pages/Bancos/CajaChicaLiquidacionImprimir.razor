@@ -21,7 +21,7 @@
                     <tr>
                         <td class="col-fecha">@g.Fecha.ToString("dd/MM/yyyy")</td>
                         <td>@GastoCajaChica.NombreTipo(g.Tipo) @(g.Serie is null ? "" : g.Serie + "-")@g.Numero</td>
-                        <td>@g.Proveedor@(g.Nit is null ? "" : $" (NIT {g.Nit})") — @g.Concepto</td>
+                        <td>@(g.Proveedor is null ? "" : g.Proveedor + (g.Nit is null ? "" : $" (NIT {g.Nit})") + " — ")@g.Concepto</td>
                         <td>@g.CuentaCodigo @g.CuentaNombre</td>
                         <td class="num col-monto">@((g.Total - g.Iva).ToString("N2"))</td>
                         <td class="num col-monto">@g.Iva.ToString("N2")</td>

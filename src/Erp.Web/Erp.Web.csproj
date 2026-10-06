@@ -10,6 +10,12 @@
     <PackageReference Include="QRCoder" Version="1.8.0" />
   </ItemGroup>
 
+  <!-- Las pantallas y el menú, incrustados para saber dónde se usa cada
+       permiso (Security/PermisoMapa.cs). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Components\**\*.razor" LogicalName="razor:%(Filename)%(Extension)" WithCulture="false" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>

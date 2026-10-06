@@ -10,66 +10,236 @@
 
 <div class="pagina-encabezado">
     <h1>Existencias por bodega</h1>
-    <p>Consulta de existencias. Este dato lo mantienen automáticamente las compras, ventas y anulaciones — no se edita a mano.</p>
+    <p>Consulta de existencias y kardex de cada producto. Este dato lo mantienen automáticamente las compras, ventas, traslados, ajustes y anulaciones — no se edita a mano.</p>
 </div>
 
-<div class="barra-herramientas">
-    <select @bind="filtroProId" aria-label="Producto">
-        <option value="0">Todos los productos</option>
+@if (mensaje is not null)
+{
+    <p class="mensaje-error" role="alert">@mensaje</p>
+}
+
+<div class="barra-filtros">
+    <select @bind="filtroProId" @bind:after="CambiarFiltroAsync" aria-label="Producto">
+        <option value="0">@(vista == "kardex" ? "Seleccione el producto..." : "Todos los productos")</option>
         @foreach (var p in productos)
         {
             <option value="@p.ProId">@p.ProCodigo - @p.ProDescripcion</option>
         }
     </select>
-    <select @bind="filtroBodId" aria-label="Bodega">
+    <select @bind="filtroBodId" @bind:after="CambiarFiltroAsync" aria-label="Bodega">
         <option value="0">Todas las bodegas</option>
         @foreach (var bod in bodegas)
         {
             <option value="@bod.BodId">@bod.BodDescripcion</option>
         }
     </select>
-    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+    @if (vista == "kardex")
+    {
+        <FiltroPeriodo @bind-Desde="desde" @bind-Hasta="hasta" AlCambiar="ConsultarKardexAsync" />
+        <span class="barra-herramientas-separador"></span>
+        @if (kardex is not null)
+        {
+            <a class="boton-icono boton-icono-con-etiqueta" href="@UrlExcel" download title="Exportar el kardex a Excel">
+                <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Excel</span>
+            </a>
+        }
+    }
+    else
+    {
+        <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+    }
 </div>
 
-<table class="tabla-datos">
-    <thead>
-        <tr><th>Producto</th><th>Bodega</th><th class="num">Existencia</th></tr>
-    </thead>
-    <tbody>
-        @if (existencias.Count == 0)
+<BarraPestanas Pestanas="Pestanas" PestanaActiva="@vista" PestanaActivaChanged="CambiarVistaAsync" />
+
+@if (vista == "existencias")
+{
+    <div class="tabla-desplazable">
+        <table class="tabla-datos">
+            <thead>
+                <tr><th>Producto</th><th>Bodega</th><th class="num">Existencia</th><th class="col-acciones"><span class="sr-only">Kardex</span></th></tr>
+            </thead>
+            <tbody>
+                @if (existencias.Count == 0)
+                {
+                    <tr><td colspan="4">Sin existencias para los filtros seleccionados.</td></tr>
+                }
+                @foreach (var e in existencias)
+                {
+                    <tr>
+                        <td>@e.ProCodigo - @e.ProDescripcion</td>
+                        <td>@e.BodDescripcion</td>
+                        <td class="num">@e.Existencia.ToString("N0")</td>
+                        <td class="col-acciones">
+                            <BotonIcono Icono="list" Tooltip="@($"Ver el kardex de {e.ProCodigo}")" Etiqueta="Kardex" OnClick="() => VerKardexAsync(e.ProId, e.BodId)" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else if (filtroProId == 0)
+{
+    <p class="estado-vacio">Elija un producto para ver su kardex: cada entrada y salida con su costo, el saldo y el costo promedio después de cada movimiento.</p>
+}
+else if (kardex is not null)
+{
+    var r = kardex.Resumen;
+    var entradas = kardex.Movimientos.Sum(m => m.Entrada);
+    var salidas = kardex.Movimientos.Sum(m => m.Salida);
+    var final = kardex.Movimientos.Count > 0 ? kardex.Movimientos[^1] : null;
+    <div class="kpi-fila">
+        @if (desde is not null)
         {
-            <tr><td colspan="3">Sin existencias para los filtros seleccionados.</td></tr>
+            <div class="kpi"><span class="kpi-etiqueta">Saldo anterior</span><span class="kpi-valor">@r.InicialCantidad.ToString("N0")</span><span class="kpi-detalle">Q@(r.InicialValor.ToString("N2"))</span></div>
         }
-        @foreach (var e in existencias)
-        {
-            <tr>
-                <td>@e.ProCodigo - @e.ProDescripcion</td>
-                <td>@e.BodDescripcion</td>
-                <td class="num">@e.Existencia.ToString("N0")</td>
-            </tr>
-        }
-    </tbody>
-</table>
+        <div class="kpi"><span class="kpi-etiqueta">Entradas</span><span class="kpi-valor">@entradas.ToString("N0")</span></div>
+        <div class="kpi"><span class="kpi-etiqueta">Salidas</span><span class="kpi-valor">@salidas.ToString("N0")</span></div>
+        <div class="kpi"><span class="kpi-etiqueta">@(filtroBodId == 0 ? "Existencia" : "Existencia en la bodega")</span><span class="kpi-valor">@((filtroBodId == 0 ? r.ExistenciaBodegas : r.ExistenciaBodega).ToString("N0"))</span></div>
+        <div class="kpi"><span class="kpi-etiqueta">Costo promedio actual</span><span class="kpi-valor">Q@(r.GuardadoPromedio.ToString("N2"))</span><span class="kpi-detalle">Valor Q@(r.GuardadoValor.ToString("N2"))</span></div>
+    </div>
+
+    @if (r.CuadraCantidad && r.CuadraCosto && (filtroBodId == 0 || r.CalculadoBodega == r.ExistenciaBodega))
+    {
+        <p class="doc-nota" role="status"><Icono Nombre="check-circle" Tamano="15" /><span>Comprobado: el kardex llega a la misma existencia (@r.CalculadoCantidad.ToString("N0")), al mismo valor (Q@(r.CalculadoValor.ToString("N2"))) y al mismo costo promedio (Q@(r.CalculadoPromedio.ToString("N4"))) guardados en el producto.</span></p>
+    }
+    else
+    {
+        <div class="mensaje-error" role="alert">
+            <strong>El kardex no cuadra con lo guardado.</strong>
+            Según el kardex: @r.CalculadoCantidad.ToString("N2") unidades, Q@(r.CalculadoValor.ToString("N2")), promedio Q@(r.CalculadoPromedio.ToString("N4")).
+            Guardado: @r.GuardadoCantidad.ToString("N2") unidades, Q@(r.GuardadoValor.ToString("N2")), promedio Q@(r.GuardadoPromedio.ToString("N4")); existencia en bodegas @r.ExistenciaBodegas.ToString("N2")@(filtroBodId == 0 ? "" : $" (en esta bodega: kardex {r.CalculadoBodega:N2}, guardado {r.ExistenciaBodega:N2})").
+        </div>
+    }
+    <p class="texto-ayuda">Orden de proceso del sistema (fecha y hora de registro). El saldo, el valor y el costo promedio son del producto en todas las bodegas; la última columna es la existencia de la bodega del movimiento. Un documento anulado aparece con su anulación, al mismo costo.</p>
+
+    <div class="tabla-desplazable">
+        <table class="tabla-datos tabla-compacta kardex-tabla">
+            <thead>
+                <tr>
+                    <th class="col-fecha">Fecha</th><th>Documento</th><th>Bodega</th>
+                    <th class="num">Entrada</th><th class="num">Salida</th><th class="num">Costo unit.</th><th class="num">Costo total</th>
+                    <th class="num">Saldo</th><th class="num">Valor</th><th class="num">Promedio</th><th class="num">En bodega</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (desde is not null)
+                {
+                    <tr class="kardex-saldo-anterior">
+                        <td colspan="7">Saldo anterior al @desde.Value.ToString("dd/MM/yyyy")</td>
+                        <td class="num">@r.InicialCantidad.ToString("N0")</td>
+                        <td class="num">@r.InicialValor.ToString("N2")</td>
+                        <td class="num">@r.InicialPromedio.ToString("N2")</td>
+                        <td class="num">@(filtroBodId == 0 ? "" : r.InicialBodega.ToString("N0"))</td>
+                    </tr>
+                }
+                @if (kardex.Movimientos.Count == 0)
+                {
+                    <tr><td colspan="11" class="doc-tabla-vacia">Sin movimientos para los filtros seleccionados.</td></tr>
+                }
+                @foreach (var m in kardex.Movimientos)
+                {
+                    <tr class="@(m.EsReversa ? "kardex-reversa" : "")">
+                        <td class="col-fecha" title="Registrado @m.Registrado.ToString("dd/MM/yyyy HH:mm")">@m.Fecha.ToString("dd/MM/yyyy")</td>
+                        <td>
+                            <strong>@(m.EsReversa ? "Anulación · " : "")@m.Tipo @m.Documento</strong>
+                            <small class="texto-tenue kardex-detalle">@m.TipoNombre@(string.IsNullOrWhiteSpace(m.Tercero) ? "" : $" · {m.Tercero}")</small>
+                        </td>
+                        <td>@m.Bodega</td>
+                        <td class="num">@(m.Entrada == 0 ? "" : m.Entrada.ToString("N0"))</td>
+                        <td class="num">@(m.Salida == 0 ? "" : m.Salida.ToString("N0"))</td>
+                        <td class="num">@m.CostoUnitario.ToString("N2")</td>
+                        <td class="num">@m.CostoTotal.ToString("N2")</td>
+                        <td class="num">@m.SaldoCantidad.ToString("N0")</td>
+                        <td class="num">@m.SaldoValor.ToString("N2")</td>
+                        <td class="num"><strong>@m.CostoPromedio.ToString("N2")</strong></td>
+                        <td class="num">@m.SaldoBodega.ToString("N0")</td>
+                    </tr>
+                }
+            </tbody>
+            @if (kardex.Movimientos.Count > 0)
+            {
+                <tfoot>
+                    <tr>
+                        <td colspan="3">Total del período</td>
+                        <td class="num">@entradas.ToString("N0")</td>
+                        <td class="num">@salidas.ToString("N0")</td>
+                        <td></td>
+                        <td class="num">@kardex.Movimientos.Sum(m => m.CostoTotal).ToString("N2")</td>
+                        <td class="num">@final!.SaldoCantidad.ToString("N0")</td>
+                        <td class="num">@final.SaldoValor.ToString("N2")</td>
+                        <td class="num">@final.CostoPromedio.ToString("N2")</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            }
+        </table>
+    </div>
+}
 
 @code {
+    private static readonly IReadOnlyList<PestanaItem> Pestanas = new[] { new PestanaItem("existencias", "Existencias"), new PestanaItem("kardex", "Kardex") };
+
     private IReadOnlyList<ProductoExistenciaBodega> existencias = Array.Empty<ProductoExistenciaBodega>();
     private IReadOnlyList<Producto> productos = Array.Empty<Producto>();
     private IReadOnlyList<Bodega> bodegas = Array.Empty<Bodega>();
+    private Kardex? kardex;
+    private string vista = "existencias";
+    private DateTime? desde;
+    private DateTime? hasta;
+    private string? mensaje;
 
     private int filtroProId;
     private int filtroBodId;
 
+    private string UrlExcel => $"reportes/inventario/kardex.xlsx?producto={filtroProId}{(filtroBodId == 0 ? "" : $"&bodega={filtroBodId}")}{(desde is null ? "" : $"&desde={desde:yyyy-MM-dd}")}{(hasta is null ? "" : $"&hasta={hasta:yyyy-MM-dd}")}";
+
     protected override async Task OnInitializedAsync()
     {
-        productos = await ProductoRepository.ConsultarAsync(null, null, prtId: null, estado: "A", pagina: 1, tamanioPagina: 500);
+        productos = (await ProductoRepository.ConsultarAsync(null, null, prtId: null, estado: "A", pagina: 1, tamanioPagina: 500))
+            .Where(p => p.ProManejaExistencia).ToList();
         bodegas = await BodegaRepository.ConsultarAsync(sucId: null, estado: "A");
         await BuscarAsync();
     }
 
     private async Task BuscarAsync()
     {
-        existencias = await ProductoRepository.ConsultarExistenciasAsync(
-            filtroProId == 0 ? null : filtroProId,
-            filtroBodId == 0 ? null : filtroBodId);
+        try
+        {
+            existencias = await ProductoRepository.ConsultarExistenciasAsync(
+                filtroProId == 0 ? null : filtroProId,
+                filtroBodId == 0 ? null : filtroBodId);
+            mensaje = null;
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+    }
+
+    private async Task ConsultarKardexAsync()
+    {
+        kardex = null;
+        if (filtroProId == 0) return;
+        try
+        {
+            kardex = await ProductoRepository.ConsultarKardexAsync(filtroProId, filtroBodId == 0 ? null : filtroBodId, desde, hasta);
+            mensaje = null;
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+    }
+
+    private Task CambiarFiltroAsync() => vista == "kardex" ? ConsultarKardexAsync() : BuscarAsync();
+
+    private async Task CambiarVistaAsync(string nueva)
+    {
+        vista = nueva;
+        await CambiarFiltroAsync();
+    }
+
+    private async Task VerKardexAsync(int proId, int bodId)
+    {
+        filtroProId = proId;
+        filtroBodId = bodId;
+        vista = "kardex";
+        await ConsultarKardexAsync();
     }
 }

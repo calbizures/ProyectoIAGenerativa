@@ -46,6 +46,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 		options.EventsType = typeof(RefrescoPermisosCookie);
 	});
 builder.Services.AddScoped<RefrescoPermisosCookie>();
+builder.Services.AddSingleton<PermisoMapa>();
 
 // Proveedor dinámico: cualquier [Authorize(Policy = "Permiso:<CODIGO>")] se resuelve
 // contra el catálogo sec_permiso sin tener que registrar cada política a mano.
@@ -122,6 +123,23 @@ app.MapGet("/compania/logo", async (int? cia, HttpContext contexto, IGeneralRepo
 	return Results.File(logo.Logo, logo.Tipo);
 }).AllowAnonymous();
 
+// Comprobante del banco de una transferencia a proveedor. Solo hay PDF o
+// imágenes (el tipo se toma del contenido al subirlo); se muestra en el
+// navegador, o se descarga con ?descargar=true.
+app.MapGet("/cxp/transferencias/{bltId:int}/comprobante", async (int bltId, bool? descargar, HttpContext contexto,
+	ICuentasRepository cuentas, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:CXP_ADMIN")).Succeeded) return Results.Forbid();
+	var comprobante = await cuentas.ConsultarComprobanteTransferenciaAsync(bltId);
+	if (comprobante is null) return Results.NotFound();
+	contexto.Response.Headers.XContentTypeOptions = "nosniff";
+	contexto.Response.Headers.CacheControl = "private, no-store";
+	var nombre = $"{comprobante.Numero}-{comprobante.Nombre}";
+	if (descargar == true) return Results.File(comprobante.Contenido, comprobante.Tipo, nombre);
+	contexto.Response.Headers.ContentDisposition = new System.Net.Mime.ContentDisposition { Inline = true, FileName = nombre }.ToString();
+	return Results.File(comprobante.Contenido, comprobante.Tipo);
+}).RequireAuthorization();
+
 // Exportación a Excel de cuentas por cobrar y por pagar.
 const string TipoExcel = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
@@ -142,7 +160,7 @@ app.MapGet("/reportes/{modulo}/antiguedad.xlsx", async (string modulo, DateTime?
 	if (!(await autorizacion.AuthorizeAsync(contexto.User, politica)).Succeeded) return Results.Forbid();
 
 	var corte = (fecha ?? DateTime.Today).Date;
-	var filas = esCliente ? await cuentas.ConsultarAntiguedadClientesAsync(corte, id) : await cuentas.ConsultarAntiguedadProveedoresAsync(corte, id);
+	var filas = esCliente ? await cuentas.ConsultarAntiguedadClientesAsync(corte, id, contexto.User.ObtenerUsuId() ?? 0) : await cuentas.ConsultarAntiguedadProveedoresAsync(corte, id);
 	var archivo = ReportesExcel.Antiguedad(filas, esCliente, corte, await CompaniaReporteAsync(contexto, general));
 	return Results.File(archivo, TipoExcel, $"antiguedad-{(esCliente ? "clientes" : "proveedores")}-{corte:yyyyMMdd}.xlsx");
 }).RequireAuthorization();
@@ -226,6 +244,20 @@ app.MapGet("/reportes/inventario/rotacion.xlsx", async (int? bodega, int? sucurs
 		: "Todas las bodegas";
 	var archivo = ReportesExcel.Rotacion(filas, ambito, await CompaniaReporteAsync(contexto, general));
 	return Results.File(archivo, TipoExcel, $"rotacion-inventario-{(hasta ?? DateTime.Today):yyyyMMdd}.xlsx");
+}).RequireAuthorization();
+
+// Kardex de un producto (Inventario › Existencias).
+app.MapGet("/reportes/inventario/kardex.xlsx", async (int producto, int? bodega, DateTime? desde, DateTime? hasta, HttpContext contexto,
+	Erp.Data.Inventario.IProductoRepository productos, Erp.Data.Inventario.IBodegaRepository bodegas, IGeneralRepository general,
+	IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR")).Succeeded) return Results.Forbid();
+	var kardex = await productos.ConsultarKardexAsync(producto, bodega, desde, hasta);
+	if (kardex is null) return Results.NotFound();
+	var ambito = bodega is int b ? (await bodegas.ConsultarAsync(null, null)).FirstOrDefault(x => x.BodId == b)?.BodDescripcion ?? $"Bodega {b}"
+		: "Todas las bodegas";
+	var archivo = ReportesExcel.Kardex(kardex, ambito, desde, hasta, await CompaniaReporteAsync(contexto, general));
+	return Results.File(archivo, TipoExcel, $"kardex-{kardex.Codigo}-{DateTime.Today:yyyyMMdd}.xlsx");
 }).RequireAuthorization();
 
 // Libro de salarios y planilla mensual del IGSS de una compañía.

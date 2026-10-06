@@ -18,6 +18,7 @@ public sealed class CorreoRepository(IDbConnectionFactory connectionFactory) : I
 		await connection.ExecuteAsync("dbo.paCompaniaCorreoGuardar", new
 		{
 			c.CiaId,
+			c.Proveedor,
 			c.Servidor,
 			c.Puerto,
 			c.Ssl,

@@ -206,7 +206,7 @@
                             </select>
                         </div>
                         <div class="campo">
-                            <label for="ccg-proveedor">@(gasto.Tipo == "V" ? "Pagado a" : "Proveedor")</label>
+                            <label for="ccg-proveedor">@(gasto.Tipo switch { "V" => "Entregado a (opcional)", "R" => "Emitido por (opcional)", _ => "Proveedor" })</label>
                             <input id="ccg-proveedor" list="cch-proveedores" maxlength="150" value="@gasto.Proveedor" @onchange="ElegirProveedor" />
                             <datalist id="cch-proveedores">
                                 @foreach (var p in proveedores)
@@ -283,11 +283,11 @@
                                 <tr>
                                     @if (esAdmin)
                                     {
-                                        <td class="col-check"><input type="checkbox" aria-label="Liquidar el gasto de @g.Proveedor" checked="@seleccion.Contains(g.CcgId!.Value)" @onchange="e => Marcar(g, e)" /></td>
+                                        <td class="col-check"><input type="checkbox" aria-label="Liquidar el gasto @(g.Proveedor ?? g.Concepto)" checked="@seleccion.Contains(g.CcgId!.Value)" @onchange="e => Marcar(g, e)" /></td>
                                     }
                                     <td class="col-fecha">@g.Fecha.ToString("dd/MM/yyyy")</td>
                                     <td class="col-estado">@GastoCajaChica.NombreTipo(g.Tipo)@if (g.Numero is not null) {<br /><span class="texto-tenue">@(g.Serie is null ? "" : g.Serie + "-")@g.Numero</span>}</td>
-                                    <td>@g.Proveedor@(g.Nit is null ? "" : $" · NIT {g.Nit}")<br /><span class="texto-tenue">@g.Concepto</span></td>
+                                    <td>@(g.Proveedor ?? "Sin proveedor")@(g.Nit is null ? "" : $" · NIT {g.Nit}")<br /><span class="texto-tenue">@g.Concepto</span></td>
                                     <td>@g.CuentaCodigo @g.CuentaNombre@if (g.Departamento is not null) {<br /><span class="texto-tenue">@g.Departamento</span>}</td>
                                     <td class="num col-monto">@g.Iva.ToString("N2")</td>
                                     <td class="num col-monto">@g.Total.ToString("N2")</td>
@@ -426,7 +426,7 @@
                                 <tr>
                                     <td class="col-fecha">@g.Fecha.ToString("dd/MM/yyyy")</td>
                                     <td class="col-estado">@GastoCajaChica.NombreTipo(g.Tipo)@if (g.Numero is not null) {<br /><span class="texto-tenue">@(g.Serie is null ? "" : g.Serie + "-")@g.Numero</span>}</td>
-                                    <td>@g.Proveedor<br /><span class="texto-tenue">@g.Concepto@(g.MotivoAnulacion is null ? "" : $" · Anulado: {g.MotivoAnulacion}")</span></td>
+                                    <td>@(g.Proveedor ?? "Sin proveedor")<br /><span class="texto-tenue">@g.Concepto@(g.MotivoAnulacion is null ? "" : $" · Anulado: {g.MotivoAnulacion}")</span></td>
                                     <td>@g.CuentaCodigo @g.CuentaNombre</td>
                                     <td class="num col-monto">@g.Total.ToString("N2")</td>
                                     <td class="col-estado"><span class="estado-badge @(g.Estado == "A" ? "estado-badge-inactivo" : "estado-badge-activo")">@(g.Estado == "A" ? "Anulado" : g.Liquidacion)</span></td>
@@ -717,7 +717,7 @@ else if (fondos.Count == 0)
     {
         if (gasto is null) return;
         gasto.Proveedor = e.Value?.ToString() ?? "";
-        var proveedor = proveedores.FirstOrDefault(p => string.Equals(p.PrvNombreComercial, gasto.Proveedor.Trim(), StringComparison.OrdinalIgnoreCase));
+        var proveedor = proveedores.FirstOrDefault(p => string.Equals(p.PrvNombreComercial, (gasto.Proveedor ?? "").Trim(), StringComparison.OrdinalIgnoreCase));
         gasto.PrvId = proveedor?.PrvId;
         if (proveedor?.PrvNit is not null && string.IsNullOrWhiteSpace(gasto.Nit)) gasto.Nit = proveedor.PrvNit;
     }
@@ -725,9 +725,11 @@ else if (fondos.Count == 0)
     private async Task GuardarGastoAsync()
     {
         if (gasto is null || fondo is null) return;
-        if (gasto.CtaId == 0 || gasto.Total <= 0 || string.IsNullOrWhiteSpace(gasto.Proveedor) || string.IsNullOrWhiteSpace(gasto.Concepto))
+        var sinProveedor = gasto.Tipo is "F" or "P" && string.IsNullOrWhiteSpace(gasto.Proveedor);
+        if (gasto.CtaId == 0 || gasto.Total <= 0 || sinProveedor || string.IsNullOrWhiteSpace(gasto.Concepto))
         {
-            mensaje = "Complete el proveedor, el concepto, la cuenta de gasto y el total.";
+            mensaje = sinProveedor ? "Para una factura indique el proveedor, además del concepto, la cuenta de gasto y el total."
+                                   : "Complete el concepto, la cuenta de gasto y el total.";
             esMensajeError = true;
             return;
         }
@@ -736,6 +738,7 @@ else if (fondos.Count == 0)
         {
             if (gasto.Tipo == "V") { gasto.Nit = null; gasto.Serie = null; gasto.Numero = null; }
             if (gasto.Tipo == "R") { gasto.Serie = null; }
+            if (gasto.Tipo is "R" or "V" && string.IsNullOrWhiteSpace(gasto.Proveedor)) { gasto.Proveedor = null; gasto.PrvId = null; }
             await CajaChicaRepository.GuardarGastoAsync(gasto, await ObtenerUsuIdActualAsync());
             MostrarOk($"Gasto de Q {gasto.Total:N2} registrado.");
             gasto = null;

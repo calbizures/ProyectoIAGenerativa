@@ -1,0 +1,142 @@
+@* Recepción de una orden de compra aprobada con la factura del proveedor:
+   graba la compra (ingreso a bodega, cuenta por pagar y póliza) por lo que
+   llegó; lo que falta queda pendiente. Se usa en Órdenes de compra y en
+   Compras ("Desde orden de compra"). *@
+@using Erp.Data.Compras
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IOrdenCompraRepository OrdenCompraRepository
+@inject IProductoProveedorRepository ProductoProveedorRepository
+@inject ILogger<RecibirOrdenCompra> Log
+
+<section class="oc-recepcion" aria-labelledby="titulo-recepcion-@Orden.OcpId">
+    <h3 id="titulo-recepcion-@Orden.OcpId">@Titulo</h3>
+    <p class="texto-ayuda">Indique lo que llegó; lo que falte queda pendiente para otra recepción. Se graba una compra de <strong>@Orden.Proveedor</strong> en <strong>@Orden.Bodega</strong> con su cuenta por pagar y su póliza.</p>
+    @if (error is not null)
+    {
+        <p class="mensaje-error" role="alert">@error</p>
+    }
+    <div class="fel-formulario">
+        <div class="campo"><label for="rec-fecha-@Orden.OcpId">Fecha de la factura</label><input id="rec-fecha-@Orden.OcpId" type="date" @bind="recepcion.Fecha" /></div>
+        <div class="campo"><label for="rec-serie-@Orden.OcpId">Serie</label><input id="rec-serie-@Orden.OcpId" maxlength="32" @bind="recepcion.Serie" /></div>
+        <div class="campo"><label for="rec-numero-@Orden.OcpId">Número</label><input id="rec-numero-@Orden.OcpId" maxlength="32" @bind="recepcion.NumeroDocumento" /></div>
+        <div class="campo"><label for="rec-autorizacion-@Orden.OcpId">Autorización FEL</label><input id="rec-autorizacion-@Orden.OcpId" maxlength="64" @bind="recepcion.Autorizacion" /></div>
+        <div class="campo">
+            <label for="rec-condicion-@Orden.OcpId">Condición de pago</label>
+            <select id="rec-condicion-@Orden.OcpId" @bind="condicion">
+                <option value="contado">Contado</option>
+                <option value="credito">Crédito</option>
+            </select>
+        </div>
+        @if (condicion == "credito")
+        {
+            <div class="campo"><label for="rec-cuotas-@Orden.OcpId">Cuotas</label><input id="rec-cuotas-@Orden.OcpId" type="number" min="1" @bind="recepcion.NumeroCuotas" /></div>
+            <div class="campo"><label for="rec-primer-@Orden.OcpId">Primer pago</label><input id="rec-primer-@Orden.OcpId" type="date" @bind="fechaPrimerPago" /></div>
+        }
+    </div>
+    <div class="tabla-desplazable" tabindex="0">
+        <table class="tabla-datos">
+            <thead><tr><th>Producto</th><th class="num">Pendiente</th><th class="num col-monto">Recibido ahora</th><th class="num col-monto">Costo con IVA</th><th class="num col-monto">Total</th></tr></thead>
+            <tbody>
+                @foreach (var r in lineas)
+                {
+                    <tr>
+                        <td>@r.Descripcion<br /><span class="texto-tenue">@r.Codigo</span></td>
+                        <td class="num">@r.Pendiente</td>
+                        <td class="num col-monto"><input class="entrada-numero" type="number" min="0" max="@r.Pendiente" step="1" aria-label="@($"Cantidad recibida de {r.Descripcion}")" @bind="r.Cantidad" @bind:event="oninput" /></td>
+                        <td class="num col-monto"><input class="entrada-numero" type="number" min="0" step="0.01" aria-label="@($"Costo con IVA de {r.Descripcion}")" @bind="r.CostoUnitario" @bind:event="oninput" /></td>
+                        <td class="num col-monto">@Math.Round(r.Cantidad * r.CostoUnitario, 2).ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="resumen-totales">
+        <span>Unidades: <strong>@lineas.Sum(r => r.Cantidad)</strong></span>
+        <span>Total de la factura: <strong>Q @lineas.Sum(r => Math.Round(r.Cantidad * r.CostoUnitario, 2)).ToString("N2")</strong></span>
+    </div>
+    <div class="acciones-fila">
+        <BotonIcono Icono="save" Tooltip="Grabar la compra y el ingreso a bodega" Etiqueta="@EtiquetaGrabar" Variante="primario" Deshabilitado="grabando" OnClick="RecibirAsync" />
+        <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="OnCancelar" />
+    </div>
+</section>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    [Parameter, EditorRequired] public OrdenCompraEncabezado Orden { get; set; } = default!;
+    [Parameter, EditorRequired] public IReadOnlyList<OrdenCompraLinea> Lineas { get; set; } = Array.Empty<OrdenCompraLinea>();
+    [Parameter] public string Titulo { get; set; } = "Recibir con la factura del proveedor";
+    [Parameter] public string EtiquetaGrabar { get; set; } = "Grabar recepción";
+    // Mensaje para la pantalla y id de la compra grabada.
+    [Parameter] public EventCallback<(string Mensaje, int EncId)> OnGrabada { get; set; }
+    [Parameter] public EventCallback OnCancelar { get; set; }
+
+    private sealed class Linea
+    {
+        public int OcdId { get; set; }
+        public string Codigo { get; set; } = "";
+        public string Descripcion { get; set; } = "";
+        public int Pendiente { get; set; }
+        public int Cantidad { get; set; }
+        public decimal CostoUnitario { get; set; }
+    }
+
+    private readonly List<Linea> lineas = new();
+    private RecepcionOrdenCompra recepcion = new();
+    private string condicion = "contado";
+    private DateTime? fechaPrimerPago;
+    private string? error;
+    private bool grabando;
+    private int ocpCargada;
+
+    protected override void OnParametersSet()
+    {
+        if (ocpCargada == Orden.OcpId) return;
+        ocpCargada = Orden.OcpId;
+        recepcion = new RecepcionOrdenCompra { Fecha = DateTime.Today };
+        condicion = "contado";
+        fechaPrimerPago = DateTime.Today.AddMonths(1);
+        error = null;
+        lineas.Clear();
+        lineas.AddRange(Lineas.Where(l => l.Pendiente > 0).Select(l => new Linea
+        {
+            OcdId = l.OcdId,
+            Codigo = l.Codigo,
+            Descripcion = l.Descripcion,
+            Pendiente = l.Pendiente,
+            Cantidad = l.Pendiente,
+            CostoUnitario = l.CostoUnitario
+        }));
+    }
+
+    private async Task RecibirAsync()
+    {
+        error = null;
+        if (string.IsNullOrWhiteSpace(recepcion.NumeroDocumento)) { error = "Escriba el número de la factura del proveedor."; return; }
+        if (lineas.All(r => r.Cantidad <= 0)) { error = "Indique la cantidad recibida de al menos un producto."; return; }
+        var excedida = lineas.FirstOrDefault(r => r.Cantidad < 0 || r.Cantidad > r.Pendiente);
+        if (excedida is not null) { error = $"De {excedida.Descripcion} se pueden recibir de 0 a {excedida.Pendiente} unidades."; return; }
+        if (lineas.Any(r => r.CostoUnitario < 0)) { error = "El costo no puede ser negativo."; return; }
+        recepcion.FechaPrimerPago = condicion == "credito" ? fechaPrimerPago : null;
+        if (recepcion.FechaPrimerPago is null && condicion == "credito") { error = "Indique la fecha del primer pago."; return; }
+        grabando = true;
+        try
+        {
+            var usuId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+            var encId = await OrdenCompraRepository.RecibirAsync(Orden.OcpId, recepcion,
+                lineas.Where(r => r.Cantidad > 0).Select(r => new LineaRecepcionOrdenCompra { OcdId = r.OcdId, Cantidad = r.Cantidad, CostoUnitario = r.CostoUnitario }).ToList(),
+                usuId);
+            // Igual que en Compras: último costo con el proveedor y relación producto-proveedor.
+            try { await ProductoProveedorRepository.RegistrarCompraAsync(encId, true, usuId); }
+            catch (Exception ex) { Log.LogWarning(ex, "La compra {EncId} se grabó pero no se actualizó el último costo por proveedor", encId); }
+            var unidades = lineas.Sum(r => r.Cantidad);
+            var documento = string.IsNullOrWhiteSpace(recepcion.Serie) ? recepcion.NumeroDocumento : $"{recepcion.Serie}-{recepcion.NumeroDocumento}";
+            ocpCargada = 0;
+            await OnGrabada.InvokeAsync(($"Recepción de la orden {Orden.Numero} grabada: {unidades} unidades ingresaron a {Orden.Bodega} con la compra {documento}.", encId));
+        }
+        catch (Exception ex) { error = MensajesError.Traducir(ex); }
+        finally { grabando = false; }
+    }
+}

@@ -6,12 +6,14 @@
 @using Erp.Web.Security
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IPermisoRepository PermisoRepository
+@inject IRolRepository RolRepository
+@inject PermisoMapa PermisoMapa
 
 <PageTitle>Permisos</PageTitle>
 
 <div class="pagina-encabezado">
     <h1>Permisos</h1>
-    <p>Catálogo de permisos del sistema.</p>
+    <p>Catálogo de permisos del sistema: qué pantallas y botones abre cada uno, qué roles lo tienen y qué usuarios lo reciben por esos roles.</p>
 </div>
 
 @if (mensaje is not null)
@@ -19,97 +21,389 @@
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
 }
 
-<div class="barra-filtros">
-    <input placeholder="Filtrar por módulo" aria-label="Filtrar por módulo" @bind="filtroModulo" type="search" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
-    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
-    <BotonIcono Icono="plus" Tooltip="Nuevo permiso" Etiqueta="Nuevo permiso" Variante="primario" OnClick="() => mostrarNuevo = true" />
-</div>
-
-@if (mostrarNuevo)
-{
-    <EditForm Model="nuevoPermiso" OnValidSubmit="CrearPermisoAsync" class="panel-formulario">
-        <DataAnnotationsValidator />
-        <ResumenValidacion />
-        <div class="campo"><label for="permisos-permiso-modulo">Módulo</label><InputText id="permisos-permiso-modulo" @bind-Value="nuevoPermiso.Modulo" /></div>
-        <div class="campo"><label for="permisos-permiso-codigo">Código</label><InputText id="permisos-permiso-codigo" @bind-Value="nuevoPermiso.Codigo" /></div>
-        <div class="campo"><label for="permisos-permiso-descripcion">Descripción</label><InputText id="permisos-permiso-descripcion" @bind-Value="nuevoPermiso.Descripcion" /></div>
-        <div class="acciones-fila">
-            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
-            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+<div class="maestro-detalle permisos-maestro">
+    <section class="tarjeta" aria-labelledby="titulo-permisos">
+        <div class="maestro-detalle-encabezado">
+            <h2 id="titulo-permisos">Permisos <span class="texto-tenue">(@permisos.Count)</span></h2>
+            <BotonIcono Icono="plus" Tooltip="Nuevo permiso" Etiqueta="Nuevo permiso" Variante="primario" OnClick="NuevoPermiso" />
         </div>
-    </EditForm>
-}
 
-<table class="tabla-datos">
-    <thead>
-        <tr><th>Módulo</th><th>Código</th><th>Descripción</th><th>Estado</th></tr>
-    </thead>
-    <tbody>
-        @if (!permisos.Any())
+        <div class="barra-filtros">
+            <input type="search" placeholder="Buscar código o descripción" aria-label="Buscar permiso por código o descripción" @bind="filtroTexto" @bind:event="oninput" @bind:after="BuscarAsync" />
+            <select aria-label="Módulo" @bind="filtroModulo" @bind:after="BuscarAsync">
+                <option value="">Todos los módulos</option>
+                @foreach (var modulo in modulos)
+                {
+                    <option value="@modulo">@modulo</option>
+                }
+            </select>
+            <select aria-label="Estado" @bind="filtroEstado" @bind:after="BuscarAsync">
+                <option value="">Activos e inactivos</option>
+                <option value="A">Activos</option>
+                <option value="I">Inactivos</option>
+            </select>
+        </div>
+
+        @if (mostrarNuevo)
         {
-            <tr><td colspan="4" class="doc-tabla-vacia">Ningún permiso coincide con el filtro.</td></tr>
+            <EditForm Model="nuevoPermiso" OnValidSubmit="CrearPermisoAsync" class="panel-formulario">
+                <DataAnnotationsValidator />
+                <ResumenValidacion />
+                <div class="campo"><label for="permisos-permiso-modulo">Módulo</label><InputText id="permisos-permiso-modulo" @bind-Value="nuevoPermiso.Modulo" /></div>
+                <div class="campo"><label for="permisos-permiso-codigo">Código</label><InputText id="permisos-permiso-codigo" @bind-Value="nuevoPermiso.Codigo" placeholder="EJEMPLO_PERMISO" /></div>
+                <div class="campo campo-ancho"><label for="permisos-permiso-descripcion">Descripción</label><InputText id="permisos-permiso-descripcion" @bind-Value="nuevoPermiso.Descripcion" /></div>
+                <p class="texto-ayuda campo-ancho">El código no se puede cambiar después: la aplicación lo usa para mostrar pantallas y botones. Un permiso nuevo no abre ninguna opción hasta que una pantalla lo pida.</p>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+                </div>
+            </EditForm>
         }
-        @foreach (var permiso in permisos)
+
+        <div class="tabla-desplazable">
+            <table class="tabla-datos">
+                <thead>
+                    <tr><th>Permiso</th><th class="num">Roles</th><th class="num">Usuarios</th><th>Estado</th></tr>
+                </thead>
+                <tbody>
+                    @if (permisos.Count == 0)
+                    {
+                        <tr><td colspan="4" class="doc-tabla-vacia">Ningún permiso coincide con el filtro.</td></tr>
+                    }
+                    @foreach (var permiso in permisos)
+                    {
+                        <tr class="fila-seleccionable @(detalle?.Permiso.PerId == permiso.PerId ? "fila-seleccionada" : "")" tabindex="0"
+                            @onclick="() => SeleccionarAsync(permiso.PerId)" @onkeydown="e => TeclaFilaAsync(e, permiso.PerId)">
+                            <td><strong class="permiso-codigo">@permiso.PerCodigo</strong><small class="texto-tenue permiso-descripcion">@permiso.PerModulo · @permiso.PerDescripcion</small></td>
+                            <td class="num">@permiso.Roles</td>
+                            <td class="num">@permiso.Usuarios</td>
+                            <td><span class="estado-badge @(permiso.PerEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(permiso.PerEstado == "A" ? "Activo" : "Inactivo")</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="tarjeta" aria-labelledby="titulo-detalle-permiso">
+        @if (detalle is null)
         {
-            <tr>
-                <td>@permiso.PerModulo</td>
-                <td>@permiso.PerCodigo</td>
-                <td>@permiso.PerDescripcion</td>
-                <td><span class="estado-badge @(permiso.PerEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(permiso.PerEstado == "A" ? "Activo" : "Inactivo")</span></td>
-            </tr>
+            <h2 id="titulo-detalle-permiso">Detalle</h2>
+            <p class="estado-vacio">Seleccione un permiso para ver dónde se usa y quién lo tiene.</p>
         }
-    </tbody>
-</table>
+        else
+        {
+            var p = detalle.Permiso;
+            var usos = PermisoMapa.Consultar(p.PerCodigo);
+            <div class="maestro-detalle-encabezado">
+                <h2 id="titulo-detalle-permiso">@p.PerCodigo</h2>
+                <div class="acciones-fila">
+                    @if (!editando)
+                    {
+                        <BotonIcono Icono="pencil" Tooltip="Modificar módulo, descripción o estado" Etiqueta="Editar" OnClick="IniciarEdicion" />
+                    }
+                    <BotonIcono Icono="trash-2" Variante="peligro" Etiqueta="Eliminar"
+                                Tooltip="@(MotivoNoEliminar(usos) ?? "Eliminar el permiso")"
+                                Deshabilitado="@(MotivoNoEliminar(usos) is not null)"
+                                Confirmacion="¿Eliminar el permiso? No se puede deshacer." OnClick="EliminarAsync" />
+                </div>
+            </div>
+
+            <EditForm Model="edicion" OnValidSubmit="GuardarAsync" class="panel-formulario">
+                <DataAnnotationsValidator />
+                <ResumenValidacion />
+                <div class="campo"><label for="permiso-modulo">Módulo</label><InputText id="permiso-modulo" @bind-Value="edicion.Modulo" disabled="@(!editando)" /></div>
+                <div class="campo">
+                    <label for="permiso-estado">Estado</label>
+                    <InputSelect id="permiso-estado" @bind-Value="edicion.Estado" disabled="@(!editando)">
+                        <option value="A">Activo</option>
+                        <option value="I">Inactivo</option>
+                    </InputSelect>
+                </div>
+                <div class="campo campo-ancho"><label for="permiso-descripcion">Descripción</label><InputText id="permiso-descripcion" @bind-Value="edicion.Descripcion" disabled="@(!editando)" /></div>
+                @if (editando)
+                {
+                    @if (edicion.Estado == "I" && p.PerEstado == "A")
+                    {
+                        <p class="doc-nota campo-ancho" role="status"><Icono Nombre="alert-triangle" Tamano="15" /><span>Inactivo, nadie lo recibe aunque su rol lo tenga: @detalle.Usuarios.Count(u => u.Vigente) usuario(s) dejarán de ver lo que abre este permiso.</span></p>
+                    }
+                    <div class="acciones-fila">
+                        <BotonIcono Icono="save" Tooltip="Guardar los cambios" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
+                        <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />
+                    </div>
+                }
+            </EditForm>
+            <p class="texto-tenue permisos-auditoria">Creado @(detalle.Creado?.ToString("dd/MM/yyyy") ?? "—")@(detalle.CreadoPor is null ? "" : $" por {detalle.CreadoPor}")@(detalle.Modificado is null ? "" : $" · modificado {detalle.Modificado:dd/MM/yyyy HH:mm}")</p>
+
+            <h3>Dónde se usa</h3>
+            @if (usos.Count == 0)
+            {
+                <p class="estado-vacio">Ninguna pantalla de la aplicación pide este permiso.</p>
+            }
+            else
+            {
+                <div class="tabla-desplazable">
+                    <table class="tabla-datos">
+                        <thead><tr><th>Opción</th><th>Qué abre</th></tr></thead>
+                        <tbody>
+                            @foreach (var uso in usos)
+                            {
+                                <tr>
+                                    <td>@if (uso.Ruta.Contains('{')) { @uso.Opcion } else { <a href="@uso.Ruta">@uso.Opcion</a> }</td>
+                                    <td>@(uso.EsAccion ? "Botones o secciones dentro de la pantalla" : "Entrar a la pantalla")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            <h3>Roles que lo tienen <span class="texto-tenue">(@detalle.Roles.Count)</span></h3>
+            <div class="barra-filtros">
+                <select aria-label="Rol al que se asigna el permiso" @bind="rolAsignar">
+                    <option value="0">Asignar a un rol...</option>
+                    @foreach (var rol in roles.Where(r => detalle.Roles.All(x => x.RolId != r.RolId)))
+                    {
+                        <option value="@rol.RolId">@rol.RolCodigo - @rol.RolNombre</option>
+                    }
+                </select>
+                <BotonIcono Icono="plus" Tooltip="Asignar el permiso al rol elegido" Etiqueta="Asignar" Deshabilitado="rolAsignar == 0" OnClick="AsignarAsync" />
+            </div>
+            @if (detalle.Roles.Count == 0)
+            {
+                <p class="estado-vacio">Ningún rol tiene este permiso.</p>
+            }
+            else
+            {
+                <div class="tabla-desplazable">
+                    <table class="tabla-datos">
+                        <thead><tr><th>Rol</th><th class="num">Usuarios</th><th>Estado</th><th class="col-acciones"><span class="sr-only">Acciones</span></th></tr></thead>
+                        <tbody>
+                            @foreach (var rol in detalle.Roles)
+                            {
+                                <tr>
+                                    <td><strong>@rol.Codigo</strong> <span class="texto-tenue">@rol.Nombre</span></td>
+                                    <td class="num">@rol.Usuarios</td>
+                                    <td><span class="estado-badge @(rol.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(rol.Estado == "A" ? "Activo" : "Inactivo")</span></td>
+                                    <td class="col-acciones">
+                                        <BotonIcono Icono="x" Variante="peligro" Tooltip="@($"Quitar el permiso al rol {rol.Codigo}")"
+                                                    Confirmacion="@($"¿Quitar {p.PerCodigo} al rol {rol.Codigo}?")" OnClick="() => QuitarAsync(rol.RolId)" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            <h3>Usuarios que lo tienen <span class="texto-tenue">(@detalle.Usuarios.Count(u => u.Vigente) con acceso)</span></h3>
+            @if (detalle.Usuarios.Count == 0)
+            {
+                <p class="estado-vacio">Ningún usuario tiene este permiso.</p>
+            }
+            else
+            {
+                <div class="tabla-desplazable">
+                    <table class="tabla-datos">
+                        <thead><tr><th>Usuario</th><th>Por el rol</th><th>Último ingreso</th><th>Acceso</th></tr></thead>
+                        <tbody>
+                            @foreach (var usuario in detalle.Usuarios)
+                            {
+                                <tr>
+                                    <td><strong>@usuario.Usuario</strong><small class="texto-tenue permiso-descripcion">@(string.IsNullOrWhiteSpace(usuario.Empleado) ? usuario.Email : usuario.Empleado)</small></td>
+                                    <td>@usuario.Roles</td>
+                                    <td class="celda-fecha">@(usuario.UltimoIngreso?.ToString("dd/MM/yy HH:mm") ?? "Nunca")</td>
+                                    <td>
+                                        @if (usuario.Vigente && p.PerEstado == "A")
+                                        {
+                                            <span class="estado-badge estado-badge-activo">Sí</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="estado-badge estado-badge-inactivo" title="@(usuario.Estado != "A" ? "Usuario inactivo" : p.PerEstado != "A" ? "Permiso inactivo" : "Su rol está inactivo")">No</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        }
+    </section>
+</div>
 
 @code {
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
     private IReadOnlyList<Permiso> permisos = Array.Empty<Permiso>();
+    private IReadOnlyList<string> modulos = Array.Empty<string>();
+    private IReadOnlyList<Rol> roles = Array.Empty<Rol>();
+    private PermisoDetalle? detalle;
+    private string filtroTexto = "";
     private string filtroModulo = "";
+    private string filtroEstado = "";
+    private int rolAsignar;
     private bool mostrarNuevo;
+    private bool editando;
     private string? mensaje;
     private bool esMensajeError;
 
-    private readonly NuevoPermisoModelo nuevoPermiso = new();
+    private NuevoPermisoModelo nuevoPermiso = new();
+    private readonly EdicionModelo edicion = new();
 
-    protected override async Task OnInitializedAsync() => await BuscarAsync();
-
-    private async Task<int?> ObtenerUsuIdActualAsync()
+    protected override async Task OnInitializedAsync()
     {
-        if (AuthenticationStateTask is null) return null;
-        var estado = await AuthenticationStateTask;
-        return estado.User.ObtenerUsuId();
+        try
+        {
+            modulos = (await PermisoRepository.ConsultarAsync(null, null)).Select(x => x.PerModulo).Distinct().OrderBy(x => x).ToList();
+            roles = await RolRepository.ConsultarAsync("A");
+            await BuscarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
     }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
 
     private async Task BuscarAsync()
     {
-        permisos = await PermisoRepository.ConsultarAsync(
-            string.IsNullOrWhiteSpace(filtroModulo) ? null : filtroModulo, estado: null);
+        try
+        {
+            permisos = await PermisoRepository.ConsultarAsync(NullSiVacio(filtroModulo), NullSiVacio(filtroEstado), NullSiVacio(filtroTexto));
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private static string? NullSiVacio(string texto) => string.IsNullOrWhiteSpace(texto) ? null : texto.Trim();
+
+    private async Task SeleccionarAsync(int perId)
+    {
+        try
+        {
+            detalle = await PermisoRepository.ConsultarDetalleAsync(perId);
+            editando = false;
+            rolAsignar = 0;
+            CargarEdicion();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task TeclaFilaAsync(KeyboardEventArgs e, int perId)
+    {
+        if (e.Key is "Enter" or " ") await SeleccionarAsync(perId);
+    }
+
+    private void CargarEdicion()
+    {
+        if (detalle is null) return;
+        edicion.Modulo = detalle.Permiso.PerModulo;
+        edicion.Descripcion = detalle.Permiso.PerDescripcion;
+        edicion.Estado = detalle.Permiso.PerEstado;
+    }
+
+    private void IniciarEdicion() => editando = true;
+
+    private void CancelarEdicion()
+    {
+        editando = false;
+        CargarEdicion();
+    }
+
+    // Se elimina solo lo que nadie usa: ni un rol ni una pantalla.
+    private string? MotivoNoEliminar(IReadOnlyList<PermisoMapa.Uso> usos) =>
+        detalle is null ? null
+        : detalle.Roles.Count > 0 ? "Está asignado a roles: quíteselo primero o inactívelo"
+        : usos.Count > 0 ? "La aplicación lo usa: se puede inactivar, no eliminar"
+        : null;
+
+    private void NuevoPermiso()
+    {
+        nuevoPermiso = new NuevoPermisoModelo { Modulo = filtroModulo };
+        mostrarNuevo = true;
     }
 
     private async Task CrearPermisoAsync()
     {
         try
         {
-            var usuId = await ObtenerUsuIdActualAsync();
-            await PermisoRepository.InsertarAsync(nuevoPermiso.Modulo, nuevoPermiso.Codigo, nuevoPermiso.Descripcion, usuId);
+            var perId = await PermisoRepository.InsertarAsync(nuevoPermiso.Modulo, nuevoPermiso.Codigo, nuevoPermiso.Descripcion, await ObtenerUsuIdActualAsync());
             mostrarNuevo = false;
-            mensaje = "Permiso creado correctamente.";
-            esMensajeError = false;
+            MostrarOk($"Permiso {nuevoPermiso.Codigo.Trim().ToUpperInvariant()} creado.");
+            await BuscarAsync();
+            await SeleccionarAsync(perId);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task GuardarAsync()
+    {
+        if (detalle is null) return;
+        try
+        {
+            await PermisoRepository.ActualizarAsync(detalle.Permiso.PerId, edicion.Modulo, edicion.Descripcion, edicion.Estado, await ObtenerUsuIdActualAsync());
+            MostrarOk($"Permiso {detalle.Permiso.PerCodigo} guardado.");
+            await BuscarAsync();
+            await SeleccionarAsync(detalle.Permiso.PerId);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task EliminarAsync()
+    {
+        if (detalle is null) return;
+        try
+        {
+            var codigo = detalle.Permiso.PerCodigo;
+            await PermisoRepository.EliminarAsync(detalle.Permiso.PerId);
+            detalle = null;
+            MostrarOk($"Permiso {codigo} eliminado.");
             await BuscarAsync();
         }
-        catch (Exception ex)
-        {
-            mensaje = MensajesError.Traducir(ex);
-            esMensajeError = true;
-        }
+        catch (Exception ex) { MostrarError(ex); }
     }
+
+    private async Task AsignarAsync()
+    {
+        if (detalle is null || rolAsignar == 0) return;
+        try
+        {
+            await RolRepository.AsignarPermisoAsync(rolAsignar, detalle.Permiso.PerId, await ObtenerUsuIdActualAsync());
+            MostrarOk("Permiso asignado al rol. Los usuarios lo verán al recargar la página (se actualiza cada minuto).");
+            await BuscarAsync();
+            await SeleccionarAsync(detalle.Permiso.PerId);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task QuitarAsync(int rolId)
+    {
+        if (detalle is null) return;
+        try
+        {
+            await RolRepository.RevocarPermisoAsync(rolId, detalle.Permiso.PerId);
+            MostrarOk("Permiso quitado al rol.");
+            await BuscarAsync();
+            await SeleccionarAsync(detalle.Permiso.PerId);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void MostrarOk(string texto) { mensaje = texto; esMensajeError = false; }
+    private void MostrarError(Exception ex) { mensaje = MensajesError.Traducir(ex); esMensajeError = true; }
 
     private sealed class NuevoPermisoModelo
     {
-        [Required] public string Modulo { get; set; } = "";
-        [Required] public string Codigo { get; set; } = "";
+        [Required(ErrorMessage = "Indique el módulo.")] public string Modulo { get; set; } = "";
+        [Required(ErrorMessage = "Indique el código.")] public string Codigo { get; set; } = "";
         public string? Descripcion { get; set; }
+    }
+
+    private sealed class EdicionModelo
+    {
+        [Required(ErrorMessage = "Indique el módulo.")] public string Modulo { get; set; } = "";
+        public string? Descripcion { get; set; }
+        public string Estado { get; set; } = "A";
     }
 }

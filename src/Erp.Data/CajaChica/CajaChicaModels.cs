@@ -32,7 +32,7 @@ public sealed class GastoCajaChica
 	public string Tipo { get; set; } = "F";
 	public int? PrvId { get; set; }
 	public string? Nit { get; set; }
-	public string Proveedor { get; set; } = "";
+	public string? Proveedor { get; set; }
 	public string? Serie { get; set; }
 	public string? Numero { get; set; }
 	public string Concepto { get; set; } = "";

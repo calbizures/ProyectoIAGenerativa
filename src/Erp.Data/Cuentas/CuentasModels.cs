@@ -32,6 +32,16 @@ public sealed class MovimientoEstadoCuenta
 	public decimal SaldoInicial { get; set; }
 }
 
+// Qué clientes puede ver el usuario en la antigüedad de saldos: todos
+// (permiso CXC_ANTIGUEDAD_TODOS) o los de su vendedor.
+public sealed class AntiguedadAlcance
+{
+	public bool VerTodos { get; set; }
+	public int? PveId { get; set; }
+	public string? Vendedor { get; set; }
+	public HashSet<int> Clientes { get; set; } = new();
+}
+
 // Una cuota pendiente con su rango de antigüedad a la fecha de corte.
 public sealed class AntiguedadFila
 {
@@ -255,6 +265,64 @@ public sealed class ChequeResumen
 	public string? Observaciones { get; set; }
 	public string? Usuario { get; set; }
 	public string EstadoTexto => EstadoCheque switch { "A" => "Anulado", "C" => "Cobrado", _ => "Emitido" };
+}
+
+// Transferencia a un proveedor ya hecha en el banco, con su comprobante.
+public sealed class TransferenciaProveedorCaptura
+{
+	public int PrvId { get; set; }
+	public int BcbId { get; set; }
+	public DateTime Fecha { get; set; } = DateTime.Today;
+	public string Autorizacion { get; set; } = "";
+	public string? Referencia { get; set; }
+	public string? Concepto { get; set; }
+	public int GefId { get; set; }
+	// M = monetaria, A = ahorro
+	public string TipoCuenta { get; set; } = "M";
+	public string Cuenta { get; set; } = "";
+	public string ComprobanteNombre { get; set; } = "";
+	public string ComprobanteTipo { get; set; } = "";
+	public byte[] Comprobante { get; set; } = Array.Empty<byte>();
+}
+
+public sealed class TransferenciaResumen
+{
+	public int BltId { get; set; }
+	public string Numero { get; set; } = "";
+	public DateTime Fecha { get; set; }
+	public string Autorizacion { get; set; } = "";
+	public string? Referencia { get; set; }
+	public string? Concepto { get; set; }
+	public decimal Total { get; set; }
+	public string Estado { get; set; } = "A";	// A vigente, N anulada
+	public string? MotivoAnulacion { get; set; }
+	public int BcbId { get; set; }
+	public string CuentaOrigen { get; set; } = "";
+	public int PrvId { get; set; }
+	public string Proveedor { get; set; } = "";
+	public int? GefIdDestino { get; set; }
+	public string? BancoDestino { get; set; }
+	public string? TipoCuentaDestino { get; set; }
+	public string? CuentaDestino { get; set; }
+	public string? Documentos { get; set; }
+	public int Cuotas { get; set; }
+	public string? ComprobanteNombre { get; set; }
+	public string? ComprobanteTipo { get; set; }
+	public int? ComprobanteTamanio { get; set; }
+	public string? Usuario { get; set; }
+	public DateTime? Registrado { get; set; }
+	public string EstadoTexto => Estado == "N" ? "Anulada" : "Vigente";
+	public string CuentaDestinoTexto => string.IsNullOrEmpty(CuentaDestino) ? "—"
+		: $"{BancoDestino} {(TipoCuentaDestino == "A" ? "ahorro" : "monetaria")} {CuentaDestino}";
+}
+
+public sealed class ComprobanteTransferencia
+{
+	public int BltId { get; set; }
+	public string Numero { get; set; } = "";
+	public string Nombre { get; set; } = "";
+	public string Tipo { get; set; } = "";
+	public byte[] Contenido { get; set; } = Array.Empty<byte>();
 }
 
 // Límite 0 = sin límite (Disponible null).

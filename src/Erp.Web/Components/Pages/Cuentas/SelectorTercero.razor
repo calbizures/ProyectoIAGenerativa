@@ -40,7 +40,7 @@ else if (EsCliente)
         }
         @if (sinResultados)
         {
-            <p class="texto-ayuda">No se encontraron clientes con ese texto.</p>
+            <p class="texto-ayuda">No se encontraron clientes con ese texto@(Permitidos is null ? "" : " en su cartera").</p>
         }
     </div>
 }
@@ -72,6 +72,8 @@ else
     [Parameter] public bool PermiteCambiar { get; set; } = true;
     // Proveedores: solo los que tienen cuotas pendientes (con su saldo).
     [Parameter] public bool SoloConSaldo { get; set; }
+    // Clientes: limita la búsqueda a estos (p. ej. la cartera de un vendedor).
+    [Parameter] public IReadOnlySet<int>? Permitidos { get; set; }
 
     private string texto = "";
     private bool sinResultados;
@@ -89,6 +91,7 @@ else
     private async Task BuscarAsync()
     {
         clientes = string.IsNullOrWhiteSpace(texto) ? Array.Empty<Cliente>() : await ClienteRepository.ConsultarAsync(texto.Trim(), "A");
+        if (Permitidos is not null) clientes = clientes.Where(c => Permitidos.Contains(c.CliId)).ToList();
         sinResultados = !string.IsNullOrWhiteSpace(texto) && clientes.Count == 0;
     }
 

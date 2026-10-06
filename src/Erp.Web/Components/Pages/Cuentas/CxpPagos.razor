@@ -1,18 +1,22 @@
 @page "/cxp/pagos"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = "Permiso:CXP_ADMIN")]
+@using Erp.Data.Caja
 @using Erp.Data.Compras
 @using Erp.Data.Cuentas
 @using Erp.Web.Security
 @using Microsoft.AspNetCore.Components.Authorization
 @inject ICuentasRepository CuentasRepository
 @inject IProveedorRepository ProveedorRepository
+@inject Erp.Data.Bancos.IBancosRepository BancosRepository
+@inject ICajaRepository CajaRepository
+@inject Erp.Data.Pagos.IPagosRepository PagosRepository
 
 <PageTitle>Pagos a proveedores</PageTitle>
 
 <div class="pagina-encabezado">
     <h1>Pagos a proveedores</h1>
-    <p>Elija el proveedor y pague con un solo cheque una factura completa, varias cuotas o todo su saldo: indique el monto y se aplica de la cuota más antigua a la más reciente (o marque las que paga). El cheque genera su póliza (Proveedores / Bancos) y se anula abajo, en Cheques emitidos.</p>
+    <p>Elija el proveedor y pague una factura completa, varias cuotas o todo su saldo: indique el monto y se aplica de la cuota más antigua a la más reciente (o marque las que paga). Pague con cheque o registre una transferencia ya hecha en el banco, con su número de autorización y el comprobante adjunto. Cada pago genera su póliza (Proveedores / Bancos) y se anula abajo, en Cheques emitidos o en Transferencias registradas.</p>
 </div>
 
 @if (mensaje is not null)
@@ -33,6 +37,24 @@
         <div class="acciones-fila">
             <BotonIcono Icono="list" Tooltip="Ver las facturas y cuotas que pagó" Etiqueta="Ver detalle" OnClick="() => VerDetalleAsync(chequeEmitido.Value.BceId)" />
             <BotonIcono Icono="plus" Tooltip="Registrar otro pago" Etiqueta="Otro pago" OnClick="() => chequeEmitido = null" />
+        </div>
+    </section>
+}
+
+@if (transferenciaRegistrada is not null)
+{
+    <section class="tarjeta tarjeta-exito" aria-live="polite">
+        <div class="exito-contenido">
+            <Icono Nombre="check-circle" Tamano="22" />
+            <div>
+                <h2>Transferencia @transferenciaRegistrada.Value.Numero registrada</h2>
+                <p>Q@(transferenciaRegistrada.Value.Monto.ToString("N2")) a @transferenciaRegistrada.Value.Proveedor · autorización @transferenciaRegistrada.Value.Autorizacion · @transferenciaRegistrada.Value.Concepto</p>
+            </div>
+        </div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="list" Tooltip="Ver las facturas y cuotas que pagó" Etiqueta="Ver detalle" OnClick="() => VerDetalleTransferenciaAsync(transferenciaRegistrada.Value.BltId)" />
+            <a class="boton-icono" href="@UrlComprobante(transferenciaRegistrada.Value.BltId)" target="_blank" rel="noopener" title="Ver el comprobante del banco"><Icono Nombre="file-text" Tamano="16" /> Comprobante</a>
+            <BotonIcono Icono="plus" Tooltip="Registrar otro pago" Etiqueta="Otro pago" OnClick="() => transferenciaRegistrada = null" />
         </div>
     </section>
 }
@@ -67,7 +89,7 @@
 
             <div class="cobro-aplicacion">
                 <div class="campo">
-                    <label for="pag-monto">Monto del cheque</label>
+                    <label for="pag-monto">Monto a pagar</label>
                     <input id="pag-monto" type="number" step="0.01" min="0" @bind="montoCheque" />
                 </div>
                 <BotonIcono Icono="check-check" Tooltip="Aplicar el monto a las cuotas más antiguas" Etiqueta="Aplicar a las más antiguas" OnClick="AplicarAntiguas" />
@@ -132,7 +154,7 @@
                     }
                 </tbody>
                 <tfoot>
-                    <tr><td colspan="7">Total del cheque (@aplicar.Count cuota@(aplicar.Count == 1 ? "" : "s") de @FacturasMarcadas.Count factura@(FacturasMarcadas.Count == 1 ? "" : "s"))</td><td class="num"><strong>Q@(TotalCheque.ToString("N2"))</strong></td></tr>
+                    <tr><td colspan="7">Total a pagar (@aplicar.Count cuota@(aplicar.Count == 1 ? "" : "s") de @FacturasMarcadas.Count factura@(FacturasMarcadas.Count == 1 ? "" : "s"))</td><td class="num"><strong>Q@(TotalCheque.ToString("N2"))</strong></td></tr>
                 </tfoot>
             </table>
         }
@@ -140,58 +162,138 @@
 
     @if (aplicar.Count > 0)
     {
-        <section class="tarjeta" aria-labelledby="titulo-cheque">
-            <h2 id="titulo-cheque">3. Cheque</h2>
-            @if (chequeras.Count == 0)
+        <section class="tarjeta" aria-labelledby="titulo-forma-pago">
+            <h2 id="titulo-forma-pago">3. Forma de pago</h2>
+            <fieldset class="forma-pago-opciones">
+                <legend class="sr-only">Forma de pago</legend>
+                <label class="@(formaPago == "C" ? "activa" : "")"><input type="radio" name="forma-pago" value="C" checked="@(formaPago == "C")" @onchange="@(() => CambiarFormaPago("C"))" /> <Icono Nombre="banknote" Tamano="16" /> Cheque</label>
+                <label class="@(formaPago == "T" ? "activa" : "")"><input type="radio" name="forma-pago" value="T" checked="@(formaPago == "T")" @onchange="@(() => CambiarFormaPago("T"))" /> <Icono Nombre="landmark" Tamano="16" /> Transferencia</label>
+            </fieldset>
+            @if (formaPago == "C")
             {
-                <p class="mensaje-error" role="alert">No hay chequeras activas. Registre una chequera para la cuenta bancaria antes de pagar.</p>
+                @if (chequeras.Count == 0)
+                {
+                    <p class="mensaje-error" role="alert">No hay chequeras activas. Registre una chequera para la cuenta bancaria antes de pagar.</p>
+                }
+                <div class="panel-formulario panel-ancho">
+                    <div class="campo">
+                        <label for="pag-chequera">Chequera</label>
+                        <select id="pag-chequera" value="@cbcId" @onchange="CambiarChequera">
+                            @foreach (var c in chequeras)
+                            {
+                                <option value="@c.CbcId">@c.Descripcion</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label for="pag-cheque">Número de cheque</label>
+                        <input id="pag-cheque" @bind="numeroCheque" maxlength="16" inputmode="numeric" />
+                        <small class="texto-ayuda">Vacío = el siguiente de la chequera.</small>
+                    </div>
+                    <div class="campo">
+                        <label for="pag-motivo">Motivo</label>
+                        <select id="pag-motivo" @bind="bmpId">
+                            <option value="0">(Sin motivo)</option>
+                            @foreach (var m in motivos)
+                            {
+                                <option value="@m.BmpId">@m.BmpDescripcion</option>
+                            }
+                        </select>
+                    </div>
+                    @CampoConcepto
+                </div>
+                <p class="texto-tenue">
+                    A nombre de <strong>@proveedor.Nombre</strong> por <strong>Q@(TotalCheque.ToString("N2"))</strong>:
+                    @string.Join("; ", FacturasMarcadas.Select(f => $"{f.Documento} Q{f.Monto:N2}")).
+                </p>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Emitir el cheque" Etiqueta="@($"Emitir cheque Q{TotalCheque:N2}")" Variante="primario"
+                                Deshabilitado="chequeras.Count == 0 || guardando" OnClick="EmitirAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="Limpiar" />
+                </div>
             }
-            <div class="panel-formulario panel-ancho">
-                <div class="campo">
-                    <label for="pag-chequera">Chequera</label>
-                    <select id="pag-chequera" value="@cbcId" @onchange="CambiarChequera">
-                        @foreach (var c in chequeras)
-                        {
-                            <option value="@c.CbcId">@c.Descripcion</option>
-                        }
-                    </select>
+            else
+            {
+                <p class="texto-ayuda">Registre una transferencia que ya hizo desde la banca electrónica: la cuenta de la empresa de la que salió, el número de autorización del banco y el comprobante (PDF o imagen).</p>
+                @if (cuentasBancarias.Count == 0)
+                {
+                    <p class="mensaje-error" role="alert">No hay cuentas bancarias activas. Regístrela en Bancos › Cuentas bancarias antes de pagar.</p>
+                }
+                <div class="fel-formulario formulario-transferencia">
+                    <div class="campo">
+                        <label for="trf-cuenta">Cuenta de la empresa</label>
+                        <select id="trf-cuenta" @bind="transferencia.BcbId">
+                            @foreach (var c in cuentasBancarias)
+                            {
+                                <option value="@c.BcbId">@c.Nombre@(string.IsNullOrWhiteSpace(c.Descripcion) ? "" : $" · {c.Descripcion}")</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label for="trf-fecha">Fecha de la transferencia</label>
+                        <input id="trf-fecha" type="date" max="@DateTime.Today.ToString("yyyy-MM-dd")" @bind="transferencia.Fecha" />
+                    </div>
+                    <div class="campo">
+                        <label for="trf-autorizacion">Número de autorización</label>
+                        <input id="trf-autorizacion" maxlength="40" autocomplete="off" @bind="transferencia.Autorizacion" @bind:event="oninput" aria-describedby="trf-autorizacion-ayuda" />
+                        <small id="trf-autorizacion-ayuda" class="texto-ayuda">El que muestra el comprobante del banco.</small>
+                    </div>
+                    <div class="campo">
+                        <label for="trf-referencia">Referencia (opcional)</label>
+                        <input id="trf-referencia" maxlength="60" @bind="transferencia.Referencia" />
+                    </div>
+                    <div class="campo">
+                        <label for="trf-banco">Banco del proveedor</label>
+                        <select id="trf-banco" @bind="transferencia.GefId">
+                            <option value="0">(Elija el banco)</option>
+                            @foreach (var b in bancos)
+                            {
+                                <option value="@b.GefId">@b.GefDescripcion</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label for="trf-tipo">Tipo de cuenta</label>
+                        <select id="trf-tipo" @bind="transferencia.TipoCuenta">
+                            <option value="M">Monetaria</option>
+                            <option value="A">Ahorro</option>
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label for="trf-cuenta-destino">Cuenta del proveedor</label>
+                        <input id="trf-cuenta-destino" maxlength="30" inputmode="numeric" @bind="transferencia.Cuenta" aria-describedby="trf-destino-ayuda" />
+                        <small id="trf-destino-ayuda" class="texto-ayuda">@(destinoPropuesto ? "Tomada de Proveedores › Pago; cámbiela si transfirió a otra." : "El proveedor no tiene cuenta registrada; escriba a la que transfirió.")</small>
+                    </div>
+                    @CampoConcepto
+                    <div class="campo campo-ancho">
+                        <span class="etiqueta-campo" id="trf-comprobante-etiqueta">Comprobante del banco</span>
+                        <div class="comprobante-adjunto">
+                            <label class="boton-icono boton-icono-con-etiqueta" title="PDF o imagen de hasta 5 MB">
+                                <Icono Nombre="upload" Tamano="16" /><span class="boton-icono-etiqueta">@(comprobante is null ? "Adjuntar comprobante" : "Cambiar comprobante")</span>
+                                <InputFile id="trf-comprobante" OnChange="LeerComprobanteAsync" accept="application/pdf,image/png,image/jpeg,image/webp,image/gif" class="oculto" aria-labelledby="trf-comprobante-etiqueta" />
+                            </label>
+                            @if (comprobante is not null)
+                            {
+                                <span class="comprobante-nombre"><Icono Nombre="file-text" Tamano="16" /> @comprobante.Value.Nombre <span class="texto-tenue">(@TamanoTexto(comprobante.Value.Contenido.Length))</span></span>
+                                <button type="button" class="boton-texto" @onclick="() => comprobante = null">Quitar</button>
+                            }
+                            else
+                            {
+                                <span class="texto-tenue">PDF o imagen (JPG, PNG, WEBP o GIF), hasta 5 MB.</span>
+                            }
+                        </div>
+                    </div>
                 </div>
-                <div class="campo">
-                    <label for="pag-cheque">Número de cheque</label>
-                    <input id="pag-cheque" @bind="numeroCheque" maxlength="16" inputmode="numeric" />
-                    <small class="texto-ayuda">Vacío = el siguiente de la chequera.</small>
+                <p class="texto-tenue">
+                    A <strong>@proveedor.Nombre</strong> por <strong>Q@(TotalCheque.ToString("N2"))</strong>:
+                    @string.Join("; ", FacturasMarcadas.Select(f => $"{f.Documento} Q{f.Monto:N2}")).
+                </p>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Registrar la transferencia y su póliza" Etiqueta="@($"Registrar transferencia Q{TotalCheque:N2}")" Variante="primario"
+                                Deshabilitado="cuentasBancarias.Count == 0 || guardando" OnClick="RegistrarTransferenciaAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="Limpiar" />
                 </div>
-                <div class="campo">
-                    <label for="pag-motivo">Motivo</label>
-                    <select id="pag-motivo" @bind="bmpId">
-                        <option value="0">(Sin motivo)</option>
-                        @foreach (var m in motivos)
-                        {
-                            <option value="@m.BmpId">@m.BmpDescripcion</option>
-                        }
-                    </select>
-                </div>
-                <div class="campo campo-ancho">
-                    <label for="pag-concepto">Concepto</label>
-                    <input id="pag-concepto" maxlength="250" value="@concepto" @oninput="e => { concepto = e.Value?.ToString() ?? string.Empty; conceptoEditado = true; }" />
-                    <small class="texto-ayuda">
-                        Se arma con las facturas que paga; puede editarlo.
-                        @if (conceptoEditado)
-                        {
-                            <button type="button" class="boton-texto" @onclick="RestablecerConcepto">Volver al automático</button>
-                        }
-                    </small>
-                </div>
-            </div>
-            <p class="texto-tenue">
-                A nombre de <strong>@proveedor.Nombre</strong> por <strong>Q@(TotalCheque.ToString("N2"))</strong>:
-                @string.Join("; ", FacturasMarcadas.Select(f => $"{f.Documento} Q{f.Monto:N2}")).
-            </p>
-            <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Emitir el cheque" Etiqueta="@($"Emitir cheque Q{TotalCheque:N2}")" Variante="primario"
-                            Deshabilitado="chequeras.Count == 0 || guardando" OnClick="EmitirAsync" />
-                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="Limpiar" />
-            </div>
+            }
         </section>
     }
 }
@@ -289,6 +391,104 @@
     }
 </section>
 
+<section class="tarjeta" aria-labelledby="titulo-transferencias">
+    <div class="maestro-detalle-encabezado">
+        <h2 id="titulo-transferencias">Transferencias registradas@(proveedor is null ? "" : $" a {proveedor.Nombre}")</h2>
+        <span class="texto-tenue">@transferencias.Count(t => t.Estado == "A") vigente(s) · Q@(transferencias.Where(t => t.Estado == "A").Sum(t => t.Total).ToString("N2"))</span>
+    </div>
+    @if (transferencias.Count == 0)
+    {
+        <p class="estado-vacio">No hay transferencias registradas@(proveedor is null ? " en los últimos 30 días" : " a este proveedor").</p>
+    }
+    else
+    {
+        <div class="tabla-desplazable" tabindex="0" role="region" aria-labelledby="titulo-transferencias">
+            <table class="tabla-datos">
+                <thead>
+                    <tr><th class="col-fecha">Fecha</th><th>Transferencia</th><th>Proveedor y cuenta destino</th><th>Documentos</th><th class="num">Valor</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var t in transferencias)
+                    {
+                        <tr class="@(t.Estado == "N" ? "fila-anulada" : "")">
+                            <td class="col-fecha">@t.Fecha.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                @t.Numero<br /><small>Aut. @t.Autorizacion</small><br /><small class="texto-tenue">Desde @t.CuentaOrigen</small>
+                                @if (!string.IsNullOrWhiteSpace(t.Referencia))
+                                {
+                                    <br /><small class="texto-tenue">Ref. @t.Referencia</small>
+                                }
+                            </td>
+                            <td>@t.Proveedor<br /><small class="texto-tenue">@t.CuentaDestinoTexto</small></td>
+                            <td title="@t.Concepto">@t.Documentos</td>
+                            <td class="num">@t.Total.ToString("N2")</td>
+                            <td class="col-estado">
+                                <span class="estado-badge @(t.Estado == "N" ? "estado-badge-inactivo" : "estado-badge-activo")" title="@t.MotivoAnulacion">@t.EstadoTexto</span>
+                            </td>
+                            <td class="col-acciones">
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="list" Tooltip="@(detalleBltId == t.BltId ? "Ocultar detalle" : "Ver facturas y cuotas pagadas")" OnClick="() => VerDetalleTransferenciaAsync(t.BltId)" />
+                                    @if (t.ComprobanteNombre is not null)
+                                    {
+                                        <a class="boton-icono" href="@UrlComprobante(t.BltId)" target="_blank" rel="noopener" title="@($"Ver el comprobante del banco ({t.ComprobanteNombre})")" aria-label="@($"Ver el comprobante de la transferencia {t.Numero}")"><Icono Nombre="file-text" Tamano="16" /></a>
+                                    }
+                                    @if (t.Estado == "A")
+                                    {
+                                        <BotonIcono Icono="ban" Tooltip="Anular transferencia" Variante="peligro" OnClick="() => IniciarAnulacionTransferencia(t)" />
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                        @if (detalleBltId == t.BltId)
+                        {
+                            <tr class="fila-detalle-cheque">
+                                <td colspan="7">
+                                    <table class="tabla-datos tabla-detalle-cheque">
+                                        <thead>
+                                            <tr><th>Documento</th><th class="num">Cuota</th><th class="col-fecha">Vencía</th><th class="num">Valor cuota</th><th class="num">Pagado con la transferencia</th><th>Aplicación</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var d in detalleTransferencia)
+                                            {
+                                                <tr>
+                                                    <td>@d.Documento</td>
+                                                    <td class="num">@(d.Cuota?.ToString() ?? "—")</td>
+                                                    <td class="col-fecha">@(d.Vencimiento?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                                    <td class="num">@(d.ValorCuota?.ToString("N2") ?? "—")</td>
+                                                    <td class="num">@d.Monto.ToString("N2")</td>
+                                                    <td>@d.Aplicacion</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                        <tfoot>
+                                            <tr><td colspan="4">Total</td><td class="num"><strong>@detalleTransferencia.Sum(d => d.Monto).ToString("N2")</strong></td><td></td></tr>
+                                        </tfoot>
+                                    </table>
+                                </td>
+                            </tr>
+                        }
+                        @if (anulandoTransferencia?.BltId == t.BltId)
+                        {
+                            <tr class="fila-edicion-tabla">
+                                <td colspan="7">
+                                    <div class="anulacion-form">
+                                        <label for="motivo-transferencia">Motivo de la anulación de la transferencia @t.Numero</label>
+                                        <input id="motivo-transferencia" maxlength="200" placeholder="Ej.: registrada al proveedor equivocado" @bind="motivoAnulacionTransferencia" @bind:event="oninput" />
+                                        <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Anular transferencia" Variante="peligro"
+                                                    Deshabilitado="motivoAnulacionTransferencia.Trim().Length < 5 || guardando" OnClick="AnularTransferenciaAsync" />
+                                        <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => anulandoTransferencia = null" />
+                                        <small class="texto-ayuda">El saldo vuelve a cada cuota que pagó y la póliza se anula. Solo anula el registro: si el dinero ya salió del banco, la devolución se gestiona con el banco o el proveedor.</small>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
 @code {
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
@@ -328,6 +528,38 @@
     private string? mensaje;
     private bool esMensajeError;
 
+    // Forma de pago: C cheque, T transferencia ya hecha.
+    private string formaPago = "C";
+    private IReadOnlyList<Erp.Data.Bancos.CuentaBancaria> cuentasBancarias = Array.Empty<Erp.Data.Bancos.CuentaBancaria>();
+    private IReadOnlyList<EntidadFinanciera> bancos = Array.Empty<EntidadFinanciera>();
+    private TransferenciaProveedorCaptura transferencia = new();
+    private bool destinoPropuesto;
+    private (string Nombre, string Tipo, byte[] Contenido)? comprobante;
+    private IReadOnlyList<TransferenciaResumen> transferencias = Array.Empty<TransferenciaResumen>();
+    private int? detalleBltId;
+    private IReadOnlyList<ChequeDetalleLinea> detalleTransferencia = Array.Empty<ChequeDetalleLinea>();
+    private TransferenciaResumen? anulandoTransferencia;
+    private string motivoAnulacionTransferencia = "";
+    private (int BltId, string Numero, decimal Monto, string Proveedor, string Autorizacion, string Concepto)? transferenciaRegistrada;
+
+    private const long TamanoMaximoComprobante = 5 * 1024 * 1024;
+
+    // Campo de concepto, común al cheque y a la transferencia.
+    private RenderFragment CampoConcepto => __builder =>
+    {
+        <div class="campo campo-ancho">
+            <label for="pag-concepto">Concepto</label>
+            <input id="pag-concepto" maxlength="250" value="@concepto" @oninput="e => { concepto = e.Value?.ToString() ?? string.Empty; conceptoEditado = true; }" />
+            <small class="texto-ayuda">
+                Se arma con las facturas que paga; puede editarlo.
+                @if (conceptoEditado)
+                {
+                    <button type="button" class="boton-texto" @onclick="RestablecerConcepto">Volver al automático</button>
+                }
+            </small>
+        </div>
+    };
+
     private IEnumerable<CuotaPendienteProveedor> Visibles => encFiltro is null ? cuotas : cuotas.Where(c => c.EncId == encFiltro);
     private decimal TotalCheque => aplicar.Values.Sum();
 
@@ -350,6 +582,8 @@
             chequeras = await CuentasRepository.ConsultarChequerasAsync();
             motivos = await CuentasRepository.ConsultarMotivosPagoAsync();
             cbcId = chequeras.FirstOrDefault()?.CbcId ?? 0;
+            cuentasBancarias = await BancosRepository.ConsultarCuentasAsync(soloActivas: true);
+            bancos = await CajaRepository.ConsultarEntidadesFinancierasAsync();
             numeroCheque = SiguienteNumero();
             bmpId = motivos.FirstOrDefault(m => m.BmpDescripcion.Contains("proveedor", StringComparison.OrdinalIgnoreCase))?.BmpId ?? 0;
 
@@ -369,6 +603,7 @@
                 }
             }
             await CargarChequesAsync();
+            await CargarTransferenciasAsync();
         }
         catch (Exception ex) { MostrarError(ex); }
     }
@@ -403,7 +638,185 @@
         Limpiar();
         cuotas = Array.Empty<CuotaPendienteProveedor>();
         if (proveedor is not null) await CargarCuotasAsync();
+        await PrepararTransferenciaAsync();
         await CargarChequesAsync();
+        await CargarTransferenciasAsync();
+    }
+
+    // Propone la cuenta de la empresa y la cuenta del proveedor (Proveedores › Pago).
+    private async Task PrepararTransferenciaAsync()
+    {
+        transferencia = new TransferenciaProveedorCaptura
+        {
+            PrvId = proveedor?.Id ?? 0,
+            BcbId = cuentasBancarias.FirstOrDefault()?.BcbId ?? 0,
+            Fecha = DateTime.Today
+        };
+        comprobante = null;
+        destinoPropuesto = false;
+        if (proveedor is null) return;
+        try
+        {
+            var pago = await PagosRepository.ConsultarProveedorPagoAsync(proveedor.Id);
+            if (pago?.GefId is int gefId && !string.IsNullOrWhiteSpace(pago.NumeroCuenta))
+            {
+                transferencia.GefId = gefId;
+                transferencia.TipoCuenta = pago.TipoCuenta == "A" ? "A" : "M";
+                transferencia.Cuenta = pago.NumeroCuenta;
+                destinoPropuesto = true;
+                if (pago.FormaPago == "T") formaPago = "T";
+            }
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    // Sin proveedor elegido, las transferencias de los últimos 30 días.
+    private async Task CargarTransferenciasAsync()
+    {
+        try
+        {
+            transferencias = proveedor is null
+                ? await CuentasRepository.ConsultarTransferenciasAsync(null, DateTime.Today.AddDays(-30), null)
+                : await CuentasRepository.ConsultarTransferenciasAsync(proveedor.Id, null, null);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void CambiarFormaPago(string forma)
+    {
+        formaPago = forma;
+        mensaje = null;
+    }
+
+    private static string UrlComprobante(int bltId) => $"/cxp/transferencias/{bltId}/comprobante";
+
+    private static string TamanoTexto(long bytes) =>
+        bytes < 1024 * 1024 ? $"{Math.Max(1, bytes / 1024)} KB" : $"{bytes / (1024d * 1024):N1} MB";
+
+    // El tipo se toma del contenido del archivo, no de lo que dice el navegador.
+    private static string? TipoComprobante(byte[] datos)
+    {
+        bool Empieza(params byte[] firma) => datos.Length >= firma.Length && datos.AsSpan(0, firma.Length).SequenceEqual(firma);
+        if (Empieza(0x25, 0x50, 0x44, 0x46)) return "application/pdf";
+        if (Empieza(0x89, 0x50, 0x4E, 0x47)) return "image/png";
+        if (Empieza(0xFF, 0xD8, 0xFF)) return "image/jpeg";
+        if (Empieza(0x47, 0x49, 0x46, 0x38)) return "image/gif";
+        if (datos.Length >= 12 && Empieza(0x52, 0x49, 0x46, 0x46) && datos.AsSpan(8, 4).SequenceEqual("WEBP"u8)) return "image/webp";
+        return null;
+    }
+
+    private async Task LeerComprobanteAsync(InputFileChangeEventArgs e)
+    {
+        mensaje = null;
+        if (e.File.Size > TamanoMaximoComprobante)
+        {
+            MostrarAviso($"El comprobante pesa {TamanoTexto(e.File.Size)}; el máximo es 5 MB.");
+            return;
+        }
+        try
+        {
+            using var memoria = new MemoryStream();
+            await e.File.OpenReadStream(TamanoMaximoComprobante).CopyToAsync(memoria);
+            var datos = memoria.ToArray();
+            var tipo = TipoComprobante(datos);
+            if (tipo is null)
+            {
+                MostrarAviso("El comprobante debe ser un PDF o una imagen (JPG, PNG, WEBP o GIF).");
+                return;
+            }
+            comprobante = (Path.GetFileName(e.File.Name), tipo, datos);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task RegistrarTransferenciaAsync()
+    {
+        if (proveedor is null || aplicar.Count == 0) return;
+        var excedida = cuotas.FirstOrDefault(c => aplicar.TryGetValue(c.PpgId, out var m) && (m <= 0 || m > c.Saldo));
+        if (excedida is not null)
+        {
+            MostrarAviso($"El monto de la cuota {excedida.Cuota} de {excedida.Documento} debe ser mayor a cero y no pasar de su saldo (Q{excedida.Saldo:N2}).");
+            return;
+        }
+        if (transferencia.BcbId == 0) { MostrarAviso("Elija la cuenta de la empresa de la que salió la transferencia."); return; }
+        if (transferencia.Fecha.Date > DateTime.Today) { MostrarAviso("La fecha de la transferencia no puede ser futura."); return; }
+        if (string.IsNullOrWhiteSpace(transferencia.Autorizacion)) { MostrarAviso("Escriba el número de autorización que dio el banco."); return; }
+        if (transferencia.GefId == 0 || string.IsNullOrWhiteSpace(transferencia.Cuenta))
+        {
+            MostrarAviso("Indique el banco y la cuenta del proveedor que recibió la transferencia.");
+            return;
+        }
+        if (comprobante is null) { MostrarAviso("Adjunte el comprobante del banco de la transferencia."); return; }
+        guardando = true;
+        try
+        {
+            var total = TotalCheque;
+            var textoConcepto = string.IsNullOrWhiteSpace(concepto) ? ConceptoAutomatico() : concepto.Trim();
+            transferencia.PrvId = proveedor.Id;
+            transferencia.Concepto = textoConcepto;
+            transferencia.Autorizacion = transferencia.Autorizacion.Trim();
+            transferencia.ComprobanteNombre = comprobante.Value.Nombre;
+            transferencia.ComprobanteTipo = comprobante.Value.Tipo;
+            transferencia.Comprobante = comprobante.Value.Contenido;
+            var pago = aplicar.Select(a => new CuotaPagoProveedor(a.Key, a.Value)).ToList();
+            var (bltId, numero) = await CuentasRepository.RegistrarTransferenciaAsync(transferencia, pago, await ObtenerUsuIdActualAsync());
+            transferenciaRegistrada = (bltId, numero, total, proveedor.Nombre, transferencia.Autorizacion, textoConcepto);
+            chequeEmitido = null;
+            encFiltro = null;
+            Limpiar();
+            await PrepararTransferenciaAsync();
+            await CargarCuotasAsync();
+            await CargarTransferenciasAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task VerDetalleTransferenciaAsync(int bltId)
+    {
+        if (detalleBltId == bltId)
+        {
+            detalleBltId = null;
+            return;
+        }
+        try
+        {
+            detalleTransferencia = await CuentasRepository.ConsultarTransferenciaDetalleAsync(bltId);
+            detalleBltId = bltId;
+            if (transferencias.All(t => t.BltId != bltId)) await CargarTransferenciasAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void IniciarAnulacionTransferencia(TransferenciaResumen t)
+    {
+        anulandoTransferencia = t;
+        motivoAnulacionTransferencia = "";
+        mensaje = null;
+    }
+
+    private async Task AnularTransferenciaAsync()
+    {
+        if (anulandoTransferencia is null) return;
+        guardando = true;
+        try
+        {
+            var numero = anulandoTransferencia.Numero;
+            await CuentasRepository.AnularTransferenciaAsync(anulandoTransferencia.BltId, motivoAnulacionTransferencia.Trim(), await ObtenerUsuIdActualAsync());
+            mensaje = $"Transferencia {numero} anulada. El saldo volvió a las cuotas que pagó y la póliza quedó anulada.";
+            esMensajeError = false;
+            anulandoTransferencia = null;
+            detalleBltId = null;
+            if (transferenciaRegistrada?.Numero == numero) transferenciaRegistrada = null;
+            await CargarTransferenciasAsync();
+            if (proveedor is not null)
+            {
+                aplicar.Clear();
+                await CargarCuotasAsync();
+            }
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
     }
 
     private async Task CargarCuotasAsync()
@@ -460,18 +873,18 @@
         concepto = ConceptoAutomatico();
     }
 
-    // Reparte el monto del cheque de la cuota más antigua a la más reciente.
+    // Reparte el monto a pagar de la cuota más antigua a la más reciente.
     private void AplicarAntiguas()
     {
         if (montoCheque <= 0)
         {
-            MostrarAviso("Indique el monto del cheque.");
+            MostrarAviso("Indique el monto a pagar.");
             return;
         }
         var saldo = Visibles.Sum(c => c.Saldo);
         if (montoCheque > saldo)
         {
-            MostrarAviso($"El monto del cheque (Q{montoCheque:N2}) supera el saldo {(encFiltro is null ? "del proveedor" : "de la factura")} (Q{saldo:N2}).");
+            MostrarAviso($"El monto a pagar (Q{montoCheque:N2}) supera el saldo {(encFiltro is null ? "del proveedor" : "de la factura")} (Q{saldo:N2}).");
             return;
         }
         aplicar.Clear();
@@ -535,6 +948,7 @@
                 string.IsNullOrWhiteSpace(numeroCheque) ? null : numeroCheque.Trim(), bmpId == 0 ? null : bmpId, textoConcepto, pago,
                 await ObtenerUsuIdActualAsync());
             chequeEmitido = (bceId, numero, total, proveedor.Nombre, textoConcepto);
+            transferenciaRegistrada = null;
             encFiltro = null;
             Limpiar();
             chequeras = await CuentasRepository.ConsultarChequerasAsync();

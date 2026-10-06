@@ -182,14 +182,36 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         <h3>Correo saliente (SMTP)</h3>
         @if (correo is not null && correo.CiaId == seleccionada.CiaId)
         {
-            <p class="texto-ayuda">El servidor de correo de la empresa con el que se envían los estados de cuenta a los clientes. En Microsoft 365 use smtp.office365.com, puerto 587 y STARTTLS; en Gmail, smtp.gmail.com, 587 y una contraseña de aplicación.</p>
+            <p class="texto-ayuda">Salida del correo con el que se envían los estados de cuenta a los clientes. Elija el proveedor: el servidor, el puerto y la conexión segura se llenan solos.</p>
             <div class="panel-formulario panel-ancho">
-                <div class="campo"><label for="cia-smtp-servidor">Servidor</label><input id="cia-smtp-servidor" maxlength="120" placeholder="smtp.office365.com" @bind="correo.Servidor" /></div>
-                <div class="campo"><label for="cia-smtp-puerto">Puerto</label><input id="cia-smtp-puerto" type="number" min="1" max="65535" @bind="correo.Puerto" /></div>
-                <div class="campo campo-checkbox"><label><input type="checkbox" @bind="correo.Ssl" /> Conexión segura (STARTTLS)</label></div>
+                <div class="campo">
+                    <label for="cia-smtp-proveedor">Tipo de salida</label>
+                    <select id="cia-smtp-proveedor" value="@correo.Proveedor" @onchange="CambiarProveedorCorreo">
+                        @foreach (var p in Erp.Data.Correo.CorreoConfiguracion.Proveedores)
+                        {
+                            <option value="@p.Codigo">@p.Nombre</option>
+                        }
+                    </select>
+                </div>
+                @if (correo.EsCarpeta)
+                {
+                    <div class="campo campo-ancho"><label for="cia-smtp-servidor">Carpeta del servidor donde se guardan los correos (.eml)</label><input id="cia-smtp-servidor" maxlength="120" placeholder="/var/erp/correos" @bind="correo.Servidor" /></div>
+                }
+                else
+                {
+                    <div class="campo"><label for="cia-smtp-servidor">Servidor</label><input id="cia-smtp-servidor" maxlength="120" placeholder="smtp.empresa.com" @bind="correo.Servidor" readonly="@(correo.Proveedor != "SMTP")" /></div>
+                    <div class="campo"><label for="cia-smtp-puerto">Puerto</label><input id="cia-smtp-puerto" type="number" min="1" max="65535" @bind="correo.Puerto" /></div>
+                    <div class="campo campo-checkbox"><label><input type="checkbox" @bind="correo.Ssl" /> Conexión segura (STARTTLS)</label></div>
+                }
+                @if (AyudaProveedor(correo.Proveedor) is string ayuda)
+                {
+                    <p class="doc-nota campo-ancho" role="note"><Icono Nombre="info" Tamano="15" /><span>@ayuda</span></p>
+                }
+                @if (!correo.EsCarpeta)
+                {
                 <div class="campo"><label for="cia-smtp-usuario">Usuario</label><input id="cia-smtp-usuario" maxlength="120" autocomplete="off" @bind="correo.Usuario" /></div>
                 <div class="campo">
-                    <label for="cia-smtp-clave">Contraseña</label>
+                    <label for="cia-smtp-clave">@(correo.Proveedor is "GMAIL" or "YAHOO" ? "Contraseña de aplicación" : "Contraseña")</label>
                     <input id="cia-smtp-clave" type="password" maxlength="200" autocomplete="new-password"
                            placeholder="@(string.IsNullOrEmpty(correo.ClaveCifrada) ? "" : "•••••• (guardada; escriba para cambiarla)")" @bind="claveNueva" />
                     @if (!string.IsNullOrEmpty(correo.ClaveCifrada))
@@ -197,6 +219,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
                         <label class="campo-checkbox"><input type="checkbox" @bind="borrarClave" /> Quitar la contraseña guardada</label>
                     }
                 </div>
+                }
                 <div class="campo"><label for="cia-smtp-remitente">Correo del remitente</label><input id="cia-smtp-remitente" type="email" maxlength="120" placeholder="cobros@empresa.com" @bind="correo.Remitente" /></div>
                 <div class="campo"><label for="cia-smtp-nombre">Nombre del remitente</label><input id="cia-smtp-nombre" maxlength="120" placeholder="@seleccionada.CiaNombreComercial" @bind="correo.RemitenteNombre" /></div>
                 <div class="campo campo-ancho"><label for="cia-smtp-copia">Enviar copia de cada correo a</label><input id="cia-smtp-copia" maxlength="250" placeholder="Opcional; varios separados por coma" @bind="correo.Copia" /></div>
@@ -345,6 +368,29 @@ else if (pestanaActiva == "editar")
         borrarClave = false;
         correoPrueba = correo.Remitente ?? "";
     }
+
+    // Al elegir un proveedor conocido se llenan servidor, puerto y STARTTLS.
+    private void CambiarProveedorCorreo(ChangeEventArgs e)
+    {
+        if (correo is null) return;
+        var codigo = e.Value?.ToString() ?? "SMTP";
+        var anterior = correo.Proveedor;
+        correo.Proveedor = codigo;
+        var p = Erp.Data.Correo.CorreoConfiguracion.Proveedores.First(x => x.Codigo == codigo);
+        if (p.Servidor is not null) { correo.Servidor = p.Servidor; correo.Puerto = p.Puerto; correo.Ssl = p.Ssl; }
+        else if (anterior != "SMTP" && anterior != "CARPETA" || codigo == "CARPETA" || anterior == "CARPETA") { correo.Servidor = null; correo.Puerto = 587; correo.Ssl = true; }
+        if (codigo is "GMAIL" or "OUTLOOK" or "YAHOO" && string.IsNullOrWhiteSpace(correo.Usuario)) correo.Usuario = correo.Remitente;
+    }
+
+    private static string? AyudaProveedor(string proveedor) => proveedor switch
+    {
+        "GMAIL" => "Gmail pide una contraseña de aplicación, no la contraseña normal: active la verificación en dos pasos en la cuenta de Google y cree la contraseña en myaccount.google.com › Seguridad › Contraseñas de aplicaciones. El correo del remitente debe ser la misma cuenta (o un alias verificado en Gmail).",
+        "OUTLOOK" => "Outlook.com y Hotmail: el usuario es la dirección completa. Si la cuenta tiene verificación en dos pasos, use una contraseña de aplicación.",
+        "OFFICE365" => "Microsoft 365: el administrador debe tener habilitado «SMTP autenticado» para el buzón que envía.",
+        "YAHOO" => "Yahoo pide una contraseña de aplicación (Seguridad de la cuenta › Generar contraseña de aplicación).",
+        "CARPETA" => "No se envía nada: cada correo queda como archivo .eml en esa carpeta del servidor de la aplicación (se abre con Outlook o Thunderbird). Útil para pruebas.",
+        _ => null
+    };
 
     private async Task GuardarCorreoAsync()
     {

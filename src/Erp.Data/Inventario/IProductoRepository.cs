@@ -9,4 +9,5 @@ public interface IProductoRepository
 	Task<(Producto? Producto, IReadOnlyList<ProductoExistenciaBodega> Existencias)> ConsultarPorIdAsync(int proId);
 	Task<IReadOnlyList<ProductoTipo>> ConsultarTiposAsync();
 	Task<IReadOnlyList<ProductoExistenciaBodega>> ConsultarExistenciasAsync(int? proId, int? bodId);
+	Task<Kardex?> ConsultarKardexAsync(int proId, int? bodId, DateTime? desde, DateTime? hasta);
 }

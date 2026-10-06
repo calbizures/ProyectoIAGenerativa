@@ -7,7 +7,8 @@ using Microsoft.AspNetCore.DataProtection;
 
 namespace Erp.Web.Correo;
 
-// Envío de correos con el servidor SMTP de la compañía (STARTTLS en el 587).
+// Envío de correos con el servidor SMTP de la compañía (STARTTLS en el 587;
+// por defecto Gmail) o, con la salida CARPETA, como archivos .eml sin enviar.
 // La contraseña se guarda cifrada con Data Protection: si las llaves del
 // servidor cambian, hay que volver a escribirla en Compañías.
 public sealed class CorreoServicio(ICorreoRepository correos, IDataProtectionProvider proteccion, ILogger<CorreoServicio> bitacora)
@@ -63,18 +64,28 @@ public sealed class CorreoServicio(ICorreoRepository correos, IDataProtectionPro
 			if (adjunto is not null)
 				mensaje.Attachments.Add(new Attachment(new MemoryStream(adjunto.Contenido), adjunto.Nombre, adjunto.Tipo));
 
-			using var cliente = new SmtpClient(config.Servidor, config.Puerto)
+			if (config.EsCarpeta)
 			{
-				EnableSsl = config.Ssl,
-				DeliveryMethod = SmtpDeliveryMethod.Network,
-				Timeout = 30000,
-				UseDefaultCredentials = false
-			};
-			if (!string.IsNullOrWhiteSpace(config.Usuario))
-				cliente.Credentials = new NetworkCredential(config.Usuario, clave ?? "");
-			await cliente.SendMailAsync(mensaje, cancelacion);
+				// Sin envío: el correo queda como archivo .eml en la carpeta.
+				Directory.CreateDirectory(config.Servidor!);
+				using var carpeta = new SmtpClient { DeliveryMethod = SmtpDeliveryMethod.SpecifiedPickupDirectory, PickupDirectoryLocation = config.Servidor };
+				await carpeta.SendMailAsync(mensaje, cancelacion);
+			}
+			else
+			{
+				using var cliente = new SmtpClient(config.Servidor, config.Puerto)
+				{
+					EnableSsl = config.Ssl,
+					DeliveryMethod = SmtpDeliveryMethod.Network,
+					Timeout = 30000,
+					UseDefaultCredentials = false
+				};
+				if (!string.IsNullOrWhiteSpace(config.Usuario))
+					cliente.Credentials = new NetworkCredential(config.Usuario, clave ?? "");
+				await cliente.SendMailAsync(mensaje, cancelacion);
+			}
 		}
-		catch (Exception ex) when (ex is SmtpException or InvalidOperationException or IOException or FormatException)
+		catch (Exception ex) when (ex is SmtpException or InvalidOperationException or IOException or FormatException or UnauthorizedAccessException)
 		{
 			bitacora.LogWarning(ex, "No se pudo enviar el correo {Tipo} a {Para}", tipo, para);
 			error = Traducir(ex);
@@ -83,7 +94,9 @@ public sealed class CorreoServicio(ICorreoRepository correos, IDataProtectionPro
 		await correos.RegistrarAsync(new CorreoBitacora(ciaId, tipo, referenciaId, string.Join(", ", destinos),
 			copias.Count == 0 ? null : string.Join(", ", copias), asunto, adjunto?.Nombre, error is null, error, usuId));
 		return error is null
-			? new Resultado(true, $"Correo enviado a {string.Join(", ", destinos)}{(copias.Count == 0 ? "" : $" con copia a {string.Join(", ", copias)}")}.")
+			? new Resultado(true, config.EsCarpeta
+				? $"Correo para {string.Join(", ", destinos)} guardado en la carpeta {config.Servidor} (no se envió)."
+				: $"Correo enviado a {string.Join(", ", destinos)}{(copias.Count == 0 ? "" : $" con copia a {string.Join(", ", copias)}")}.")
 			: new Resultado(false, error);
 	}
 
@@ -98,7 +111,8 @@ public sealed class CorreoServicio(ICorreoRepository correos, IDataProtectionPro
 		{
 			SmtpException { StatusCode: SmtpStatusCode.MustIssueStartTlsFirst } => "El servidor exige conexión segura: active STARTTLS.",
 			SmtpException s when s.Message.Contains("authentication", StringComparison.OrdinalIgnoreCase) || (int)s.StatusCode == 535
-				=> "El servidor rechazó el usuario o la contraseña del correo.",
+				=> "El servidor rechazó el usuario o la contraseña del correo. En Gmail use una contraseña de aplicación (no la contraseña normal de la cuenta).",
+			UnauthorizedAccessException => $"No se pudo guardar el correo en la carpeta: el servidor no tiene permiso de escritura ({raiz}).",
 			SmtpException { StatusCode: SmtpStatusCode.MailboxUnavailable or SmtpStatusCode.MailboxNameNotAllowed }
 				=> "El servidor no aceptó el correo de destino.",
 			SmtpException s when s.InnerException is System.Net.Sockets.SocketException or IOException

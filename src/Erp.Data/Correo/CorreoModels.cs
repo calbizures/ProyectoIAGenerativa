@@ -6,6 +6,9 @@ public sealed class CorreoConfiguracion
 {
 	public int CiaId { get; set; }
 	public string NombreComercial { get; set; } = "";
+	// GMAIL, OUTLOOK, OFFICE365, YAHOO, SMTP (otro servidor) o CARPETA (guarda
+	// el correo como .eml en la carpeta indicada en Servidor, sin enviarlo).
+	public string Proveedor { get; set; } = "GMAIL";
 	public string? Servidor { get; set; }
 	public int Puerto { get; set; } = 587;
 	public bool Ssl { get; set; } = true;
@@ -16,6 +19,18 @@ public sealed class CorreoConfiguracion
 	public string? Copia { get; set; }
 	public string? Telefono { get; set; }
 	public bool Configurado => !string.IsNullOrWhiteSpace(Servidor) && !string.IsNullOrWhiteSpace(Remitente);
+	public bool EsCarpeta => Proveedor == "CARPETA";
+
+	// Datos de conexión de cada proveedor conocido (servidor, puerto, STARTTLS).
+	public static readonly IReadOnlyList<(string Codigo, string Nombre, string? Servidor, int Puerto, bool Ssl)> Proveedores = new[]
+	{
+		("GMAIL", "Gmail", "smtp.gmail.com", 587, true),
+		("OUTLOOK", "Outlook.com / Hotmail", "smtp-mail.outlook.com", 587, true),
+		("OFFICE365", "Microsoft 365 (correo de la empresa)", "smtp.office365.com", 587, true),
+		("YAHOO", "Yahoo", "smtp.mail.yahoo.com", 587, true),
+		("SMTP", "Otro servidor SMTP", (string?)null, 587, true),
+		("CARPETA", "Guardar en una carpeta (no envía)", (string?)null, 0, false)
+	};
 }
 
 public sealed class CorreoEnviado

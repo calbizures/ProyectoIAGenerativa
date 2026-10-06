@@ -29,6 +29,7 @@ public sealed class AuthRepository(IDbConnectionFactory connectionFactory) : IAu
 
 			SELECT DISTINCT p.per_codigo
 			FROM dbo.sec_usuario_rol ur
+			INNER JOIN dbo.sec_rol r ON r.rol_id = ur.rol_id AND r.rol_estado = 'A'
 			INNER JOIN dbo.sec_rol_permiso rp ON rp.rol_id = ur.rol_id
 			INNER JOIN dbo.sec_permiso p ON p.per_id = rp.per_id
 			WHERE ur.usu_id = @usu_id AND p.per_estado = 'A';

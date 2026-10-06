@@ -1,6 +1,8 @@
 @* Antigüedad de saldos de clientes (CxC) o proveedores (CxP), por vencimiento
    de cada cuota a la fecha de corte. *@
 @using Erp.Data.Cuentas
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
 @inject ICuentasRepository CuentasRepository
 
 <div class="pagina-encabezado">
@@ -13,10 +15,21 @@
     <p class="mensaje-error" role="alert">@mensaje</p>
 }
 
+@if (alcance is { VerTodos: false })
+{
+    <p class="doc-nota" role="status">
+        <Icono Nombre="info" Tamano="15" />
+        <span>@(alcance.PveId is null
+            ? "Su usuario no está asociado a un vendedor: no tiene clientes para consultar. Pida que lo asocien en RRHH › Empleados o que le den el permiso CXC_ANTIGUEDAD_TODOS."
+            : $"Cartera de {alcance.Vendedor}: {alcance.Clientes.Count} cliente{(alcance.Clientes.Count == 1 ? "" : "s")} a los que les ha vendido, con todo su saldo.")</span>
+    </p>
+}
+
 <div class="barra-filtros">
     <label class="filtro-campo" for="ant-fecha">Fecha de corte <input id="ant-fecha" type="date" @bind="fechaCorte" /></label>
     <div class="filtro-tercero">
-        <SelectorTercero EsCliente="EsCliente" @bind-Seleccionado="tercero" />
+        <SelectorTercero EsCliente="EsCliente" Seleccionado="tercero" SeleccionadoChanged="CambiarTerceroAsync"
+                         Permitidos="@(EsCliente && alcance is { VerTodos: false } ? alcance.Clientes : null)" />
     </div>
     <BotonIcono Icono="search" Tooltip="Consultar" Etiqueta="Consultar" Variante="primario" OnClick="ConsultarAsync" />
     <span class="barra-herramientas-separador"></span>
@@ -42,6 +55,9 @@
 }
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
     [Parameter] public bool EsCliente { get; set; } = true;
 
     private static readonly IReadOnlyList<PestanaItem> VistasCliente = new[] { new PestanaItem("tercero", "Por cliente"), new PestanaItem("documento", "Por factura") };
@@ -55,20 +71,38 @@
     private List<AntiguedadGrupo> grupos = new();
     private decimal[] totales = new decimal[5];
     private string? mensaje;
+    private AntiguedadAlcance? alcance;
+    private int? usuId;
 
     private string Modulo => EsCliente ? "cxc" : "cxp";
     private string Filtros => $"fecha={fechaCorte:yyyy-MM-dd}{(tercero is null ? "" : $"&id={tercero.Id}")}";
     private string UrlExcel => $"reportes/{Modulo}/antiguedad.xlsx?{Filtros}";
     private string UrlImprimir => $"{Modulo}/antiguedad/imprimir?{Filtros}&vista={vista}";
 
-    protected override Task OnInitializedAsync() => ConsultarAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        if (EsCliente && AuthenticationStateTask is not null)
+        {
+            usuId = (await AuthenticationStateTask).User.ObtenerUsuId();
+            try { if (usuId is not null) alcance = await CuentasRepository.ConsultarAntiguedadAlcanceAsync(usuId.Value); }
+            catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+        }
+        await ConsultarAsync();
+    }
+
+    // Al elegir (o quitar) el cliente se consulta de una vez.
+    private async Task CambiarTerceroAsync(TerceroSeleccion? nuevo)
+    {
+        tercero = nuevo;
+        await ConsultarAsync();
+    }
 
     private async Task ConsultarAsync()
     {
         try
         {
             var filas = EsCliente
-                ? await CuentasRepository.ConsultarAntiguedadClientesAsync(fechaCorte, tercero?.Id)
+                ? await CuentasRepository.ConsultarAntiguedadClientesAsync(fechaCorte, tercero?.Id, usuId)
                 : await CuentasRepository.ConsultarAntiguedadProveedoresAsync(fechaCorte, tercero?.Id);
             grupos = AntiguedadGrupo.Agrupar(filas);
             totales = AntiguedadGrupo.Totales(grupos);

@@ -97,4 +97,16 @@ public sealed class ProductoRepository(IDbConnectionFactory connectionFactory) :
 			"dbo.paProductoExistenciaConsultar", parametros, commandType: CommandType.StoredProcedure);
 		return filas.ToList();
 	}
+
+	public async Task<Kardex?> ConsultarKardexAsync(int proId, int? bodId, DateTime? desde, DateTime? hasta)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		using var multi = await connection.QueryMultipleAsync("dbo.paInventarioKardexConsultar",
+			new { ProId = proId, BodId = bodId, Desde = desde?.Date, Hasta = hasta?.Date }, commandType: CommandType.StoredProcedure);
+		var kardex = await multi.ReadFirstOrDefaultAsync<Kardex>();
+		if (kardex is null) return null;
+		kardex.Movimientos = (await multi.ReadAsync<KardexMovimiento>()).ToList();
+		kardex.Resumen = await multi.ReadFirstAsync<KardexResumen>();
+		return kardex;
+	}
 }

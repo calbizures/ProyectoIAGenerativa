@@ -59,16 +59,17 @@ else
     {
         try
         {
-            int? sucId = null;
+            int? sucId = null, usuId = null;
             if (AuthenticationStateTask is not null)
             {
                 var estado = await AuthenticationStateTask;
                 usuario = estado.User.Identity?.Name ?? "";
                 sucId = estado.User.ObtenerSucId();
+                usuId = estado.User.ObtenerUsuId();
             }
             compania = (await GeneralRepository.ConsultarParametrosAsync(sucId)).CiaNombreComercial;
             var filas = EsCliente
-                ? await CuentasRepository.ConsultarAntiguedadClientesAsync(FechaCorte, TerceroId)
+                ? await CuentasRepository.ConsultarAntiguedadClientesAsync(FechaCorte, TerceroId, usuId ?? 0)
                 : await CuentasRepository.ConsultarAntiguedadProveedoresAsync(FechaCorte, TerceroId);
             grupos = AntiguedadGrupo.Agrupar(filas);
         }

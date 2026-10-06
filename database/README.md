@@ -80,21 +80,27 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 63_flujo_caja.sql                             -- flujo de caja real (operación, inversión, financiamiento) y proyectado
 64_conciliacion_bancaria.sql                  -- conciliación bancaria con el estado de cuenta del banco
 65_integridad_fase3.sql                       -- controles de integridad 14 a 19 (caja chica, activos, conciliación, balance)
+66_estandarizacion_nombres.sql                -- sp_/fn_ al estándar pa/fn PascalCase (solo cambia algo en bases anteriores)
+67_antiguedad_vendedor_permisos.sql           -- antigüedad de saldos por vendedor y mantenimiento de permisos
+68_caja_chica_vale_sin_proveedor.sql          -- caja chica: vale y recibo sin proveedor
+69_kardex_inventario.sql                      -- kardex de un producto con costo unitario, costo total y promedio
+70_correo_proveedores.sql                     -- correo saliente por Gmail por defecto y otros tipos de salida
+71_pago_proveedor_transferencia.sql           -- pago a proveedores por transferencia con autorización y comprobante
 ```
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `65` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `71` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `65` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `71` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `paCajaCerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `65`. Si vuelves a
-correr `12`, corre después `22` a `65` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `71`. Si vuelves a
+correr `12`, corre después `22` a `71` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -107,7 +113,9 @@ empleados con la validación del NIT y el DPI). Si vuelves a correr `34`,
 `36`, `42` o `51`, corre después el `58` (el estado de cuenta del
 proveedor, la anulación de cheques y de compras, el tablero de compras y el
 control 6 de integridad cuentan las transferencias). Si vuelves a correr
-`53`, corre después el `57` (orden de compra con dos firmas).
+`53`, corre después el `57` (orden de compra con dos firmas). Si vuelves a
+correr `58`, corre después el `71` (numeración de los lotes LT- aparte de
+las transferencias directas TR-, y la consulta de lotes solo con lotes).
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -1777,6 +1785,102 @@ póliza (14), saldo de la cuenta de caja chica distinto del fondo (15),
 depreciaciones sin póliza (16), depreciación mayor que el costo (17),
 movimientos conciliados cuya póliza se anuló después (18) y Balance General que
 no cuadra (19).
+
+## Fase 4
+
+Scripts `66` a `71` y cambios en la aplicación. En una base anterior se
+corren del `66` al `71`, en orden, junto con la aplicación de esta versión
+(se probó sobre una copia de la base de la Fase 3: quedan los mismos
+procedimientos, funciones, columnas, restricciones, índices y tipos que en
+una instalación nueva, y se pueden volver a correr).
+
+### Antigüedad de saldos de clientes por vendedor (`67`)
+
+- Quien tiene el permiso **`CXC_ANTIGUEDAD_TODOS`** (por defecto los roles
+  ADMIN, CONTADOR y CONTADOR_GENERAL) ve todos los clientes.
+- Los demás ven solo los clientes a los que **su vendedor** les ha vendido
+  (al menos una factura vigente), con **todo el saldo del cliente**, aunque
+  parte de él venga de facturas de otro vendedor. El vendedor se toma de
+  usuario → empleado → vendedor (RRHH › Empleados). Un usuario sin vendedor
+  no ve clientes y la pantalla le explica por qué.
+- **Decisión:** el rol CAJERO tiene `CXC_ADMIN` pero no
+  `CXC_ANTIGUEDAD_TODOS`, así que un cajero sin vendedor no ve la antigüedad
+  de nadie. Si los cajeros deben verla completa, asigne el permiso al rol en
+  Seguridad › Permisos.
+- La consulta se ejecuta en cuanto se elige el cliente (sin botón
+  Consultar). El Excel y la impresión aplican el mismo filtro.
+- `fnUsuarioTienePermiso` y el inicio de sesión ya no cuentan los permisos
+  de un rol inactivo.
+
+### Mantenimiento de permisos (`67`)
+
+Seguridad › Permisos: crear, modificar (el código no cambia), inactivar y
+eliminar (solo si ningún rol lo tiene y la aplicación no lo usa). El detalle
+muestra **dónde se usa** (las opciones del menú y las acciones dentro de las
+pantallas que lo piden, leídas de la misma aplicación), los **roles** que lo
+tienen (se asigna o se quita desde ahí) y los **usuarios** que lo tienen por
+alguno de sus roles.
+
+### Compra desde una orden de compra aprobada (aplicación)
+
+La orden aprobada por el jefe de bodega y el contador general se recibe como
+compra (ingreso a bodega, cuenta por pagar y póliza) desde Órdenes de compra
+o desde **Compras › Desde orden de compra** (permiso
+`COMPRAS_ORDEN_RECIBIR`): se elige la orden pendiente, se indica lo que
+llegó con la factura del proveedor y lo que falta queda pendiente.
+
+### Kardex (`69`)
+
+Inventario › Existencias, pestaña **Kardex**: todos los movimientos del
+producto en el orden en que el sistema los procesó (compras, facturas,
+inventario inicial, ajustes, traslados, devoluciones y la reversa de los
+documentos anulados), con cantidad, costo unitario y costo total por línea,
+y después de cada línea el saldo, el valor y el **costo unitario promedio**,
+más la existencia de la bodega. Filtra por bodega y fechas, se exporta a
+Excel y compara el resultado con lo guardado en el producto (cantidad,
+valor y promedio) para comprobar el cálculo.
+
+### Correo saliente por Gmail (`70`)
+
+- Por defecto la compañía envía con Gmail: `smtp.gmail.com`, puerto 587,
+  STARTTLS, usuario y remitente `calbizures@gmail.com`.
+- **Gmail exige una contraseña de aplicación** (la cuenta debe tener
+  verificación en dos pasos; se crea en la cuenta de Google › Seguridad ›
+  Contraseñas de aplicaciones). Se escribe en General › Compañías › Correo
+  saliente y queda cifrada; sin ella Gmail rechaza el envío.
+- Otros tipos de salida: Outlook.com, Microsoft 365, Yahoo, otro servidor
+  SMTP, o **carpeta** (no envía: guarda cada correo como `.eml`, para pruebas).
+- Las compañías que ya tenían correo configurado lo conservan.
+
+### Caja chica: vale y recibo sin proveedor (`68`)
+
+El proveedor es obligatorio solo en la factura y la factura de pequeño
+contribuyente; en el vale y el recibo es opcional ("Entregado a" / "Emitido
+por").
+
+### Pago a proveedores por transferencia (`71`)
+
+Cuentas por pagar › Pagos a proveedores, forma de pago **Transferencia**:
+registra una transferencia **ya hecha** en la banca electrónica.
+
+- Datos: cuenta de la empresa de la que salió, fecha (no futura ni anterior
+  a las compras que paga), **número de autorización** del banco
+  (obligatorio; no se repite en la misma cuenta mientras esté vigente),
+  referencia, banco, tipo y cuenta del proveedor que la recibió (se proponen
+  los de Proveedores › Pago) y el **comprobante del banco** adjunto (PDF o
+  imagen, hasta 5 MB; el tipo se comprueba por el contenido del archivo).
+- Las cuotas se eligen igual que con el cheque (monto aplicado a las más
+  antiguas, factura completa, todo el saldo o lo vencido).
+- Póliza: Debe Proveedores (una línea por factura) / Haber Bancos, con
+  origen `PAGO_TRANSFERENCIA`; correlativo propio `TR-000001`.
+- Se guarda como un lote de transferencias de tipo D (directa), así el
+  estado de cuenta del proveedor, el flujo de caja, la conciliación bancaria
+  y el control 6 de integridad la incluyen. El comprobante va en
+  `bco_transferencia_comprobante`.
+- En **Transferencias registradas** se ve el detalle de cuotas, se abre el
+  comprobante y se anula: el saldo vuelve a las cuotas y la póliza se anula
+  (el comprobante se conserva). Anular solo deshace el registro; la
+  devolución del dinero se gestiona con el banco o el proveedor.
 
 ## Módulos nuevos
 

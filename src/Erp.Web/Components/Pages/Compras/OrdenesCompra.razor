@@ -300,53 +300,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
 
         @if (mostrarRecepcion && o.PorRecibir)
         {
-            <section class="oc-recepcion" aria-labelledby="titulo-recepcion">
-                <h3 id="titulo-recepcion">Recibir con la factura del proveedor</h3>
-                <p class="texto-ayuda">Indique lo que llegó; lo que falte queda pendiente para otra recepción. Se graba una compra en @o.Bodega con su cuenta por pagar y su póliza.</p>
-                <div class="fel-formulario">
-                    <div class="campo"><label for="rec-fecha">Fecha de la factura</label><input id="rec-fecha" type="date" @bind="recepcion.Fecha" /></div>
-                    <div class="campo"><label for="rec-serie">Serie</label><input id="rec-serie" maxlength="32" @bind="recepcion.Serie" /></div>
-                    <div class="campo"><label for="rec-numero">Número</label><input id="rec-numero" maxlength="32" @bind="recepcion.NumeroDocumento" /></div>
-                    <div class="campo"><label for="rec-autorizacion">Autorización FEL</label><input id="rec-autorizacion" maxlength="64" @bind="recepcion.Autorizacion" /></div>
-                    <div class="campo">
-                        <label for="rec-condicion">Condición de pago</label>
-                        <select id="rec-condicion" @bind="condicionRecepcion">
-                            <option value="contado">Contado</option>
-                            <option value="credito">Crédito</option>
-                        </select>
-                    </div>
-                    @if (condicionRecepcion == "credito")
-                    {
-                        <div class="campo"><label for="rec-cuotas">Cuotas</label><input id="rec-cuotas" type="number" min="1" @bind="recepcion.NumeroCuotas" /></div>
-                        <div class="campo"><label for="rec-primer">Primer pago</label><input id="rec-primer" type="date" @bind="fechaPrimerPago" /></div>
-                    }
-                </div>
-                <div class="tabla-desplazable" tabindex="0">
-                    <table class="tabla-datos">
-                        <thead><tr><th>Producto</th><th class="num">Pendiente</th><th class="num col-monto">Recibido ahora</th><th class="num col-monto">Costo con IVA</th><th class="num col-monto">Total</th></tr></thead>
-                        <tbody>
-                            @foreach (var r in lineasRecepcion)
-                            {
-                                <tr>
-                                    <td>@r.Descripcion<br /><span class="texto-tenue">@r.Codigo</span></td>
-                                    <td class="num">@r.Pendiente</td>
-                                    <td class="num col-monto"><input class="entrada-numero" type="number" min="0" max="@r.Pendiente" step="1" aria-label="@($"Cantidad recibida de {r.Descripcion}")" @bind="r.Cantidad" @bind:event="oninput" /></td>
-                                    <td class="num col-monto"><input class="entrada-numero" type="number" min="0" step="0.01" aria-label="@($"Costo con IVA de {r.Descripcion}")" @bind="r.CostoUnitario" @bind:event="oninput" /></td>
-                                    <td class="num col-monto">@Math.Round(r.Cantidad * r.CostoUnitario, 2).ToString("N2")</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-                <div class="resumen-totales">
-                    <span>Unidades: <strong>@lineasRecepcion.Sum(r => r.Cantidad)</strong></span>
-                    <span>Total de la factura: <strong>Q @lineasRecepcion.Sum(r => Math.Round(r.Cantidad * r.CostoUnitario, 2)).ToString("N2")</strong></span>
-                </div>
-                <div class="acciones-fila">
-                    <BotonIcono Icono="save" Tooltip="Grabar la compra y el ingreso a bodega" Etiqueta="Grabar recepción" Variante="primario" OnClick="RecibirAsync" />
-                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarRecepcion = false" />
-                </div>
-            </section>
+            <RecibirOrdenCompra Orden="o" Lineas="lineasDetalle" OnGrabada="RecepcionGrabadaAsync" OnCancelar="() => mostrarRecepcion = false" />
         }
 
         @if (recepciones.Count > 0)
@@ -427,16 +381,6 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         public decimal Total => Math.Round(Cantidad * CostoUnitario, 2);
     }
 
-    private sealed class LineaRecepcion
-    {
-        public int OcdId { get; set; }
-        public string Codigo { get; set; } = "";
-        public string Descripcion { get; set; } = "";
-        public int Pendiente { get; set; }
-        public int Cantidad { get; set; }
-        public decimal CostoUnitario { get; set; }
-    }
-
     private IReadOnlyList<OrdenCompraResumen> ordenes = Array.Empty<OrdenCompraResumen>();
     private OrdenCompraEncabezado? seleccionada;
     private IReadOnlyList<OrdenCompraLinea> lineasDetalle = Array.Empty<OrdenCompraLinea>();
@@ -446,11 +390,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
     private IReadOnlyList<ProductoProveedor> productosProveedor = Array.Empty<ProductoProveedor>();
     private IReadOnlyList<Producto> productosEncontrados = Array.Empty<Producto>();
     private readonly List<LineaOrden> lineas = new();
-    private readonly List<LineaRecepcion> lineasRecepcion = new();
     private NuevaOrdenCompra orden = new();
-    private RecepcionOrdenCompra recepcion = new();
-    private string condicionRecepcion = "contado";
-    private DateTime? fechaPrimerPago;
     private bool mostrarRecepcion;
     private string? numeroEditando;
     private int proIdProveedor;
@@ -772,46 +712,10 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
 
     private void IniciarRecepcion()
     {
-        recepcion = new RecepcionOrdenCompra { Fecha = DateTime.Today };
-        condicionRecepcion = "contado";
-        fechaPrimerPago = DateTime.Today.AddMonths(1);
-        lineasRecepcion.Clear();
-        lineasRecepcion.AddRange(lineasDetalle.Where(l => l.Pendiente > 0).Select(l => new LineaRecepcion
-        {
-            OcdId = l.OcdId,
-            Codigo = l.Codigo,
-            Descripcion = l.Descripcion,
-            Pendiente = l.Pendiente,
-            Cantidad = l.Pendiente,
-            CostoUnitario = l.CostoUnitario
-        }));
         mensaje = null;
         mostrarRecepcion = true;
     }
 
-    private async Task RecibirAsync()
-    {
-        if (seleccionada is null) return;
-        if (string.IsNullOrWhiteSpace(recepcion.NumeroDocumento)) { MostrarError("Escriba el número de la factura del proveedor."); return; }
-        if (lineasRecepcion.All(r => r.Cantidad <= 0)) { MostrarError("Indique la cantidad recibida de al menos un producto."); return; }
-        var excedida = lineasRecepcion.FirstOrDefault(r => r.Cantidad < 0 || r.Cantidad > r.Pendiente);
-        if (excedida is not null) { MostrarError($"De {excedida.Descripcion} se pueden recibir de 0 a {excedida.Pendiente} unidades."); return; }
-        if (lineasRecepcion.Any(r => r.CostoUnitario < 0)) { MostrarError("El costo no puede ser negativo."); return; }
-        recepcion.FechaPrimerPago = condicionRecepcion == "credito" ? fechaPrimerPago : null;
-        if (recepcion.FechaPrimerPago is null && condicionRecepcion == "credito") { MostrarError("Indique la fecha del primer pago."); return; }
-        try
-        {
-            var usuId = await ObtenerUsuIdActualAsync();
-            var encId = await OrdenCompraRepository.RecibirAsync(seleccionada.OcpId, recepcion,
-                lineasRecepcion.Where(r => r.Cantidad > 0).Select(r => new LineaRecepcionOrdenCompra { OcdId = r.OcdId, Cantidad = r.Cantidad, CostoUnitario = r.CostoUnitario }).ToList(),
-                usuId);
-            // Igual que en Compras: último costo con el proveedor y relación producto-proveedor.
-            try { await ProductoProveedorRepository.RegistrarCompraAsync(encId, true, usuId); }
-            catch (Exception ex) { Log.LogWarning(ex, "La compra {EncId} se grabó pero no se actualizó el último costo por proveedor", encId); }
-            var unidades = lineasRecepcion.Sum(r => r.Cantidad);
-            var documento = string.IsNullOrWhiteSpace(recepcion.Serie) ? recepcion.NumeroDocumento : $"{recepcion.Serie}-{recepcion.NumeroDocumento}";
-            await RefrescarAsync($"Recepción grabada: {unidades} unidades ingresaron a {seleccionada.Bodega} con la compra {documento}.");
-        }
-        catch (Exception ex) { MostrarError(ex); }
-    }
+    private async Task RecepcionGrabadaAsync((string Mensaje, int EncId) resultado) => await RefrescarAsync(resultado.Mensaje);
+
 }

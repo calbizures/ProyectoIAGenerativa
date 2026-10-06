@@ -8,7 +8,9 @@ public interface ICuentasRepository
 	// Cuentas por cobrar
 	Task<IReadOnlyList<DocumentoSaldo>> ConsultarDocumentosCxcAsync(int? cliId, bool soloPendientes);
 	Task<IReadOnlyList<MovimientoEstadoCuenta>> ConsultarEstadoCuentaClienteAsync(int cliId, DateTime? desde, DateTime? hasta);
-	Task<IReadOnlyList<AntiguedadFila>> ConsultarAntiguedadClientesAsync(DateTime fechaCorte, int? cliId);
+	// usuId: solo los clientes que ese usuario puede ver (vendedor); null = todos.
+	Task<IReadOnlyList<AntiguedadFila>> ConsultarAntiguedadClientesAsync(DateTime fechaCorte, int? cliId, int? usuId = null);
+	Task<AntiguedadAlcance> ConsultarAntiguedadAlcanceAsync(int usuId);
 	Task<IReadOnlyList<CuotaPlanPago>> ConsultarCuotasClienteAsync(int encId);
 	Task<int> RegistrarCobroAsync(int cppId, decimal valor, int pcaId, IReadOnlyList<FormaPagoCaptura> formasPago, int? usuarioAccionId);
 	Task<IReadOnlyList<CuotaPendiente>> ConsultarCuotasPendientesClienteAsync(int cliId);
@@ -34,6 +36,13 @@ public interface ICuentasRepository
 	Task<IReadOnlyList<ProveedorConSaldo>> ConsultarProveedoresConSaldoAsync();
 	Task<IReadOnlyList<ChequeResumen>> ConsultarChequesAsync(int? prvId, DateTime? desde, DateTime? hasta);
 	Task AnularChequeAsync(int bceId, string motivo, int? usuarioAccionId);
+	// Transferencias ya hechas en el banco (con comprobante y autorización).
+	Task<(int BltId, string Numero)> RegistrarTransferenciaAsync(TransferenciaProveedorCaptura transferencia, IReadOnlyList<CuotaPagoProveedor> cuotas,
+		int? usuarioAccionId);
+	Task<IReadOnlyList<TransferenciaResumen>> ConsultarTransferenciasAsync(int? prvId, DateTime? desde, DateTime? hasta);
+	Task<IReadOnlyList<ChequeDetalleLinea>> ConsultarTransferenciaDetalleAsync(int bltId);
+	Task<ComprobanteTransferencia?> ConsultarComprobanteTransferenciaAsync(int bltId);
+	Task AnularTransferenciaAsync(int bltId, string motivo, int? usuarioAccionId);
 
 	// Notas de crédito y débito (NCC, NDC, NCP, NDP)
 	Task<IReadOnlyList<NotaResumen>> ConsultarNotasAsync(bool esCliente, int? cliId, int? prvId, int? encIdReferencia);

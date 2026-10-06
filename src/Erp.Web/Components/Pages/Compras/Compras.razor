@@ -15,6 +15,7 @@
 @inject Erp.Data.Cuentas.ICuentasRepository CuentasRepository
 @inject Erp.Data.ActivosFijos.IActivosFijosRepository ActivosFijosRepository
 @inject Erp.Data.Rrhh.IRrhhRepository RrhhRepository
+@inject IOrdenCompraRepository OrdenCompraRepository
 
 <PageTitle>Compras</PageTitle>
 
@@ -40,8 +41,54 @@
 
     <span class="barra-herramientas-separador"></span>
 
+    <AuthorizeView Policy="Permiso:COMPRAS_ORDEN_RECIBIR" Context="permisoRecibirOrden">
+        <BotonIcono Icono="truck" Tooltip="Grabar la compra de una orden de compra aprobada (ingreso a bodega)" Etiqueta="Desde orden de compra" OnClick="MostrarDesdeOrdenAsync" />
+    </AuthorizeView>
     <BotonIcono Icono="plus" Tooltip="Nueva compra" Etiqueta="Nueva compra" Variante="primario" OnClick="MostrarNuevaCompraAsync" />
 </div>
+
+@if (mostrarDesdeOrden)
+{
+    <div class="doc-card">
+        <div class="doc-card-header">
+            <div>
+                <h2>Compra desde orden de compra</h2>
+                <p>Elija una orden aprobada con las dos firmas (jefe de bodega y contador general): se cargan el proveedor, la bodega y lo que falta por recibir con sus costos. Complete la factura del proveedor y grabe la compra con su ingreso a bodega.</p>
+            </div>
+            <Icono Nombre="truck" Tamano="30" />
+        </div>
+        <div class="doc-card-body">
+            @if (ordenesPorRecibir.Count == 0)
+            {
+                <p class="estado-vacio">No hay órdenes de compra aprobadas pendientes de recibir.</p>
+            }
+            else
+            {
+                <div class="campo">
+                    <label for="compras-desde-orden">Orden de compra</label>
+                    <select id="compras-desde-orden" value="@(ordenElegida?.OcpId ?? 0)" @onchange="ElegirOrdenAsync">
+                        <option value="0">Seleccione la orden...</option>
+                        @foreach (var o in ordenesPorRecibir)
+                        {
+                            <option value="@o.OcpId">@o.Numero · @o.Proveedor · @o.Bodega · Q@(o.Total.ToString("N2"))@(o.Estado == "P" ? " (recibida en parte)" : "")</option>
+                        }
+                    </select>
+                </div>
+            }
+            @if (ordenElegida is not null)
+            {
+                <RecibirOrdenCompra Orden="ordenElegida" Lineas="lineasOrdenElegida" Titulo="@($"Factura del proveedor para la orden {ordenElegida.Numero}")"
+                                    EtiquetaGrabar="Grabar compra" OnGrabada="CompraDesdeOrdenGrabadaAsync" OnCancelar="CerrarDesdeOrden" />
+            }
+            else
+            {
+                <div class="acciones-fila">
+                    <BotonIcono Icono="x" Tooltip="Cerrar" Etiqueta="Cerrar" OnClick="CerrarDesdeOrden" />
+                </div>
+            }
+        </div>
+    </div>
+}
 
 @if (mostrarNuevaCompra)
 {
@@ -475,6 +522,10 @@
     private DateTime? filtroFechaHasta;
     private string filtroEstado = "";
     private bool mostrarNuevaCompra;
+    private bool mostrarDesdeOrden;
+    private IReadOnlyList<OrdenCompraResumen> ordenesPorRecibir = Array.Empty<OrdenCompraResumen>();
+    private OrdenCompraEncabezado? ordenElegida;
+    private IReadOnlyList<OrdenCompraLinea> lineasOrdenElegida = Array.Empty<OrdenCompraLinea>();
     private string? mensaje;
     private bool esMensajeError;
 
@@ -540,6 +591,49 @@
         return estado.User.ObtenerUsuId();
     }
 
+    // Compra desde una orden de compra aprobada: usa la misma recepción que
+    // Compras › Órdenes de compra (lo pendiente de la orden se actualiza).
+    private async Task MostrarDesdeOrdenAsync()
+    {
+        mostrarNuevaCompra = false;
+        ordenElegida = null;
+        mensaje = null;
+        try
+        {
+            ordenesPorRecibir = await OrdenCompraRepository.ConsultarAsync("X", null, null, null, null);
+            mostrarDesdeOrden = true;
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); esMensajeError = true; }
+    }
+
+    private async Task ElegirOrdenAsync(ChangeEventArgs e)
+    {
+        ordenElegida = null;
+        if (!int.TryParse(e.Value?.ToString(), out var ocpId) || ocpId == 0) return;
+        try
+        {
+            var (encabezado, lineas, _) = await OrdenCompraRepository.ConsultarPorIdAsync(ocpId);
+            if (encabezado is null || !encabezado.PorRecibir) { mensaje = "La orden ya no está pendiente de recibir."; esMensajeError = true; return; }
+            lineasOrdenElegida = lineas;
+            ordenElegida = encabezado;
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); esMensajeError = true; }
+    }
+
+    private async Task CompraDesdeOrdenGrabadaAsync((string Mensaje, int EncId) resultado)
+    {
+        CerrarDesdeOrden();
+        await BuscarAsync();
+        mensaje = resultado.Mensaje;
+        esMensajeError = false;
+    }
+
+    private void CerrarDesdeOrden()
+    {
+        mostrarDesdeOrden = false;
+        ordenElegida = null;
+    }
+
     private async Task BuscarAsync()
     {
         var tiposId = tiposDocumento.Select(t => t.TdoId).ToList();
@@ -557,6 +651,7 @@
 
     private Task MostrarNuevaCompraAsync()
     {
+        CerrarDesdeOrden();
         mensaje = null;
         nuevaCompra.Fecha = DateTime.Today;
         nuevaCompra.SerieDocumento = null;
