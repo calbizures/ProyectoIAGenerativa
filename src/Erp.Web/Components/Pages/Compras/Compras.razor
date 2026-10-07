@@ -24,6 +24,9 @@
     <p>Compras a proveedores.</p>
 </div>
 
+<BorradorDocumento TDatos="BorradorCompra" Clave="compras" Nombre="una compra"
+                   Capturar="CapturarBorrador" Describir="DescribirBorrador" Restaurar="RestaurarBorradorAsync" />
+
 @if (mensaje is not null)
 {
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
@@ -986,6 +989,51 @@
             1 => partes[0][..1].ToUpperInvariant(),
             _ => string.Concat(partes[0][..1], partes[1][..1]).ToUpperInvariant()
         };
+    }
+
+    // ---- Borrador: la compra en captura se conserva al salir de la pantalla ----
+    private sealed record BorradorCompra(NuevaCompraModelo Encabezado, string Condicion, bool RelacionarAlGrabar, IReadOnlyList<LineaCaptura> Lineas);
+
+    private BorradorCompra? CapturarBorrador()
+    {
+        if (!mostrarNuevaCompra) return null;
+        if (lineas.Count == 0 && nuevaCompra.PrvId is null && string.IsNullOrWhiteSpace(nuevaCompra.NumeroDocumento)) return null;
+        return new BorradorCompra(nuevaCompra, condicionPagoCompra, relacionarAlGrabar, lineas);
+    }
+
+    private string DescribirBorrador(BorradorCompra b)
+    {
+        var simbolo = monedas.FirstOrDefault(m => m.MonId == b.Encabezado.MonId)?.MonSimbolo ?? "Q";
+        var e = b.Encabezado;
+        var documento = string.IsNullOrWhiteSpace(e.NumeroDocumento) ? ""
+            : string.IsNullOrWhiteSpace(e.SerieDocumento) ? $", doc. {e.NumeroDocumento}" : $", doc. {e.SerieDocumento}-{e.NumeroDocumento}";
+        return $"{(string.IsNullOrWhiteSpace(e.NombreProveedor) ? "sin proveedor" : e.NombreProveedor)}{documento}, "
+            + $"{b.Lineas.Count} {(b.Lineas.Count == 1 ? "línea" : "líneas")}, {simbolo} {b.Lineas.Sum(l => l.SubTotal - l.ValorDescuento):N2}";
+    }
+
+    private async Task RestaurarBorradorAsync(BorradorCompra b)
+    {
+        await MostrarNuevaCompraAsync();
+        var e = b.Encabezado;
+        nuevaCompra.Fecha = e.Fecha;
+        nuevaCompra.SerieDocumento = e.SerieDocumento;
+        nuevaCompra.NumeroDocumento = e.NumeroDocumento;
+        nuevaCompra.PrvId = e.PrvId;
+        nuevaCompra.NombreProveedor = e.NombreProveedor;
+        nuevaCompra.Nit = e.Nit;
+        if (tiposDocumento.Any(t => t.TdoId == e.TdoId)) nuevaCompra.TdoId = e.TdoId;
+        if (bodegas.Any(x => x.BodId == e.BodId)) nuevaCompra.BodId = e.BodId;
+        if (monedas.Any(m => m.MonId == e.MonId)) nuevaCompra.MonId = e.MonId;
+        nuevaCompra.FechaPrimerPago = e.FechaPrimerPago;
+        nuevaCompra.MontoEnganche = e.MontoEnganche;
+        nuevaCompra.NumeroCuotas = e.NumeroCuotas;
+        condicionPagoCompra = b.Condicion;
+        relacionarAlGrabar = b.RelacionarAlGrabar;
+        lineas.AddRange(b.Lineas);
+        try { await CargarProductosProveedorAsync(); }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); esMensajeError = true; return; }
+        mensaje = "Se recuperó la compra sin terminar. Revise los datos antes de grabar.";
+        esMensajeError = false;
     }
 
     private sealed class NuevaCompraModelo

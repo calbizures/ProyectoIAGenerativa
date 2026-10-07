@@ -16,6 +16,9 @@
     <p>Elija el cliente, indique el monto recibido y se aplica a sus cuotas de la más antigua a la más reciente (o marque las que paga). Un cobro genera un recibo y su póliza (Caja / Clientes).</p>
 </div>
 
+<BorradorDocumento TDatos="BorradorCobro" Clave="cxc-cobros" Nombre="un cobro"
+                   Capturar="CapturarBorrador" Describir="DescribirBorrador" Restaurar="RestaurarBorradorAsync" />
+
 @if (mensaje is not null)
 {
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
@@ -485,6 +488,37 @@
         }
         catch (Exception ex) { MostrarError(ex); }
         finally { guardando = false; }
+    }
+
+    // ---- Borrador: el cobro en captura se conserva al salir de la pantalla ----
+    private sealed record BorradorCobro(TerceroSeleccion Cliente, decimal MontoRecibido, Dictionary<int, decimal> Aplicar,
+        IReadOnlyList<BorradorFormaPago> Formas, BorradorFormaPago FormaNueva, int PcaId);
+
+    private BorradorCobro? CapturarBorrador()
+    {
+        if (cliente is null || (aplicar.Count == 0 && montoRecibido == 0 && formas.Count == 0)) return null;
+        return new BorradorCobro(cliente, montoRecibido, new Dictionary<int, decimal>(aplicar),
+            formas.Select(BorradorFormaPago.De).ToList(), BorradorFormaPago.De(formaNueva), pcaId);
+    }
+
+    private static string DescribirBorrador(BorradorCobro b) =>
+        $"{b.Cliente.Nombre}, {b.Aplicar.Count} {(b.Aplicar.Count == 1 ? "cuota" : "cuotas")}, Q {b.Aplicar.Values.Sum():N2}";
+
+    // Las cuotas se vuelven a leer: solo se marca lo que sigue pendiente, sin pasar del saldo de hoy.
+    private async Task RestaurarBorradorAsync(BorradorCobro b)
+    {
+        await CambiarClienteAsync(b.Cliente);
+        foreach (var c in cuotas)
+            if (b.Aplicar.TryGetValue(c.CppId, out var monto) && monto > 0) aplicar[c.CppId] = Math.Min(monto, c.Saldo);
+        montoRecibido = b.MontoRecibido;
+        formas.AddRange(b.Formas.Select(f => f.Captura()));
+        formaNueva = b.FormaNueva.Captura();
+        if (cajasAbiertas.Any(c => c.PcaId == b.PcaId)) pcaId = b.PcaId;
+        var cambiaron = aplicar.Count != b.Aplicar.Count || TotalCobro != b.Aplicar.Values.Sum();
+        mensaje = cambiaron
+            ? "Se recuperó el cobro sin terminar, pero algunas cuotas ya no tienen el mismo saldo: revise los montos antes de cobrar."
+            : "Se recuperó el cobro sin terminar. Revíselo antes de cobrar.";
+        esMensajeError = cambiaron;
     }
 
     private void IniciarAnulacion(ReciboResumen r)

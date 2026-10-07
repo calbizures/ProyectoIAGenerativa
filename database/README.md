@@ -1891,6 +1891,44 @@ registra una transferencia **ya hecha** en la banca electrónica.
   (el comprobante se conserva). Anular solo deshace el registro; la
   devolución del dinero se gestiona con el banco o el proveedor.
 
+### Cambiar de opción sin perder lo capturado (aplicación)
+
+Sin cambios en la base de datos. Antes, ir a otra opción del menú con un
+documento a medias lo perdía sin avisar.
+
+- **Aviso al salir.** Si hay algo sin grabar y se elige otra opción del menú,
+  se usa Atrás/Adelante del navegador o se cierra la sesión, la aplicación
+  pregunta: **Quedarme** o **Salir**. Al recargar o cerrar la pestaña aparece
+  el aviso propio del navegador. En los catálogos (clientes, productos,
+  usuarios, etc.) cuenta como cambio cualquier campo modificado en el
+  formulario de un botón Guardar visible; grabar o Cancelar lo dejan limpio,
+  y los filtros, búsquedas y paginadores no cuentan.
+- **Borrador de los documentos.** En Facturas, Cotizaciones, Compras, Órdenes
+  de compra, Cobros a clientes, Pagos a proveedores, Notas de crédito y débito
+  (clientes y proveedores), Pólizas manuales, Inventario físico (los conteos
+  aún no guardados) y gastos de Caja chica, lo capturado se guarda solo como
+  borrador mientras se trabaja. Al volver a la opción aparece un aviso con el
+  resumen y la hora: **Recuperar** lo carga tal como estaba y **Descartar** lo
+  borra. Si se empieza otro documento sin decidir, el nuevo reemplaza al
+  borrador. Al grabar el documento, el borrador se borra.
+- Al recuperar se vuelven a leer los datos de hoy: el cliente o proveedor, su
+  crédito, la vigencia de la cotización, los saldos de las cuotas (no se
+  marca más que el saldo actual) y las cuentas activas. El comprobante de
+  una transferencia no se guarda en el borrador: hay que volver a adjuntarlo.
+  Al editar una orden de compra o un gasto de caja chica ya grabado, solo hay
+  borrador si se cambió algo.
+- El borrador queda **en ese navegador y computadora**, cifrado con las llaves
+  de la aplicación (ASP.NET Data Protection) y separado por usuario, sucursal
+  y pantalla: otro usuario en la misma computadora no lo ve. Si la aplicación
+  se instala de nuevo con llaves distintas, los borradores anteriores se
+  descartan sin error.
+- Para trabajar dos opciones a la vez sin salir de ninguna: **Ctrl+clic** (o
+  clic con la rueda del ratón) en el menú abre la otra opción en una pestaña
+  nueva, con la misma sesión y sucursal.
+- Piezas: `wwwroot/js/cambios.js` (aviso y diálogo), `guardado.js` (zona de
+  cambios de cada botón Guardar), `Components/Shared/BorradorDocumento.razor`
+  (borrador) y `BorradorFormaPago.cs`.
+
 ## Módulos nuevos
 
 - **Seguridad (`sec_*`)**: roles, permisos y las tablas de asignación

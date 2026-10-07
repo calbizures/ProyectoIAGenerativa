@@ -22,6 +22,9 @@
     <p>Ofertas de precio al cliente. Cada cotización vale @vigenciaDias días a partir de su fecha; mientras está vigente se convierte en factura con los precios cotizados.</p>
 </div>
 
+<BorradorDocumento TDatos="BorradorCotizacion" Clave="cotizaciones" Nombre="una cotización"
+                   Capturar="CapturarBorrador" Describir="DescribirBorrador" Restaurar="RestaurarBorradorAsync" />
+
 @if (mensaje is not null)
 {
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
@@ -602,6 +605,34 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             esMensajeError = false;
         }
         catch (Exception ex) { MostrarError(ex); }
+    }
+
+    // ---- Borrador: la cotización en captura se conserva al salir de la pantalla ----
+    private sealed record BorradorCotizacion(NuevaCotizacion Encabezado, IReadOnlyList<LineaNueva> Lineas);
+
+    private BorradorCotizacion? CapturarBorrador()
+    {
+        if (pestanaActiva != "nueva") return null;
+        if (lineas.Count == 0 && string.IsNullOrWhiteSpace(nueva.Nombre)) return null;
+        return new BorradorCotizacion(nueva, lineas);
+    }
+
+    private static string DescribirBorrador(BorradorCotizacion b) =>
+        $"{(string.IsNullOrWhiteSpace(b.Encabezado.Nombre) ? "sin cliente" : b.Encabezado.Nombre.Trim())}, "
+        + $"{b.Lineas.Count} {(b.Lineas.Count == 1 ? "línea" : "líneas")}, Q {b.Lineas.Sum(l => l.Total):N2}";
+
+    private async Task RestaurarBorradorAsync(BorradorCotizacion b)
+    {
+        IniciarNueva(b.Lineas);
+        nueva = b.Encabezado;
+        if (!bodegas.Any(x => x.BodId == nueva.BodId)) nueva.BodId = bodegas.FirstOrDefault()?.BodId ?? 0;
+        try
+        {
+            if (nueva.CliId is int cliId) clienteSeleccionado = await ClienteRepository.ConsultarPorIdAsync(cliId);
+        }
+        catch (Exception ex) { MostrarError(ex); return; }
+        mensaje = "Se recuperó la cotización sin terminar. Revise los precios antes de grabar.";
+        esMensajeError = false;
     }
 
     private async Task AbrirAsync(int cotId)

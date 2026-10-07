@@ -12,7 +12,9 @@
    Un botón Guardar (ícono save) queda deshabilitado después de grabar, para no
    grabar dos veces lo mismo. Se vuelve a habilitar al pulsar Editar o Nuevo
    en la pantalla, al cambiar un campo del mismo formulario o si aparece un
-   mensaje de error (la grabación falló y se puede corregir y reintentar). *@
+   mensaje de error (la grabación falló y se puede corregir y reintentar).
+   Los botones Guardar también marcan la zona de cambios del aviso al salir
+   (cambios.js): grabar la deja limpia y Cancelar limpia la pantalla. *@
 @implements IAsyncDisposable
 @inject AvisosServicio Avisos
 @inject EdicionServicio Edicion
@@ -71,6 +73,7 @@ else
 
     private bool Bloquea => BloquearTrasGuardar ?? Icono == "save";
     private bool Reabre => Icono is "pencil" or "plus";
+    private bool Cancela => Etiqueta == "Cancelar" || (string.IsNullOrEmpty(Etiqueta) && Tooltip == "Cancelar");
 
     protected override void OnInitialized()
     {
@@ -91,6 +94,7 @@ else
     {
         if (ejecutando || guardado) return;
         if (Reabre) Edicion.Reabrir();
+        if (Cancela) await LlamarJsAsync("erpGuardar.cancelado");
         if (string.IsNullOrEmpty(Confirmacion))
         {
             await EjecutarAsync();
@@ -116,7 +120,11 @@ else
         {
             await OnClick.InvokeAsync();
             // Si la pantalla muestra un error, guardado.js vuelve a habilitarlo.
-            if (Bloquea) guardado = true;
+            if (Bloquea)
+            {
+                guardado = true;
+                if (vigilando) await LlamarJsAsync("erpGuardar.guardado", boton);
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -124,6 +132,12 @@ else
             Avisos.MostrarError(MensajesError.Traducir(ex));
         }
         finally { ejecutando = false; }
+    }
+
+    private async Task LlamarJsAsync(string funcion, params object[] argumentos)
+    {
+        try { await JS.InvokeVoidAsync(funcion, argumentos); }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException or TaskCanceledException) { }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

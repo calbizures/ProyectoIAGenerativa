@@ -1737,6 +1737,77 @@ a.modulo-card:focus-visible {
     display: block;
 }
 
+/* Aviso al salir de una pantalla con cambios sin grabar (js/cambios.js). */
+.salir-fondo {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(13, 27, 76, 0.45);
+}
+
+.salir-fondo[hidden] {
+    display: none;
+}
+
+.salir-dialogo {
+    width: 100%;
+    max-width: 28rem;
+    padding: 1.4rem 1.5rem 1.2rem;
+    border-radius: var(--radio-grande);
+    background: var(--superficie);
+    color: var(--texto);
+    box-shadow: 0 12px 32px rgba(13, 27, 76, 0.25);
+}
+
+.salir-dialogo h2 {
+    margin: 0 0 0.6rem;
+    font-size: 1.15rem;
+}
+
+.salir-dialogo p,
+.salir-dialogo ul {
+    margin: 0 0 0.75rem;
+}
+
+.salir-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+/* Documento sin terminar guardado como borrador (BorradorDocumento). */
+.borrador-aviso {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.9rem;
+    margin: 0 0 1rem;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid #f0c36d;
+    border-radius: var(--radio);
+    background: #fff4e0;
+    color: var(--aviso-texto);
+}
+
+.borrador-aviso-texto {
+    flex: 1 1 18rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.borrador-aviso-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
 /* Resumen de totales sobre un listado (facturas de cliente, comisiones, nómina). */
 .resumen-totales {
     display: flex;

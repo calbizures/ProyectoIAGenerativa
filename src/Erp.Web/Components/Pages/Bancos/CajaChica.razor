@@ -22,6 +22,9 @@
     <p>Fondo fijo para gastos menores. Se registran las facturas, recibos y vales; al liquidar se graba la póliza de los gastos (con su IVA crédito fiscal) y con un cheque se repone el fondo a su monto completo.</p>
 </div>
 
+<BorradorDocumento TDatos="BorradorGasto" Clave="caja-chica-gasto" Nombre="un gasto de caja chica"
+                   Capturar="CapturarBorrador" Describir="DescribirBorrador" Restaurar="RestaurarBorradorAsync" />
+
 @if (mensaje is not null)
 {
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
@@ -711,6 +714,7 @@ else if (fondos.Count == 0)
             CcgId = g.CcgId, CchId = g.CchId, Fecha = g.Fecha, Tipo = g.Tipo, PrvId = g.PrvId, Nit = g.Nit, Proveedor = g.Proveedor, Serie = g.Serie,
             Numero = g.Numero, Concepto = g.Concepto, CtaId = g.CtaId, IdDepartamento = g.IdDepartamento, Total = g.Total
         };
+        gastoOriginal = System.Text.Json.JsonSerializer.Serialize(gasto);
     }
 
     private void ElegirProveedor(ChangeEventArgs e)
@@ -720,6 +724,48 @@ else if (fondos.Count == 0)
         var proveedor = proveedores.FirstOrDefault(p => string.Equals(p.PrvNombreComercial, (gasto.Proveedor ?? "").Trim(), StringComparison.OrdinalIgnoreCase));
         gasto.PrvId = proveedor?.PrvId;
         if (proveedor?.PrvNit is not null && string.IsNullOrWhiteSpace(gasto.Nit)) gasto.Nit = proveedor.PrvNit;
+    }
+
+    // ---- Borrador: el vale, recibo o factura en captura se conserva al salir ----
+    private sealed record BorradorGasto(GastoCajaChica Gasto, string Fondo);
+
+    // Al corregir un gasto, lo que tenía al abrirlo: sin cambios no hay borrador.
+    private string? gastoOriginal;
+
+    private BorradorGasto? CapturarBorrador()
+    {
+        if (gasto is null || fondo is null) return null;
+        if (gasto.CcgId is null && string.IsNullOrWhiteSpace(gasto.Concepto) && gasto.Total == 0
+            && string.IsNullOrWhiteSpace(gasto.Proveedor) && string.IsNullOrWhiteSpace(gasto.Numero)) return null;
+        if (gasto.CcgId is not null && System.Text.Json.JsonSerializer.Serialize(gasto) == gastoOriginal) return null;
+        return new BorradorGasto(gasto, fondo.Nombre);
+    }
+
+    private static string DescribirBorrador(BorradorGasto b) =>
+        $"{GastoCajaChica.NombreTipo(b.Gasto.Tipo).ToLowerInvariant()} del fondo {b.Fondo}"
+        + (string.IsNullOrWhiteSpace(b.Gasto.Concepto) ? "" : $", {b.Gasto.Concepto.Trim()}") + $", Q {b.Gasto.Total:N2}";
+
+    private async Task RestaurarBorradorAsync(BorradorGasto b)
+    {
+        var deFondo = fondos.FirstOrDefault(f => f.CchId == b.Gasto.CchId && f.Estado == "A");
+        if (deFondo is null)
+        {
+            mensaje = $"El fondo {b.Fondo} ya no está activo: el gasto sin terminar no se puede recuperar.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            if (fondo?.CchId != deFondo.CchId) { fondo = deFondo; await CargarDetalleAsync(); }
+        }
+        catch (Exception ex) { MostrarError(ex); return; }
+        cheque = null;
+        edicionFondo = null;
+        pestana = "gastos";
+        gasto = b.Gasto;
+        if (cuentasGasto.All(c => c.CtaId != gasto.CtaId)) gasto.CtaId = 0;
+        gastoOriginal = null;
+        MostrarOk("Se recuperó el gasto sin terminar. Revíselo antes de guardar.");
     }
 
     private async Task GuardarGastoAsync()

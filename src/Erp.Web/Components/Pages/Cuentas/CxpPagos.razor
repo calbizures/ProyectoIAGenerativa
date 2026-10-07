@@ -19,6 +19,9 @@
     <p>Elija el proveedor y pague una factura completa, varias cuotas o todo su saldo: indique el monto y se aplica de la cuota más antigua a la más reciente (o marque las que paga). Pague con cheque o registre una transferencia ya hecha en el banco, con su número de autorización y el comprobante adjunto. Cada pago genera su póliza (Proveedores / Bancos) y se anula abajo, en Cheques emitidos o en Transferencias registradas.</p>
 </div>
 
+<BorradorDocumento TDatos="BorradorPago" Clave="cxp-pagos" Nombre="un pago a proveedor"
+                   Capturar="CapturarBorrador" Describir="DescribirBorrador" Restaurar="RestaurarBorradorAsync" />
+
 @if (mensaje is not null)
 {
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
@@ -958,6 +961,53 @@
         }
         catch (Exception ex) { MostrarError(ex); }
         finally { guardando = false; }
+    }
+
+    // ---- Borrador: el pago en captura se conserva al salir de la pantalla ----
+    // El comprobante de la transferencia no se guarda: se vuelve a adjuntar.
+    private sealed record BorradorTransferencia(int BcbId, DateTime Fecha, string Autorizacion, string? Referencia, int GefId, string TipoCuenta, string Cuenta);
+
+    private sealed record BorradorPago(TerceroSeleccion Proveedor, int? EncFiltro, Dictionary<int, decimal> Aplicar, decimal Monto,
+        string FormaPago, int CbcId, string NumeroCheque, int BmpId, string Concepto, bool ConceptoEditado, BorradorTransferencia Transferencia);
+
+    private BorradorPago? CapturarBorrador()
+    {
+        if (proveedor is null || (aplicar.Count == 0 && montoCheque == 0)) return null;
+        var t = transferencia;
+        return new BorradorPago(proveedor, encFiltro, new Dictionary<int, decimal>(aplicar), montoCheque, formaPago, cbcId, numeroCheque,
+            bmpId, concepto, conceptoEditado, new BorradorTransferencia(t.BcbId, t.Fecha, t.Autorizacion, t.Referencia, t.GefId, t.TipoCuenta, t.Cuenta));
+    }
+
+    private static string DescribirBorrador(BorradorPago b) =>
+        $"{(b.FormaPago == "T" ? "transferencia" : "cheque")} a {b.Proveedor.Nombre}, "
+        + $"{b.Aplicar.Count} {(b.Aplicar.Count == 1 ? "cuota" : "cuotas")}, Q {b.Aplicar.Values.Sum():N2}";
+
+    // Las cuotas se vuelven a leer: solo se marca lo que sigue pendiente, sin pasar del saldo de hoy.
+    private async Task RestaurarBorradorAsync(BorradorPago b)
+    {
+        await CambiarProveedorAsync(b.Proveedor);
+        if (b.EncFiltro is int enc && cuotas.Any(c => c.EncId == enc)) encFiltro = enc;
+        foreach (var c in cuotas)
+            if (b.Aplicar.TryGetValue(c.PpgId, out var monto) && monto > 0) aplicar[c.PpgId] = Math.Min(monto, c.Saldo);
+        formaPago = b.FormaPago;
+        if (chequeras.Any(c => c.CbcId == b.CbcId)) { cbcId = b.CbcId; numeroCheque = b.NumeroCheque; }
+        if (motivos.Any(m => m.BmpId == b.BmpId)) bmpId = b.BmpId;
+        conceptoEditado = b.ConceptoEditado;
+        concepto = b.Concepto;
+        Actualizar();
+        if (aplicar.Count == 0) montoCheque = b.Monto;
+        var t = b.Transferencia;
+        if (cuentasBancarias.Any(c => c.BcbId == t.BcbId)) transferencia.BcbId = t.BcbId;
+        transferencia.Fecha = t.Fecha;
+        transferencia.Autorizacion = t.Autorizacion;
+        transferencia.Referencia = t.Referencia;
+        if (t.GefId != 0) { transferencia.GefId = t.GefId; transferencia.TipoCuenta = t.TipoCuenta; transferencia.Cuenta = t.Cuenta; }
+        var cambiaron = aplicar.Count != b.Aplicar.Count || TotalCheque != b.Aplicar.Values.Sum();
+        mensaje = (cambiaron
+            ? "Se recuperó el pago sin terminar, pero algunas cuotas ya no tienen el mismo saldo: revise los montos."
+            : "Se recuperó el pago sin terminar. Revíselo antes de grabar.")
+            + (formaPago == "T" ? " Vuelva a adjuntar el comprobante de la transferencia." : "");
+        esMensajeError = cambiaron;
     }
 
     private async Task VerDetalleAsync(int bceId)

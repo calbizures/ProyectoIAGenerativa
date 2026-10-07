@@ -29,6 +29,9 @@
     <p>Ventas y facturación a clientes.</p>
 </div>
 
+<BorradorDocumento TDatos="BorradorFactura" Clave="facturas" Nombre="una factura"
+                   Capturar="CapturarBorrador" Describir="DescribirBorrador" Restaurar="RestaurarBorradorAsync" />
+
 @if (mensaje is not null)
 {
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
@@ -1716,6 +1719,89 @@
             1 => partes[0][..1].ToUpperInvariant(),
             _ => string.Concat(partes[0][..1], partes[1][..1]).ToUpperInvariant()
         };
+    }
+
+    // ---- Borrador: la factura en captura se conserva al salir de la pantalla ----
+    private sealed record BorradorFactura(
+        DateTime Fecha, string? Serie, string? Numero, int? CliId, string? Nombres, string? Apellidos, string? Nit,
+        int? PveId, int BodId, int? MonId, string Condicion, DateTime? FechaPrimerPago, decimal MontoEnganche, int NumeroCuotas,
+        string TextoNit, string NombreNitManual, int? CotId, int PcaId,
+        IReadOnlyList<BorradorLineaFactura> Lineas, IReadOnlyList<BorradorFormaPago> Formas);
+
+    private sealed record BorradorLineaFactura(
+        int? ProId, string Descripcion, string BienOServicio, decimal Cantidad, int UmeId, decimal PrecioUnitario,
+        decimal ValorDescuento, decimal? CostoUnitario, int? PprId, bool ManejaExistencia, int BodId, bool BodegaManual);
+
+    // Nada que conservar si no hay factura abierta o todavía no se capturó nada.
+    private BorradorFactura? CapturarBorrador()
+    {
+        if (!mostrarNuevaFactura) return null;
+        if (lineas.Count == 0 && nuevaFactura.CliId is null && string.IsNullOrWhiteSpace(textoNit)) return null;
+        return new BorradorFactura(
+            nuevaFactura.Fecha, nuevaFactura.SerieDocumento, nuevaFactura.NumeroDocumento, nuevaFactura.CliId,
+            nuevaFactura.NombresCliente, nuevaFactura.ApellidosCliente, nuevaFactura.Nit, nuevaFactura.PveId, nuevaFactura.BodId,
+            nuevaFactura.MonId, condicionPagoFactura, nuevaFactura.FechaPrimerPago, nuevaFactura.MontoEnganche, nuevaFactura.NumeroCuotas,
+            textoNit, nombreNitManual, cotizacionOrigen?.CotId, pcaIdFactura,
+            lineas.Select(l => new BorradorLineaFactura(l.ProId, l.Descripcion, l.BienOServicio, l.Cantidad, l.UmeId, l.PrecioUnitario,
+                l.ValorDescuento, l.CostoUnitario, l.PprId, l.ManejaExistencia, l.BodId, l.BodegaManual)).ToList(),
+            formasPagoCapturadas.Select(BorradorFormaPago.De).ToList());
+    }
+
+    private string DescribirBorrador(BorradorFactura b)
+    {
+        var cliente = $"{b.Nombres} {b.Apellidos}".Trim();
+        if (cliente.Length == 0) cliente = string.IsNullOrWhiteSpace(b.TextoNit) ? "sin cliente" : $"NIT {b.TextoNit}";
+        var simbolo = monedas.FirstOrDefault(m => m.MonId == b.MonId)?.MonSimbolo ?? "Q";
+        var total = b.Lineas.Sum(l => Math.Round(l.Cantidad * l.PrecioUnitario, 2) - l.ValorDescuento);
+        return $"{cliente}, {b.Lineas.Count} {(b.Lineas.Count == 1 ? "línea" : "líneas")}, {simbolo} {total:N2}";
+    }
+
+    private async Task RestaurarBorradorAsync(BorradorFactura b)
+    {
+        await MostrarNuevaFacturaAsync();
+        nuevaFactura.Fecha = b.Fecha;
+        nuevaFactura.SerieDocumento = b.Serie;
+        nuevaFactura.NumeroDocumento = b.Numero;
+        nuevaFactura.PveId = b.PveId;
+        if (bodegas.Any(x => x.BodId == b.BodId)) nuevaFactura.BodId = b.BodId;
+        if (monedas.Any(m => m.MonId == b.MonId)) nuevaFactura.MonId = b.MonId;
+        condicionPagoFactura = b.Condicion;
+        nuevaFactura.FechaPrimerPago = b.FechaPrimerPago;
+        nuevaFactura.MontoEnganche = b.MontoEnganche;
+        nuevaFactura.NumeroCuotas = b.NumeroCuotas;
+        textoNit = b.TextoNit;
+        nombreNitManual = b.NombreNitManual;
+        if (cajasAbiertasSucursal.Any(c => c.PcaId == b.PcaId)) pcaIdFactura = b.PcaId;
+        foreach (var l in b.Lineas)
+        {
+            lineas.Add(new LineaCaptura
+            {
+                ProId = l.ProId, Descripcion = l.Descripcion, BienOServicio = l.BienOServicio, Cantidad = l.Cantidad, UmeId = l.UmeId,
+                PrecioUnitario = l.PrecioUnitario, ValorDescuento = l.ValorDescuento, CostoUnitario = l.CostoUnitario, PprId = l.PprId,
+                ManejaExistencia = l.ManejaExistencia, BodId = l.BodId, BodegaManual = l.BodegaManual
+            });
+        }
+        foreach (var proId in b.Lineas.Where(l => l.ManejaExistencia && l.ProId is not null).Select(l => l.ProId!.Value).Distinct())
+            await CargarExistenciasAsync(proId);
+        formasPagoCapturadas.AddRange(b.Formas.Select(f => f.Captura()));
+        try
+        {
+            // El cliente y la cotización se vuelven a leer: crédito, historial y vigencia de hoy.
+            if (b.CliId is int cliId && await ClienteRepository.ConsultarPorIdAsync(cliId) is { } cliente)
+                await SeleccionarClienteAsync(cliente);
+            if (b.CotId is int cotId)
+            {
+                var (cotizacion, _) = await CotizacionRepository.ConsultarPorIdAsync(cotId);
+                if (cotizacion is { PuedeFacturarse: true }) cotizacionOrigen = cotizacion;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.LogWarning(ex, "No se pudo releer el cliente o la cotización del borrador");
+        }
+        mensaje = "Se recuperó la factura sin terminar. Revise precios y existencias antes de grabar.";
+        esMensajeError = false;
+        enfocarProducto = true;
     }
 
     private sealed class NuevaFacturaModelo

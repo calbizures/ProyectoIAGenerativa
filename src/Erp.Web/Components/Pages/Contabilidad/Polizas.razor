@@ -17,6 +17,9 @@
     <p>Todas las pólizas: las que generan las ventas, compras, cobros, pagos, cheques, nómina y demás procesos, y las pólizas manuales (ajustes, provisiones, reclasificaciones). Las automáticas se anulan desde su documento.</p>
 </div>
 
+<BorradorDocumento TDatos="BorradorPoliza" Clave="polizas" Nombre="una póliza manual"
+                   Capturar="CapturarBorrador" Describir="DescribirBorrador" Restaurar="RestaurarBorrador" />
+
 @if (mensaje is not null)
 {
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
@@ -395,6 +398,34 @@
         }
         catch (Exception ex) { MostrarError(ex); }
         finally { guardando = false; }
+    }
+
+    // ---- Borrador: la póliza en captura se conserva al salir de la pantalla ----
+    private sealed record BorradorPoliza(DateTime Fecha, string Descripcion, IReadOnlyList<LineaCaptura> Lineas);
+
+    private BorradorPoliza? CapturarBorrador()
+    {
+        if (captura is null) return null;
+        var conDatos = captura.Lineas.Any(l => l.CtaId is not null || !string.IsNullOrWhiteSpace(l.CuentaTexto) || l.Debe is not null || l.Haber is not null);
+        if (!conDatos && string.IsNullOrWhiteSpace(captura.Descripcion)) return null;
+        return new BorradorPoliza(captura.Fecha, captura.Descripcion, captura.Lineas);
+    }
+
+    private static string DescribirBorrador(BorradorPoliza b) =>
+        $"{(string.IsNullOrWhiteSpace(b.Descripcion) ? "sin descripción" : b.Descripcion.Length > 60 ? b.Descripcion[..60] + "…" : b.Descripcion)}, "
+        + $"{b.Lineas.Count} {(b.Lineas.Count == 1 ? "línea" : "líneas")}, debe Q {b.Lineas.Sum(l => l.Debe ?? 0):N2}";
+
+    private void RestaurarBorrador(BorradorPoliza b)
+    {
+        captura = new Captura { Fecha = b.Fecha, Descripcion = b.Descripcion };
+        foreach (var l in b.Lineas)
+        {
+            // Una cuenta que ya no acepta movimientos queda como texto para elegir otra.
+            if (l.CtaId is int ctaId && cuentasDetalle.All(c => c.CtaId != ctaId)) l.CtaId = null;
+            captura.Lineas.Add(l);
+        }
+        mensaje = "Se recuperó la póliza sin terminar. Revísela antes de grabar.";
+        esMensajeError = false;
     }
 
     private void IniciarAnulacion()

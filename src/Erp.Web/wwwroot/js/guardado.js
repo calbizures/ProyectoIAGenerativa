@@ -20,6 +20,8 @@
                 desbloquear(registro);
             };
             const registro = { boton, ref, contenedor, alCambiar };
+            // Cambios sin grabar para el aviso al salir (cambios.js).
+            registro.zona = window.erpCambios ? window.erpCambios.registrarZona(boton, contenedor) : null;
             contenedor.addEventListener('input', alCambiar, true);
             contenedor.addEventListener('change', alCambiar, true);
             registrados.add(registro);
@@ -30,8 +32,18 @@
             if (!registro) return;
             registro.contenedor.removeEventListener('input', registro.alCambiar, true);
             registro.contenedor.removeEventListener('change', registro.alCambiar, true);
+            if (window.erpCambios) window.erpCambios.quitarZona(registro.zona);
             registrados.delete(registro);
             delete boton.__erpGuardar;
+        },
+        // La acción del botón terminó sin excepción.
+        guardado(boton) {
+            const registro = boton && boton.__erpGuardar;
+            if (registro && window.erpCambios) window.erpCambios.zonaGuardada(registro.zona);
+        },
+        // Cancelar deja la pantalla sin cambios pendientes.
+        cancelado() {
+            if (window.erpCambios) window.erpCambios.limpiarZonas();
         }
     };
 
@@ -48,6 +60,9 @@
     new MutationObserver(mutaciones => {
         if (registrados.size === 0) return;
         const hayError = mutaciones.some(m => dentroDeError(m.target) || [...m.addedNodes].some(contieneError));
-        if (hayError) registrados.forEach(desbloquear);
+        if (hayError) registrados.forEach(r => {
+            if (window.erpCambios) window.erpCambios.zonaFallo(r.zona);
+            desbloquear(r);
+        });
     }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
 })();

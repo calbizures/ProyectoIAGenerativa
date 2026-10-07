@@ -20,6 +20,9 @@
     <p>Pedidos a proveedores. Una orden aprobada se recibe en la bodega, completa o por partes: cada recepción graba la compra con la factura del proveedor (inventario, cuenta por pagar y póliza).</p>
 </div>
 
+<BorradorDocumento TDatos="BorradorOrden" Clave="ordenes-compra" Nombre="una orden de compra"
+                   Capturar="CapturarBorrador" Describir="DescribirBorrador" Restaurar="RestaurarBorradorAsync" />
+
 @if (mensaje is not null)
 {
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
@@ -542,6 +545,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         productosEncontrados = Array.Empty<Producto>();
         await CargarProductosProveedorAsync();
         pestanaActiva = "orden";
+        edicionOriginal = System.Text.Json.JsonSerializer.Serialize(CapturarBorrador());
     }
 
     private void CancelarFormulario()
@@ -628,6 +632,43 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             MostrarOk($"Orden {numero} grabada en borrador. Apruébela para enviarla al proveedor.");
         }
         catch (Exception ex) { MostrarError(ex); }
+    }
+
+    // ---- Borrador: la orden en captura se conserva al salir de la pantalla ----
+    private sealed record BorradorOrden(NuevaOrdenCompra Orden, string? NumeroEditando, IReadOnlyList<LineaOrden> Lineas);
+
+    // Al editar una orden, lo que tenía al abrirla: sin cambios no hay borrador.
+    private string? edicionOriginal;
+
+    private BorradorOrden? CapturarBorrador()
+    {
+        if (pestanaActiva != "orden") return null;
+        if (lineas.Count == 0 && orden.PrvId == 0) return null;
+        var borrador = new BorradorOrden(orden, numeroEditando, lineas);
+        if (orden.OcpId is not null && edicionOriginal is not null && System.Text.Json.JsonSerializer.Serialize(borrador) == edicionOriginal)
+            return null;
+        return borrador;
+    }
+
+    private string DescribirBorrador(BorradorOrden b)
+    {
+        var proveedor = proveedores.FirstOrDefault(p => p.PrvId == b.Orden.PrvId)?.PrvNombreComercial ?? "sin proveedor";
+        var cual = b.NumeroEditando is null ? "" : $"cambios a la {b.NumeroEditando}, ";
+        return $"{cual}{proveedor}, {b.Lineas.Count} {(b.Lineas.Count == 1 ? "producto" : "productos")}, Q {b.Lineas.Sum(l => l.Total):N2}";
+    }
+
+    private async Task RestaurarBorradorAsync(BorradorOrden b)
+    {
+        IniciarNueva();
+        orden = b.Orden;
+        if (!bodegas.Any(x => x.BodId == orden.BodId)) orden.BodId = bodegas.FirstOrDefault()?.BodId ?? 0;
+        numeroEditando = b.NumeroEditando;
+        lineas.AddRange(b.Lineas);
+        await CargarProductosProveedorAsync();
+        edicionOriginal = null;
+        MostrarOk(b.NumeroEditando is null
+            ? "Se recuperó la orden sin terminar. Revise los costos antes de grabar."
+            : $"Se recuperaron los cambios sin grabar de la orden {b.NumeroEditando}. Solo se graban si la orden sigue en borrador.");
     }
 
     private async Task AbrirAsync(int ocpId)

@@ -18,6 +18,9 @@
     </p>
 </div>
 
+<BorradorDocumento TDatos="BorradorNota" Clave="@(EsCliente ? "cxc-notas" : "cxp-notas")" Nombre="una nota"
+                   Capturar="CapturarBorrador" Describir="DescribirBorrador" Restaurar="RestaurarBorradorAsync" />
+
 @if (mensaje is not null)
 {
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
@@ -267,6 +270,56 @@ else
                 });
         }
         catch (Exception ex) { MostrarError(ex); }
+    }
+
+    // ---- Borrador: la nota en captura se conserva al salir de la pantalla ----
+    private sealed record BorradorDevolucion(int DetId, decimal Cantidad, decimal PrecioConIva);
+
+    private sealed record BorradorNota(TerceroSeleccion Tercero, bool EsCredito, int EncIdReferencia, DateTime Fecha, DateTime? FechaVencimiento,
+        string? NumeroDocto, string Motivo, IReadOnlyList<BorradorDevolucion> Devoluciones, IReadOnlyList<LineaMonto> Montos);
+
+    private BorradorNota? CapturarBorrador()
+    {
+        if (formulario is null || tercero is null) return null;
+        var f = formulario;
+        var devoluciones = f.Devoluciones.Where(d => d.Cantidad > 0).Select(d => new BorradorDevolucion(d.Origen.DetId, d.Cantidad, d.PrecioConIva)).ToList();
+        var montos = f.Montos.Where(m => m.MontoConIva != 0 || !string.IsNullOrWhiteSpace(m.Descripcion)).ToList();
+        if (f.EncIdReferencia == 0 && string.IsNullOrWhiteSpace(f.Motivo) && devoluciones.Count == 0 && montos.Count == 0) return null;
+        return new BorradorNota(tercero, f.EsCredito, f.EncIdReferencia, f.Fecha, f.FechaVencimiento, f.NumeroDocto, f.Motivo, devoluciones, montos);
+    }
+
+    private static string DescribirBorrador(BorradorNota b) =>
+        $"nota de {(b.EsCredito ? "crédito" : "débito")} a {b.Tercero.Nombre}, "
+        + $"Q {b.Devoluciones.Sum(d => d.Cantidad * d.PrecioConIva) + b.Montos.Sum(m => m.MontoConIva):N2}";
+
+    private async Task RestaurarBorradorAsync(BorradorNota b)
+    {
+        await CambiarTerceroAsync(b.Tercero);
+        await NuevaNotaAsync(b.EsCredito ? "C" : "D");
+        if (formulario is null) return;
+        if (b.EncIdReferencia != 0 && documentosTercero.Any(d => d.EncId == b.EncIdReferencia))
+            await CambiarDocumentoAsync(new ChangeEventArgs { Value = b.EncIdReferencia.ToString() });
+        formulario.Fecha = b.Fecha;
+        formulario.FechaVencimiento = b.FechaVencimiento;
+        formulario.NumeroDocto = b.NumeroDocto;
+        formulario.Motivo = b.Motivo;
+        foreach (var d in formulario.Devoluciones)
+        {
+            var guardada = b.Devoluciones.FirstOrDefault(x => x.DetId == d.Origen.DetId);
+            if (guardada is null) continue;
+            d.Cantidad = Math.Min(guardada.Cantidad, d.Origen.Disponible);
+            d.PrecioConIva = guardada.PrecioConIva;
+        }
+        if (b.Montos.Count > 0)
+        {
+            formulario.Montos.Clear();
+            formulario.Montos.AddRange(b.Montos);
+        }
+        var documentoPerdido = b.EncIdReferencia != 0 && formulario.EncIdReferencia == 0;
+        mensaje = documentoPerdido
+            ? "Se recuperó la nota sin terminar, pero el documento de referencia ya no tiene saldo: elíjalo de nuevo."
+            : "Se recuperó la nota sin terminar. Revísela antes de grabar.";
+        esMensajeError = documentoPerdido;
     }
 
     private async Task GrabarAsync()

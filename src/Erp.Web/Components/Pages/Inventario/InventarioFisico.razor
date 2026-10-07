@@ -15,6 +15,9 @@
     <p>Abra una toma por bodega, registre el conteo junto a la existencia del sistema y aplíquela: las diferencias generan el documento de ajuste (sobrante o faltante) y su póliza.</p>
 </div>
 
+<BorradorDocumento TDatos="BorradorConteo" Clave="inventario-fisico" Nombre="un conteo de inventario"
+                   Capturar="CapturarBorrador" Describir="DescribirBorrador" Restaurar="RestaurarBorradorAsync" />
+
 @if (mensaje is not null)
 {
     <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
@@ -392,6 +395,35 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
             mensaje = "No se pudo leer el archivo. Verifique que sea un libro de Excel (.xlsx) válido.";
             esMensajeError = true;
         }
+    }
+
+    // ---- Borrador: los conteos escritos y aún no guardados se conservan al salir ----
+    private sealed record BorradorConteo(int TfiId, string Bodega, Dictionary<int, decimal?> Conteos);
+
+    private BorradorConteo? CapturarBorrador() =>
+        seleccionada is null || !EnConteo || conteos.Count == 0 ? null
+            : new BorradorConteo(seleccionada.TfiId, seleccionada.Bodega, new Dictionary<int, decimal?>(conteos));
+
+    private static string DescribirBorrador(BorradorConteo b) =>
+        $"toma #{b.TfiId} de {b.Bodega}, {b.Conteos.Count} {(b.Conteos.Count == 1 ? "producto contado" : "productos contados")}";
+
+    private async Task RestaurarBorradorAsync(BorradorConteo b)
+    {
+        try
+        {
+            var toma = (await TomaRepository.ConsultarAsync(null, null, "B")).FirstOrDefault(t => t.TfiId == b.TfiId);
+            if (toma is null)
+            {
+                mensaje = $"La toma #{b.TfiId} ya no está en conteo (se aplicó o se anuló): el conteo sin guardar no se puede recuperar.";
+                esMensajeError = true;
+                return;
+            }
+            await AbrirAsync(toma);
+            foreach (var l in lineas)
+                if (b.Conteos.TryGetValue(l.ProId, out var conteo)) conteos[l.ProId] = conteo;
+            MostrarOk($"Se {(conteos.Count == 1 ? "recuperó 1 conteo" : $"recuperaron {conteos.Count} conteos")} sin guardar de la toma #{b.TfiId}. Presione Guardar conteo para grabarlos.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
     }
 
     private async Task AplicarAsync()
