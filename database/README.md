@@ -88,6 +88,15 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 71_pago_proveedor_transferencia.sql           -- pago a proveedores por transferencia con autorización y comprobante
 ```
 
+**Instalación de una sola vez:** después de crear la base con
+`00_crear_base_datos.sql`, el archivo `instalar_01_al_71.sql` corre en orden
+del `01` al `71` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
+active *Consulta › Modo SQLCMD*, cambie la ruta de la línea `:setvar RUTA` por la
+carpeta de los scripts y ejecútelo; desde la línea de comandos:
+`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_71.sql -o instalacion.log`.
+Se detiene en el primer error y muestra en qué script ocurrió. Incluye los
+datos de prueba, así que es para una base nueva, no para una con datos reales.
+
 **Todos los scripts se pueden volver a correr.** Correr del `00` al `71` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
