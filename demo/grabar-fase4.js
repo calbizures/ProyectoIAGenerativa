@@ -100,9 +100,13 @@ const secciones = {
     await d.resaltar('.kpi-fila', 4400); await d.sinResalte();
     await d.rotulo('01 · Cuentas por cobrar', 'Consulta al elegir el cliente',
       'No hace falta pulsar Consultar: al elegir el cliente se muestran sus saldos por rango de días.', { pos: 'abajo-der', espera: false });
-    await d.escribir('input[placeholder^="Buscar cliente"]', 'a', 300);
+    // Un cliente con saldo (los datos de prueba cambian en cada instalación).
+    const [[codigoCliente]] = sql(`SELECT TOP 1 clie.cli_codigo FROM dbo.pos_cliente_plan_pagos cuot JOIN dbo.pos_cliente clie ON clie.cli_id = cuot.cli_id
+      JOIN dbo.inv_documento_enc docu ON docu.enc_id = cuot.enc_id AND docu.enc_estado = 'G' WHERE cuot.cpp_saldo_cuota > 0
+      GROUP BY clie.cli_codigo ORDER BY COUNT(*) DESC, clie.cli_codigo`);
+    await d.escribir('input[placeholder^="Buscar cliente"]', codigoCliente, 300);
     await d.p.keyboard.press('Enter'); await d.espera(1200);
-    await d.clic('.doc-resultado-fila >> nth=1', 1800);
+    await d.clic('.doc-resultado-fila >> nth=0', 1800);
     await d.resaltar('main table', 3600); await d.sinResalte(); await d.sinRotulo();
     // El vendedor entra con su usuario.
     await cerrarSesion();
