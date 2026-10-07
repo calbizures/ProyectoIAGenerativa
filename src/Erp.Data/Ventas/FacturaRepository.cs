@@ -74,8 +74,19 @@ public sealed class FacturaRepository(IDbConnectionFactory connectionFactory) : 
 		parametros.Add("@EncId", dbType: DbType.Int32, direction: ParameterDirection.Output);
 		parametros.Add("@EncNumeroUnico", dbType: DbType.String, size: 16, direction: ParameterDirection.Output);
 
-		await connection.ExecuteAsync("dbo.paVentaFacturaCrear", parametros, commandType: CommandType.StoredProcedure);
-		return (parametros.Get<int>("@EncId"), parametros.Get<string>("@EncNumeroUnico"));
+		// Con comprobantes de transferencias, la factura y sus comprobantes se graban juntos.
+		if (!ComprobantesFormaPago.HayComprobantes(formasPago))
+		{
+			await connection.ExecuteAsync("dbo.paVentaFacturaCrear", parametros, commandType: CommandType.StoredProcedure);
+			return (parametros.Get<int>("@EncId"), parametros.Get<string>("@EncNumeroUnico"));
+		}
+		connection.Open();
+		using var transaccion = connection.BeginTransaction();
+		await connection.ExecuteAsync("dbo.paVentaFacturaCrear", parametros, transaccion, commandType: CommandType.StoredProcedure);
+		var encId = parametros.Get<int>("@EncId");
+		await ComprobantesFormaPago.GuardarAsync(connection, transaccion, null, encId, formasPago!, usuarioAccionId);
+		transaccion.Commit();
+		return (encId, parametros.Get<string>("@EncNumeroUnico"));
 	}
 
 	public async Task AnularAsync(int encId, int? usuarioAccionId)

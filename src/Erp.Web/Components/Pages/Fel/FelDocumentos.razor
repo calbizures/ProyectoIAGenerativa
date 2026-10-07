@@ -55,7 +55,7 @@ else
     <table class="tabla-datos">
         <thead>
             <tr>
-                <th class="col-fecha">Fecha</th><th>Documento</th><th>Cliente</th><th class="num">Total</th><th class="col-codigo">DTE</th>
+                <th class="col-fecha-hora">Fecha y hora</th><th>Documento</th><th>Cliente</th><th class="num">Total</th><th class="col-codigo">DTE</th>
                 <th class="col-estado">Estado FEL</th><th>Autorización / mensaje</th><th class="col-acciones">Acciones</th>
             </tr>
         </thead>
@@ -63,7 +63,7 @@ else
             @foreach (var d in Paginador.Recortar(Filtrados, pagina))
             {
                 <tr class="@(abiertoId == d.EncId ? "fila-seleccionada" : "")">
-                    <td class="col-fecha">@d.Fecha.ToString("dd/MM/yyyy")</td>
+                    <td class="col-fecha-hora"><FechaHoraDocumento Fecha="d.Fecha" Grabado="d.FechaHora" /></td>
                     <td>@d.TdoCodigo @d.Documento @(d.EstadoDocumento != "G" ? "(anulado)" : "")</td>
                     <td>@d.Cliente</td>
                     <td class="num">@d.Total.ToString("N2")</td>

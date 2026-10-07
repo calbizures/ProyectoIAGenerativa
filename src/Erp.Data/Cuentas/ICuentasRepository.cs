@@ -44,6 +44,19 @@ public interface ICuentasRepository
 	Task<ComprobanteTransferencia?> ConsultarComprobanteTransferenciaAsync(int bltId);
 	Task AnularTransferenciaAsync(int bltId, string motivo, int? usuarioAccionId);
 
+	// Transferencias recibidas en caja (factura o cobro) y su comprobante.
+	Task<IReadOnlyList<TransferenciaRecibida>> ConsultarTransferenciasPagoAsync(int? ppeId, int? encId);
+	Task<ArchivoAdjunto?> ConsultarComprobantePagoAsync(int ppfId);
+
+	// Pago con boleta: por verificar, verificar (recibo sin caja), rechazar o anular.
+	Task<int> RegistrarBoletaAsync(BoletaCaptura boleta, IReadOnlyList<CuotaCobro> cuotas, int? usuarioAccionId);
+	Task<int> VerificarBoletaAsync(int cboId, int? usuarioAccionId);
+	Task RechazarBoletaAsync(int cboId, string motivo, int? usuarioAccionId);
+	Task AnularBoletaAsync(int cboId, string motivo, int? usuarioAccionId);
+	Task<IReadOnlyList<BoletaResumen>> ConsultarBoletasAsync(string? estado, int? cliId, DateTime? desde, DateTime? hasta);
+	Task<IReadOnlyList<BoletaCuota>> ConsultarBoletaDetalleAsync(int cboId);
+	Task<ArchivoAdjunto?> ConsultarComprobanteBoletaAsync(int cboId);
+
 	// Notas de crédito y débito (NCC, NDC, NCP, NDP)
 	Task<IReadOnlyList<NotaResumen>> ConsultarNotasAsync(bool esCliente, int? cliId, int? prvId, int? encIdReferencia);
 	Task<IReadOnlyList<LineaDevolucion>> ConsultarLineasDevolucionAsync(int encId);

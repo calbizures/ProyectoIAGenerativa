@@ -104,7 +104,7 @@ else
             @if (datos.Pagos.Count > 0)
             {
                 <div class="fac-ticket-datos">
-                    @foreach (var p in datos.Pagos) { <div><span>@p.Forma:</span> @Enc.Simbolo@p.Monto.ToString("N2") @p.Referencia</div> }
+                    @foreach (var p in datos.Pagos) { <div><span>@p.Forma:</span> @Enc.Simbolo@p.Monto.ToString("N2") @p.ReferenciaTexto</div> }
                 </div>
             }
             @if (datos.Cuotas.Count > 0)
@@ -213,7 +213,7 @@ else
                     {
                         <div class="fac-mini">
                             <div class="fac-bloque-titulo">Pago recibido</div>
-                            @foreach (var p in datos.Pagos) { <div class="fac-fila"><span>@p.Forma</span>@Enc.Simbolo @p.Monto.ToString("N2") @p.Referencia</div> }
+                            @foreach (var p in datos.Pagos) { <div class="fac-fila"><span>@p.Forma</span>@Enc.Simbolo @p.Monto.ToString("N2") @p.ReferenciaTexto</div> }
                         </div>
                     }
                     @if (datos.Cuotas.Count > 0)

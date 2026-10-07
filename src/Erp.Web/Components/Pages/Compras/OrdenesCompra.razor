@@ -110,7 +110,7 @@ else if (pestanaActiva == "orden")
                 <label for="oc-bodega">Recibir en la bodega</label>
                 <select id="oc-bodega" @bind="orden.BodId">
                     <option value="0">Seleccione…</option>
-                    @foreach (var b in bodegas)
+                    @foreach (var b in BodegasSucursal)
                     {
                         <option value="@b.BodId">@b.SucDescripcion · @b.BodDescripcion</option>
                     }
@@ -407,6 +407,9 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
     private string motivo = "";
     private decimal porcentajeIva = 12m;
     private int? sucIdSesion;
+    // Se recibe en una bodega de la sucursal con la que se entró (al editar, también la que ya tenía la orden).
+    private IEnumerable<Bodega> BodegasSucursal => sucIdSesion is null ? bodegas
+        : bodegas.Where(b => b.SucId == sucIdSesion || b.BodId == orden.BodId).OrderBy(b => b.BodCodigo);
     private string? mensaje;
     private bool esMensajeError;
 
@@ -505,7 +508,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         {
             Fecha = DateTime.Today,
             FechaEntrega = DateTime.Today.AddDays(7),
-            BodId = bodegas.Where(b => b.SucId == sucIdSesion).OrderBy(b => b.BodCodigo).FirstOrDefault()?.BodId ?? bodegas.FirstOrDefault()?.BodId ?? 0
+            BodId = bodegas.Where(b => b.SucId == sucIdSesion || sucIdSesion == null).OrderBy(b => b.BodCodigo).FirstOrDefault()?.BodId ?? 0
         };
         numeroEditando = null;
         lineas.Clear();

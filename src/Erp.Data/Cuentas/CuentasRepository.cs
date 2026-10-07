@@ -67,8 +67,19 @@ public sealed class CuentasRepository(IDbConnectionFactory connectionFactory) : 
 		parametros.Add("@Cuotas", tablaCuotas.AsTableValuedParameter("dbo.cobro_cuota_type"));
 		parametros.Add("@Formas", CajaRepository.ConstruirTablaFormasPago(formasPago).AsTableValuedParameter("dbo.pago_forma_type"));
 		parametros.Add("@PpeId", dbType: DbType.Int32, direction: ParameterDirection.Output);
-		await connection.ExecuteAsync("dbo.paCxcCobroRegistrar", parametros, commandType: CommandType.StoredProcedure);
-		return parametros.Get<int>("@PpeId");
+		if (!ComprobantesFormaPago.HayComprobantes(formasPago))
+		{
+			await connection.ExecuteAsync("dbo.paCxcCobroRegistrar", parametros, commandType: CommandType.StoredProcedure);
+			return parametros.Get<int>("@PpeId");
+		}
+		// El cobro y los comprobantes de sus transferencias se graban juntos.
+		connection.Open();
+		using var transaccion = connection.BeginTransaction();
+		await connection.ExecuteAsync("dbo.paCxcCobroRegistrar", parametros, transaccion, commandType: CommandType.StoredProcedure);
+		var ppeId = parametros.Get<int>("@PpeId");
+		await ComprobantesFormaPago.GuardarAsync(connection, transaccion, ppeId, null, formasPago, usuarioAccionId);
+		transaccion.Commit();
+		return ppeId;
 	}
 
 	public Task<IReadOnlyList<ReciboResumen>> ConsultarRecibosAsync(int? pcaId, int? cliId, DateTime? desde, DateTime? hasta) =>
@@ -222,6 +233,70 @@ public sealed class CuentasRepository(IDbConnectionFactory connectionFactory) : 
 		await connection.ExecuteAsync("dbo.paCxpTransferenciaAnular", new { BltId = bltId, Motivo = motivo, UsuId = usuarioAccionId },
 			commandType: CommandType.StoredProcedure);
 	}
+
+	public Task<IReadOnlyList<TransferenciaRecibida>> ConsultarTransferenciasPagoAsync(int? ppeId, int? encId) =>
+		ConsultarAsync<TransferenciaRecibida>("dbo.paPagoFormaTransferenciasConsultar", new { PpeId = ppeId, EncId = encId });
+
+	public async Task<ArchivoAdjunto?> ConsultarComprobantePagoAsync(int ppfId) =>
+		(await ConsultarAsync<ArchivoAdjunto>("dbo.paPagoFormaComprobanteConsultar", new { PpfId = ppfId })).FirstOrDefault();
+
+	public async Task<int> RegistrarBoletaAsync(BoletaCaptura boleta, IReadOnlyList<CuotaCobro> cuotas, int? usuarioAccionId)
+	{
+		var tablaCuotas = new DataTable();
+		tablaCuotas.Columns.Add("cpp_id", typeof(int));
+		tablaCuotas.Columns.Add("monto", typeof(decimal));
+		foreach (var c in cuotas) tablaCuotas.Rows.Add(c.CppId, c.Monto);
+
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new DynamicParameters();
+		parametros.Add("@CliId", boleta.CliId);
+		parametros.Add("@BcbId", boleta.BcbId);
+		parametros.Add("@Fecha", boleta.Fecha.Date);
+		parametros.Add("@Referencia", boleta.Referencia);
+		parametros.Add("@Observaciones", boleta.Observaciones);
+		parametros.Add("@Cuotas", tablaCuotas.AsTableValuedParameter("dbo.cobro_cuota_type"));
+		parametros.Add("@ComprobanteNombre", boleta.ComprobanteNombre);
+		parametros.Add("@ComprobanteTipo", boleta.ComprobanteTipo);
+		parametros.Add("@Comprobante", boleta.Comprobante, DbType.Binary, size: -1);
+		parametros.Add("@UsuId", usuarioAccionId);
+		parametros.Add("@CboId", dbType: DbType.Int32, direction: ParameterDirection.Output);
+		await connection.ExecuteAsync("dbo.paCxcBoletaRegistrar", parametros, commandType: CommandType.StoredProcedure);
+		return parametros.Get<int>("@CboId");
+	}
+
+	public async Task<int> VerificarBoletaAsync(int cboId, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new DynamicParameters();
+		parametros.Add("@CboId", cboId);
+		parametros.Add("@UsuId", usuarioAccionId);
+		parametros.Add("@PpeId", dbType: DbType.Int32, direction: ParameterDirection.Output);
+		await connection.ExecuteAsync("dbo.paCxcBoletaVerificar", parametros, commandType: CommandType.StoredProcedure);
+		return parametros.Get<int>("@PpeId");
+	}
+
+	public async Task RechazarBoletaAsync(int cboId, string motivo, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		await connection.ExecuteAsync("dbo.paCxcBoletaRechazar", new { CboId = cboId, Motivo = motivo, UsuId = usuarioAccionId },
+			commandType: CommandType.StoredProcedure);
+	}
+
+	public async Task AnularBoletaAsync(int cboId, string motivo, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		await connection.ExecuteAsync("dbo.paCxcBoletaAnular", new { CboId = cboId, Motivo = motivo, UsuId = usuarioAccionId },
+			commandType: CommandType.StoredProcedure);
+	}
+
+	public Task<IReadOnlyList<BoletaResumen>> ConsultarBoletasAsync(string? estado, int? cliId, DateTime? desde, DateTime? hasta) =>
+		ConsultarAsync<BoletaResumen>("dbo.paCxcBoletasConsultar", new { Estado = estado, CliId = cliId, Desde = desde?.Date, Hasta = hasta?.Date });
+
+	public Task<IReadOnlyList<BoletaCuota>> ConsultarBoletaDetalleAsync(int cboId) =>
+		ConsultarAsync<BoletaCuota>("dbo.paCxcBoletaDetalleConsultar", new { CboId = cboId });
+
+	public async Task<ArchivoAdjunto?> ConsultarComprobanteBoletaAsync(int cboId) =>
+		(await ConsultarAsync<ArchivoAdjunto>("dbo.paCxcBoletaComprobanteConsultar", new { CboId = cboId })).FirstOrDefault();
 
 	public Task<IReadOnlyList<ProveedorConSaldo>> ConsultarProveedoresConSaldoAsync() =>
 		ConsultarAsync<ProveedorConSaldo>("dbo.paCxpProveedoresConSaldoConsultar");

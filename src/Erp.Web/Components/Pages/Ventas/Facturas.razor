@@ -21,6 +21,7 @@
 @inject Erp.Data.Fel.IFelRepository FelRepository
 @inject Erp.Web.Fel.FelConsultaNitServicio ConsultaNit
 @inject ICotizacionRepository CotizacionRepository
+@inject Erp.Web.Correo.DocumentosCorreo DocumentosCorreo
 
 <PageTitle>Facturas</PageTitle>
 
@@ -433,13 +434,19 @@
                                         <td>@NombreFormaPago(f.PftId)</td>
                                         <td class="num">@MonedaSimbolo @f.Monto.ToString("N2")</td>
                                         <td>@(entidadesFinancieras.FirstOrDefault(e => e.GefId == f.GefId)?.GefDescripcion ?? "—")</td>
-                                        <td>@(f.NumeroCheque ?? f.NumeroTarjetaUlt4 ?? "—")</td>
+                                        <td>
+                                            @(f.NumeroCheque ?? f.NumeroTarjetaUlt4 ?? "—")
+                                            @if (f.ComprobanteNombre is not null)
+                                            {
+                                                <span class="texto-tenue" title="Comprobante adjunto"> · <Icono Nombre="file-text" Tamano="13" /> @f.ComprobanteNombre</span>
+                                            }
+                                        </td>
                                         <td><BotonIcono Icono="trash-2" Tooltip="Quitar" Variante="peligro" OnClick="() => formasPagoCapturadas.Remove(f)" /></td>
                                     </tr>
                                 }
                                 <tr>
                                     <td>
-                                        <select @bind="formaPagoNueva.PftId" aria-label="Forma de pago">
+                                        <select @bind="formaPagoNueva.PftId" @bind:after="AlCambiarFormaNueva" aria-label="Forma de pago">
                                             <option value="0">Seleccione...</option>
                                             @foreach (var t in formasPagoTipo)
                                             {
@@ -468,6 +475,11 @@
                                         else if (EsTarjeta(formaPagoNueva.PftId))
                                         {
                                             <input class="entrada-referencia" placeholder="Últimos 4 dígitos" aria-label="Últimos 4 dígitos" maxlength="4" @bind="formaPagoNueva.NumeroTarjetaUlt4" />
+                                        }
+                                        else if (EsTransferencia(formaPagoNueva.PftId))
+                                        {
+                                            <input class="entrada-referencia" placeholder="No. de operación" aria-label="No. de operación de la transferencia" maxlength="16" @bind="formaPagoNueva.NumeroCheque" />
+                                            <AdjuntarArchivo Id="fac-comprobante" Etiqueta="Comprobante" Compacto="true" @bind-Archivo="comprobanteNuevo" AlError="MostrarErrorFormaPago" />
                                         }
                                     </td>
                                     <td><BotonIcono Icono="plus" Tooltip="Agregar forma de pago" OnClick="AgregarFormaPago" /></td>
@@ -576,7 +588,7 @@
         <h2>Historial</h2>
         <table class="tabla-datos">
             <thead>
-                <tr><th class="col-fecha">Fecha</th><th class="col-serie">Serie/Número</th><th class="col-tipo">Tipo</th><th>Cliente</th><th class="num col-monto">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+                <tr><th class="col-fecha-hora">Fecha y hora</th><th class="col-serie">Serie/Número</th><th class="col-tipo">Tipo</th><th>Cliente</th><th class="num col-monto">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
             </thead>
             <tbody>
                 @if (facturasFiltradas.Count == 0)
@@ -586,7 +598,7 @@
                 @foreach (var f in Paginador.Recortar(facturasFiltradas, pagina))
                 {
                     <tr class="@(encabezadoSeleccionado?.EncId == f.EncId ? "fila-seleccionada" : "")">
-                        <td class="col-fecha">@f.EncFechaDocto.ToString("dd/MM/yyyy")</td>
+                        <td class="col-fecha-hora"><FechaHoraDocumento Fecha="f.EncFechaDocto" Grabado="f.InsFechaHora" /></td>
                         <td class="col-serie">@(string.IsNullOrWhiteSpace(f.EncSerieDocto) ? $"{f.EncNumeroDocto}" : $"{f.EncSerieDocto}-{f.EncNumeroDocto}")</td>
                         <td class="col-tipo">@f.TdoCodigo</td>
                         <td>@f.NombreCliente</td>
@@ -652,6 +664,7 @@
                 <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@($"facturas/{encabezadoSeleccionado.EncId}/imprimir?auto=1")" target="_blank" rel="noopener">
                     <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
                 </a>
+                <BotonIcono Icono="mail" Tooltip="Enviar la factura al correo del cliente" Etiqueta="Enviar por correo" OnClick="AbrirCorreoFacturaAsync" />
                 @if (encabezadoSeleccionado.EncEstado == "G")
                 {
                     <span class="estado-badge estado-badge-grabada">Grabada</span>
@@ -683,6 +696,33 @@
                     </AuthorizeView>
                 }
             </div>
+            @if (correoFactura is not null)
+            {
+                <EnviarCorreoPanel Documento="correoFactura" Cerrar="() => correoFactura = null" />
+            }
+            @if (transferenciasFactura.Count > 0)
+            {
+                <div class="doc-nota">
+                    <Icono Nombre="landmark" Tamano="15" />
+                    <span>
+                        Transferencias recibidas:
+                        @foreach (var t in transferenciasFactura)
+                        {
+                            <span class="transferencia-recibida">
+                                No. @t.Referencia@(t.Banco is null ? "" : $" · {t.Banco}") · @MonedaSimbolo @t.Monto.ToString("N2") ·
+                                @if (t.TieneComprobante)
+                                {
+                                    <a href="@($"pagos/formas/{t.PpfId}/comprobante")" target="_blank" rel="noopener">ver comprobante</a>
+                                }
+                                else
+                                {
+                                    <span class="texto-tenue">sin comprobante</span>
+                                }
+                            </span>
+                        }
+                    </span>
+                </div>
+            }
             <BarraPestanas Pestanas="PestanasDetalleFactura" @bind-PestanaActiva="pestanaDetalleFactura" />
 
             @if (pestanaDetalleFactura == "detalle")
@@ -990,6 +1030,54 @@
     private string NombreFormaPago(int pftId) => formasPagoTipo.FirstOrDefault(t => t.PftId == pftId)?.PftDescripcion ?? "—";
     private bool EsCheque(int pftId) => NombreFormaPago(pftId).Equals("Cheque", StringComparison.OrdinalIgnoreCase);
     private bool EsTarjeta(int pftId) => NombreFormaPago(pftId).Equals("Tarjeta", StringComparison.OrdinalIgnoreCase);
+    private bool EsTransferencia(int pftId) => NombreFormaPago(pftId).Equals("Transferencia", StringComparison.OrdinalIgnoreCase);
+
+    // Envío de la factura seleccionada al correo del cliente.
+    private Erp.Web.Correo.DocumentosCorreo.Documento? correoFactura;
+
+    private async Task AbrirCorreoFacturaAsync()
+    {
+        if (encabezadoSeleccionado is null) return;
+        try
+        {
+            correoFactura = await DocumentosCorreo.FacturaAsync(encabezadoSeleccionado.EncId);
+            if (correoFactura is null) { mensaje = "No se encontró la factura."; esMensajeError = true; }
+        }
+        catch (Exception ex)
+        {
+            Log.LogError(ex, "No se pudo preparar el correo de la factura {EncId}", encabezadoSeleccionado.EncId);
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    // Comprobante de la transferencia que se está capturando (opcional).
+    private ArchivoCargado? comprobanteNuevo;
+    private IReadOnlyList<Erp.Data.Cuentas.TransferenciaRecibida> transferenciasFactura = Array.Empty<Erp.Data.Cuentas.TransferenciaRecibida>();
+
+    // Al elegir la forma de pago se propone lo que falta por pagar.
+    private void AlCambiarFormaNueva()
+    {
+        var pendiente = MontoAPagar - formasPagoCapturadas.Sum(f => f.Monto);
+        formaPagoNueva.Monto = pendiente > 0 ? pendiente : 0;
+        if (!EsTransferencia(formaPagoNueva.PftId)) comprobanteNuevo = null;
+    }
+
+    private void MostrarErrorFormaPago(string texto)
+    {
+        mensaje = texto;
+        esMensajeError = true;
+    }
+
+    // Una transferencia lleva su número de operación, distinto de las demás del mismo pago.
+    private string? ValidarTransferencia(FormaPagoCaptura forma, IEnumerable<FormaPagoCaptura> otras)
+    {
+        if (!EsTransferencia(forma.PftId)) return null;
+        if (string.IsNullOrWhiteSpace(forma.NumeroCheque)) return "Escriba el número de operación de la transferencia.";
+        if (otras.Any(o => EsTransferencia(o.PftId) && string.Equals(o.NumeroCheque?.Trim(), forma.NumeroCheque.Trim(), StringComparison.OrdinalIgnoreCase)))
+            return "Ya hay otra transferencia con ese número de operación en este pago.";
+        return null;
+    }
     private bool RequiereEntidadFinanciera(int pftId)
     {
         var nombre = NombreFormaPago(pftId);
@@ -1005,6 +1093,13 @@
             return;
         }
 
+        var error = ValidarTransferencia(formaPagoNueva, formasPagoCapturadas);
+        if (error is not null)
+        {
+            MostrarErrorFormaPago(error);
+            return;
+        }
+
         formasPagoCapturadas.Add(new FormaPagoCaptura
         {
             PftId = formaPagoNueva.PftId,
@@ -1012,8 +1107,12 @@
             GefId = formaPagoNueva.GefId > 0 ? formaPagoNueva.GefId : null,
             NumeroTarjetaUlt4 = formaPagoNueva.NumeroTarjetaUlt4,
             FechaVencimientoTarjeta = formaPagoNueva.FechaVencimientoTarjeta,
-            NumeroCheque = formaPagoNueva.NumeroCheque
+            NumeroCheque = formaPagoNueva.NumeroCheque?.Trim(),
+            ComprobanteNombre = comprobanteNuevo?.Nombre,
+            ComprobanteTipo = comprobanteNuevo?.Tipo,
+            Comprobante = comprobanteNuevo?.Contenido
         });
+        comprobanteNuevo = null;
 
         formaPagoNueva.PftId = 0;
         formaPagoNueva.Monto = 0;
@@ -1021,6 +1120,14 @@
         formaPagoNueva.NumeroTarjetaUlt4 = null;
         formaPagoNueva.FechaVencimientoTarjeta = null;
         formaPagoNueva.NumeroCheque = null;
+        mensaje = null;
+        // La fila de captura queda lista con lo que falta por pagar.
+        var pendiente = MontoAPagar - formasPagoCapturadas.Sum(f => f.Monto);
+        if (pendiente > 0)
+        {
+            formaPagoNueva.PftId = formasPagoTipo.FirstOrDefault(t => t.PftDescripcion == "Efectivo")?.PftId ?? 0;
+            formaPagoNueva.Monto = pendiente;
+        }
     }
 
     private async Task<int?> ObtenerUsuIdActualAsync()
@@ -1057,6 +1164,7 @@
         condicionPagoFactura = "contado";
         creditoCliente = null;
         formasPagoCapturadas.Clear();
+        comprobanteNuevo = null;
         formaPagoNueva.PftId = formasPagoTipo.FirstOrDefault(t => t.PftDescripcion == "Efectivo")?.PftId ?? 0;
         pcaIdFactura = cajasAbiertasSucursal.FirstOrDefault()?.PcaId ?? 0;
         lineas.Clear();
@@ -1552,13 +1660,22 @@
         // Sin formas agregadas, el monto a pagar se registra en la forma de la fila de captura.
         if (MontoAPagar > 0 && formasPagoCapturadas.Count == 0 && formaPagoNueva.PftId > 0)
         {
+            var errorForma = ValidarTransferencia(formaPagoNueva, Array.Empty<FormaPagoCaptura>());
+            if (errorForma is not null)
+            {
+                MostrarErrorFormaPago(errorForma);
+                return;
+            }
             formasPagoCapturadas.Add(new FormaPagoCaptura
             {
                 PftId = formaPagoNueva.PftId,
                 Monto = MontoAPagar,
                 GefId = formaPagoNueva.GefId > 0 ? formaPagoNueva.GefId : null,
                 NumeroTarjetaUlt4 = formaPagoNueva.NumeroTarjetaUlt4,
-                NumeroCheque = formaPagoNueva.NumeroCheque
+                NumeroCheque = formaPagoNueva.NumeroCheque?.Trim(),
+                ComprobanteNombre = comprobanteNuevo?.Nombre,
+                ComprobanteTipo = comprobanteNuevo?.Tipo,
+                Comprobante = comprobanteNuevo?.Contenido
             });
         }
 
@@ -1681,6 +1798,13 @@
         detalleSeleccionado = detalle;
         detallePlanPagos = await FacturaRepository.ConsultarPlanPagosAsync(encId);
         felDetalle = (await FelRepository.ConsultarDetalleAsync(encId)).Detalle;
+        correoFactura = null;
+        try { transferenciasFactura = await CuentasRepository.ConsultarTransferenciasPagoAsync(null, encId); }
+        catch (Exception ex)
+        {
+            Log.LogWarning(ex, "No se pudieron consultar las transferencias de la factura {EncId}", encId);
+            transferenciasFactura = Array.Empty<Erp.Data.Cuentas.TransferenciaRecibida>();
+        }
         pestanaDetalleFactura = "detalle";
     }
 

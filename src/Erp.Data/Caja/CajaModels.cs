@@ -1,3 +1,6 @@
+using System.Data;
+using Dapper;
+
 namespace Erp.Data.Caja;
 
 public sealed class CajaReceptora
@@ -86,6 +89,38 @@ public sealed class FormaPagoCaptura
 	public string? NumeroTarjetaUlt4 { get; set; }
 	public string? FechaVencimientoTarjeta { get; set; }
 	public string? NumeroCheque { get; set; }
+	// Transferencia: comprobante del banco (opcional). Se guarda aparte, en
+	// pos_pago_forma_comprobante, buscando la transferencia por su número de
+	// operación (NumeroCheque) dentro del pago.
+	public string? ComprobanteNombre { get; set; }
+	public string? ComprobanteTipo { get; set; }
+	public byte[]? Comprobante { get; set; }
+}
+
+// Comprobante del banco de una transferencia recibida en caja (solo en
+// memoria hasta grabar la factura o el cobro).
+public static class ComprobantesFormaPago
+{
+	internal static async Task GuardarAsync(IDbConnection connection, IDbTransaction transaction, int? ppeId, int? encId,
+		IReadOnlyList<FormaPagoCaptura> formas, int? usuarioAccionId)
+	{
+		foreach (var f in formas.Where(f => f.Comprobante is { Length: > 0 }))
+		{
+			await connection.ExecuteAsync("dbo.paPagoFormaComprobanteGuardar", new
+			{
+				PpeId = ppeId,
+				EncId = encId,
+				Referencia = f.NumeroCheque,
+				Nombre = f.ComprobanteNombre,
+				Tipo = f.ComprobanteTipo,
+				Contenido = f.Comprobante,
+				UsuId = usuarioAccionId
+			}, transaction, commandType: CommandType.StoredProcedure);
+		}
+	}
+
+	internal static bool HayComprobantes(IReadOnlyList<FormaPagoCaptura>? formas) =>
+		formas is not null && formas.Any(f => f.Comprobante is { Length: > 0 });
 }
 
 // Conteo físico de efectivo por denominación al hacer el corte de caja.

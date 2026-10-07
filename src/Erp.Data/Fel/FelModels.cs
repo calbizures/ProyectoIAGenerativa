@@ -117,6 +117,8 @@ public sealed class FelDocumentoResumen
 {
 	public int EncId { get; set; }
 	public DateTime Fecha { get; set; }
+	// Fecha y hora en que se grabó el documento.
+	public DateTime? FechaHora { get; set; }
 	public string TdoCodigo { get; set; } = "";
 	public string Documento { get; set; } = "";
 	public string? Cliente { get; set; }

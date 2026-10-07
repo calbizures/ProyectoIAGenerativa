@@ -107,14 +107,15 @@ GO
 -- Cuotas a cobrar en un recibo y el monto que se aplica a cada una.
 IF OBJECT_ID('dbo.paCxcCobroRegistrar', 'P') IS NOT NULL
 	DROP PROCEDURE dbo.paCxcCobroRegistrar;
-IF TYPE_ID(N'dbo.cobro_cuota_type') IS NOT NULL
-	DROP TYPE dbo.cobro_cuota_type;
 GO
-CREATE TYPE dbo.cobro_cuota_type AS TABLE
-(
-	[cpp_id]	INT				NOT NULL,
-	[monto]		NUMERIC(12, 2)	NOT NULL
-);
+-- Se crea solo si no existe: otros procedimientos posteriores (72) lo usan y
+-- no se podría eliminar al volver a correr el script.
+IF TYPE_ID(N'dbo.cobro_cuota_type') IS NULL
+	CREATE TYPE dbo.cobro_cuota_type AS TABLE
+	(
+		[cpp_id]	INT				NOT NULL,
+		[monto]		NUMERIC(12, 2)	NOT NULL
+	);
 GO
 
 ------------------------------------------------------------

@@ -14,6 +14,7 @@
 @inject IBodegaRepository BodegaRepository
 @inject Erp.Data.General.IGeneralRepository GeneralRepository
 @inject NavigationManager Navegacion
+@inject Erp.Web.Correo.DocumentosCorreo DocumentosCorreo
 
 <PageTitle>Cotizaciones</PageTitle>
 
@@ -260,7 +261,12 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         <div class="maestro-detalle-encabezado">
             <h2 id="titulo-cotizacion">Cotización @c.Numero</h2>
             <span class="estado-badge @ClaseEstado(c.Estado)">@TextoEstado(c.Estado, c.DiasRestantes, c.Vence, c.Factura)</span>
+            <BotonIcono Icono="mail" Tooltip="Enviar la cotización al correo del cliente" Etiqueta="Enviar por correo" OnClick="AbrirCorreoAsync" />
         </div>
+        @if (correoCotizacion is not null)
+        {
+            <EnviarCorreoPanel Documento="correoCotizacion" Cerrar="() => correoCotizacion = null" />
+        }
         @if (c.Estado == "V")
         {
             <p class="doc-nota" role="status"><Icono Nombre="clock" Tamano="15" /><span>Válida hasta el <strong>@c.Vence.ToString("dd/MM/yyyy")</strong> (@c.VigenciaDias días desde el @c.Fecha.ToString("dd/MM/yyyy")). Puede convertirse en factura con los precios cotizados hasta esa fecha.</span></p>
@@ -635,8 +641,19 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         esMensajeError = false;
     }
 
+    // Envío de la cotización abierta al correo del cliente.
+    private Erp.Web.Correo.DocumentosCorreo.Documento? correoCotizacion;
+
+    private async Task AbrirCorreoAsync()
+    {
+        if (seleccionada is null) return;
+        try { correoCotizacion = await DocumentosCorreo.CotizacionAsync(seleccionada.CotId); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
     private async Task AbrirAsync(int cotId)
     {
+        correoCotizacion = null;
         try
         {
             (seleccionada, lineasDetalle) = await CotizacionRepository.ConsultarPorIdAsync(cotId);

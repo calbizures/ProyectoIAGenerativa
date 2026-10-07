@@ -31,6 +31,7 @@ builder.Services.AddSingleton<IFelCertificador, InfileCertificador>();
 builder.Services.AddScoped<FelService>();
 builder.Services.AddScoped<Erp.Web.Correo.CorreoServicio>();
 builder.Services.AddScoped<Erp.Web.Correo.EstadoCuentaCorreo>();
+builder.Services.AddScoped<Erp.Web.Correo.DocumentosCorreo>();
 builder.Services.AddScoped<Erp.Web.Components.Shared.AvisosServicio>();
 builder.Services.AddScoped<Erp.Web.Components.Shared.EdicionServicio>();
 builder.Services.AddScoped<FelConsultaNitServicio>();
@@ -138,6 +139,35 @@ app.MapGet("/cxp/transferencias/{bltId:int}/comprobante", async (int bltId, bool
 	if (descargar == true) return Results.File(comprobante.Contenido, comprobante.Tipo, nombre);
 	contexto.Response.Headers.ContentDisposition = new System.Net.Mime.ContentDisposition { Inline = true, FileName = nombre }.ToString();
 	return Results.File(comprobante.Contenido, comprobante.Tipo);
+}).RequireAuthorization();
+
+// Comprobante de una transferencia recibida en caja (factura o cobro) y
+// boleta de un pago hecho en el banco; igual que el anterior.
+IResult ArchivoAdjuntoResultado(HttpContext contexto, ArchivoAdjunto archivo, bool? descargar)
+{
+	contexto.Response.Headers.XContentTypeOptions = "nosniff";
+	contexto.Response.Headers.CacheControl = "private, no-store";
+	var nombre = string.IsNullOrEmpty(archivo.Referencia) ? archivo.Nombre : $"{archivo.Referencia}-{archivo.Nombre}";
+	if (descargar == true) return Results.File(archivo.Contenido, archivo.Tipo, nombre);
+	contexto.Response.Headers.ContentDisposition = new System.Net.Mime.ContentDisposition { Inline = true, FileName = nombre }.ToString();
+	return Results.File(archivo.Contenido, archivo.Tipo);
+}
+
+app.MapGet("/pagos/formas/{ppfId:int}/comprobante", async (int ppfId, bool? descargar, HttpContext contexto,
+	ICuentasRepository cuentas, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:CXC_ADMIN,VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR,BANCOS_CAJA_ADMIN")).Succeeded)
+		return Results.Forbid();
+	var archivo = await cuentas.ConsultarComprobantePagoAsync(ppfId);
+	return archivo is null ? Results.NotFound() : ArchivoAdjuntoResultado(contexto, archivo, descargar);
+}).RequireAuthorization();
+
+app.MapGet("/cxc/boletas/{cboId:int}/comprobante", async (int cboId, bool? descargar, HttpContext contexto,
+	ICuentasRepository cuentas, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:CXC_ADMIN,CXC_BOLETA_VERIFICAR")).Succeeded) return Results.Forbid();
+	var archivo = await cuentas.ConsultarComprobanteBoletaAsync(cboId);
+	return archivo is null ? Results.NotFound() : ArchivoAdjuntoResultado(contexto, archivo, descargar);
 }).RequireAuthorization();
 
 // Exportación a Excel de cuentas por cobrar y por pagar.

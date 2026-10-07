@@ -124,7 +124,7 @@
                         <label for="compras-compra-bodid">Bodega</label>
                         <select id="compras-compra-bodid" @bind="nuevaCompra.BodId">
                             <option value="0">Seleccione...</option>
-                            @foreach (var b in bodegas)
+                            @foreach (var b in BodegasSucursal)
                             {
                                 <option value="@b.BodId">@b.BodDescripcion</option>
                             }
@@ -508,6 +508,9 @@
     private IReadOnlyList<DocumentoTipoCompra> tiposDocumento = Array.Empty<DocumentoTipoCompra>();
     private IReadOnlyList<Moneda> monedas = Array.Empty<Moneda>();
     private IReadOnlyList<Bodega> bodegas = Array.Empty<Bodega>();
+    // La compra ingresa a una bodega de la sucursal con la que se entró.
+    private int? sucIdSesion;
+    private IEnumerable<Bodega> BodegasSucursal => sucIdSesion is null ? bodegas : bodegas.Where(b => b.SucId == sucIdSesion).OrderBy(b => b.BodCodigo);
     private IReadOnlyList<Proveedor> proveedoresEncontrados = Array.Empty<Proveedor>();
     private bool mostrarNuevoProveedor;
     private readonly ProveedorRapidoModelo nuevoProveedorRapido = new();
@@ -575,6 +578,7 @@
         if (AuthenticationStateTask is not null)
             sucIdParametros = (await AuthenticationStateTask).User.ObtenerSucId();
         PorcentajeIva = (await GeneralRepository.ConsultarParametrosAsync(sucIdParametros)).CiaPorcIva;
+        sucIdSesion = sucIdParametros;
         monedas = await CompraRepository.ConsultarMonedasAsync();
         bodegas = await BodegaRepository.ConsultarAsync(sucId: null, estado: "A");
         categoriasActivo = (await ActivosFijosRepository.ConsultarCategoriasAsync(soloActivas: true)).ToList();
@@ -666,6 +670,8 @@
         nuevaCompra.NumeroCuotas = 1;
         nuevaCompra.FechaPrimerPago = null;
         condicionPagoCompra = "contado";
+        if (BodegasSucursal.All(b => b.BodId != nuevaCompra.BodId))
+            nuevaCompra.BodId = BodegasSucursal.FirstOrDefault()?.BodId ?? 0;
         lineas.Clear();
         proveedoresEncontrados = Array.Empty<Proveedor>();
         productosEncontrados = Array.Empty<Producto>();
@@ -1022,7 +1028,7 @@
         nuevaCompra.NombreProveedor = e.NombreProveedor;
         nuevaCompra.Nit = e.Nit;
         if (tiposDocumento.Any(t => t.TdoId == e.TdoId)) nuevaCompra.TdoId = e.TdoId;
-        if (bodegas.Any(x => x.BodId == e.BodId)) nuevaCompra.BodId = e.BodId;
+        if (BodegasSucursal.Any(x => x.BodId == e.BodId)) nuevaCompra.BodId = e.BodId;
         if (monedas.Any(m => m.MonId == e.MonId)) nuevaCompra.MonId = e.MonId;
         nuevaCompra.FechaPrimerPago = e.FechaPrimerPago;
         nuevaCompra.MontoEnganche = e.MontoEnganche;

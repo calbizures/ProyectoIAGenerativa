@@ -55,6 +55,8 @@ public sealed class FacturaEncabezado
 	public string? CliApellidos { get; set; }
 	public decimal EncMontoTotal { get; set; }
 	public string EncEstado { get; set; } = "";
+	// Fecha y hora en que se grabó (la fecha del documento puede ser otra).
+	public DateTime? InsFechaHora { get; set; }
 	public string NombreCliente => $"{CliNombres} {CliApellidos}".Trim();
 }
 

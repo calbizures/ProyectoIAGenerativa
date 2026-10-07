@@ -86,30 +86,31 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 69_kardex_inventario.sql                      -- kardex de un producto con costo unitario, costo total y promedio
 70_correo_proveedores.sql                     -- correo saliente por Gmail por defecto y otros tipos de salida
 71_pago_proveedor_transferencia.sql           -- pago a proveedores por transferencia con autorización y comprobante
+72_transferencias_boletas_hora.sql            -- comprobante de transferencias, pago con boleta verificado, hora en listados
 ```
 
 **Instalación de una sola vez:** después de crear la base con
-`00_crear_base_datos.sql`, el archivo `instalar_01_al_71.sql` corre en orden
-del `01` al `71` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
+`00_crear_base_datos.sql`, el archivo `instalar_01_al_72.sql` corre en orden
+del `01` al `72` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
 active *Consulta › Modo SQLCMD*, cambie la ruta de la línea `:setvar RUTA` por la
 carpeta de los scripts y ejecútelo; desde la línea de comandos:
-`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_71.sql -o instalacion.log`.
+`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_72.sql -o instalacion.log`.
 Se detiene en el primer error y muestra en qué script ocurrió. Incluye los
 datos de prueba, así que es para una base nueva, no para una con datos reales.
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `71` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `72` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `71` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `72` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `paCajaCerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `71`. Si vuelves a
-correr `12`, corre después `22` a `71` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `72`. Si vuelves a
+correr `12`, corre después `22` a `72` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -124,7 +125,10 @@ proveedor, la anulación de cheques y de compras, el tablero de compras y el
 control 6 de integridad cuentan las transferencias). Si vuelves a correr
 `53`, corre después el `57` (orden de compra con dos firmas). Si vuelves a
 correr `58`, corre después el `71` (numeración de los lotes LT- aparte de
-las transferencias directas TR-, y la consulta de lotes solo con lotes).
+las transferencias directas TR-, y la consulta de lotes solo con lotes). Si
+vuelves a correr `10`, `17`, `34` o `35`, corre después el `72` (la hora en
+los listados de facturas y documentos electrónicos, y el recibo impreso de un
+pago con boleta).
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -1928,6 +1932,99 @@ documento a medias lo perdía sin avisar.
 - Piezas: `wwwroot/js/cambios.js` (aviso y diálogo), `guardado.js` (zona de
   cambios de cada botón Guardar), `Components/Shared/BorradorDocumento.razor`
   (borrador) y `BorradorFormaPago.cs`.
+
+## Lote E (`72`)
+
+Script `72` y cambios en la aplicación. En una base anterior se corre el
+`72` junto con la aplicación de esta versión; se puede volver a correr.
+
+### Bodegas de la sucursal en Compras y Órdenes de compra (aplicación)
+
+Al capturar una compra o una orden de compra, la lista de bodegas muestra solo
+las de la sucursal con la que se inició sesión, y propone la primera. Al
+editar una orden ya grabada se conserva su bodega aunque sea de otra
+sucursal.
+
+### Búsqueda por descripción en Existencias y Precios (aplicación)
+
+Un cuadro de búsqueda filtra por código o descripción tanto la lista de
+productos como la tabla (sin distinguir mayúsculas).
+
+### Transferencia en la factura y el cobro (`72`)
+
+La transferencia sigue entrando por la caja, como el efectivo, el cheque y
+la tarjeta.
+
+- **Monto por defecto:** al elegir Transferencia se propone lo que falta por
+  pagar (el total de la factura, o el saldo de las cuotas marcadas en el
+  cobro) menos lo ya capturado en otras formas. Si se combina con tarjeta,
+  efectivo o cheque, se ajusta a mano.
+- **No. de operación:** el campo de número de cheque o referencia se habilita
+  y es obligatorio (hasta 16 caracteres). En la factura impresa sale como
+  "Operación ...".
+- **Comprobante:** se puede adjuntar la boleta o el comprobante del banco
+  (PDF o imagen, hasta 5 MB; el tipo se comprueba por el contenido). Se guarda
+  en `pos_pago_forma_comprobante` en la misma transacción que la factura o
+  el recibo. En el detalle de la factura, **Transferencias recibidas**
+  muestra cada operación con su comprobante.
+
+### Pago con boleta: el cliente pagó en el banco (`72`)
+
+Cuentas por cobrar › Cobros, opción **Con boleta (pagó en el banco)**: el cliente
+depositó o transfirió a una cuenta de la empresa y mandó la boleta.
+
+1. **Registrar:** cliente, cuenta bancaria de la empresa, fecha del
+   depósito, número de boleta u operación (no se repite en la misma cuenta
+   mientras esté por verificar o verificada), cuotas que paga (no más que su
+   saldo menos otras boletas pendientes) y la boleta adjunta. Queda **por
+   verificar** y no rebaja el saldo.
+2. **Verificar** (permiso `CXC_BOLETA_VERIFICAR`, asignado a ADMIN, CONTADOR
+   y CONTADOR_GENERAL), cuando el depósito aparece en el estado de cuenta del
+   banco: se graba el recibo **sin caja** con la cuenta bancaria, se rebajan
+   las cuotas y se genera la póliza `PAGO_CLIENTE` con la fecha del depósito:
+
+   | Debe | Haber |
+   |---|---|
+   | Cuenta de depósitos de la cuenta bancaria (o `DEPOSITO_BANCOS`) | `COBRO_CLIENTES` |
+
+   Así entra en la conciliación bancaria de esa cuenta.
+3. **Rechazar** una boleta por verificar (con motivo): no se tocó nada.
+4. **Anular** una verificada (con motivo): devuelve el saldo a las cuotas y
+   anula la póliza; se bloquea si esa póliza ya está conciliada.
+
+- Con **Avisar al cliente por correo** marcado (por defecto), al verificar se
+  le envía la confirmación con el recibo en PDF y al rechazar, el aviso con
+  el motivo.
+- `pos_pago_enc.pca_id` acepta nulos: un recibo sin caja lleva `bcb_id` (la
+  restricción `CK_pos_pago_enc_caja_o_banco` exige uno de los dos). El corte
+  de caja no lo incluye. El recibo impreso muestra "Depósito en {banco}
+  {cuenta}".
+- Tablas `cxc_boleta`, `cxc_boleta_det` y `cxc_boleta_comprobante`.
+  Estados: P por verificar, V verificada, R rechazada, N anulada.
+
+### Hora en los listados de facturas y documentos electrónicos (`72`)
+
+Junto a la fecha del documento se muestra la hora en que se grabó
+(`InsFechaHora`).
+
+### Vendedores: comisiones solo si la compañía las paga (aplicación)
+
+Si la compañía no tiene marcado que paga comisiones, la pestaña se llama
+**Facturas** (sin columna de comisión) y el % de comisión no aparece en el
+listado, el detalle ni la edición.
+
+### Envío por correo al cliente (aplicación)
+
+Botón **Enviar por correo** en el detalle de la factura (PDF y XML de la FEL
+si lo tiene), en el recibo de cobro y en la cotización, y la confirmación de la
+boleta al verificarla o rechazarla. Se envía al **correo registrado del cliente**
+(se puede cambiar antes de enviar) desde la cuenta de correo saliente de la
+compañía (General › Compañías › Correo saliente): **no hace falta servidor de
+correo propio**, basta una cuenta de Gmail, Outlook.com/Hotmail o Microsoft
+365. Gmail pide una contraseña de aplicación. Microsoft está retirando el
+acceso SMTP con contraseña en las cuentas personales de Outlook.com/Hotmail;
+si la cuenta lo rechaza, use Gmail o una cuenta de Microsoft 365 con SMTP
+autenticado habilitado.
 
 ## Módulos nuevos
 

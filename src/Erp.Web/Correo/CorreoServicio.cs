@@ -21,8 +21,13 @@ public sealed class CorreoServicio(ICorreoRepository correos, IDataProtectionPro
 
 	public string Cifrar(string clave) => protector.Protect(clave);
 
-	public async Task<Resultado> EnviarAsync(int ciaId, string tipo, int? referenciaId, string para, string? copia, string asunto,
-		string html, string texto, Adjunto? adjunto, int? usuId, CancellationToken cancelacion = default)
+	public Task<Resultado> EnviarAsync(int ciaId, string tipo, int? referenciaId, string para, string? copia, string asunto,
+		string html, string texto, Adjunto? adjunto, int? usuId, CancellationToken cancelacion = default) =>
+		EnviarConAdjuntosAsync(ciaId, tipo, referenciaId, para, copia, asunto, html, texto, adjunto is null ? Array.Empty<Adjunto>() : new[] { adjunto }, usuId, cancelacion);
+
+	// Con varios adjuntos (por ejemplo, la factura en PDF y su XML certificado).
+	public async Task<Resultado> EnviarConAdjuntosAsync(int ciaId, string tipo, int? referenciaId, string para, string? copia, string asunto,
+		string html, string texto, IReadOnlyList<Adjunto> adjuntos, int? usuId, CancellationToken cancelacion = default)
 	{
 		var config = await correos.ConsultarConfiguracionAsync(ciaId);
 		if (config is null || !config.Configurado)
@@ -61,7 +66,7 @@ public sealed class CorreoServicio(ICorreoRepository correos, IDataProtectionPro
 			mensaje.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(html, System.Text.Encoding.UTF8, MediaTypeNames.Text.Html));
 			foreach (var d in destinos) mensaje.To.Add(d);
 			foreach (var c in copias.Except(destinos, StringComparer.OrdinalIgnoreCase)) mensaje.CC.Add(c);
-			if (adjunto is not null)
+			foreach (var adjunto in adjuntos)
 				mensaje.Attachments.Add(new Attachment(new MemoryStream(adjunto.Contenido), adjunto.Nombre, adjunto.Tipo));
 
 			if (config.EsCarpeta)
@@ -92,13 +97,16 @@ public sealed class CorreoServicio(ICorreoRepository correos, IDataProtectionPro
 		}
 
 		await correos.RegistrarAsync(new CorreoBitacora(ciaId, tipo, referenciaId, string.Join(", ", destinos),
-			copias.Count == 0 ? null : string.Join(", ", copias), asunto, adjunto?.Nombre, error is null, error, usuId));
+			copias.Count == 0 ? null : string.Join(", ", copias), asunto,
+			adjuntos.Count == 0 ? null : Recortar(string.Join(", ", adjuntos.Select(a => a.Nombre)), 150), error is null, error, usuId));
 		return error is null
 			? new Resultado(true, config.EsCarpeta
 				? $"Correo para {string.Join(", ", destinos)} guardado en la carpeta {config.Servidor} (no se envió)."
 				: $"Correo enviado a {string.Join(", ", destinos)}{(copias.Count == 0 ? "" : $" con copia a {string.Join(", ", copias)}")}.")
 			: new Resultado(false, error);
 	}
+
+	private static string Recortar(string texto, int largo) => texto.Length <= largo ? texto : texto[..(largo - 1)] + "…";
 
 	private static List<string> Direcciones(string? texto) =>
 		(texto ?? "").Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

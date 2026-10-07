@@ -19,9 +19,10 @@
 }
 
 <div class="barra-filtros">
+    <input type="search" placeholder="Buscar por código o descripción" aria-label="Buscar producto por código o descripción" @bind="textoBusqueda" @bind:event="oninput" />
     <select @bind="filtroProId" @bind:after="CambiarFiltroAsync" aria-label="Producto">
         <option value="0">@(vista == "kardex" ? "Seleccione el producto..." : "Todos los productos")</option>
-        @foreach (var p in productos)
+        @foreach (var p in ProductosVisibles)
         {
             <option value="@p.ProId">@p.ProCodigo - @p.ProDescripcion</option>
         }
@@ -60,11 +61,11 @@
                 <tr><th>Producto</th><th>Bodega</th><th class="num">Existencia</th><th class="col-acciones"><span class="sr-only">Kardex</span></th></tr>
             </thead>
             <tbody>
-                @if (existencias.Count == 0)
+                @if (!ExistenciasVisibles.Any())
                 {
                     <tr><td colspan="4">Sin existencias para los filtros seleccionados.</td></tr>
                 }
-                @foreach (var e in existencias)
+                @foreach (var e in ExistenciasVisibles)
                 {
                     <tr>
                         <td>@e.ProCodigo - @e.ProDescripcion</td>
@@ -192,6 +193,19 @@ else if (kardex is not null)
 
     private int filtroProId;
     private int filtroBodId;
+    // Búsqueda por código o descripción: filtra la lista de productos y la tabla.
+    private string textoBusqueda = "";
+
+    private static bool Coincide(string codigo, string descripcion, string texto) =>
+        texto.Length == 0 || codigo.Contains(texto, StringComparison.CurrentCultureIgnoreCase)
+        || descripcion.Contains(texto, StringComparison.CurrentCultureIgnoreCase);
+
+    // El producto elegido sigue en la lista aunque no coincida con el texto.
+    private IEnumerable<Producto> ProductosVisibles =>
+        productos.Where(p => p.ProId == filtroProId || Coincide(p.ProCodigo, p.ProDescripcion, textoBusqueda.Trim()));
+
+    private IEnumerable<ProductoExistenciaBodega> ExistenciasVisibles =>
+        existencias.Where(e => Coincide(e.ProCodigo, e.ProDescripcion, textoBusqueda.Trim()));
 
     private string UrlExcel => $"reportes/inventario/kardex.xlsx?producto={filtroProId}{(filtroBodId == 0 ? "" : $"&bodega={filtroBodId}")}{(desde is null ? "" : $"&desde={desde:yyyy-MM-dd}")}{(hasta is null ? "" : $"&hasta={hasta:yyyy-MM-dd}")}";
 

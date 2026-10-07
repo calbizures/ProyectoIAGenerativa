@@ -22,9 +22,10 @@
 }
 
 <div class="barra-herramientas">
+    <input type="search" placeholder="Buscar por código o descripción" aria-label="Buscar producto por código o descripción" @bind="textoBusqueda" @bind:event="oninput" />
     <select @bind="filtroProId" aria-label="Producto">
         <option value="0">Todos los productos</option>
-        @foreach (var p in productos)
+        @foreach (var p in ProductosVisibles)
         {
             <option value="@p.ProId">@p.ProCodigo - @p.ProDescripcion</option>
         }
@@ -98,11 +99,11 @@
         <tr><th>Producto</th><th>Bodega</th><th>Moneda</th><th class="num">Precio</th><th class="col-fecha">Desde</th><th class="col-fecha">Hasta</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
     </thead>
     <tbody>
-        @if (precios.Count == 0)
+        @if (!PreciosVisibles.Any())
         {
             <tr><td colspan="8">Sin precios para los filtros seleccionados.</td></tr>
         }
-        @foreach (var p in precios)
+        @foreach (var p in PreciosVisibles)
         {
             <tr>
                 @if (editandoId == p.PprId)
@@ -163,6 +164,19 @@
 
     private int filtroProId;
     private string filtroEstado = "A";
+    // Búsqueda por código o descripción: filtra la lista de productos y la tabla.
+    private string textoBusqueda = "";
+
+    private static bool Coincide(string codigo, string descripcion, string texto) =>
+        texto.Length == 0 || codigo.Contains(texto, StringComparison.CurrentCultureIgnoreCase)
+        || descripcion.Contains(texto, StringComparison.CurrentCultureIgnoreCase);
+
+    // El producto elegido sigue en la lista aunque no coincida con el texto.
+    private IEnumerable<Producto> ProductosVisibles =>
+        productos.Where(p => p.ProId == filtroProId || Coincide(p.ProCodigo, p.ProDescripcion, textoBusqueda.Trim()));
+
+    private IEnumerable<ProductoPrecio> PreciosVisibles =>
+        precios.Where(p => Coincide(p.ProCodigo, p.ProDescripcion, textoBusqueda.Trim()));
     private bool mostrarNuevo;
     private bool mostrarImportar;
     private string? mensaje;

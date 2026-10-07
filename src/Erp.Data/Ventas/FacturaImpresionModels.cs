@@ -98,6 +98,12 @@ public sealed class FacturaImpresionPago
 	public string Forma { get; set; } = "";
 	public decimal Monto { get; set; }
 	public string? Referencia { get; set; }
+
+	// La consulta (48) antepone "Cheque" al número; en una transferencia ese
+	// número es el de la operación.
+	public string? ReferenciaTexto => Forma == "Transferencia" && Referencia?.StartsWith("Cheque ", StringComparison.Ordinal) == true
+		? "Operación " + Referencia["Cheque ".Length..]
+		: Referencia;
 }
 
 public sealed record FacturaImpresion(FacturaImpresionEncabezado Encabezado, IReadOnlyList<FacturaImpresionLinea> Lineas,

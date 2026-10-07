@@ -8,12 +8,14 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject ICuentasRepository CuentasRepository
 @inject ICajaRepository CajaRepository
+@inject Erp.Data.Bancos.IBancosRepository BancosRepository
+@inject Erp.Web.Correo.DocumentosCorreo DocumentosCorreo
 
 <PageTitle>Cobros a clientes</PageTitle>
 
 <div class="pagina-encabezado">
     <h1>Cobros a clientes</h1>
-    <p>Elija el cliente, indique el monto recibido y se aplica a sus cuotas de la más antigua a la más reciente (o marque las que paga). Un cobro genera un recibo y su póliza (Caja / Clientes).</p>
+    <p>Elija el cliente, indique el monto recibido y se aplica a sus cuotas de la más antigua a la más reciente (o marque las que paga). Un cobro en caja genera un recibo y su póliza (Caja / Clientes). Si el cliente pagó en el banco y mandó la boleta, regístrela como pago con boleta: queda por verificar y, al verificarla contra el banco, genera el recibo y su póliza (Bancos / Clientes).</p>
 </div>
 
 <BorradorDocumento TDatos="BorradorCobro" Clave="cxc-cobros" Nombre="un cobro"
@@ -28,7 +30,7 @@
 {
     <div class="doc-nota">
         <Icono Nombre="alert-triangle" Tamano="15" />
-        <span>No hay una caja abierta en su sucursal. Abra la caja en Bancos › Caja para poder cobrar.</span>
+        <span>No hay una caja abierta en su sucursal. Abra la caja en Bancos › Caja para cobrar en caja; un pago con boleta se puede registrar sin caja.</span>
     </div>
 }
 
@@ -46,6 +48,23 @@
             <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@($"/cxc/recibos/imprimir?id={reciboRegistrado.Value.Id}")" target="_blank" rel="noopener">
                 <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir recibo</span>
             </a>
+            <BotonIcono Icono="mail" Tooltip="Enviar el recibo al correo del cliente" Etiqueta="Enviar por correo" OnClick="() => AbrirCorreoReciboAsync(reciboRegistrado.Value.Id)" />
+            <BotonIcono Icono="plus" Tooltip="Registrar otro cobro" Etiqueta="Otro cobro" OnClick="NuevoCobro" />
+        </div>
+    </section>
+}
+
+@if (boletaRegistrada is not null)
+{
+    <section class="tarjeta tarjeta-exito" aria-live="polite">
+        <div class="exito-contenido">
+            <Icono Nombre="clock" Tamano="22" />
+            <div>
+                <h2>Boleta @boletaRegistrada.Value.Referencia registrada, por verificar</h2>
+                <p>Q@(boletaRegistrada.Value.Monto.ToString("N2")) de @boletaRegistrada.Value.Cliente. El saldo baja cuando contabilidad la verifica contra el estado de cuenta del banco.</p>
+            </div>
+        </div>
+        <div class="acciones-fila">
             <BotonIcono Icono="plus" Tooltip="Registrar otro cobro" Etiqueta="Otro cobro" OnClick="NuevoCobro" />
         </div>
     </section>
@@ -137,6 +156,50 @@
     {
         <section class="tarjeta" aria-labelledby="titulo-formas">
             <h2 id="titulo-formas">3. Forma de pago</h2>
+            <fieldset class="forma-pago-opciones">
+                <legend class="sr-only">Cómo pagó el cliente</legend>
+                <label class="@(modoPago == "caja" ? "activa" : "")"><input type="radio" name="modo-cobro" value="caja" checked="@(modoPago == "caja")" @onchange="@(() => CambiarModo("caja"))" /> <Icono Nombre="wallet" Tamano="16" /> En caja</label>
+                <label class="@(modoPago == "boleta" ? "activa" : "")"><input type="radio" name="modo-cobro" value="boleta" checked="@(modoPago == "boleta")" @onchange="@(() => CambiarModo("boleta"))" /> <Icono Nombre="landmark" Tamano="16" /> Con boleta (pagó en el banco)</label>
+            </fieldset>
+            @if (modoPago == "boleta")
+            {
+                <div class="panel-formulario panel-ancho formulario-boleta">
+                    <div class="campo">
+                        <label for="bol-cuenta">Cuenta de la empresa donde pagó</label>
+                        <select id="bol-cuenta" @bind="boletaBcbId">
+                            <option value="0">Seleccione...</option>
+                            @foreach (var c in cuentasBancarias)
+                            {
+                                <option value="@c.BcbId">@c.Banco · @c.NumeroCuenta@(string.IsNullOrWhiteSpace(c.Descripcion) ? "" : $" · {c.Descripcion}")</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label for="bol-fecha">Fecha del depósito o transferencia</label>
+                        <input id="bol-fecha" type="date" max="@DateTime.Today.ToString("yyyy-MM-dd")" @bind="boletaFecha" />
+                    </div>
+                    <div class="campo">
+                        <label for="bol-referencia">No. de boleta u operación</label>
+                        <input id="bol-referencia" maxlength="16" autocomplete="off" @bind="boletaReferencia" />
+                    </div>
+                    <div class="campo campo-ancho">
+                        <label for="bol-observaciones">Observaciones</label>
+                        <input id="bol-observaciones" maxlength="250" placeholder="Opcional: quién la mandó, por qué medio..." @bind="boletaObservaciones" />
+                    </div>
+                    <div class="campo campo-ancho">
+                        <span class="etiqueta-campo">Boleta o comprobante que mandó el cliente</span>
+                        <AdjuntarArchivo Id="bol-archivo" Etiqueta="Adjuntar boleta" @bind-Archivo="boletaArchivo" AlError="MostrarAviso" />
+                    </div>
+                </div>
+                <p class="texto-tenue">La boleta queda por verificar: el saldo del cliente no cambia hasta que contabilidad la verifica contra el estado de cuenta del banco.</p>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Registrar la boleta por verificar" Etiqueta="@($"Registrar boleta Q{TotalCobro:N2}")" Variante="primario"
+                                Deshabilitado="guardando" OnClick="RegistrarBoletaAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="Limpiar" />
+                </div>
+            }
+            else
+            {
             @if (cajasAbiertas.Count > 1)
             {
                 <div class="panel-formulario panel-ancho">
@@ -160,13 +223,19 @@
                             <td>@NombreForma(f.PftId)</td>
                             <td class="num">Q@(f.Monto.ToString("N2"))</td>
                             <td>@(entidades.FirstOrDefault(e => e.GefId == f.GefId)?.GefDescripcion ?? "—")</td>
-                            <td>@(f.NumeroCheque ?? f.NumeroTarjetaUlt4 ?? "—")</td>
+                            <td>
+                                @(f.NumeroCheque ?? f.NumeroTarjetaUlt4 ?? "—")
+                                @if (f.ComprobanteNombre is not null)
+                                {
+                                    <span class="texto-tenue" title="Comprobante adjunto"> · <Icono Nombre="file-text" Tamano="13" /> @f.ComprobanteNombre</span>
+                                }
+                            </td>
                             <td><BotonIcono Icono="trash-2" Tooltip="Quitar" Variante="peligro" OnClick="() => formas.Remove(f)" /></td>
                         </tr>
                     }
                     <tr>
                         <td>
-                            <select aria-label="Forma de pago" @bind="formaNueva.PftId">
+                            <select aria-label="Forma de pago" @bind="formaNueva.PftId" @bind:after="AlCambiarFormaNueva">
                                 <option value="0">Seleccione...</option>
                                 @foreach (var t in tiposForma)
                                 {
@@ -196,6 +265,11 @@
                             {
                                 <input class="entrada-referencia" placeholder="Últimos 4 dígitos" aria-label="Últimos 4 dígitos" maxlength="4" @bind="formaNueva.NumeroTarjetaUlt4" />
                             }
+                            else if (EsForma(formaNueva.PftId, "Transferencia"))
+                            {
+                                <input class="entrada-referencia" placeholder="No. de operación" aria-label="No. de operación de la transferencia" maxlength="16" @bind="formaNueva.NumeroCheque" />
+                                <AdjuntarArchivo Id="cob-comprobante" Etiqueta="Comprobante" Compacto="true" @bind-Archivo="comprobanteNuevo" AlError="MostrarAviso" />
+                            }
                         </td>
                         <td><BotonIcono Icono="plus" Tooltip="Agregar forma de pago" OnClick="AgregarForma" /></td>
                     </tr>
@@ -214,9 +288,110 @@
                             Deshabilitado="cajasAbiertas.Count == 0 || guardando" OnClick="CobrarAsync" />
                 <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="Limpiar" />
             </div>
+            }
         </section>
     }
 }
+
+@if (correoRecibo is not null)
+{
+    <EnviarCorreoPanel Documento="correoRecibo" Cerrar="() => correoRecibo = null" />
+}
+
+<section class="tarjeta" aria-labelledby="titulo-boletas">
+    <div class="maestro-detalle-encabezado">
+        <h2 id="titulo-boletas">Pagos con boleta@(cliente is null ? "" : $" de {cliente.Nombre}")</h2>
+        <AuthorizeView Policy="Permiso:CXC_BOLETA_VERIFICAR">
+            <Authorized>
+                <label class="casilla-linea" title="Con la cuenta de correo de la compañía, al correo registrado del cliente">
+                    <input type="checkbox" @bind="avisarCliente" /> Avisar al cliente por correo al verificar o rechazar
+                </label>
+            </Authorized>
+        </AuthorizeView>
+        <select aria-label="Estado de las boletas" @bind="filtroBoletas" @bind:after="CargarBoletasAsync">
+            <option value="P">Por verificar</option>
+            <option value="V">Verificadas</option>
+            <option value="R">Rechazadas</option>
+            <option value="N">Anuladas</option>
+            <option value="">Todas</option>
+        </select>
+    </div>
+    @if (boletas.Count == 0)
+    {
+        <p class="estado-vacio">@(filtroBoletas == "P" ? "No hay boletas por verificar." : "No hay boletas con ese estado.")</p>
+    }
+    else
+    {
+        <table class="tabla-datos">
+            <thead>
+                <tr><th class="col-fecha">Fecha</th><th>Cliente</th><th>Cuenta</th><th>Boleta</th><th>Cuotas</th><th class="num">Monto</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var b in boletas)
+                {
+                    <tr class="@(b.Estado is "R" or "N" ? "fila-anulada" : "")">
+                        <td class="col-fecha">@b.Fecha.ToString("dd/MM/yyyy")</td>
+                        <td>@b.Cliente</td>
+                        <td>@b.Cuenta</td>
+                        <td>@b.Referencia@if (b.Observaciones is not null) {<br /><span class="texto-tenue">@b.Observaciones</span>}</td>
+                        <td>@b.Documentos</td>
+                        <td class="num">@b.Monto.ToString("N2")</td>
+                        <td class="col-estado">
+                            <span class="estado-badge @ClaseBoleta(b.Estado)" title="@BoletaTitulo(b)">@b.EstadoTexto</span>
+                        </td>
+                        <td class="col-acciones">
+                            <div class="acciones-fila">
+                                @if (b.TieneComprobante)
+                                {
+                                    <a class="boton-icono" href="@($"cxc/boletas/{b.CboId}/comprobante")" target="_blank" rel="noopener" aria-label="@($"Ver la boleta {b.Referencia}")">
+                                        <Icono Nombre="eye" Tamano="16" /><span class="boton-icono-tip" role="tooltip">Ver boleta</span>
+                                    </a>
+                                }
+                                @if (b.Estado == "V" && b.PpeId is int ppe)
+                                {
+                                    <a class="boton-icono" href="@($"/cxc/recibos/imprimir?id={ppe}")" target="_blank" rel="noopener" aria-label="@($"Imprimir recibo {ppe}")">
+                                        <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-tip" role="tooltip">Imprimir recibo @ppe</span>
+                                    </a>
+                                    <BotonIcono Icono="mail" Tooltip="@($"Enviar el recibo {ppe} por correo")" OnClick="() => AbrirCorreoReciboAsync(ppe)" />
+                                }
+                                <AuthorizeView Policy="Permiso:CXC_BOLETA_VERIFICAR">
+                                    <Authorized>
+                                        @if (b.Estado == "P")
+                                        {
+                                            <BotonIcono Icono="check-circle" Tooltip="Verificar: el dinero ya está en el banco" Variante="primario"
+                                                        Confirmacion="@($"¿El banco ya muestra la boleta {b.Referencia} por Q{b.Monto:N2}? Se graba el recibo y baja el saldo.")"
+                                                        Deshabilitado="guardando" OnClick="() => VerificarBoletaAsync(b)" />
+                                            <BotonIcono Icono="ban" Tooltip="Rechazar la boleta" Variante="peligro" OnClick="() => IniciarMotivoBoleta(b, rechazar: true)" />
+                                        }
+                                        else if (b.Estado == "V")
+                                        {
+                                            <BotonIcono Icono="ban" Tooltip="Anular la boleta verificada" Variante="peligro" OnClick="() => IniciarMotivoBoleta(b, rechazar: false)" />
+                                        }
+                                    </Authorized>
+                                </AuthorizeView>
+                            </div>
+                        </td>
+                    </tr>
+                    @if (boletaMotivo?.CboId == b.CboId)
+                    {
+                        <tr class="fila-edicion-tabla">
+                            <td colspan="8">
+                                <div class="anulacion-form">
+                                    <label for="motivo-boleta">Motivo para @(rechazandoBoleta ? "rechazar" : "anular") la boleta @b.Referencia</label>
+                                    <input id="motivo-boleta" maxlength="250" placeholder="@(rechazandoBoleta ? "Ej.: no aparece en el estado de cuenta del banco" : "Ej.: el banco reversó el depósito")" @bind="motivoBoleta" @bind:event="oninput" />
+                                    <BotonIcono Icono="ban" Tooltip="Confirmar" Etiqueta="@(rechazandoBoleta ? "Rechazar boleta" : "Anular boleta")" Variante="peligro"
+                                                Deshabilitado="motivoBoleta.Trim().Length < 5 || guardando" OnClick="ConfirmarMotivoBoletaAsync" />
+                                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => boletaMotivo = null" />
+                                    <small class="texto-ayuda">@(rechazandoBoleta ? "El saldo del cliente no había cambiado; la boleta queda rechazada." : "El saldo vuelve a las cuotas y se anulan el recibo y su póliza.")</small>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    }
+</section>
 
 <section class="tarjeta" aria-labelledby="titulo-recibos">
     <div class="maestro-detalle-encabezado">
@@ -251,6 +426,7 @@
                                 <a class="boton-icono" href="@($"/cxc/recibos/imprimir?id={r.PpeId}")" target="_blank" rel="noopener" aria-label="@($"Imprimir recibo {r.PpeId}")">
                                     <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-tip" role="tooltip">Imprimir recibo</span>
                                 </a>
+                                <BotonIcono Icono="mail" Tooltip="Enviar el recibo por correo" OnClick="() => AbrirCorreoReciboAsync(r.PpeId)" />
                                 @if (r.SePuedeAnular)
                                 {
                                     <BotonIcono Icono="ban" Tooltip="Anular recibo" Variante="peligro" OnClick="() => IniciarAnulacion(r)" />
@@ -298,6 +474,45 @@
     private IReadOnlyList<ReciboResumen> recibos = Array.Empty<ReciboResumen>();
 
     private (int Id, decimal Monto, string Cliente)? reciboRegistrado;
+
+    // Cómo pagó el cliente: en caja (efectivo, cheque, tarjeta, transferencia) o con boleta.
+    private string modoPago = "caja";
+    private ArchivoCargado? comprobanteNuevo;
+
+    // Pago con boleta (el cliente pagó en el banco): queda por verificar.
+    private IReadOnlyList<Erp.Data.Bancos.CuentaBancaria> cuentasBancarias = Array.Empty<Erp.Data.Bancos.CuentaBancaria>();
+    private int boletaBcbId;
+    private DateTime boletaFecha = DateTime.Today;
+    private string boletaReferencia = "";
+    private string? boletaObservaciones;
+    private ArchivoCargado? boletaArchivo;
+    private (string Referencia, decimal Monto, string Cliente)? boletaRegistrada;
+    private IReadOnlyList<BoletaResumen> boletas = Array.Empty<BoletaResumen>();
+    private string filtroBoletas = "P";
+    private BoletaResumen? boletaMotivo;
+    private bool rechazandoBoleta;
+    private string motivoBoleta = "";
+    private bool avisarCliente = true;
+    private Erp.Web.Correo.DocumentosCorreo.Documento? correoRecibo;
+
+    private async Task AbrirCorreoReciboAsync(int ppeId)
+    {
+        try { correoRecibo = await DocumentosCorreo.ReciboAsync(ppeId); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    // Aviso al cliente de la boleta verificada o rechazada (si se pidió); el resultado se agrega al mensaje.
+    private async Task<string> AvisarAsync(BoletaResumen b, bool verificada, int? ppeId, string? motivo)
+    {
+        if (!avisarCliente) return "";
+        try
+        {
+            var usuario = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User;
+            var r = await DocumentosCorreo.AvisarBoletaAsync(b, verificada, ppeId, motivo, usuario?.ObtenerUsuId(), usuario?.ObtenerSucId());
+            return r.Enviado ? $" Se avisó al cliente a {b.ClienteCorreo}." : $" No se avisó al cliente: {r.Mensaje.TrimEnd('.')}.";
+        }
+        catch (Exception ex) { return $" No se avisó al cliente: {MensajesError.Traducir(ex)}"; }
+    }
     private ReciboResumen? anulando;
     private string motivoAnulacion = "";
     private bool guardando;
@@ -321,7 +536,10 @@
             }
             pcaId = cajasAbiertas.FirstOrDefault()?.PcaId ?? 0;
             ReiniciarFormaNueva();
+            cuentasBancarias = await BancosRepository.ConsultarCuentasAsync(soloActivas: true);
+            if (cuentasBancarias.Count == 1) boletaBcbId = cuentasBancarias[0].BcbId;
             await CargarRecibosAsync();
+            await CargarBoletasAsync();
         }
         catch (Exception ex) { MostrarError(ex); }
     }
@@ -360,9 +578,11 @@
     {
         cliente = nuevo;
         reciboRegistrado = null;
+        boletaRegistrada = null;
         Limpiar();
         cuotas = Array.Empty<CuotaPendiente>();
         if (cliente is not null) await CargarCuotasAsync();
+        await CargarBoletasAsync();
     }
 
     private async Task CargarCuotasAsync()
@@ -376,13 +596,43 @@
         aplicar.Clear();
         formas.Clear();
         montoRecibido = 0;
+        comprobanteNuevo = null;
+        boletaReferencia = "";
+        boletaObservaciones = null;
+        boletaArchivo = null;
+        boletaFecha = DateTime.Today;
         ReiniciarFormaNueva();
     }
 
     private void NuevoCobro()
     {
         reciboRegistrado = null;
+        boletaRegistrada = null;
         mensaje = null;
+    }
+
+    private void CambiarModo(string modo)
+    {
+        modoPago = modo;
+        mensaje = null;
+    }
+
+    // Al elegir la forma de pago se propone lo que falta por cobrar.
+    private void AlCambiarFormaNueva()
+    {
+        var pendiente = TotalCobro - FormasTotal;
+        formaNueva.Monto = pendiente > 0 ? pendiente : 0;
+        if (!EsForma(formaNueva.PftId, "Transferencia")) comprobanteNuevo = null;
+    }
+
+    // Una transferencia lleva su número de operación, distinto de las demás del cobro.
+    private string? ValidarTransferencia(FormaPagoCaptura forma, IEnumerable<FormaPagoCaptura> otras)
+    {
+        if (!EsForma(forma.PftId, "Transferencia")) return null;
+        if (string.IsNullOrWhiteSpace(forma.NumeroCheque)) return "Escriba el número de operación de la transferencia.";
+        if (otras.Any(o => EsForma(o.PftId, "Transferencia") && string.Equals(o.NumeroCheque?.Trim(), forma.NumeroCheque.Trim(), StringComparison.OrdinalIgnoreCase)))
+            return "Ya hay otra transferencia con ese número de operación en este cobro.";
+        return null;
     }
 
     private void SincronizarFormaNueva()
@@ -450,9 +700,24 @@
             MostrarAviso("Seleccione la forma de pago e indique un monto mayor a cero.");
             return;
         }
+        var error = ValidarTransferencia(formaNueva, formas);
+        if (error is not null)
+        {
+            MostrarAviso(error);
+            return;
+        }
+        formaNueva.NumeroCheque = formaNueva.NumeroCheque?.Trim();
+        formaNueva.ComprobanteNombre = comprobanteNuevo?.Nombre;
+        formaNueva.ComprobanteTipo = comprobanteNuevo?.Tipo;
+        formaNueva.Comprobante = comprobanteNuevo?.Contenido;
+        comprobanteNuevo = null;
         formas.Add(formaNueva);
         var restante = TotalCobro - FormasTotal;
-        formaNueva = new FormaPagoCaptura { Monto = restante > 0 ? restante : 0 };
+        formaNueva = new FormaPagoCaptura
+        {
+            PftId = restante > 0 ? tiposForma.FirstOrDefault(t => t.PftDescripcion == "Efectivo")?.PftId ?? 0 : 0,
+            Monto = restante > 0 ? restante : 0
+        };
         mensaje = null;
     }
 
@@ -468,7 +733,20 @@
         var formasCobro = formas.ToList();
         // Si no agregó formas, todo el cobro se registra en la forma de la fila de captura.
         if (formasCobro.Count == 0 && formaNueva.PftId > 0)
-            formasCobro.Add(new FormaPagoCaptura { PftId = formaNueva.PftId, Monto = TotalCobro, GefId = formaNueva.GefId, NumeroCheque = formaNueva.NumeroCheque, NumeroTarjetaUlt4 = formaNueva.NumeroTarjetaUlt4 });
+        {
+            var errorForma = ValidarTransferencia(formaNueva, Array.Empty<FormaPagoCaptura>());
+            if (errorForma is not null)
+            {
+                MostrarAviso(errorForma);
+                return;
+            }
+            formasCobro.Add(new FormaPagoCaptura
+            {
+                PftId = formaNueva.PftId, Monto = TotalCobro, GefId = formaNueva.GefId, NumeroCheque = formaNueva.NumeroCheque?.Trim(),
+                NumeroTarjetaUlt4 = formaNueva.NumeroTarjetaUlt4,
+                ComprobanteNombre = comprobanteNuevo?.Nombre, ComprobanteTipo = comprobanteNuevo?.Tipo, Comprobante = comprobanteNuevo?.Contenido
+            });
+        }
         if (Math.Abs(formasCobro.Sum(f => f.Monto) - TotalCobro) > 0.001m)
         {
             MostrarAviso($"Las formas de pago suman Q{formasCobro.Sum(f => f.Monto):N2} y el cobro es de Q{TotalCobro:N2}.");
@@ -491,14 +769,17 @@
     }
 
     // ---- Borrador: el cobro en captura se conserva al salir de la pantalla ----
+    // La boleta adjunta no se guarda en el borrador: se vuelve a adjuntar.
     private sealed record BorradorCobro(TerceroSeleccion Cliente, decimal MontoRecibido, Dictionary<int, decimal> Aplicar,
-        IReadOnlyList<BorradorFormaPago> Formas, BorradorFormaPago FormaNueva, int PcaId);
+        IReadOnlyList<BorradorFormaPago> Formas, BorradorFormaPago FormaNueva, int PcaId,
+        string ModoPago = "caja", int BoletaBcbId = 0, DateTime? BoletaFecha = null, string? BoletaReferencia = null, string? BoletaObservaciones = null);
 
     private BorradorCobro? CapturarBorrador()
     {
         if (cliente is null || (aplicar.Count == 0 && montoRecibido == 0 && formas.Count == 0)) return null;
         return new BorradorCobro(cliente, montoRecibido, new Dictionary<int, decimal>(aplicar),
-            formas.Select(BorradorFormaPago.De).ToList(), BorradorFormaPago.De(formaNueva), pcaId);
+            formas.Select(BorradorFormaPago.De).ToList(), BorradorFormaPago.De(formaNueva), pcaId,
+            modoPago, boletaBcbId, boletaFecha, boletaReferencia, boletaObservaciones);
     }
 
     private static string DescribirBorrador(BorradorCobro b) =>
@@ -514,12 +795,122 @@
         formas.AddRange(b.Formas.Select(f => f.Captura()));
         formaNueva = b.FormaNueva.Captura();
         if (cajasAbiertas.Any(c => c.PcaId == b.PcaId)) pcaId = b.PcaId;
+        modoPago = b.ModoPago == "boleta" ? "boleta" : "caja";
+        if (cuentasBancarias.Any(c => c.BcbId == b.BoletaBcbId)) boletaBcbId = b.BoletaBcbId;
+        boletaFecha = b.BoletaFecha ?? DateTime.Today;
+        boletaReferencia = b.BoletaReferencia ?? "";
+        boletaObservaciones = b.BoletaObservaciones;
         var cambiaron = aplicar.Count != b.Aplicar.Count || TotalCobro != b.Aplicar.Values.Sum();
         mensaje = cambiaron
             ? "Se recuperó el cobro sin terminar, pero algunas cuotas ya no tienen el mismo saldo: revise los montos antes de cobrar."
-            : "Se recuperó el cobro sin terminar. Revíselo antes de cobrar.";
+            : "Se recuperó el cobro sin terminar. Revíselo antes de cobrar."
+            + (modoPago == "boleta" ? " Vuelva a adjuntar la boleta." : "");
         esMensajeError = cambiaron;
     }
+
+    // ---- Pago con boleta ----
+    private async Task CargarBoletasAsync()
+    {
+        try
+        {
+            boletas = await CuentasRepository.ConsultarBoletasAsync(filtroBoletas == "" ? null : filtroBoletas, cliente?.Id, null, null);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task RegistrarBoletaAsync()
+    {
+        if (cliente is null || aplicar.Count == 0) return;
+        if (boletaBcbId == 0) { MostrarAviso("Elija la cuenta de la empresa donde pagó el cliente."); return; }
+        if (boletaReferencia.Trim().Length < 4) { MostrarAviso("Escriba el número de la boleta o de la operación (al menos 4 caracteres)."); return; }
+        if (boletaArchivo is null) { MostrarAviso("Adjunte la boleta o el comprobante que mandó el cliente."); return; }
+        var excedida = cuotas.FirstOrDefault(c => aplicar.TryGetValue(c.CppId, out var m) && (m <= 0 || m > c.Saldo));
+        if (excedida is not null)
+        {
+            MostrarAviso($"El monto de la cuota {excedida.Cuota} de {excedida.Documento} debe ser mayor a cero y no pasar de su saldo (Q{excedida.Saldo:N2}).");
+            return;
+        }
+        guardando = true;
+        try
+        {
+            var total = TotalCobro;
+            var referencia = boletaReferencia.Trim().ToUpperInvariant();
+            var captura = new BoletaCaptura
+            {
+                CliId = cliente.Id, BcbId = boletaBcbId, Fecha = boletaFecha, Referencia = referencia, Observaciones = boletaObservaciones,
+                ComprobanteNombre = boletaArchivo.Nombre, ComprobanteTipo = boletaArchivo.Tipo, Comprobante = boletaArchivo.Contenido
+            };
+            var cuotasBoleta = cuotas.Where(c => aplicar.ContainsKey(c.CppId)).Select(c => new CuotaCobro(c.CppId, aplicar[c.CppId])).ToList();
+            await CuentasRepository.RegistrarBoletaAsync(captura, cuotasBoleta, await ObtenerUsuIdActualAsync());
+            boletaRegistrada = (referencia, total, cliente.Nombre);
+            reciboRegistrado = null;
+            mensaje = null;
+            Limpiar();
+            filtroBoletas = "P";
+            await CargarBoletasAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task VerificarBoletaAsync(BoletaResumen b)
+    {
+        guardando = true;
+        try
+        {
+            var ppeId = await CuentasRepository.VerificarBoletaAsync(b.CboId, await ObtenerUsuIdActualAsync());
+            mensaje = $"Boleta {b.Referencia} verificada: recibo {ppeId} por Q{b.Monto:N2} de {b.Cliente}." + await AvisarAsync(b, true, ppeId, null);
+            esMensajeError = false;
+            await CargarBoletasAsync();
+            if (cliente is not null) await CargarCuotasAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private void IniciarMotivoBoleta(BoletaResumen b, bool rechazar)
+    {
+        boletaMotivo = b;
+        rechazandoBoleta = rechazar;
+        motivoBoleta = "";
+        mensaje = null;
+    }
+
+    private async Task ConfirmarMotivoBoletaAsync()
+    {
+        if (boletaMotivo is null) return;
+        var b = boletaMotivo;
+        guardando = true;
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            if (rechazandoBoleta) await CuentasRepository.RechazarBoletaAsync(b.CboId, motivoBoleta.Trim(), usuId);
+            else await CuentasRepository.AnularBoletaAsync(b.CboId, motivoBoleta.Trim(), usuId);
+            mensaje = rechazandoBoleta
+                ? $"Boleta {b.Referencia} rechazada." + await AvisarAsync(b, false, null, motivoBoleta)
+                : $"Boleta {b.Referencia} anulada: el saldo volvió a las cuotas.";
+            esMensajeError = false;
+            boletaMotivo = null;
+            await CargarBoletasAsync();
+            if (cliente is not null) await CargarCuotasAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private static string ClaseBoleta(string estado) => estado switch
+    {
+        "P" => "estado-badge-pendiente",
+        "V" => "estado-badge-activo",
+        _ => "estado-badge-inactivo"
+    };
+
+    private static string BoletaTitulo(BoletaResumen b) => b.Estado switch
+    {
+        "P" => $"Registrada por {b.Registro} el {b.FechaRegistro:dd/MM/yyyy HH:mm}",
+        "V" => $"Verificada por {b.Verifico} el {b.FechaVerificacion:dd/MM/yyyy HH:mm}; recibo {b.PpeId}",
+        _ => $"{b.EstadoTexto}: {b.Motivo}"
+    };
 
     private void IniciarAnulacion(ReciboResumen r)
     {

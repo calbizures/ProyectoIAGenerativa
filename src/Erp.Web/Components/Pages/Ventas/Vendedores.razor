@@ -6,6 +6,7 @@
 @using Erp.Web.Security
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IVendedorRepository VendedorRepository
+@inject Erp.Data.General.IGeneralRepository GeneralRepository
 
 <PageTitle>Vendedores</PageTitle>
 
@@ -43,7 +44,10 @@
             <div class="campo"><label for="vendedores-vendedor-nombres">Nombres</label><InputText id="vendedores-vendedor-nombres" @bind-Value="nuevoVendedor.Nombres" /></div>
             <div class="campo"><label for="vendedores-vendedor-apellidos">Apellidos</label><InputText id="vendedores-vendedor-apellidos" @bind-Value="nuevoVendedor.Apellidos" /></div>
             <div class="campo"><label for="vendedores-vendedor-fechaingreso">Fecha de ingreso</label><InputDate id="vendedores-vendedor-fechaingreso" @bind-Value="nuevoVendedor.FechaIngreso" /></div>
-            <div class="campo"><label for="vendedores-vendedor-porcentajecomision">% Comisión</label><InputNumber id="vendedores-vendedor-porcentajecomision" @bind-Value="nuevoVendedor.PorcentajeComision" step="0.01" /></div>
+            @if (pagaComision)
+            {
+                <div class="campo"><label for="vendedores-vendedor-porcentajecomision">% Comisión</label><InputNumber id="vendedores-vendedor-porcentajecomision" @bind-Value="nuevoVendedor.PorcentajeComision" step="0.01" /></div>
+            }
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
                 <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
@@ -53,12 +57,15 @@
 
     <table class="tabla-datos">
         <thead>
-            <tr><th class="col-codigo">Código</th><th>Nombres</th><th>Apellidos</th><th class="num col-estado">% Comisión</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+            <tr><th class="col-codigo">Código</th><th>Nombres</th><th>Apellidos</th>@if (pagaComision)
+            {
+                <th class="num col-estado">% Comisión</th>
+            }<th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
         </thead>
         <tbody>
             @if (!vendedores.Any())
             {
-                <tr><td colspan="6" class="doc-tabla-vacia">Ningún vendedor coincide con la búsqueda.</td></tr>
+                <tr><td colspan="@(pagaComision ? 6 : 5)" class="doc-tabla-vacia">Ningún vendedor coincide con la búsqueda.</td></tr>
             }
             @foreach (var v in vendedores)
             {
@@ -66,7 +73,10 @@
                     <td class="col-codigo">@v.PveCodigo</td>
                     <td>@v.PveNombres</td>
                     <td>@v.PveApellidos</td>
-                    <td class="num col-estado">@v.PvePorcComision.ToString("N2")</td>
+                    @if (pagaComision)
+                    {
+                        <td class="num col-estado">@v.PvePorcComision.ToString("N2")</td>
+                    }
                     <td class="col-estado"><span class="estado-badge @(v.PveEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(v.PveEstado == "A" ? "Activo" : "Inactivo")</span></td>
                     <td class="col-acciones">
                         <div class="acciones-fila">
@@ -89,7 +99,10 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         <div class="campo"><label>Nombres</label><span class="valor-detalle">@seleccionado.PveNombres</span></div>
         <div class="campo"><label>Apellidos</label><span class="valor-detalle">@seleccionado.PveApellidos</span></div>
         <div class="campo"><label>Fecha de ingreso</label><span class="valor-detalle">@(seleccionado.PveFechaIngreso?.ToString("dd/MM/yyyy") ?? "—")</span></div>
-        <div class="campo"><label>% Comisión</label><span class="valor-detalle">@seleccionado.PvePorcComision.ToString("N2")</span></div>
+        @if (pagaComision)
+        {
+            <div class="campo"><label>% Comisión</label><span class="valor-detalle">@seleccionado.PvePorcComision.ToString("N2")</span></div>
+        }
         <div class="acciones-fila">
             <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
         </div>
@@ -120,10 +133,6 @@ else if (pestanaActiva == "facturas" && seleccionado is not null)
                     <span>Comisión (@resumenComision.PorcComision.ToString("N2") %): <strong>Q @grabadas.Sum(f => f.Comision).ToString("N2")</strong></span>
                 }
             </div>
-            @if (!resumenComision.PagaComision)
-            {
-                <p class="texto-ayuda">La compañía no tiene activado el pago de comisiones (General &gt; Compañías), por eso no se calculan.</p>
-            }
             @if (facturasVendedor.Count == 0)
             {
                 <p class="estado-vacio">No hay facturas del vendedor en el rango seleccionado.</p>
@@ -172,7 +181,10 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
             <div class="campo"><label for="vendedores-edicionvendedor-nombres">Nombres</label><InputText id="vendedores-edicionvendedor-nombres" @bind-Value="edicionVendedor.Nombres" /></div>
             <div class="campo"><label for="vendedores-edicionvendedor-apellidos">Apellidos</label><InputText id="vendedores-edicionvendedor-apellidos" @bind-Value="edicionVendedor.Apellidos" /></div>
             <div class="campo"><label for="vendedores-edicionvendedor-fechaingreso">Fecha de ingreso</label><InputDate id="vendedores-edicionvendedor-fechaingreso" @bind-Value="edicionVendedor.FechaIngreso" /></div>
-            <div class="campo"><label for="vendedores-edicionvendedor-porcentajecomision">% Comisión</label><InputNumber id="vendedores-edicionvendedor-porcentajecomision" @bind-Value="edicionVendedor.PorcentajeComision" step="0.01" /></div>
+            @if (pagaComision)
+            {
+                <div class="campo"><label for="vendedores-edicionvendedor-porcentajecomision">% Comisión</label><InputNumber id="vendedores-edicionvendedor-porcentajecomision" @bind-Value="edicionVendedor.PorcentajeComision" step="0.01" /></div>
+            }
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
                 <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />
@@ -209,7 +221,10 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         ? new[] { new PestanaItem("lista", "Lista") }
         : pestanaActiva == "editar"
             ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar") }
-            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("facturas", "Facturas y comisiones") };
+            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("facturas", pagaComision ? "Facturas y comisiones" : "Facturas") };
+
+    // General › Compañías › Paga comisiones: sin él no se muestra ni se pide el % de comisión.
+    private bool pagaComision;
 
     private string filtroEstado = "A";
     private bool mostrarNuevo;
@@ -219,7 +234,20 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
     private readonly VendedorModelo nuevoVendedor = new();
     private readonly VendedorModelo edicionVendedor = new();
 
-    protected override async Task OnInitializedAsync() => await BuscarAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            int? sucId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerSucId();
+            pagaComision = (await GeneralRepository.ConsultarParametrosAsync(sucId)).CiaPagaComision;
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+        await BuscarAsync();
+    }
 
     private async Task CargarFacturasAsync()
     {

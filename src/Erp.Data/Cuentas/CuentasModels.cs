@@ -229,6 +229,9 @@ public sealed class ReciboEncabezado
 	public string? Sucursal { get; set; }
 	public string? Caja { get; set; }
 	public string? Usuario { get; set; }
+	public int CliId { get; set; }
+	public string? ClienteCorreo { get; set; }
+	public int CiaId { get; set; }
 }
 
 public sealed class ReciboAplicacion
@@ -349,4 +352,76 @@ public sealed class ClienteEstadoCuenta
 	public decimal Vencido { get; set; }
 	public DateTime? UltimaCompra { get; set; }
 	public DateTime? UltimoPago { get; set; }
+}
+
+// Transferencia recibida en caja (forma de pago de una factura o un cobro).
+public sealed class TransferenciaRecibida
+{
+	public int PpfId { get; set; }
+	public int PpeId { get; set; }
+	public string? Referencia { get; set; }
+	public decimal Monto { get; set; }
+	public string? Banco { get; set; }
+	public string? ComprobanteNombre { get; set; }
+	public int? ComprobanteTamanio { get; set; }
+	public bool TieneComprobante => ComprobanteNombre is not null;
+}
+
+// Archivo guardado en la base (comprobante o boleta).
+public sealed class ArchivoAdjunto
+{
+	public string? Referencia { get; set; }
+	public string Nombre { get; set; } = "";
+	public string Tipo { get; set; } = "";
+	public byte[] Contenido { get; set; } = Array.Empty<byte>();
+}
+
+// Pago con boleta: el cliente pagó en el banco y manda la boleta.
+public sealed class BoletaCaptura
+{
+	public int CliId { get; set; }
+	public int BcbId { get; set; }
+	public DateTime Fecha { get; set; } = DateTime.Today;
+	public string Referencia { get; set; } = "";
+	public string? Observaciones { get; set; }
+	public string ComprobanteNombre { get; set; } = "";
+	public string ComprobanteTipo { get; set; } = "";
+	public byte[] Comprobante { get; set; } = Array.Empty<byte>();
+}
+
+public sealed class BoletaResumen
+{
+	public int CboId { get; set; }
+	public int CliId { get; set; }
+	public string ClienteCodigo { get; set; } = "";
+	public string Cliente { get; set; } = "";
+	public string? ClienteCorreo { get; set; }
+	public int BcbId { get; set; }
+	public string Cuenta { get; set; } = "";
+	public DateTime Fecha { get; set; }
+	public string Referencia { get; set; } = "";
+	public decimal Monto { get; set; }
+	public string? Observaciones { get; set; }
+	// P = por verificar, V = verificada, R = rechazada, N = anulada
+	public string Estado { get; set; } = "P";
+	public string? Motivo { get; set; }
+	public int? PpeId { get; set; }
+	public string? Registro { get; set; }
+	public DateTime? FechaRegistro { get; set; }
+	public string? Verifico { get; set; }
+	public DateTime? FechaVerificacion { get; set; }
+	public string? Documentos { get; set; }
+	public bool TieneComprobante { get; set; }
+
+	public string EstadoTexto => Estado switch { "P" => "Por verificar", "V" => "Verificada", "R" => "Rechazada", _ => "Anulada" };
+}
+
+public sealed class BoletaCuota
+{
+	public int CppId { get; set; }
+	public string Documento { get; set; } = "";
+	public int Cuota { get; set; }
+	public DateTime? Vence { get; set; }
+	public decimal Monto { get; set; }
+	public decimal SaldoActual { get; set; }
 }
