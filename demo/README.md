@@ -19,6 +19,7 @@ cada paso lleva un rótulo que explica lo que se ve.
 | `deck.js` | Presentación PPTX de 18 diapositivas con notas del orador |
 | `logo-empresa-demo.png` | Logotipo de ejemplo de la compañía de prueba, que la demo carga en General › Compañías |
 | `guion.md` | Guion de la última versión generada |
+| `generar-fase4.sh`, `grabar-fase4.js`, `capturas-fase4.js`, `deck-fase4.js` | Video corto de novedades de la Fase 4, con su guion y su presentación (ver abajo) |
 
 ## Requisitos
 
@@ -55,6 +56,31 @@ Resultado en `salida/`:
 Para regrabar solo algunas secciones: `node grabar.js factura fel` (inicia
 sesión fuera de cámara). Las secciones que graban datos (factura, cxc,
 compras, inventario, caja, bancos y admin) dependen del estado de la base.
+
+## Video de novedades de la Fase 4
+
+Video corto (≈ 5 min) solo con lo nuevo de la Fase 4, aparte del recorrido
+completo: antigüedad de saldos por vendedor (entra el vendedor `jperez`),
+mantenimiento de permisos, compra desde una orden de compra aprobada con las
+dos firmas, kardex, vale de caja chica sin proveedor, pago a proveedor por
+transferencia con autorización y comprobante, y correo saliente por Gmail;
+cierra con la estandarización de la base de datos.
+
+```bash
+cd demo
+SA_PASSWORD='<clave de sa>' ./generar-fase4.sh
+```
+
+- Necesita la base **recién instalada con los scripts `00` a `71`**: graba de
+  verdad la compra desde la orden de compra, el vale y la transferencia. La
+  orden de compra se crea y se aprueba (jefe de bodega y contador general)
+  con SQL justo antes de grabar su sección.
+- El comprobante de la transferencia es una imagen de ejemplo que genera
+  `grabar-fase4.js`; no imita a ningún banco.
+- Para regrabar solo algunas secciones: `node grabar-fase4.js kardex correo`.
+- Resultado en `salida/fase4/`: `ERP - Novedades Fase 4.mp4` (1080p),
+  `ERP - Novedades Fase 4 (liviano).mp4`, `guion.md` (con `python3 guion.py fase4`),
+  `ERP - Novedades Fase 4.pptx` (12 diapositivas con notas del orador) y las tomas.
 
 ## Notas
 

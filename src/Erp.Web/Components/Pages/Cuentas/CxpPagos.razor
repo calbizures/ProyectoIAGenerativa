@@ -53,7 +53,7 @@
         </div>
         <div class="acciones-fila">
             <BotonIcono Icono="list" Tooltip="Ver las facturas y cuotas que pagó" Etiqueta="Ver detalle" OnClick="() => VerDetalleTransferenciaAsync(transferenciaRegistrada.Value.BltId)" />
-            <a class="boton-icono" href="@UrlComprobante(transferenciaRegistrada.Value.BltId)" target="_blank" rel="noopener" title="Ver el comprobante del banco"><Icono Nombre="file-text" Tamano="16" /> Comprobante</a>
+            <a class="boton-icono boton-icono-con-etiqueta" href="@UrlComprobante(transferenciaRegistrada.Value.BltId)" target="_blank" rel="noopener" title="Ver el comprobante del banco"><Icono Nombre="file-text" Tamano="16" /><span class="boton-icono-etiqueta">Comprobante</span></a>
             <BotonIcono Icono="plus" Tooltip="Registrar otro pago" Etiqueta="Otro pago" OnClick="() => transferenciaRegistrada = null" />
         </div>
     </section>
