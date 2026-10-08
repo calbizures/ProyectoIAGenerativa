@@ -16,10 +16,11 @@ SECCIONES_FASE4 = {
 }
 SECCIONES = SECCIONES_FASE4 if FASE4 else {
     '00_intro': 'Portada', '01_acceso': '01 · Acceso', '02_tableros': '02 · Tableros gerenciales',
-    '03_factura': '03 · Ventas y facturación', '04_fel': '04 · Factura electrónica (FEL)', '05_cxc': '05 · Cuentas por cobrar',
-    '06_compras': '06 · Compras e inventario', '07_inventario': '07 · Inventario físico', '08_caja': '08 · Proveedores y caja',
-    '09_bancos': '09 · Bancos', '10_contabilidad': '10 · Contabilidad', '11_rrhh': '11 · Recursos humanos',
-    '12_arranque': '12 · Puesta en marcha (cargas desde Excel)', '13_admin': '13 · Administración y seguridad', '14_cierre': 'Cierre',
+    '03_ventas': '03 · De la cotización a la factura', '04_fel': '04 · Factura electrónica (FEL)', '05_cxc': '05 · Cuentas por cobrar',
+    '06_compras': '06 · Compras', '07_ordencompra': '07 · Órdenes de compra', '08_inventario': '08 · Existencias, kardex y toma física',
+    '09_proveedores': '09 · Pagos a proveedores', '10_caja': '10 · Caja y caja chica', '11_bancos': '11 · Bancos y conciliación',
+    '12_contabilidad': '12 · Contabilidad y estados financieros', '13_rrhh': '13 · Recursos humanos', '14_arranque': '14 · Puesta en marcha (cargas desde Excel)',
+    '15_admin': '15 · Administración y seguridad', '16_continuidad': '16 · Cambiar de opción sin perder lo capturado', '17_cierre': 'Cierre',
 }
 
 
@@ -67,9 +68,11 @@ if FASE4:
           "Cada rótulo de arriba sirve como texto de locución, en el tiempo indicado. Una voz grabada puede mezclarse sobre la música bajándola unos 10 dB mientras se habla."]
 else:
   L += ["## Qué se ve en pantalla", "",
-      "- Todo es la aplicación real corriendo contra SQL Server con los datos de prueba (scripts 00 a 43): la factura, el cobro, la compra, la toma de inventario, el depósito, el cheque a proveedor por varias facturas, el cheque libre y el logotipo se graban de verdad durante la grabación.",
+      "- Todo es la aplicación real corriendo con los datos de prueba: la cotización y su factura, el cobro por transferencia, la boleta y su verificación, las compras, la toma de inventario, el cheque y la transferencia al proveedor, el depósito, el vale, el cheque libre y el logotipo se graban de verdad durante la grabación.",
       "- La factura electrónica usa el **simulador** de certificación (UUID, serie y número de prueba, sin validez fiscal). Con INFILE el flujo es el mismo.",
-      "- Usuario de la demo: `admin`, sucursal *Casa matriz Zona 10*.", "",
+      "- Los comprobantes de transferencia y la boleta son imágenes de ejemplo generadas para la demo; no corresponden a ningún banco.",
+      "- Los correos no se envían: se muestra el panel de envío (la cuenta de Gmail necesita su contraseña de aplicación).",
+      "- Usuarios: `admin` y el vendedor `jperez`, sucursal *Casa matriz Zona 10*.", "",
       "## Si se quiere agregar voz", "",
       "Cada rótulo de arriba sirve como texto de locución, en el tiempo indicado. Una voz grabada puede mezclarse sobre la música bajándola unos 10 dB mientras se habla."]
 open(os.path.join(CARPETA, 'guion.md'), 'w', encoding='utf-8').write("\n".join(L) + "\n")

@@ -1,9 +1,9 @@
 // Capturas limpias (sin rótulos) para la presentación. Se toman a 1920×1080
 // y se recorta el menú lateral y la barra de estado para que el contenido se
 // lea mejor en la diapositiva (menos en «inicio_logo», que muestra el menú con
-// el logotipo). Correr después de grabar.js: usa la factura, el cobro, la
-// compra, la toma de inventario, el cheque y el logotipo que la demo deja
-// grabados.
+// el logotipo). Correr después de grabar.js: usa la cotización, la factura,
+// el cobro, la boleta, las compras, la toma de inventario, los pagos y el
+// logotipo que la demo deja grabados.
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
@@ -23,7 +23,7 @@ const RECORTES = path.join(SALIDA, 'recortes');
 
   await ir('login');
   await p.fill('#usuario', 'admin'); await p.fill('#password', 'Demo#2024'); await p.click('button[type=submit]'); await p.waitForLoadState('networkidle');
-  await p.selectOption('#sucursal', '1'); await p.click('button[type=submit]'); await p.waitForLoadState('networkidle'); await w(800);
+  await p.selectOption('#sucursal', { index: 1 }); await p.click('button[type=submit]'); await p.waitForLoadState('networkidle'); await w(800);
 
   await ir('tableros'); await p.mouse.move(5, 500); await w(500); await foto('tablero_ventas');
   await ir('facturas'); await p.click('tbody tr >> nth=0 >> button[aria-label="Ver detalle"]'); await w(1500);
@@ -45,6 +45,20 @@ const RECORTES = path.join(SALIDA, 'recortes');
   await ir('rrhh/nominas'); await p.locator('main table tbody tr', { hasText: 'Mensual' }).first().locator('button[aria-label="Ver detalle"]').click(); await w(1500);
   await p.locator('#pago-nomina').evaluate(e => e.scrollIntoView({ block: 'start' })); await w(800); await foto('nomina_pago');
   await ir('contabilidad/saldos-iniciales'); await foto('saldos_iniciales');
+  await ir('ventas/cotizaciones'); await p.click('main table tbody tr >> nth=0 >> button[aria-label="Ver la cotización"]'); await w(1500); await foto('cotizacion');
+  await ir('facturas'); await p.click('tbody tr >> nth=0 >> button[aria-label="Ver detalle"]'); await w(1500);
+  await p.click('button:has-text("Enviar por correo")'); await w(1500);
+  await p.locator('.enviar-correo').evaluate(e => e.scrollIntoView({ block: 'center' })); await w(600); await foto('factura_correo');
+  await ir('cxc/cobros'); await p.selectOption('select[aria-label="Estado de las boletas"]', ''); await w(1500);
+  await p.locator('#titulo-boletas').evaluate(e => e.scrollIntoView({ block: 'start' })); await w(600); await foto('cobros_boletas');
+  await ir('compras/ordenes'); await foto('ordenes_compra');
+  await ir('existencias'); await p.locator('main table tbody tr', { hasText: 'LAP-DELL-3520' }).first().locator('button:has-text("Kardex")').click(); await w(1500);
+  await p.selectOption('select[aria-label=Bodega]', '0'); await w(1800); await foto('kardex');
+  const [[prvT]] = sql("SELECT TOP 1 deta.prv_id FROM dbo.bco_lote_transferencia_det deta JOIN dbo.bco_transferencia_comprobante comp ON comp.blt_id = deta.blt_id WHERE deta.prv_id IS NOT NULL ORDER BY deta.blt_id DESC");
+  await ir(`cxp/pagos?prv=${prvT}`); await p.locator('#titulo-transferencias').evaluate(e => e.scrollIntoView({ block: 'start' })); await w(800); await foto('pagos_transferencia');
+  await ir('bancos/conciliacion'); await p.locator('main table tbody tr button').first().click().catch(() => {}); await w(1800); await foto('conciliacion');
+  await ir('contabilidad/estados-financieros'); await p.click('main button:has-text("Consultar")').catch(() => {}); await w(1800); await foto('estados_financieros');
+  await ir('rrhh/planilla-igss'); await p.selectOption('select[aria-label="Mes"]', String(new Date().getMonth() + 1)); await w(1800); await foto('planilla_igss');
   await ir(''); await p.mouse.move(1500, 700); await w(800); await foto('inicio_logo');
   await b.close();
 

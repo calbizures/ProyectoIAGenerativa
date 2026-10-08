@@ -53,7 +53,7 @@ async function logoPng() {
     compras: Fi.FiShoppingCart, banco: Fi.FiBriefcase, conta: Fi.FiBookOpen, rrhh: Fi.FiUsers, seguridad: Fi.FiLock, check: Fi.FiCheck,
     reloj: Fi.FiRefreshCw, llave: Fi.FiKey, anular: Fi.FiXCircle, db: Fi.FiDatabase, web: Fi.FiMonitor, capas: Fi.FiLayers, flecha: Fi.FiArrowRight,
     filtro: Fi.FiFilter, clic: Fi.FiMousePointer, calendario: Fi.FiCalendar, caja: Fi.FiDollarSign, sucursal: Fi.FiMapPin, auditoria: Fi.FiEye, excel: Fi.FiDownload,
-    inventario: Fi.FiPackage, conteo: Fi.FiClipboard, subir: Fi.FiUpload, imagen: Fi.FiImage, vinculo: Fi.FiLink, usuario: Fi.FiUserCheck, arranque: Fi.FiPlayCircle })) {
+    inventario: Fi.FiPackage, correo: Fi.FiMail, conteo: Fi.FiClipboard, subir: Fi.FiUpload, imagen: Fi.FiImage, vinculo: Fi.FiLink, usuario: Fi.FiUserCheck, arranque: Fi.FiPlayCircle })) {
     ic[k] = await icono(C, BLANCO);
     ic[k + 'Azul'] = await icono(C, BLUE);
   }
@@ -87,19 +87,19 @@ async function logoPng() {
   s.addImage({ data: logo, x: 0.92, y: 1.68, w: 2.2, h: 2.2 * 430 / 460 });
   s.addText('DEMO DEL PRODUCTO', { x: 3.75, y: 1.55, w: 5.8, h: 0.3, fontFace: T, fontSize: 12, bold: true, color: '7EE0FB', charSpacing: 3, margin: 0, isTextBox: true });
   s.addText('ERP · Servicios Informáticos Integrados', { x: 3.75, y: 1.88, w: 5.8, h: 1.25, fontFace: H, fontSize: 32, bold: true, color: BLANCO, margin: 0, valign: 'top', isTextBox: true });
-  s.addText('De la venta a la contabilidad, en una sola plataforma web: facturación con FEL, cartera, compras e inventario, bancos, contabilidad automática y RRHH.',
+  s.addText('De la cotización a los estados financieros, en una sola plataforma web: ventas con FEL, cartera, compras e inventario, bancos, contabilidad automática y RRHH.',
     { x: 3.75, y: 3.2, w: 5.6, h: 0.85, fontFace: T, fontSize: 14, color: ICE, margin: 0, valign: 'top', isTextBox: true });
-  s.addText('Acompaña al video de la demo (≈ 12 min)', { x: 0.75, y: 4.95, w: 6, h: 0.3, fontFace: T, fontSize: 11, color: 'A9C6F0', margin: 0, isTextBox: true });
-  s.addNotes('Presentación del ERP de Servicios Informáticos Integrados. El recorrido sigue el mismo orden del video: acceso, tableros, facturación y FEL, cartera, compras, inventario físico, caja, bancos, contabilidad, RRHH, puesta en marcha desde Excel y administración.');
+  s.addText('Acompaña al video de la demo', { x: 0.75, y: 4.95, w: 6, h: 0.3, fontFace: T, fontSize: 11, color: 'A9C6F0', margin: 0, isTextBox: true });
+  s.addNotes('Presentación del ERP de Servicios Informáticos Integrados. El recorrido sigue el mismo orden del video: acceso, tableros, ventas y FEL, cartera, compras y órdenes de compra, inventario, proveedores, caja, bancos, contabilidad, RRHH, puesta en marcha, administración y trabajo sin pérdidas.');
 
   // 2. Módulos ----------------------------------------------------------------
   s = claro(); etiqueta(s, 'Visión general'); titulo(s, 'Una plataforma, toda la operación', 'Doce áreas integradas sobre la misma base de datos: cada operación alimenta a las demás.');
-  const mods = [['grafico', 'Tableros', 'Ventas, cartera, compras y compromisos'], ['factura', 'Ventas y FEL', 'Factura con bienes y servicios, certificada al grabar'],
-    ['cobrar', 'Cartera (CxC)', 'Estado de cuenta, cobros y antigüedad'], ['compras', 'Compras', 'Productos por proveedor y costo promedio'],
-    ['inventario', 'Inventario físico', 'Conteo por bodega con ajuste y póliza'], ['caja', 'Caja', 'Apertura, corte con cuadre y depósitos'],
-    ['banco', 'Bancos', 'Cuentas, chequeras y cheques con póliza'], ['conta', 'Contabilidad', 'Pólizas automáticas y centros de costo'],
-    ['rrhh', 'RRHH', 'Nómina por período, pago sin efectivo'], ['subir', 'Puesta en marcha', 'Inventario, saldos y empleados desde Excel'],
-    ['seguridad', 'Administración', 'Roles, permisos, sucursales y auditoría'], ['imagen', 'Su marca', 'Logotipo de la empresa en todo el sistema']];
+  const mods = [['grafico', 'Tableros', 'Ventas, cartera, compras y compromisos'], ['factura', 'Ventas y FEL', 'De la cotización a la factura certificada'],
+    ['cobrar', 'Cartera (CxC)', 'Cobro en caja, transferencia o boleta'], ['compras', 'Compras', 'Orden de compra con dos firmas'],
+    ['inventario', 'Inventario', 'Kardex, costo promedio y toma física'], ['caja', 'Proveedores y caja', 'Cheque o transferencia; corte con cuadre'],
+    ['banco', 'Bancos', 'Cheques, conciliación y flujo de caja'], ['conta', 'Contabilidad', 'Pólizas automáticas y estados financieros'],
+    ['rrhh', 'RRHH', 'Nómina, libro de salarios e IGSS'], ['subir', 'Puesta en marcha', 'Inventario, saldos y empleados desde Excel'],
+    ['seguridad', 'Administración', 'Roles, permisos, logotipo y correo'], ['reloj', 'Sin perder el trabajo', 'Aviso al salir y borrador']];
   mods.forEach(([k, cab, txt], i) => {
     const x = 0.5 + (i % 4) * 2.3, y = 1.45 + Math.floor(i / 4) * 1.3;
     s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w: 2.1, h: 1.15, rectRadius: 0.1, fill: { color: BLANCO }, line: { color: 'E8EDF4', width: 0.75 },
@@ -109,27 +109,36 @@ async function logoPng() {
     s.addText(cab, { x: x + 0.68, y: y + 0.2, w: 1.35, h: 0.34, fontFace: H, fontSize: 12.5, bold: true, color: NAVY, margin: 0, valign: 'middle', isTextBox: true });
     s.addText(txt, { x: x + 0.16, y: y + 0.66, w: 1.85, h: 0.42, fontFace: T, fontSize: 9.5, color: TENUE, margin: 0, valign: 'top', isTextBox: true });
   });
-  s.addNotes('Todos los módulos comparten la misma base de datos: una factura mueve inventario, cartera, FEL, tableros y contabilidad en una sola transacción. La puesta en marcha se hace con plantillas de Excel y el sistema lleva el logotipo de la empresa que lo usa.');
+  s.addNotes('Todos los módulos comparten la misma base de datos: una factura mueve inventario, cartera, FEL, tableros y contabilidad en una sola transacción. El orden de las diapositivas sigue al video.');
 
-  // 3. Tableros ---------------------------------------------------------------
+  // Tableros ------------------------------------------------------------------
   s = claro(); etiqueta(s, '02 · Tableros'); titulo(s, 'Tableros gerenciales', 'La información para decidir, al día y en una sola pantalla.');
   filaIcono(s, 0.5, 1.55, 3.3, ic.grafico, 'Ventas y margen real', 'Margen bruto calculado con el costo grabado en cada línea.');
   filaIcono(s, 0.5, 2.45, 3.3, ic.clic, 'Interactivos', 'Detalle al pasar el puntero; un clic en un mes lo abre por día.');
   filaIcono(s, 0.5, 3.35, 3.3, ic.calendario, 'Compromisos de pago', 'Lo que vence con proveedores en las próximas 12 semanas.');
   filaIcono(s, 0.5, 4.25, 3.3, ic.filtro, 'Filtros', 'Por período y por sucursal; cada gráfico tiene vista de tabla.');
   captura(s, 'tablero_ventas.png', 4.1, 1.45, 5.45);
-  s.addNotes('Tres tableros: ventas, recuperación de cartera y compras con compromisos de pago. El margen usa el costo real grabado en cada línea de factura. Un clic en un mes lo abre por día y un clic en un cliente lleva a su estado de cuenta.');
+  s.addNotes('Tres tableros: ventas, recuperación de cartera y compras con compromisos de pago. El margen usa el costo real grabado en cada línea de factura.');
 
-  // 4. Facturación ------------------------------------------------------------
-  s = claro(); etiqueta(s, '03 · Ventas'); titulo(s, 'Facturación completa en pocos pasos', 'Validaciones en línea y certificación FEL al grabar.');
-  captura(s, 'factura_detalle.png', 0.45, 1.45, 5.45);
-  filaIcono(s, 6.2, 1.55, 3.4, ic.factura, 'Bienes y servicios', 'La columna B/S mezcla productos de inventario y servicios.');
-  filaIcono(s, 6.2, 2.45, 3.4, ic.cobrar, 'Contado o crédito', 'Plan de cuotas y validación del límite de crédito del cliente.');
-  filaIcono(s, 6.2, 3.35, 3.4, ic.usuario, 'Vendedor del usuario', 'Si quien factura es vendedor, la factura lo propone solo.');
-  filaIcono(s, 6.2, 4.25, 3.4, ic.fel, 'Certificada al grabar', 'UUID, serie y número de SAT; anulación con motivo que revierte inventario y póliza.');
-  s.addNotes('Factura de ejemplo: una laptop y un servicio de instalación, a crédito en tres cuotas. El sistema muestra límite, saldo y crédito disponible; si el monto a financiar lo excede, no permite grabar. El vendedor se propone según el usuario (usuario, empleado, vendedor). Al grabar se certifica ante el certificador FEL.');
+  // Cotización ----------------------------------------------------------------
+  s = claro(); etiqueta(s, '03 · Ventas'); titulo(s, 'De la cotización a la factura', 'Se cotiza, se envía al cliente y se factura con los precios cotizados.');
+  captura(s, 'cotizacion.png', 0.45, 1.45, 5.45);
+  filaIcono(s, 6.2, 1.55, 3.4, ic.calendario, 'Vigencia de 15 días', 'Para clientes o prospectos; muestra la existencia de hoy.');
+  filaIcono(s, 6.2, 2.45, 3.4, ic.correo, 'Por correo al cliente', 'En PDF, con la cuenta de correo de la compañía.');
+  filaIcono(s, 6.2, 3.35, 3.4, ic.factura, 'Convertir en factura', 'Con el cliente, las líneas y los precios cotizados.');
+  filaIcono(s, 6.2, 4.25, 3.4, ic.check, 'Queda facturada', 'Al grabar la factura, la cotización se marca facturada.');
+  s.addNotes('En el video se cotiza una laptop y su instalación para un cliente, se muestra el envío por correo y se convierte en factura.');
 
-  // 5. FEL --------------------------------------------------------------------
+  // Factura -------------------------------------------------------------------
+  s = claro(); etiqueta(s, '03 · Ventas'); titulo(s, 'Factura certificada y enviada al cliente', 'Contado, crédito o transferencia, con FEL al grabar.');
+  filaIcono(s, 0.5, 1.55, 3.3, ic.cobrar, 'Crédito con límite', 'Plan de cuotas y validación del crédito disponible.');
+  filaIcono(s, 0.5, 2.45, 3.3, ic.banco, 'Transferencia', 'Monto propuesto, número de operación y comprobante adjunto.');
+  filaIcono(s, 0.5, 3.35, 3.3, ic.fel, 'Certificada al grabar', 'UUID, serie y número de SAT; anulación con motivo.');
+  filaIcono(s, 0.5, 4.25, 3.3, ic.correo, 'PDF y XML por correo', 'Al correo registrado del cliente; la lista muestra la hora en que se grabó.');
+  captura(s, 'factura_correo.png', 4.1, 1.45, 5.45);
+  s.addNotes('La factura se paga por transferencia: el monto se propone con el total, se indica el número de operación y se adjunta el comprobante. En el detalle se ven las transferencias recibidas y el envío por correo del PDF y el XML certificado.');
+
+  // FEL -----------------------------------------------------------------------
   s = claro(); etiqueta(s, '04 · Factura electrónica'); titulo(s, 'FEL parametrizada', 'Cumplimiento con SAT sin depender de un proveedor fijo.');
   const pasos = [['factura', 'Grabar', 'Factura o nota en el ERP'], ['capas', 'XML del DTE', 'Armado desde parámetros'], ['fel', 'Certificador', 'INFILE o simulador'], ['check', 'Autorización', 'UUID, serie y número']];
   pasos.forEach(([k, cab, txt], i) => {
@@ -140,24 +149,32 @@ async function logoPng() {
     s.addText(txt, { x: x + 0.2, y: 2.4, w: 1.65, h: 0.35, fontFace: T, fontSize: 10.5, color: i === 3 ? ICE : TENUE, margin: 0, isTextBox: true });
     if (i < 3) s.addImage({ data: ic.flechaAzul, x: x + 2.02, y: 2.02, w: 0.26, h: 0.26 });
   });
-  filaIcono(s, 0.5, 3.3, 2.9, ic.reloj, 'Reintento automático', 'Si no hay conexión, la factura queda grabada como pendiente y se reenvía sola.');
+  filaIcono(s, 0.5, 3.3, 2.9, ic.reloj, 'Reintento automático', 'Si no hay conexión, la factura queda pendiente y se reenvía sola.');
   filaIcono(s, 3.55, 3.3, 2.9, ic.anular, 'Anulación ante SAT', 'Con motivo; queda registrada con su XML de anulación.');
   filaIcono(s, 6.6, 3.3, 2.9, ic.llave, 'Llaves protegidas', 'Las credenciales del certificador van fuera de la base de datos.');
-  s.addText('Parámetros: certificador, ambiente, emisor, establecimientos, frases, tipos de DTE (FACT, FCAM con abonos, NCRE, NDEB) y unidades de medida. Cada intento queda en bitácora con el XML enviado y el certificado.',
+  s.addText('Parámetros: certificador, ambiente, emisor, establecimientos, frases, tipos de DTE (FACT, FCAM con abonos, NCRE, NDEB) y unidades de medida. Cada documento muestra la fecha y la hora en que se facturó.',
     { x: 0.5, y: 4.45, w: 9, h: 0.6, fontFace: T, fontSize: 11.5, color: TEXTO, margin: 0, valign: 'top', isTextBox: true });
-  s.addNotes('El XML del DTE se arma con datos parametrizados (emisor, establecimiento, frases, tipo de DTE, unidades), se envía al certificador y se guarda la autorización. En la demo se usó el simulador; con INFILE el flujo es el mismo. Los documentos anteriores se certifican en lote, y cada nota espera a su factura de origen.');
+  s.addNotes('En la demo se usó el simulador de certificación; con INFILE el flujo es el mismo. Los documentos anteriores se certifican en lote.');
 
-  // 6. Cuentas por cobrar -----------------------------------------------------
-  s = claro(); etiqueta(s, '05 · Cuentas por cobrar'); titulo(s, 'Cartera bajo control', 'Del saldo del cliente al recibo impreso.');
-  filaIcono(s, 0.5, 1.55, 3.3, ic.cobrar, 'Varias cuotas, un recibo', 'El monto recibido se aplica a las cuotas más antiguas.');
-  filaIcono(s, 0.5, 2.45, 3.3, ic.factura, 'Recibo imprimible', 'Anulable con motivo mientras la caja siga abierta.');
-  filaIcono(s, 0.5, 3.35, 3.3, ic.auditoria, 'Estado de cuenta', 'Facturas, cuotas, cobros y notas con su saldo.');
-  filaIcono(s, 0.5, 4.25, 3.3, ic.excel, 'Antigüedad de saldos', 'Por rangos de días, exportable a Excel.');
+  // Cuentas por cobrar ---------------------------------------------------------
+  s = claro(); etiqueta(s, '05 · Cuentas por cobrar'); titulo(s, 'Cobros en caja o en el banco', 'Transferencia con comprobante o boleta verificada contra el banco.');
+  captura(s, 'cobros_boletas.png', 0.45, 1.45, 5.45);
+  filaIcono(s, 6.2, 1.55, 3.4, ic.cobrar, 'Varias cuotas, un recibo', 'El monto se aplica a las cuotas más antiguas.');
+  filaIcono(s, 6.2, 2.45, 3.4, ic.banco, 'Transferencia', 'Se propone lo pendiente; No. de operación y comprobante.');
+  filaIcono(s, 6.2, 3.35, 3.4, ic.imagen, 'Pago con boleta', 'El cliente pagó en el banco: queda por verificar.');
+  filaIcono(s, 6.2, 4.25, 3.4, ic.check, 'Verificada contra el banco', 'Recibo sin caja y póliza Bancos / Clientes; aviso al cliente.');
+  s.addNotes('La boleta no rebaja el saldo hasta que contabilidad la verifica contra el estado de cuenta del banco (permiso Verificar boletas). Entonces se graba el recibo y la póliza con la fecha del depósito, y entra en la conciliación bancaria. También se puede rechazar o anular.');
+
+  s = claro(); etiqueta(s, '05 · Cuentas por cobrar'); titulo(s, 'Cartera bajo control', 'Estado de cuenta y antigüedad, por cliente y por vendedor.');
+  filaIcono(s, 0.5, 1.55, 3.3, ic.auditoria, 'Estado de cuenta', 'Facturas, cuotas, cobros y notas con su saldo.');
+  filaIcono(s, 0.5, 2.45, 3.3, ic.excel, 'Antigüedad de saldos', 'Por rangos de días, con Excel e impresión.');
+  filaIcono(s, 0.5, 3.35, 3.3, ic.usuario, 'Por vendedor', 'Cada vendedor ve los clientes a los que les ha vendido.');
+  filaIcono(s, 0.5, 4.25, 3.3, ic.correo, 'Por correo', 'Estado de cuenta y recibos al correo del cliente.');
   captura(s, 'cxc_antiguedad.png', 4.1, 1.45, 5.45);
-  s.addNotes('Cobro de varias cuotas con un solo recibo y su póliza. La antigüedad de saldos se consulta por cliente o por factura y se exporta a Excel.');
+  s.addNotes('Administración y contabilidad ven toda la cartera; el vendedor, la de sus clientes con todo su saldo.');
 
-  // 7. Costo promedio ---------------------------------------------------------
-  s = claro(); etiqueta(s, '06 · Compras e inventario'); titulo(s, 'Cada compra actualiza el costo real', 'Costo neto de descuento y sin IVA, promediado con la existencia.');
+  // Costo promedio ---------------------------------------------------------
+  s = claro(); etiqueta(s, '06 · Compras'); titulo(s, 'Cada compra actualiza el costo real', 'Costo neto de descuento y sin IVA, promediado con la existencia.');
   s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 0.5, y: 1.5, w: 4.2, h: 3.55, rectRadius: 0.12, fill: { color: NAVY } });
   s.addText('EJEMPLO DE LA DEMO', { x: 0.8, y: 1.72, w: 3.7, h: 0.25, fontFace: T, fontSize: 10, bold: true, color: '7EE0FB', charSpacing: 2, margin: 0, isTextBox: true });
   s.addText('10 laptops a Q4,256 con IVA y Q2,240 de descuento', { x: 0.8, y: 2.0, w: 3.7, h: 0.5, fontFace: T, fontSize: 12.5, color: ICE, margin: 0, valign: 'top', isTextBox: true });
@@ -167,70 +184,104 @@ async function logoPng() {
     { x: 0.8, y: 3.62, w: 3.75, h: 0.35, fontFace: T, fontSize: 11.5, margin: 0, isTextBox: true });
   s.addText('Nuevo costo promedio. La siguiente venta lo graba en su línea y en la póliza de costo de ventas.', { x: 0.8, y: 4.08, w: 3.7, h: 0.7, fontFace: T, fontSize: 11, color: ICE, margin: 0, valign: 'top', isTextBox: true });
   captura(s, 'productos.png', 5.0, 1.5, 4.55);
-  s.addText('Existencia, costo unitario y estado de cada producto.', { x: 5.0, y: 4.62, w: 4.55, h: 0.3, fontFace: T, fontSize: 10.5, italic: true, color: TENUE, margin: 0, isTextBox: true });
-  s.addNotes('Al grabar la compra, en una sola transacción, sube la existencia, se recalcula el costo promedio ponderado y se genera la póliza de compra. La venta toma el costo en ese momento, por eso el margen de los tableros es real.');
+  s.addText('Solo las bodegas de la sucursal de la sesión; productos y último costo del proveedor.', { x: 5.0, y: 4.62, w: 4.55, h: 0.4, fontFace: T, fontSize: 10.5, italic: true, color: TENUE, margin: 0, isTextBox: true });
+  s.addNotes('Al grabar la compra, en una sola transacción, sube la existencia, se recalcula el costo promedio ponderado y se genera la póliza de compra.');
 
-  // 8. Productos por proveedor -----------------------------------------------
-  s = claro(); etiqueta(s, '06 · Compras'); titulo(s, 'Productos por proveedor', 'Qué vende cada proveedor, a qué costo, y cuál es el preferido.');
-  captura(s, 'productos_proveedor.png', 0.45, 1.45, 5.45);
-  filaIcono(s, 6.2, 1.55, 3.4, ic.compras, 'Compra guiada', 'Al elegir el proveedor, la búsqueda muestra sus productos.');
-  filaIcono(s, 6.2, 2.45, 3.4, ic.caja, 'Último costo', 'Se propone el costo de la última compra a ese proveedor.');
-  filaIcono(s, 6.2, 3.35, 3.4, ic.vinculo, 'Relación al comprar', 'Un producto que aún no es del proveedor se relaciona en el momento.');
-  filaIcono(s, 6.2, 4.25, 3.4, ic.check, 'Preferido', 'Un proveedor preferido por producto y su código en el catálogo del proveedor.');
-  s.addNotes('El catálogo de productos por proveedor se mantiene en Compras, desde cada producto y desde Proveedores. Al grabar una compra se actualiza el último costo y, si se pide, se relacionan los productos nuevos con el proveedor.');
+  // Órdenes de compra --------------------------------------------------------
+  s = claro(); etiqueta(s, '07 · Órdenes de compra'); titulo(s, 'Compra desde la orden de compra', 'Aprobada por bodega y por el contador general, recibida completa o por partes.');
+  captura(s, 'ordenes_compra.png', 0.45, 1.45, 5.45);
+  filaIcono(s, 6.2, 1.55, 3.4, ic.usuario, 'Dos firmas', 'Visto bueno del jefe de bodega y aprobación del contador general.');
+  filaIcono(s, 6.2, 2.45, 3.4, ic.inventario, 'Recepción parcial', 'Lo que llegó con la factura; lo demás queda pendiente.');
+  filaIcono(s, 6.2, 3.35, 3.4, ic.conta, 'Todo junto', 'Inventario, cuenta por pagar y póliza en una transacción.');
+  filaIcono(s, 6.2, 4.25, 3.4, ic.compras, 'Productos por proveedor', 'Código del proveedor, preferido y último costo.');
+  s.addNotes('Solo las órdenes con las dos firmas se pueden recibir. En el video llegan 4 de 6 laptops y la orden queda recibida en parte.');
 
-  // 9. Inventario físico ------------------------------------------------------
-  s = claro(); etiqueta(s, '07 · Inventario físico'); titulo(s, 'Inventario físico con ajuste', 'El conteo de cada bodega contra el sistema, con su documento y su póliza.');
+  // Kardex --------------------------------------------------------------------
+  s = claro(); etiqueta(s, '08 · Inventario'); titulo(s, 'Kardex con costo promedio', 'Cómo llegó cada producto a su existencia y a su costo.');
+  filaIcono(s, 0.5, 1.55, 3.3, ic.filtro, 'Búsqueda', 'Existencias y precios por código o descripción.');
+  filaIcono(s, 0.5, 2.45, 3.3, ic.inventario, 'Cada movimiento', 'Cantidad, costo unitario y total; saldo y promedio después de cada línea.');
+  filaIcono(s, 0.5, 3.35, 3.3, ic.check, 'Comprobado', 'Llega a la misma existencia y costo guardados en el producto.');
+  filaIcono(s, 0.5, 4.25, 3.3, ic.excel, 'Excel', 'El kardex completo se exporta.');
+  captura(s, 'kardex.png', 4.1, 1.45, 5.45);
+  s.addNotes('El kardex está en Inventario › Existencias, por bodega o de todas.');
+
+  // Inventario físico ---------------------------------------------------------
+  s = claro(); etiqueta(s, '08 · Inventario'); titulo(s, 'Inventario físico con ajuste', 'El conteo de cada bodega contra el sistema, con su documento y su póliza.');
   filaIcono(s, 0.5, 1.55, 3.3, ic.conteo, 'Toma por bodega', 'Existencia del sistema (no modificable) junto al conteo.');
   filaIcono(s, 0.5, 2.45, 3.3, ic.excel, 'En pantalla o con Excel', 'Hoja de conteo para llenar en la bodega y subir.');
   filaIcono(s, 0.5, 3.35, 3.3, ic.inventario, 'Ajuste valorado', 'Sobrante contra ingresos, faltante contra gastos, al costo promedio.');
   filaIcono(s, 0.5, 4.25, 3.3, ic.anular, 'Anulación', 'Revierte existencias y pólizas de los ajustes.');
   captura(s, 'toma_fisica.png', 4.1, 1.45, 5.45);
-  s.addNotes('Se abre una toma por bodega, se registra el conteo y al aplicarla las diferencias generan los documentos de sobrante y faltante con sus pólizas. Los productos sin conteo no se ajustan.');
+  s.addNotes('Al aplicar la toma, las diferencias generan los documentos de sobrante y faltante con sus pólizas.');
 
-  // 10. Caja ------------------------------------------------------------------
-  s = claro(); etiqueta(s, '08 · Proveedores y caja'); titulo(s, 'Caja cuadrada todos los días', 'Pagos a proveedores por factura o por saldo, corte con conteo físico y depósitos.');
+  // Pagos a proveedores --------------------------------------------------------
+  s = claro(); etiqueta(s, '09 · Cuentas por pagar'); titulo(s, 'Pagos a proveedores', 'Con cheque o por transferencia, por factura o por todo el saldo.');
+  captura(s, 'pagos_transferencia.png', 0.45, 1.45, 5.45);
+  filaIcono(s, 6.2, 1.55, 3.4, ic.factura, 'Un cheque, varias facturas', 'Aplicado a las cuotas más antiguas, con concepto automático.');
+  filaIcono(s, 6.2, 2.45, 3.4, ic.banco, 'Transferencia', 'La ya hecha en la banca electrónica, con su número de autorización.');
+  filaIcono(s, 6.2, 3.35, 3.4, ic.imagen, 'Comprobante adjunto', 'PDF o imagen del banco, abierto desde la lista.');
+  filaIcono(s, 6.2, 4.25, 3.4, ic.anular, 'Anulación', 'Devuelve el saldo a las cuotas y anula la póliza.');
+  s.addNotes('La póliza carga Proveedores (una línea por factura) y abona la cuenta del banco. Las transferencias entran al estado de cuenta, al flujo de caja y a la conciliación bancaria.');
+
+  // Caja ------------------------------------------------------------------
+  s = claro(); etiqueta(s, '10 · Caja'); titulo(s, 'Caja cuadrada todos los días', 'Corte con conteo físico, depósitos y caja chica.');
   captura(s, 'caja_corte.png', 0.45, 1.45, 5.45);
   filaIcono(s, 6.2, 1.55, 3.4, ic.caja, 'Apertura por sucursal', 'Con monto inicial; no se abre un día nuevo sin cerrar el anterior.');
   filaIcono(s, 6.2, 2.45, 3.4, ic.check, 'Corte con cuadre', 'Esperado por forma de pago contra lo contado; la diferencia genera póliza.');
-  filaIcono(s, 6.2, 3.35, 3.4, ic.banco, 'Depósitos', 'A una cuenta bancaria; la póliza carga su cuenta contable de depósitos.');
-  filaIcono(s, 6.2, 4.25, 3.4, ic.factura, 'Un cheque por factura o saldo', 'Aplicado a las cuotas más antiguas, concepto automático; anulable.');
-  s.addNotes('Caja por sucursal: apertura, corte con conteo físico por denominación y forma de pago, cierre con faltante o sobrante contabilizado, y depósitos a una cuenta bancaria de la empresa. A los proveedores se les paga con un solo cheque una factura completa o el saldo de varias: el monto se aplica a las cuotas más antiguas y la póliza lleva una línea por factura.');
+  filaIcono(s, 6.2, 3.35, 3.4, ic.banco, 'Depósitos', 'A una cuenta bancaria; la póliza carga su cuenta de depósitos.');
+  filaIcono(s, 6.2, 4.25, 3.4, ic.factura, 'Caja chica', 'Facturas, vales y recibos; liquidación y reposición con póliza.');
+  s.addNotes('Caja por sucursal con apertura, corte por forma de pago (efectivo, cheque, tarjeta y transferencia), cierre y depósitos. En caja chica el proveedor solo se exige en las facturas.');
 
-  // 11. Bancos ----------------------------------------------------------------
-  s = claro(); etiqueta(s, '09 · Bancos'); titulo(s, 'Cuentas, chequeras y cheques', 'Cada movimiento bancario con su cuenta contable y su póliza.');
-  filaIcono(s, 0.5, 1.55, 3.3, ic.banco, 'Cargos y abonos', 'Cada cuenta bancaria define la cuenta contable de sus depósitos y la de sus cheques.');
-  filaIcono(s, 0.5, 2.45, 3.3, ic.factura, 'Chequeras', 'Rangos sin traslape; se propone el siguiente número.');
-  filaIcono(s, 0.5, 3.35, 3.3, ic.caja, 'Cheques libres', 'Beneficiario, motivo, cuenta de gasto y centro de costo.');
-  filaIcono(s, 0.5, 4.25, 3.3, ic.anular, 'Cobrados y anulados', 'Anular exige motivo y anula su póliza.');
-  captura(s, 'cuentas_bancarias.png', 4.1, 1.45, 5.45);
-  s.addNotes('Mantenimiento de cuentas bancarias, chequeras y motivos de pago, solo para administrador y contador. Un depósito a la cuenta se carga a su cuenta contable de cargos; un cheque se abona a su cuenta de abonos. Los cheques a proveedores, libres y de nómina se ven en una sola lista.');
+  // Bancos ----------------------------------------------------------------
+  s = claro(); etiqueta(s, '11 · Bancos'); titulo(s, 'Cuentas, cheques y conciliación', 'Cada movimiento bancario con su cuenta contable, su póliza y su conciliación.');
+  filaIcono(s, 0.5, 1.55, 3.3, ic.banco, 'Cargos y abonos', 'Cada cuenta define la cuenta contable de depósitos y la de pagos.');
+  filaIcono(s, 0.5, 2.45, 3.3, ic.caja, 'Cheques libres', 'Beneficiario, motivo, cuenta de gasto y centro de costo.');
+  filaIcono(s, 0.5, 3.35, 3.3, ic.check, 'Conciliación bancaria', 'Estado de cuenta importado y conciliado automáticamente.');
+  filaIcono(s, 0.5, 4.25, 3.3, ic.grafico, 'Flujo de caja', 'Real según las pólizas y proyectado con cobros y pagos.');
+  captura(s, 'conciliacion.png', 4.1, 1.45, 5.45);
+  s.addNotes('La conciliación empareja por documento o por monto y fecha: depósitos, cheques, transferencias y boletas verificadas. Lo que falta se marca a mano o con póliza de ajuste, y se cierra solo si cuadra.');
 
-  // 9. Contabilidad -----------------------------------------------------------
-  s = claro(); etiqueta(s, '10 · Contabilidad'); titulo(s, 'Contabilidad automática', 'Cada operación genera su póliza de partida doble, siempre cuadrada.');
-  const ops = ['Venta', 'Compra', 'Cobro', 'Cheque', 'Depósito', 'Cierre de caja', 'Nómina', 'Pago de nómina', 'Nota de crédito', 'Nota de débito', 'Ajuste de inventario', 'Apertura'];
+  // Contabilidad -----------------------------------------------------------
+  s = claro(); etiqueta(s, '12 · Contabilidad'); titulo(s, 'Contabilidad automática', 'Cada operación genera su póliza de partida doble, siempre cuadrada.');
+  const ops = ['Venta', 'Compra', 'Cobro', 'Boleta', 'Cheque', 'Transferencia', 'Depósito', 'Cierre de caja', 'Nómina', 'Notas', 'Ajuste de inventario', 'Depreciación'];
   ops.forEach((o, i) => {
     const x = 0.5 + (i % 3) * 1.4, y = 1.5 + Math.floor(i / 3) * 0.62;
     s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w: 1.28, h: 0.5, rectRadius: 0.08, fill: { color: i === 0 ? BLUE : BLANCO }, line: { color: i === 0 ? BLUE : 'D7DEE8', width: 0.75 } });
     s.addText(o, { x, y, w: 1.28, h: 0.5, fontFace: T, fontSize: 10.5, bold: true, color: i === 0 ? BLANCO : NAVY, align: 'center', valign: 'middle', margin: 0, isTextBox: true });
   });
-  s.addText('Las cuentas de cada concepto se configuran en «Cuentas de pólizas automáticas». Cada línea puede llevar su centro de costo (el departamento), con reporte y Excel.',
+  s.addText('Las cuentas de cada concepto se configuran en «Cuentas de pólizas automáticas». También pólizas manuales, libros diario y mayor, balanza y centros de costo.',
     { x: 0.5, y: 4.08, w: 4.1, h: 0.9, fontFace: T, fontSize: 11.5, color: TEXTO, margin: 0, valign: 'top', isTextBox: true });
   captura(s, 'nomenclatura.png', 4.85, 1.45, 4.7);
-  s.addNotes('Doce tipos de operación generan póliza automáticamente. Un trigger valida que cada póliza cuadre. Al anular un documento, su póliza queda anulada. El gasto por centro de costo suma las líneas con departamento: sueldos de la nómina y cheques libres.');
+  s.addNotes('Las operaciones generan póliza automáticamente y cada póliza debe cuadrar. Al anular un documento, su póliza queda anulada.');
 
-  // 10. RRHH ------------------------------------------------------------------
-  s = claro(); etiqueta(s, '11 · Recursos humanos'); titulo(s, 'Personas y nómina', 'Nómina por período y pago sin efectivo, integrados con contabilidad.');
+  s = claro(); etiqueta(s, '12 · Contabilidad'); titulo(s, 'Estados financieros', 'Balance General y Estado de Resultados por nodos, al día.');
+  captura(s, 'estados_financieros.png', 0.45, 1.45, 5.45);
+  filaIcono(s, 6.2, 1.55, 3.4, ic.capas, 'Por nodos', 'Se abren hasta la cuenta de detalle y su libro mayor.');
+  filaIcono(s, 6.2, 2.45, 3.4, ic.calendario, 'Comparativos', 'Contra otra fecha o período.');
+  filaIcono(s, 6.2, 3.35, 3.4, ic.inventario, 'Activos fijos', 'Depreciación mensual con los porcentajes del ISR.');
+  filaIcono(s, 6.2, 4.25, 3.4, ic.excel, 'Imprimir o Excel', 'Con el logotipo de la empresa.');
+  s.addNotes('Los estados financieros se calculan con las pólizas vigentes. Los cierres de período y de ejercicio se hacen desde Contabilidad › Períodos.');
+
+  // RRHH -------------------------------------------------------------------
+  s = claro(); etiqueta(s, '13 · Recursos humanos'); titulo(s, 'Personas y nómina', 'Nómina por período y pago sin efectivo, integrados con contabilidad.');
   captura(s, 'nomina_pago.png', 0.45, 1.45, 5.45);
   filaIcono(s, 6.2, 1.55, 3.4, ic.calendario, 'Semanal, quincenal o mensual', 'Cada empleado tiene su tipo; se sugiere el siguiente período.');
-  filaIcono(s, 6.2, 2.45, 3.4, ic.banco, 'Pago sin efectivo', 'Transferencias con listado por banco en Excel, o cheques correlativos.');
+  filaIcono(s, 6.2, 2.45, 3.4, ic.banco, 'Pago sin efectivo', 'Transferencias con archivo para el banco, o cheques.');
   filaIcono(s, 6.2, 3.35, 3.4, ic.conta, 'Centro de costo', 'El sueldo va al departamento de la plaza del empleado.');
   filaIcono(s, 6.2, 4.25, 3.4, ic.capas, 'Estructura y organigrama', 'Unidades anidadas sin límite; el organigrama se dibuja solo.');
-  s.addNotes('RRHH: empleados con sus datos de pago, nómina semanal, quincenal o mensual con el período sugerido, póliza por centro de costo al aprobarla y pago por transferencia o cheque, cada pago con su póliza. Estructura organizativa recursiva con organigrama.');
+  s.addNotes('Empleados con sus datos de pago, nómina con póliza por centro de costo al aprobarla y pago por transferencia o cheque.');
+
+  s = claro(); etiqueta(s, '13 · Recursos humanos'); titulo(s, 'Libro de salarios y planilla del IGSS', 'Lo que piden el Ministerio de Trabajo y el IGSS, desde la nómina.');
+  filaIcono(s, 0.5, 1.55, 3.3, ic.factura, 'Libro de salarios', 'Formato del Ministerio de Trabajo, por empleado y año.');
+  filaIcono(s, 0.5, 2.45, 3.3, ic.caja, 'Cuotas', 'Laboral y patronal, IRTRA e INTECAP por centro de trabajo.');
+  filaIcono(s, 0.5, 3.35, 3.3, ic.subir, 'Archivo para el IGSS', 'Sistema propio, formato 2.2.0.');
+  filaIcono(s, 0.5, 4.25, 3.3, ic.calendario, 'Prestaciones', 'Aguinaldo y bono 14 con su provisión.');
+  captura(s, 'planilla_igss.png', 4.1, 1.45, 5.45);
+  s.addNotes('La planilla del mes se arma con las nóminas aprobadas cuyo período termina en ese mes.');
 
   // Puesta en marcha ----------------------------------------------------------
-  s = claro(); etiqueta(s, '12 · Puesta en marcha'); titulo(s, 'Arranque desde Excel', 'Los datos iniciales se cargan con plantillas, validadas antes de grabar.');
-  const pasosCarga = [['excel', '1. Plantilla', 'Con instrucciones y códigos válidos'], ['subir', '2. Subir', 'El archivo lleno, tal cual'], ['check', '3. Grabar', 'Si una fila tiene error, no se graba nada']];
+  s = claro(); etiqueta(s, '14 · Puesta en marcha'); titulo(s, 'Arranque desde Excel', 'Los datos iniciales se cargan con plantillas, validadas antes de grabar.');
+  const pasosCarga = [['excel', '1. Plantilla', 'Con instrucciones y listas desplegables'], ['subir', '2. Subir', 'El archivo lleno, tal cual'], ['check', '3. Grabar', 'Si una fila tiene error, no se graba nada']];
   pasosCarga.forEach(([k, cab, txt], i) => {
     const x = 0.5 + i * 1.42, y = 1.5;
     s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w: 1.3, h: 1.45, rectRadius: 0.1, fill: { color: i === 2 ? BLUE : BLANCO }, line: { color: i === 2 ? BLUE : 'D7DEE8', width: 0.75 } });
@@ -242,37 +293,51 @@ async function logoPng() {
   filaIcono(s, 0.5, 3.85, 4.1, ic.conta, 'Saldos iniciales', 'Debe y Haber por cuenta; se genera la partida de apertura.');
   filaIcono(s, 0.5, 4.5, 4.1, ic.rrhh, 'Empleados', 'Alta o actualización con plaza, salario y datos de pago.');
   captura(s, 'saldos_iniciales.png', 4.85, 1.45, 4.7);
-  s.addNotes('Tres cargas desde Excel para arrancar: inventario inicial, saldos iniciales con su partida de apertura (avisa si la cuenta de inventario no coincide con el inventario cargado) y empleados. Cada una valida el archivo completo y muestra los errores por fila.');
+  s.addNotes('Tres cargas desde Excel para arrancar: inventario inicial, saldos iniciales con su partida de apertura y empleados.');
 
-  // 11. Administración --------------------------------------------------------
-  s = claro(); etiqueta(s, '13 · Administración'); titulo(s, 'Seguridad y configuración', 'Cada quien ve y hace solo lo que le corresponde.');
-  filaIcono(s, 0.5, 1.55, 3.3, ic.seguridad, 'Roles y permisos', 'Cada pantalla exige su permiso; los cambios aplican en menos de un minuto.');
+  // Administración --------------------------------------------------------
+  s = claro(); etiqueta(s, '15 · Administración'); titulo(s, 'Seguridad y configuración', 'Cada quien ve y hace solo lo que le corresponde.');
+  filaIcono(s, 0.5, 1.55, 3.3, ic.seguridad, 'Roles y permisos', 'Cada permiso con dónde se usa, sus roles y sus usuarios.');
   filaIcono(s, 0.5, 2.45, 3.3, ic.llave, 'Contraseñas seguras', 'Guardadas con hash, nunca en texto plano.');
   filaIcono(s, 0.5, 3.35, 3.3, ic.sucursal, 'Multi-sucursal', 'Sucursales, bodegas y cajas; la sesión trabaja en una sucursal.');
   filaIcono(s, 0.5, 4.25, 3.3, ic.auditoria, 'Auditoría', 'Cada registro guarda quién y cuándo lo creó y lo modificó.');
   captura(s, 'permisos.png', 4.1, 1.45, 5.45);
-  s.addNotes('Seguridad por roles y permisos por pantalla, con refresco de permisos en las sesiones abiertas. Auditoría por registro en todas las tablas de negocio.');
+  s.addNotes('Seguridad por roles y permisos por pantalla y por acción, con refresco de permisos en las sesiones abiertas.');
 
-  // Logotipo --------------------------------------------------------------------
-  s = claro(); etiqueta(s, '13 · Administración'); titulo(s, 'Con la imagen de su empresa', 'El logotipo de la empresa que usa el ERP, en todo el sistema.');
+  s = claro(); etiqueta(s, '15 · Administración'); titulo(s, 'Con la imagen de su empresa', 'Su logotipo y su cuenta de correo, en todo el sistema.');
   captura(s, 'inicio_logo.png', 0.45, 1.45, 5.45, 1080 / 1920);
-  filaIcono(s, 6.2, 1.55, 3.4, ic.imagen, 'Cargado en la compañía', 'PNG, JPG, GIF o WEBP de hasta 1 MB, desde General › Compañías.');
-  filaIcono(s, 6.2, 2.45, 3.4, ic.web, 'Menú e inicio de sesión', 'Reemplaza al logotipo del sistema.');
-  filaIcono(s, 6.2, 3.35, 3.4, ic.factura, 'Impresos', 'Recibos, estados de cuenta y antigüedad de saldos.');
-  filaIcono(s, 6.2, 4.25, 3.4, ic.excel, 'Libros de Excel', 'En el encabezado de cada reporte y plantilla.');
-  s.addNotes('El logotipo se guarda en la compañía (gen_compania) y se muestra en el menú, la pantalla de inicio de sesión, los documentos impresos y los libros de Excel. Sin logotipo se usa el del sistema.');
+  filaIcono(s, 6.2, 1.55, 3.4, ic.imagen, 'Logotipo', 'En el menú, el inicio de sesión, los impresos y los libros de Excel.');
+  filaIcono(s, 6.2, 2.45, 3.4, ic.correo, 'Correo saliente', 'Gmail por defecto, Outlook.com, Microsoft 365 u otro servidor.');
+  filaIcono(s, 6.2, 3.35, 3.4, ic.factura, 'Documentos al cliente', 'Facturas, recibos, cotizaciones y estados de cuenta en PDF.');
+  filaIcono(s, 6.2, 4.25, 3.4, ic.llave, 'Contraseña cifrada', 'Gmail usa una contraseña de aplicación.');
+  s.addNotes('No hace falta un servidor de correo propio: se usa la cuenta de la compañía. Microsoft está retirando el SMTP con contraseña en cuentas personales de Outlook/Hotmail; en ese caso conviene Gmail o Microsoft 365.');
 
-  // 12. Tecnología ------------------------------------------------------------
-  s = claro(); etiqueta(s, 'Tecnología'); titulo(s, 'Construido para durar', 'Base de datos sólida y aplicación web moderna.');
-  const stats = [['SQL Server', 'Base de datos con reglas de negocio en procedimientos almacenados'], ['.NET 8', 'Aplicación web Blazor Server, responsive'], ['42', 'Scripts de instalación re-ejecutables'], ['56', 'Pantallas de la aplicación web']];
+  // Sin perder el trabajo -------------------------------------------------
+  s = claro(); etiqueta(s, '16 · Sin perder el trabajo'); titulo(s, 'Cambiar de opción sin perder lo capturado', 'Un documento a medias no se pierde al ir a otra pantalla.');
+  const flujo = [['factura', 'A medias', 'Una factura sin grabar'], ['anular', 'Aviso al salir', 'Quedarme o salir y guardar borrador'], ['reloj', 'Borrador', 'En este navegador, por usuario y sucursal'], ['check', 'Recuperar', 'Tal como estaba, al volver']];
+  flujo.forEach(([k, cab, txt], i) => {
+    const x = 0.5 + i * 2.33;
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: 1.6, w: 1.95, h: 1.5, rectRadius: 0.1, fill: { color: i === 3 ? BLUE : BLANCO }, line: { color: i === 3 ? BLUE : 'D7DEE8', width: 0.75 } });
+    s.addImage({ data: i === 3 ? ic[k] : ic[k + 'Azul'], x: x + 0.2, y: 1.78, w: 0.34, h: 0.34 });
+    s.addText(cab, { x: x + 0.2, y: 2.2, w: 1.65, h: 0.3, fontFace: H, fontSize: 14, bold: true, color: i === 3 ? BLANCO : NAVY, margin: 0, isTextBox: true });
+    s.addText(txt, { x: x + 0.2, y: 2.5, w: 1.65, h: 0.5, fontFace: T, fontSize: 10.5, color: i === 3 ? ICE : TENUE, margin: 0, valign: 'top', isTextBox: true });
+    if (i < 3) s.addImage({ data: ic.flechaAzul, x: x + 2.02, y: 2.2, w: 0.26, h: 0.26 });
+  });
+  s.addText('Funciona en facturas, cotizaciones, compras, órdenes de compra, cobros, pagos a proveedores, notas, pólizas manuales, inventario físico y caja chica. En los catálogos solo hay aviso. Con Ctrl+clic en el menú se abre otra opción en una pestaña nueva.',
+    { x: 0.5, y: 3.5, w: 9, h: 0.9, fontFace: T, fontSize: 12, color: TEXTO, margin: 0, valign: 'top', isTextBox: true });
+  s.addNotes('El borrador queda cifrado en el navegador y separado por usuario, sucursal y pantalla. Al grabar el documento se borra.');
+
+  // Por qué ---------------------------------------------------------------
+  s = claro(); etiqueta(s, 'En resumen'); titulo(s, 'Construido para la operación diaria', 'Una sola plataforma web, segura y en español.');
+  const stats = [['Web', 'Desde cualquier navegador, también en el celular'], ['FEL', 'Factura electrónica certificada al grabar'], ['Pólizas', 'Automáticas en cada operación'], ['Excel', 'Reportes y cargas iniciales']];
   stats.forEach(([n, t], i) => {
     const x = 0.5 + i * 2.3;
-    s.addText(n, { x, y: 1.6, w: 2.1, h: 0.75, fontFace: H, fontSize: n.length > 4 ? 26 : 44, bold: true, color: BLUE, margin: 0, valign: 'bottom', isTextBox: true });
+    s.addText(n, { x, y: 1.6, w: 2.1, h: 0.75, fontFace: H, fontSize: 36, bold: true, color: BLUE, margin: 0, valign: 'bottom', isTextBox: true });
     s.addText(t, { x, y: 2.42, w: 2.05, h: 0.65, fontFace: T, fontSize: 11.5, color: TENUE, margin: 0, valign: 'top', isTextBox: true });
   });
   filaIcono(s, 0.5, 3.45, 4.3, ic.db, 'Transacciones completas', 'Documento, inventario, cartera y póliza se graban juntos o no se graba nada.');
   filaIcono(s, 5.2, 3.45, 4.3, ic.web, 'Accesible', 'Contraste AA, foco visible con teclado y uso en celular.');
-  s.addNotes('SQL Server con la lógica de negocio en procedimientos almacenados y una aplicación Blazor Server sobre .NET 8. La instalación son 44 scripts re-ejecutables (00 a 43).');
+  s.addNotes('Resumen para cerrar: plataforma web, factura electrónica, contabilidad automática y reportes en Excel.');
 
   // 13. Cierre ----------------------------------------------------------------
   s = oscuro();
