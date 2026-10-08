@@ -5,7 +5,7 @@ namespace Erp.Data.Ventas;
 
 public sealed class ClienteRepository(IDbConnectionFactory connectionFactory) : IClienteRepository
 {
-	public async Task<int> InsertarAsync(string codigo, string nombres, string? apellidos, string? direccion, string? telefonoCelular, string? nit, string? email, decimal limiteCredito, int? usuarioAccionId)
+	public async Task<int> InsertarAsync(string codigo, string nombres, string? apellidos, string? direccion, string? telefonoCelular, string? nit, string? email, decimal limiteCredito, int? usuarioAccionId, int? provId = null)
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new DynamicParameters();
@@ -17,6 +17,7 @@ public sealed class ClienteRepository(IDbConnectionFactory connectionFactory) : 
 		parametros.Add("@CliNit", nit);
 		parametros.Add("@CliEmail", email);
 		parametros.Add("@CliLimiteCredito", limiteCredito);
+		parametros.Add("@CliDireccionProvincia", provId);
 		parametros.Add("@UsuId", usuarioAccionId);
 		parametros.Add("@CliId", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
@@ -24,7 +25,7 @@ public sealed class ClienteRepository(IDbConnectionFactory connectionFactory) : 
 		return parametros.Get<int>("@CliId");
 	}
 
-	public async Task ActualizarAsync(int cliId, string nombres, string? apellidos, string? direccion, string? telefonoCelular, string? nit, string? email, decimal limiteCredito, int? usuarioAccionId)
+	public async Task ActualizarAsync(int cliId, string nombres, string? apellidos, string? direccion, string? telefonoCelular, string? nit, string? email, decimal limiteCredito, int? usuarioAccionId, int? provId = IClienteRepository.ClienteSinCambioUbicacion)
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new
@@ -37,6 +38,7 @@ public sealed class ClienteRepository(IDbConnectionFactory connectionFactory) : 
 			CliNit = nit,
 			CliEmail = email,
 			CliLimiteCredito = limiteCredito,
+			CliDireccionProvincia = provId,
 			UsuId = usuarioAccionId
 		};
 		await connection.ExecuteAsync("dbo.paClienteActualizar", parametros, commandType: CommandType.StoredProcedure);

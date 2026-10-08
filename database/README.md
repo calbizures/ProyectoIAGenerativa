@@ -88,30 +88,31 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 71_pago_proveedor_transferencia.sql           -- pago a proveedores por transferencia con autorización y comprobante
 72_transferencias_boletas_hora.sql            -- comprobante de transferencias, pago con boleta verificado, hora en listados
 73_ubicacion_geografica.sql                   -- país › departamento › municipio (INE) en la compañía y los empleados
+74_ubicacion_clientes_sucursales.sql          -- la misma ubicación en cascada en clientes y sucursales
 ```
 
 **Instalación de una sola vez:** después de crear la base con
-`00_crear_base_datos.sql`, el archivo `instalar_01_al_73.sql` corre en orden
-del `01` al `73` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
+`00_crear_base_datos.sql`, el archivo `instalar_01_al_74.sql` corre en orden
+del `01` al `74` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
 active *Consulta › Modo SQLCMD*, cambie la ruta de la línea `:setvar RUTA` por la
 carpeta de los scripts y ejecútelo; desde la línea de comandos:
-`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_73.sql -o instalacion.log`.
+`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_74.sql -o instalacion.log`.
 Se detiene en el primer error y muestra en qué script ocurrió. Incluye los
 datos de prueba, así que es para una base nueva, no para una con datos reales.
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `73` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `74` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `73` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `74` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `paCajaCerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `73`. Si vuelves a
-correr `12`, corre después `22` a `73` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `74`. Si vuelves a
+correr `12`, corre después `22` a `74` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -130,7 +131,8 @@ las transferencias directas TR-, y la consulta de lotes solo con lotes). Si
 vuelves a correr `10`, `17`, `34` o `35`, corre después el `72` (la hora en
 los listados de facturas y documentos electrónicos, y el recibo impreso de un
 pago con boleta). Si vuelves a correr `25`, `26`, `36` o `40`, corre después el
-`73` (compañía y empleado con su municipio).
+`73` (compañía y empleado con su municipio). Si vuelves a correr `10`,
+`31` o `66`, corre después el `74` (cliente y sucursal con su municipio).
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -2074,6 +2076,28 @@ Municipio**, usando las tablas que ya existían:
   empleados desde Excel no lo borre.
 
 Errores nuevos: 55901-55914.
+
+### Clientes y sucursales (`74`)
+
+- **Clientes**: `pos_cliente` ya tenía `cli_direccion_pais`,
+  `cli_direccion_estado` y `cli_direccion_provincia`; se conservan las tres
+  porque la factura electrónica las usa, pero el municipio manda: al
+  grabarlo, `paClienteInsertar` y `paClienteActualizar` toman de él el
+  departamento y el país. `paClienteActualizar` recibe
+  `@CliDireccionProvincia` (`-1`, el valor por omisión, conserva el actual) y
+  `paClienteConsultarPorId` devuelve municipio, departamento, país y la
+  dirección completa. Los clientes que ya tenían municipio se corrigen para
+  que su departamento y país coincidan.
+- **Sucursales**: `gen_sucursal.prov_id` ya existía (es el municipio del
+  establecimiento en la factura electrónica). `paSucursalGuardar` recibe
+  `@ProvId` (`-1` conserva el actual) y no deja sin municipio a un
+  establecimiento de factura electrónica (55915); `paSucursalConsultar`
+  devuelve el municipio, el departamento y la dirección completa.
+- En la aplicación, Clientes (alta y edición) y Sucursales usan el mismo
+  `SelectorUbicacion`; el detalle del cliente y el listado de sucursales
+  muestran la ubicación. De paso se corrigió la edición de clientes, que no
+  grababa (exigía el código sin cargarlo) y borraba el correo.
+
 
 ## Módulos nuevos
 

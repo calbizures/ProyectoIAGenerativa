@@ -11,6 +11,13 @@ public sealed class Cliente
 	public string? CliTelefonoCelular { get; set; }
 	public decimal CliLimiteCredito { get; set; }
 	public string CliEstado { get; set; } = "A";
+	public string? CliEmail { get; set; }
+	// Ubicación (script 74): el municipio manda; departamento y país se derivan.
+	public int? CliDireccionProvincia { get; set; }
+	public string? Municipio { get; set; }
+	public string? Departamento { get; set; }
+	public string? Pais { get; set; }
+	public string? DireccionCompleta { get; set; }
 
 	public string NombreCompleto => string.IsNullOrWhiteSpace(CliApellidos) ? CliNombres : $"{CliNombres} {CliApellidos}";
 }

@@ -141,6 +141,7 @@ public sealed class GeneralRepository(IDbConnectionFactory connectionFactory) : 
 		parametros.Add("@Descripcion", sucursal.SucDescripcion);
 		parametros.Add("@Direccion", sucursal.SucDireccion);
 		parametros.Add("@Telefono", sucursal.SucTelefono);
+		parametros.Add("@ProvId", sucursal.ProvId);
 		parametros.Add("@UsuId", usuarioAccionId);
 		parametros.Add("@IdResultado", dbType: DbType.Int32, direction: ParameterDirection.Output);
 		await connection.ExecuteAsync("dbo.paSucursalGuardar", parametros, commandType: CommandType.StoredProcedure);

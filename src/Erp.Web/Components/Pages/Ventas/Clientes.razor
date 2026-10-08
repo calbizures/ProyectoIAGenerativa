@@ -45,7 +45,8 @@
             <div class="campo"><label for="clientes-cliente-apellidos">Apellidos</label><InputText id="clientes-cliente-apellidos" @bind-Value="nuevoCliente.Apellidos" /></div>
             <div class="campo"><label for="clientes-cliente-nit">NIT</label><InputText id="clientes-cliente-nit" @bind-Value="nuevoCliente.Nit" /></div>
             <div class="campo"><label for="clientes-cliente-telefonocelular">Teléfono celular</label><InputText id="clientes-cliente-telefonocelular" @bind-Value="nuevoCliente.TelefonoCelular" /></div>
-            <div class="campo"><label for="clientes-cliente-direccion">Dirección</label><InputText id="clientes-cliente-direccion" @bind-Value="nuevoCliente.Direccion" /></div>
+            <div class="campo"><label for="clientes-cliente-direccion">Dirección</label><InputText id="clientes-cliente-direccion" @bind-Value="nuevoCliente.Direccion" placeholder="Calle, número, zona o colonia" /></div>
+            <SelectorUbicacion @bind-ProvId="nuevoCliente.ProvId" IdPrefijo="clientes-cliente" />
             <div class="campo"><label for="clientes-cliente-email">Email</label><InputText id="clientes-cliente-email" @bind-Value="nuevoCliente.Email" /></div>
             <div class="campo"><label for="clientes-cliente-limitecredito">Límite de crédito</label><InputNumber id="clientes-cliente-limitecredito" @bind-Value="nuevoCliente.LimiteCredito" step="0.01" /></div>
             <div class="acciones-fila">
@@ -95,7 +96,10 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         <div class="campo"><label>Apellidos</label><span class="valor-detalle">@seleccionado.CliApellidos</span></div>
         <div class="campo"><label>NIT</label><span class="valor-detalle">@seleccionado.CliNit</span></div>
         <div class="campo"><label>Teléfono celular</label><span class="valor-detalle">@seleccionado.CliTelefonoCelular</span></div>
-        <div class="campo"><label>Dirección</label><span class="valor-detalle">@seleccionado.CliDireccion</span></div>
+        <div class="campo"><label>Email</label><span class="valor-detalle">@(seleccionado.CliEmail ?? "—")</span></div>
+        <div class="campo campo-ancho"><label>Dirección</label><span class="valor-detalle">@(seleccionado.DireccionCompleta ?? "—")</span></div>
+        <div class="campo"><label>Departamento</label><span class="valor-detalle">@(seleccionado.Departamento ?? "—")</span></div>
+        <div class="campo"><label>Municipio</label><span class="valor-detalle">@(seleccionado.Municipio ?? "—")</span></div>
         <div class="campo"><label>Límite de crédito</label><span class="valor-detalle">@seleccionado.CliLimiteCredito.ToString("N2")</span></div>
         <div class="acciones-fila">
             <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
@@ -156,7 +160,8 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
             <div class="campo"><label for="clientes-edicioncliente-apellidos">Apellidos</label><InputText id="clientes-edicioncliente-apellidos" @bind-Value="edicionCliente.Apellidos" /></div>
             <div class="campo"><label for="clientes-edicioncliente-nit">NIT</label><InputText id="clientes-edicioncliente-nit" @bind-Value="edicionCliente.Nit" /></div>
             <div class="campo"><label for="clientes-edicioncliente-telefonocelular">Teléfono celular</label><InputText id="clientes-edicioncliente-telefonocelular" @bind-Value="edicionCliente.TelefonoCelular" /></div>
-            <div class="campo"><label for="clientes-edicioncliente-direccion">Dirección</label><InputText id="clientes-edicioncliente-direccion" @bind-Value="edicionCliente.Direccion" /></div>
+            <div class="campo"><label for="clientes-edicioncliente-direccion">Dirección</label><InputText id="clientes-edicioncliente-direccion" @bind-Value="edicionCliente.Direccion" placeholder="Calle, número, zona o colonia" /></div>
+            <SelectorUbicacion @bind-ProvId="edicionCliente.ProvId" IdPrefijo="clientes-edicioncliente" />
             <div class="campo"><label for="clientes-edicioncliente-email">Email</label><InputText id="clientes-edicioncliente-email" @bind-Value="edicionCliente.Email" /></div>
             <div class="campo"><label for="clientes-edicioncliente-limitecredito">Límite de crédito</label><InputNumber id="clientes-edicioncliente-limitecredito" @bind-Value="edicionCliente.LimiteCredito" step="0.01" /></div>
             <div class="acciones-fila">
@@ -244,6 +249,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         nuevoCliente.Nit = null;
         nuevoCliente.TelefonoCelular = null;
         nuevoCliente.Direccion = null;
+        nuevoCliente.ProvId = null;
         nuevoCliente.Email = null;
         nuevoCliente.LimiteCredito = 0;
         mostrarNuevo = true;
@@ -263,7 +269,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
             var usuId = await ObtenerUsuIdActualAsync();
             await ClienteRepository.InsertarAsync(
                 nuevoCliente.Codigo, nuevoCliente.Nombres, nuevoCliente.Apellidos, nuevoCliente.Direccion,
-                nuevoCliente.TelefonoCelular, nuevoCliente.Nit, nuevoCliente.Email, nuevoCliente.LimiteCredito, usuId);
+                nuevoCliente.TelefonoCelular, nuevoCliente.Nit, nuevoCliente.Email, nuevoCliente.LimiteCredito, usuId, nuevoCliente.ProvId);
             mostrarNuevo = false;
             mensaje = "Cliente creado correctamente.";
             esMensajeError = false;
@@ -276,9 +282,10 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
     }
 
-    private void SeleccionarAsync(Cliente cliente)
+    private async Task SeleccionarAsync(Cliente cliente)
     {
-        seleccionado = cliente;
+        // El listado no trae la dirección: se lee el cliente completo.
+        seleccionado = await ClienteRepository.ConsultarPorIdAsync(cliente.CliId) ?? cliente;
         pestanaActiva = "detalle";
         mensaje = null;
     }
@@ -286,11 +293,14 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
     private void IniciarEdicion()
     {
         if (seleccionado is null) return;
+        edicionCliente.Codigo = seleccionado.CliCodigo;
         edicionCliente.Nombres = seleccionado.CliNombres;
         edicionCliente.Apellidos = seleccionado.CliApellidos;
         edicionCliente.Nit = seleccionado.CliNit;
         edicionCliente.TelefonoCelular = seleccionado.CliTelefonoCelular;
         edicionCliente.Direccion = seleccionado.CliDireccion;
+        edicionCliente.Email = seleccionado.CliEmail;
+        edicionCliente.ProvId = seleccionado.CliDireccionProvincia;
         edicionCliente.LimiteCredito = seleccionado.CliLimiteCredito;
         mensaje = null;
         pestanaActiva = "editar";
@@ -316,11 +326,11 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
             var usuId = await ObtenerUsuIdActualAsync();
             await ClienteRepository.ActualizarAsync(
                 seleccionado.CliId, edicionCliente.Nombres, edicionCliente.Apellidos, edicionCliente.Direccion,
-                edicionCliente.TelefonoCelular, edicionCliente.Nit, edicionCliente.Email, edicionCliente.LimiteCredito, usuId);
+                edicionCliente.TelefonoCelular, edicionCliente.Nit, edicionCliente.Email, edicionCliente.LimiteCredito, usuId, edicionCliente.ProvId);
             mensaje = "Cambios guardados.";
             esMensajeError = false;
             await BuscarAsync();
-            seleccionado = clientes.FirstOrDefault(c => c.CliId == seleccionado.CliId) ?? seleccionado;
+            seleccionado = await ClienteRepository.ConsultarPorIdAsync(seleccionado.CliId) ?? seleccionado;
             pestanaActiva = "detalle";
         }
         catch (Exception ex)
@@ -362,5 +372,6 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         public string? Direccion { get; set; }
         public string? Email { get; set; }
         public decimal LimiteCredito { get; set; }
+        public int? ProvId { get; set; }
     }
 }

@@ -105,6 +105,12 @@ public sealed class SucursalDetalle
 	public string CiaNombreComercial { get; set; } = "";
 	public string SucEstado { get; set; } = "A";
 	public int CantidadBodegas { get; set; }
+	// Ubicación (script 74): municipio; departamento y país se derivan.
+	public int? ProvId { get; set; }
+	public string? Municipio { get; set; }
+	public string? Departamento { get; set; }
+	public string? Pais { get; set; }
+	public string? DireccionCompleta { get; set; }
 }
 
 // NIT o DPI grabado que no pasa la validación (para corregirlo).

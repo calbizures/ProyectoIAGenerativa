@@ -41,7 +41,8 @@
                 </div>
                 <div class="campo"><label for="suc-codigo">Código</label><input id="suc-codigo" @bind="sucursalEdicion.SucCodigo" maxlength="8" /></div>
                 <div class="campo"><label for="suc-desc">Descripción</label><input id="suc-desc" @bind="sucursalEdicion.SucDescripcion" maxlength="128" /></div>
-                <div class="campo"><label for="suc-dir">Dirección</label><input id="suc-dir" @bind="sucursalEdicion.SucDireccion" maxlength="128" /></div>
+                <div class="campo"><label for="suc-dir">Dirección</label><input id="suc-dir" @bind="sucursalEdicion.SucDireccion" maxlength="128" placeholder="Calle, número, zona o colonia" /></div>
+                <SelectorUbicacion @bind-ProvId="sucursalEdicion.ProvId" IdPrefijo="suc" />
                 <div class="campo"><label for="suc-tel">Teléfono</label><input id="suc-tel" @bind="sucursalEdicion.SucTelefono" maxlength="16" inputmode="tel" /></div>
                 <div class="acciones-fila">
                     <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarSucursalAsync" />
@@ -62,7 +63,7 @@
                         {
                             <tr class="fila-seleccionable @(sucursalSeleccionada?.SucId == s.SucId ? "fila-seleccionada" : "")" @onclick="() => SeleccionarAsync(s)">
                                 <td class="col-codigo">@s.SucCodigo</td>
-                                <td>@s.SucDescripcion<br /><small class="texto-ayuda">@s.CiaNombreComercial</small></td>
+                                <td>@s.SucDescripcion<br /><small class="texto-ayuda">@s.CiaNombreComercial@(s.Municipio is null ? "" : $" · {s.Municipio}, {s.Departamento}")</small></td>
                                 <td class="num col-estado">@s.CantidadBodegas</td>
                                 <td class="col-estado"><span class="estado-badge @(s.SucEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(s.SucEstado == "A" ? "Activa" : "Inactiva")</span></td>
                                 <td class="col-acciones" @onclick:stopPropagation="true">
@@ -241,7 +242,7 @@
         sucursalEdicion = new SucursalDetalle
         {
             SucId = s.SucId, CiaId = s.CiaId, SucCodigo = s.SucCodigo, SucDescripcion = s.SucDescripcion,
-            SucDireccion = s.SucDireccion, SucTelefono = s.SucTelefono
+            SucDireccion = s.SucDireccion, SucTelefono = s.SucTelefono, ProvId = s.ProvId
         };
     }
 
