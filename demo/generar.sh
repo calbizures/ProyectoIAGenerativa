@@ -49,6 +49,10 @@ FINAL="$SALIDA/Demo ERP - Servicios Informaticos Integrados.mp4"
 # Versión 720p, nítida y de tamaño moderado, para enviar.
 "$FFMPEG" -loglevel error -y -i "$FINAL" -vf scale=1280:720 -c:v libx264 -preset slow -crf 26 -c:a aac -b:a 128k \
   -movflags +faststart "$SALIDA/Demo ERP - para enviar (720p).mp4"
+# Versión de menos de 30 MB para adjuntar o subir donde hay límite de tamaño.
+(cd "$SALIDA" && "$FFMPEG" -loglevel error -y -i "$FINAL" -vf scale=1280:720 -c:v libx264 -preset slow -b:v 140k -pass 1 -an -f mp4 /dev/null \
+  && "$FFMPEG" -loglevel error -y -i "$FINAL" -vf scale=1280:720 -c:v libx264 -preset slow -b:v 140k -pass 2 -c:a aac -b:a 56k \
+     -movflags +faststart "Demo ERP - completo (para compartir).mp4" && rm -f ffmpeg2pass-0.log*)
 rm -f "$SALIDA/video_sin_audio.mp4"
 
 echo "4/5 Guion..."

@@ -55,6 +55,7 @@ Resultado en `salida/`:
 - `Demo ERP - Servicios Informaticos Integrados.mp4`: 1080p, música normalizada a −18 LUFS.
 - `Demo ERP - liviano.mp4`: la misma, más liviana, para compartir por correo o chat.
 - `Demo ERP - para enviar (720p).mp4`: la misma en 720p, nítida y de tamaño moderado.
+- `Demo ERP - completo (para compartir).mp4`: 720p de menos de 30 MB, para adjuntar donde hay límite de tamaño.
 - `guion.md` y `Demo ERP - Servicios Informaticos Integrados.pptx`.
 - `tomas/`: un MP4 y una línea de tiempo por sección.
 - `imagenes/`: los comprobantes de transferencia y la boleta de ejemplo que se
