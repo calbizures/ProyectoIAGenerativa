@@ -1,0 +1,77 @@
+@* Flujo de caja por períodos: saldo inicial, conceptos por actividad, flujo neto y saldo final. *@
+@using Erp.Data.FlujoCaja
+@using Erp.Web.Reportes
+
+<div class="tabla-desplazable" tabindex="0" aria-label="Flujo de caja por período">
+    <table class="tabla-datos tabla-contable tabla-flujo">
+        <thead>
+            <tr>
+                <th class="col-concepto">Concepto</th>
+                @foreach (var p in Pivote.Periodos)
+                {
+                    <th class="num col-monto">@Pivote.Etiqueta(p)</th>
+                }
+                <th class="num col-monto">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="fila-subtotal">
+                <td>Saldo inicial de efectivo</td>
+                @foreach (var p in Pivote.Periodos)
+                {
+                    <td class="num">@Pivote.SaldoInicialDe(p).ToString("N2")</td>
+                }
+                <td class="num">@Pivote.SaldoInicial.ToString("N2")</td>
+            </tr>
+            @foreach (var (actividad, nombre) in ActividadesFlujo.Todas)
+            {
+                var filas = Pivote.Filas.Where(f => f.Actividad == actividad).ToList();
+                if (filas.Count == 0) continue;
+                <tr class="fila-nivel fila-nivel-1"><td colspan="@(Pivote.Periodos.Count + 2)">@nombre</td></tr>
+                @foreach (var f in filas)
+                {
+                    <tr>
+                        <td class="sangria-2">@f.Concepto</td>
+                        @foreach (var p in Pivote.Periodos)
+                        {
+                            var monto = f.Montos.GetValueOrDefault(p);
+                            <td class="num @(monto < 0 ? "monto-negativo" : "")">@(monto == 0 ? "" : monto.ToString("N2"))</td>
+                        }
+                        <td class="num @(f.Total < 0 ? "monto-negativo" : "")">@f.Total.ToString("N2")</td>
+                    </tr>
+                }
+                <tr class="fila-subtotal">
+                    <td>Flujo neto de @nombre.Replace("Actividades de ", "")</td>
+                    @foreach (var p in Pivote.Periodos)
+                    {
+                        <td class="num">@Pivote.Neto(p, actividad).ToString("N2")</td>
+                    }
+                    <td class="num">@filas.Sum(f => f.Total).ToString("N2")</td>
+                </tr>
+            }
+            <tr class="fila-subtotal">
+                <td>Flujo neto del período</td>
+                @foreach (var p in Pivote.Periodos)
+                {
+                    <td class="num">@Pivote.Neto(p).ToString("N2")</td>
+                }
+                <td class="num">@Pivote.Periodos.Sum(Pivote.Neto).ToString("N2")</td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr class="fila-total">
+                <td>Saldo final de efectivo</td>
+                @foreach (var p in Pivote.Periodos)
+                {
+                    var saldo = Pivote.SaldoFinalDe(p);
+                    <td class="num @(saldo < 0 ? "monto-negativo" : "")">@saldo.ToString("N2")</td>
+                }
+                <td class="num @(Pivote.SaldoFinal < 0 ? "monto-negativo" : "")">@Pivote.SaldoFinal.ToString("N2")</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public FlujoCajaPivote Pivote { get; set; } = new();
+}

@@ -1,0 +1,39 @@
+@* Vista de tabla de un gráfico de columnas (accesible y exportable a mano). *@
+@using Erp.Web.Components.Shared.Graficos
+<table class="tabla-datos">
+    <thead>
+        <tr>
+            <th>Período</th>
+            @foreach (var s in Series)
+            {
+                <th class="num">@s.Nombre</th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @for (var i = 0; i < Etiquetas.Count; i++)
+        {
+            <tr>
+                <td>@Etiquetas[i]</td>
+                @foreach (var s in Series)
+                {
+                    <td class="num">@s.Valores[i].ToString("N2")</td>
+                }
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr>
+            <td>Total</td>
+            @foreach (var s in Series)
+            {
+                <td class="num">@s.Valores.Sum().ToString("N2")</td>
+            }
+        </tr>
+    </tfoot>
+</table>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<string> Etiquetas { get; set; } = Array.Empty<string>();
+    [Parameter, EditorRequired] public IReadOnlyList<SerieGrafico> Series { get; set; } = Array.Empty<SerieGrafico>();
+}

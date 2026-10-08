@@ -1,0 +1,175 @@
+@* Tabla de antigüedad de saldos, por tercero o por documento. La usan la
+   pantalla y la vista imprimible. *@
+
+@if (Grupos.Count == 0)
+{
+    <p class="estado-vacio">No hay saldos pendientes a la fecha de corte.</p>
+}
+else if (Vista == "tercero")
+{
+    <table class="tabla-datos tabla-antiguedad">
+        <thead>
+            <tr>
+                <th class="col-codigo">Código</th>
+                <th>@Tercero</th>
+                <th class="num">Documentos</th>
+                @foreach (var r in RangosAntiguedad.Etiquetas)
+                {
+                    <th class="num">@r</th>
+                }
+                <th class="num">Total</th>
+                @if (ConPago)
+                {
+                    <th class="col-acciones"><span class="sr-only">Pagar</span></th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var g in Grupos)
+            {
+                <tr>
+                    <td class="col-codigo">@g.Codigo</td>
+                    <td>
+                        @if (Enlaces)
+                        {
+                            <a class="enlace-fila" href="@($"{(EsCliente ? "cxc" : "cxp")}/estado-cuenta?id={g.Id}")" title="Ver estado de cuenta">@g.Nombre</a>
+                        }
+                        else
+                        {
+                            @g.Nombre
+                        }
+                    </td>
+                    <td class="num">@g.Documentos.Count</td>
+                    @for (var i = 0; i < 5; i++)
+                    {
+                        <td class="num @(i > 0 && g.Rangos[i] > 0 ? "antiguedad-vencido" : "")">@Monto(g.Rangos[i])</td>
+                    }
+                    <td class="num"><strong>@g.Total.ToString("N2")</strong></td>
+                    @if (ConPago)
+                    {
+                        <td class="col-acciones">@EnlacePago($"prv={g.Id}&todo=1", $"Pagar el saldo de {g.Nombre} con cheque", "Pagar saldo con cheque")</td>
+                    }
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            @FilaTotales(3)
+        </tfoot>
+    </table>
+}
+else
+{
+    <table class="tabla-datos tabla-antiguedad">
+        <thead>
+            <tr>
+                <th>@Documento</th>
+                <th>Fecha</th>
+                <th>Vence</th>
+                <th class="num">Días</th>
+                @foreach (var r in RangosAntiguedad.Etiquetas)
+                {
+                    <th class="num">@r</th>
+                }
+                <th class="num">Total</th>
+                @if (ConPago)
+                {
+                    <th class="col-acciones"><span class="sr-only">Pagar</span></th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var g in Grupos)
+            {
+                <tr class="antiguedad-grupo">
+                    <td colspan="@(ConPago ? 11 : 10)"><strong>@g.Codigo · @g.Nombre</strong></td>
+                </tr>
+                @foreach (var d in g.Documentos)
+                {
+                    <tr>
+                        <td>@d.Documento@(d.Cuotas > 1 ? $" ({d.Cuotas} cuotas)" : "")</td>
+                        <td>@d.FechaDocumento.ToString("dd/MM/yyyy")</td>
+                        <td>@d.VencimientoMasAntiguo.ToString("dd/MM/yyyy")</td>
+                        <td class="num @(d.DiasMaximos > 0 ? "antiguedad-vencido" : "")">@(d.DiasMaximos > 0 ? d.DiasMaximos : 0)</td>
+                        @for (var i = 0; i < 5; i++)
+                        {
+                            <td class="num @(i > 0 && d.Rangos[i] > 0 ? "antiguedad-vencido" : "")">@Monto(d.Rangos[i])</td>
+                        }
+                        <td class="num">@d.Total.ToString("N2")</td>
+                        @if (ConPago)
+                        {
+                            <td class="col-acciones">@EnlacePago($"prv={g.Id}&enc={d.EncId}", $"Pagar {d.Documento} con cheque", "Pagar esta compra con cheque")</td>
+                        }
+                    </tr>
+                }
+                <tr class="antiguedad-subtotal">
+                    <td colspan="4">Total @g.Nombre</td>
+                    @for (var i = 0; i < 5; i++)
+                    {
+                        <td class="num">@Monto(g.Rangos[i])</td>
+                    }
+                    <td class="num"><strong>@g.Total.ToString("N2")</strong></td>
+                    @if (ConPago)
+                    {
+                        <td class="col-acciones">@EnlacePago($"prv={g.Id}&todo=1", $"Pagar el saldo de {g.Nombre} con cheque", "Pagar saldo con cheque")</td>
+                    }
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            @FilaTotales(4)
+        </tfoot>
+    </table>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<AntiguedadGrupo> Grupos { get; set; } = Array.Empty<AntiguedadGrupo>();
+    [Parameter] public string Vista { get; set; } = "tercero";		// tercero | documento
+    [Parameter] public bool EsCliente { get; set; } = true;
+    // En pantalla, el nombre lleva al estado de cuenta; en el reporte impreso no.
+    [Parameter] public bool Enlaces { get; set; }
+
+    // En pantalla, las deudas con proveedores se pagan con cheque desde aquí.
+    private bool ConPago => Enlaces && !EsCliente;
+
+    private string Tercero => EsCliente ? "Cliente" : "Proveedor";
+
+    private static RenderFragment EnlacePago(string consulta, string etiqueta, string tip) => __builder =>
+    {
+        <a class="boton-icono" href="@($"cxp/pagos?{consulta}")" aria-label="@etiqueta">
+            <Icono Nombre="banknote" Tamano="16" /><span class="boton-icono-tip" role="tooltip">@tip</span>
+        </a>
+    };
+    private string Documento => EsCliente ? "Factura" : "Compra";
+
+    private static string Monto(decimal m) => m == 0 ? "—" : m.ToString("N2");
+
+    private RenderFragment FilaTotales(int columnasEtiqueta) => __builder =>
+    {
+        var totales = AntiguedadGrupo.Totales(Grupos);
+        var total = totales.Sum();
+        <tr class="antiguedad-total">
+            <td colspan="@columnasEtiqueta">Total general</td>
+            @foreach (var t in totales)
+            {
+                <td class="num">@t.ToString("N2")</td>
+            }
+            <td class="num">@total.ToString("N2")</td>
+            @if (ConPago)
+            {
+                <td></td>
+            }
+        </tr>
+        <tr class="antiguedad-porcentaje">
+            <td colspan="@columnasEtiqueta">% del total</td>
+            @foreach (var t in totales)
+            {
+                <td class="num">@(total == 0 ? "0.0" : (t * 100 / total).ToString("N1"))%</td>
+            }
+            <td class="num">100%</td>
+            @if (ConPago)
+            {
+                <td></td>
+            }
+        </tr>
+    };
+}

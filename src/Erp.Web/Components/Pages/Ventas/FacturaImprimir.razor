@@ -1,0 +1,372 @@
+@page "/facturas/{EncId:int}/imprimir"
+@layout Erp.Web.Components.Layout.ReporteLayout
+@attribute [Authorize(Policy = "Permiso:VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR")]
+@using System.Globalization
+@using System.Xml.Linq
+@using Erp.Data.Ventas
+@using Erp.Data.Fel
+@using Erp.Web.Reportes
+@using QRCoder
+@inject IFacturaRepository FacturaRepository
+@inject IFelRepository FelRepository
+
+<PageTitle>@(datos is null ? "Factura" : $"{NombreDte} {Enc.NumeroUnico}")</PageTitle>
+
+@if (datos is null)
+{
+    <p class="mensaje-error" role="alert">@(error ?? $"No existe el documento {EncId}.")</p>
+}
+else
+{
+    @* Tamaño del papel según la impresora configurada en la compañía (o ?formato=). *@
+    @if (EsTermica)
+    {
+        @* El largo del rollo se ajusta al contenido antes de imprimir (script al final). *@
+        <style id="fac-pagina">@@page { size: @(Enc.AnchoTermica)mm 297mm; margin: 0; }</style>
+        <style>@@media print { body { background: #fff; } .reporte-pagina { padding: 0; max-width: none; } }</style>
+    }
+    else
+    {
+        <style>
+            @@page { size: letter portrait; margin: 11mm 12mm; }
+            @@media print { body { background: #fff; } .reporte-pagina { padding: 0; max-width: none; } }
+        </style>
+    }
+
+    <div class="reporte-acciones fac-acciones">
+        <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
+            <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+        </button>
+        <a class="boton-icono boton-icono-con-etiqueta" data-enhance-nav="false" href="@($"facturas/{EncId}/imprimir?formato={(EsTermica ? "C" : "T")}")">
+            <Icono Nombre="file-text" Tamano="16" /><span class="boton-icono-etiqueta">@(EsTermica ? "Ver en carta" : "Ver en ticket")</span>
+        </a>
+        <span class="texto-tenue">Formato: @(EsTermica ? $"térmica {Enc.AnchoTermica} mm" : "carta") · se configura en General › Compañías.</span>
+    </div>
+
+    @if (EsTermica)
+    {
+        <article class="fac-ticket @(Enc.AnchoTermica == 58 ? "fac-ticket-58" : "")">
+            @if (Enc.TieneLogo)
+            {
+                <img class="fac-ticket-logo" src="@LogoUrl" alt="" />
+            }
+            <div class="fac-ticket-centro">
+                <strong class="fac-ticket-comercial">@Enc.NombreComercial</strong>
+                <div>@Enc.NombreEmisor</div>
+                <div>NIT: @Enc.NitEmisor</div>
+                <div>@DireccionEmisor</div>
+                @if (!string.IsNullOrWhiteSpace(Enc.TelefonoEmisor)) { <div>Tel. @Enc.TelefonoEmisor</div> }
+            </div>
+            <div class="fac-ticket-linea"></div>
+            <div class="fac-ticket-centro">
+                <strong>@NombreDte.ToUpperInvariant()</strong>
+                <div>Documento Tributario Electrónico</div>
+            </div>
+            @if (AvisoEstado is not null) { <div class="fac-ticket-aviso">@AvisoEstado</div> }
+            <div class="fac-ticket-datos">
+                @if (Certificada)
+                {
+                    <div><span>Serie:</span> @Enc.SerieDte</div>
+                    <div><span>Número:</span> @Enc.NumeroDte</div>
+                    <div class="fac-ticket-uuid"><span>Autorización:</span> @Enc.Uuid</div>
+                }
+                <div><span>Emisión:</span> @Enc.FechaEmision.ToString("dd/MM/yyyy HH:mm")</div>
+                @if (Enc.FechaCertificacion is DateTime cert) { <div><span>Certificación:</span> @cert.ToString("dd/MM/yyyy HH:mm")</div> }
+                <div><span>Documento:</span> @Enc.NumeroUnico</div>
+            </div>
+            <div class="fac-ticket-linea"></div>
+            <div class="fac-ticket-datos">
+                <div><span>NIT:</span> @NitReceptor</div>
+                <div><span>Nombre:</span> @Enc.NombreReceptor</div>
+                <div><span>Dirección:</span> @Enc.DireccionReceptor</div>
+            </div>
+            <div class="fac-ticket-linea"></div>
+            <table class="fac-ticket-items">
+                <thead><tr><th>Cant.</th><th>Descripción</th><th class="num">Total</th></tr></thead>
+                <tbody>
+                    @foreach (var l in datos.Lineas)
+                    {
+                        <tr>
+                            <td class="num">@Cantidad(l.Cantidad)</td>
+                            <td>@l.Descripcion<br /><small>@Enc.Simbolo@l.PrecioUnitario.ToString("N2") c/u@(l.Descuento > 0 ? $" · desc. {Enc.Simbolo}{l.Descuento:N2}" : "")</small></td>
+                            <td class="num">@l.Total.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="fac-ticket-linea"></div>
+            <div class="fac-ticket-totales">
+                @if (Enc.Descuento > 0) { <div><span>Descuento</span><span>@Enc.Simbolo @Enc.Descuento.ToString("N2")</span></div> }
+                <div class="fac-ticket-total"><span>TOTAL</span><span>@Enc.Simbolo @Enc.Total.ToString("N2")</span></div>
+                <div class="texto-tenue"><span>IVA incluido</span><span>@Enc.Simbolo @Enc.Iva.ToString("N2")</span></div>
+            </div>
+            <p class="fac-ticket-letras">@NumeroALetras.Convertir(Enc.Total)</p>
+            @if (datos.Pagos.Count > 0)
+            {
+                <div class="fac-ticket-datos">
+                    @foreach (var p in datos.Pagos) { <div><span>@p.Forma:</span> @Enc.Simbolo@p.Monto.ToString("N2") @p.ReferenciaTexto</div> }
+                </div>
+            }
+            @if (datos.Cuotas.Count > 0)
+            {
+                <div class="fac-ticket-datos">
+                    <div><strong>Crédito: @datos.Cuotas.Count @(datos.Cuotas.Count == 1 ? "cuota" : "cuotas")</strong></div>
+                    @foreach (var c in datos.Cuotas) { <div><span>@c.Cuota. @c.Vencimiento.ToString("dd/MM/yyyy")</span> @Enc.Simbolo@c.Monto.ToString("N2")</div> }
+                </div>
+            }
+            @foreach (var f in datos.Frases) { <p class="fac-ticket-frase">@f.Texto</p> }
+            @if (Enc.Vendedor is not null || Enc.Usuario is not null)
+            {
+                <div class="fac-ticket-datos">
+                    @if (Enc.Vendedor is not null) { <div><span>Vendedor:</span> @Enc.Vendedor</div> }
+                    @if (Enc.Usuario is not null) { <div><span>Cajero:</span> @Enc.Usuario</div> }
+                </div>
+            }
+            @if (Qr is not null) { <div class="fac-ticket-qr">@((MarkupString)Qr)</div> }
+            <div class="fac-ticket-centro fac-ticket-pie">
+                @if (CertificadorNombre is not null) { <div>Certificador: @CertificadorNombre@(CertificadorNit is null ? "" : $" · NIT {CertificadorNit}")</div> }
+                @if (!string.IsNullOrWhiteSpace(Enc.Pie)) { <div class="fac-ticket-gracias">@Enc.Pie</div> }
+            </div>
+        </article>
+    }
+    else
+    {
+        <article class="fac-carta">
+            @if (Anulada || (!Certificada && Enc.TipoDte is not null)) { <div class="fac-marca">@(Anulada ? "ANULADA" : "SIN VALIDEZ FISCAL")</div> }
+            <header class="fac-cab">
+                <div class="fac-emisor">
+                    @if (Enc.TieneLogo) { <img class="fac-logo" src="@LogoUrl" alt="" /> }
+                    <div>
+                        <div class="fac-comercial">@Enc.NombreComercial</div>
+                        <div class="fac-razon">@Enc.NombreEmisor</div>
+                        <div>NIT @Enc.NitEmisor</div>
+                        <div>@DireccionEmisor</div>
+                        <div>@string.Join(" · ", new[] { Enc.TelefonoEmisor is null ? null : $"Tel. {Enc.TelefonoEmisor}", Enc.CorreoEmisor }.Where(t => !string.IsNullOrWhiteSpace(t)))</div>
+                    </div>
+                </div>
+                <div class="fac-doc">
+                    <div class="fac-doc-tipo">@NombreDte.ToUpperInvariant()</div>
+                    <div class="fac-doc-sub">Documento Tributario Electrónico</div>
+                    <dl>
+                        @if (Certificada)
+                        {
+                            <dt>Serie</dt><dd>@Enc.SerieDte</dd>
+                            <dt>Número DTE</dt><dd>@Enc.NumeroDte</dd>
+                        }
+                        <dt>Emisión</dt><dd>@Enc.FechaEmision.ToString("dd/MM/yyyy HH:mm")</dd>
+                        @if (Enc.FechaCertificacion is DateTime cert) { <dt>Certificación</dt><dd>@cert.ToString("dd/MM/yyyy HH:mm:ss")</dd> }
+                        <dt>Documento</dt><dd>@Enc.NumeroUnico</dd>
+                    </dl>
+                    @if (Certificada) { <div class="fac-uuid"><span>Número de autorización</span>@Enc.Uuid</div> }
+                </div>
+            </header>
+
+            @if (AvisoEstado is not null) { <p class="fac-aviso">@AvisoEstado</p> }
+
+            <section class="fac-partes">
+                <div class="fac-bloque">
+                    <div class="fac-bloque-titulo">Cliente</div>
+                    <div class="fac-fila"><span>NIT</span><strong>@NitReceptor</strong></div>
+                    <div class="fac-fila"><span>Nombre</span><strong>@Enc.NombreReceptor</strong></div>
+                    <div class="fac-fila"><span>Dirección</span>@Enc.DireccionReceptor</div>
+                    @if (Enc.ClienteCodigo is not null) { <div class="fac-fila"><span>Código</span>@Enc.ClienteCodigo</div> }
+                </div>
+                <div class="fac-bloque">
+                    <div class="fac-bloque-titulo">Condiciones</div>
+                    <div class="fac-fila"><span>Condición</span><strong>@(Enc.EsCredito ? $"Crédito, {datos.Cuotas.Count} {(datos.Cuotas.Count == 1 ? "cuota" : "cuotas")}" : "Contado")</strong></div>
+                    <div class="fac-fila"><span>Moneda</span>@Enc.Moneda</div>
+                    <div class="fac-fila"><span>Establecimiento</span>@(Enc.CodigoEstablecimiento?.ToString() ?? "—") · @Enc.Sucursal</div>
+                    @if (Enc.Vendedor is not null) { <div class="fac-fila"><span>Vendedor</span>@Enc.Vendedor</div> }
+                    @if (Enc.Usuario is not null) { <div class="fac-fila"><span>Emitió</span>@Enc.Usuario</div> }
+                </div>
+            </section>
+
+            @if (Enc.EsNota && Enc.OrigenUuid is not null)
+            {
+                <p class="fac-referencia">Documento que se ajusta: @Enc.OrigenNumeroUnico · Serie @Enc.OrigenSerie · Número @Enc.OrigenNumero · Autorización @Enc.OrigenUuid@(string.IsNullOrWhiteSpace(Enc.Motivo) ? "" : $" · Motivo: {Enc.Motivo}")</p>
+            }
+
+            <table class="fac-items">
+                <thead>
+                    <tr><th class="num">#</th><th class="num">Cantidad</th><th>Unidad</th><th>Descripción</th><th class="num">Precio unitario</th><th class="num">Descuento</th><th class="num">Total</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var l in datos.Lineas)
+                    {
+                        <tr>
+                            <td class="num">@l.Linea</td>
+                            <td class="num">@Cantidad(l.Cantidad)</td>
+                            <td>@l.Unidad</td>
+                            <td>@l.Descripcion@if (l.Codigo is not null) { <small> · @l.Codigo</small> }<small class="fac-bs">@(l.BienOServicio == "S" ? "Servicio" : "Bien")</small></td>
+                            <td class="num">@l.PrecioUnitario.ToString("N2")</td>
+                            <td class="num">@(l.Descuento > 0 ? l.Descuento.ToString("N2") : "")</td>
+                            <td class="num">@l.Total.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <section class="fac-pie-tabla">
+                <div class="fac-notas">
+                    <div class="fac-letras"><span>Total en letras</span>@NumeroALetras.Convertir(Enc.Total)</div>
+                    @if (datos.Pagos.Count > 0)
+                    {
+                        <div class="fac-mini">
+                            <div class="fac-bloque-titulo">Pago recibido</div>
+                            @foreach (var p in datos.Pagos) { <div class="fac-fila"><span>@p.Forma</span>@Enc.Simbolo @p.Monto.ToString("N2") @p.ReferenciaTexto</div> }
+                        </div>
+                    }
+                    @if (datos.Cuotas.Count > 0)
+                    {
+                        <div class="fac-mini">
+                            <div class="fac-bloque-titulo">Abonos (plan de pagos)</div>
+                            <table class="fac-cuotas">
+                                <thead><tr><th class="num">No.</th><th>Vencimiento</th><th class="num">Monto</th></tr></thead>
+                                <tbody>
+                                    @foreach (var c in datos.Cuotas)
+                                    {
+                                        <tr><td class="num">@c.Cuota</td><td>@c.Vencimiento.ToString("dd/MM/yyyy")</td><td class="num">@c.Monto.ToString("N2")</td></tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    @foreach (var f in datos.Frases) { <p class="fac-frase">@f.Texto</p> }
+                </div>
+                <div class="fac-totales">
+                    @if (Enc.Descuento > 0) { <div class="fac-fila"><span>Descuentos</span>@Enc.Simbolo @Enc.Descuento.ToString("N2")</div> }
+                    <div class="fac-fila"><span>IVA incluido (@Iva%)</span>@Enc.Simbolo @Enc.Iva.ToString("N2")</div>
+                    <div class="fac-total"><span>TOTAL @Enc.Moneda</span>@Enc.Simbolo @Enc.Total.ToString("N2")</div>
+                </div>
+            </section>
+
+            <footer class="fac-final">
+                @if (Qr is not null) { <div class="fac-qr">@((MarkupString)Qr)</div> }
+                <div class="fac-final-texto">
+                    @if (CertificadorNombre is not null)
+                    {
+                        <div><strong>Certificador:</strong> @CertificadorNombre@(CertificadorNit is null ? "" : $" · NIT {CertificadorNit}")</div>
+                    }
+                    <div>Representación gráfica de un Documento Tributario Electrónico (DTE) del régimen FEL de la SAT.@(Certificada ? " Verifíquelo en el portal de la SAT con el código QR o el número de autorización." : "")</div>
+                    @if (!string.IsNullOrWhiteSpace(Enc.Pie)) { <div class="fac-gracias">@Enc.Pie</div> }
+                </div>
+            </footer>
+        </article>
+    }
+
+    @if (EsTermica)
+    {
+        <script>
+            // Papel del largo del ticket (mm), para que la térmica no avance una hoja completa.
+            (function () {
+                function ajustar() {
+                    var ticket = document.querySelector('.fac-ticket'), estilo = document.getElementById('fac-pagina');
+                    if (!ticket || !estilo) return;
+                    var largo = Math.ceil(ticket.getBoundingClientRect().height * 25.4 / 96) + 6;
+                    estilo.textContent = '@@page { size: @(Enc.AnchoTermica)mm ' + largo + 'mm; margin: 0; }';
+                }
+                window.addEventListener('load', ajustar);
+                window.addEventListener('beforeprint', ajustar);
+            })();
+        </script>
+    }
+    @if (Auto == 1)
+    {
+        <script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 400); });</script>
+    }
+}
+
+@code {
+    [Parameter] public int EncId { get; set; }
+    [SupplyParameterFromQuery] public string? Formato { get; set; }
+    [SupplyParameterFromQuery] public int? Auto { get; set; }
+
+    private FacturaImpresion? datos;
+    private string? error;
+    private string? Qr;
+    private string? CertificadorNombre;
+    private string? CertificadorNit;
+
+    private FacturaImpresionEncabezado Enc => datos!.Encabezado;
+    private bool EsTermica => (Formato?.ToUpperInvariant() ?? Enc.Impresora) == "T";
+    private bool Certificada => Enc.FelEstado is "C" or "A" or "X" && !string.IsNullOrEmpty(Enc.Uuid);
+    private bool Anulada => Enc.Estado == "N" || Enc.FelEstado is "A" or "X";
+    private string NitReceptor => string.Equals(Enc.NitReceptor, "CF", StringComparison.OrdinalIgnoreCase) ? "C/F" : Enc.NitReceptor;
+    private string LogoUrl => $"compania/logo?cia={Enc.CiaId}&v={Enc.LogoActualizado?.Ticks ?? 0}";
+    private string DireccionEmisor => string.Join(", ", new[] { Enc.DireccionEmisor, Enc.MunicipioEmisor, Enc.DepartamentoEmisor }
+        .Where(t => !string.IsNullOrWhiteSpace(t)).Distinct());
+    private decimal Iva => datos is null || Enc.Total - Enc.Iva == 0 ? 12 : Math.Round(Enc.Iva / (Enc.Total - Enc.Iva) * 100);
+
+    // Marca de agua y aviso: la representación gráfica solo tiene validez
+    // fiscal si el DTE está certificado y vigente.
+    private string? AvisoEstado =>
+        Anulada ? $"DOCUMENTO ANULADO{(Enc.FechaAnulacionDte is DateTime f ? $" ante SAT el {f:dd/MM/yyyy}" : "")}{(string.IsNullOrWhiteSpace(Enc.Motivo) ? "" : $" — {Enc.Motivo}")}"
+        : !Certificada && Enc.TipoDte is not null ? "PENDIENTE DE CERTIFICACIÓN — ESTE DOCUMENTO NO TIENE VALIDEZ FISCAL HASTA QUE SAT LO CERTIFIQUE"
+        : CertificadorNombre?.Contains("sin validez", StringComparison.OrdinalIgnoreCase) == true ? "CERTIFICADO POR EL SIMULADOR — SIN VALIDEZ FISCAL"
+        : null;
+
+    private string NombreDte => (datos?.Encabezado.TipoDte) switch
+    {
+        "FACT" => "Factura",
+        "FCAM" => "Factura cambiaria",
+        "FPEQ" => "Factura pequeño contribuyente",
+        "FCAP" => "Factura cambiaria pequeño contribuyente",
+        "FESP" => "Factura especial",
+        "NABN" => "Nota de abono",
+        "RDON" => "Recibo por donación",
+        "RECI" => "Recibo",
+        "NDEB" => "Nota de débito",
+        "NCRE" => "Nota de crédito",
+        _ => datos?.Encabezado.TdoDescripcion ?? "Factura"
+    };
+
+    // Verificador público de DTE de la SAT.
+    private const string VerificadorSat = "https://felpub.c.sat.gob.gt/verificador-web/publico/vistas/verificacionDte.jsf";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            datos = await FacturaRepository.ConsultarImpresionAsync(EncId);
+            if (datos is null) return;
+            LeerCertificador();
+            if (CertificadorNombre is null && Enc.Certificador is not null)
+            {
+                var catalogo = (await FelRepository.ConsultarCertificadoresAsync()).FirstOrDefault(c => c.Codigo == Enc.Certificador);
+                CertificadorNombre = catalogo?.Nombre;
+                CertificadorNit = catalogo?.Nit;
+            }
+            if (Certificada) Qr = GenerarQr();
+        }
+        catch (Exception ex)
+        {
+            error = MensajesError.Traducir(ex);
+        }
+    }
+
+    // Nombre y NIT del certificador tal como vienen en el DTE certificado.
+    private void LeerCertificador()
+    {
+        if (string.IsNullOrWhiteSpace(Enc.XmlCertificado)) return;
+        try
+        {
+            var xml = XDocument.Parse(Enc.XmlCertificado);
+            CertificadorNit = xml.Descendants().FirstOrDefault(e => e.Name.LocalName == "NITCertificador")?.Value;
+            CertificadorNombre = xml.Descendants().FirstOrDefault(e => e.Name.LocalName == "NombreCertificador")?.Value;
+        }
+        catch (System.Xml.XmlException) { }
+    }
+
+    private string GenerarQr()
+    {
+        var receptor = string.Equals(Enc.NitReceptor, "CF", StringComparison.OrdinalIgnoreCase) ? "CF" : Enc.NitReceptor.Replace("-", "");
+        var url = $"{VerificadorSat}?tipo=autorizacion&numero={Uri.EscapeDataString(Enc.Uuid!)}&emisor={Uri.EscapeDataString((Enc.NitEmisor ?? "").Replace("-", ""))}"
+            + $"&receptor={Uri.EscapeDataString(receptor)}&monto={Enc.Total.ToString("0.00", CultureInfo.InvariantCulture)}";
+        using var generador = new QRCodeGenerator();
+        using var codigo = generador.CreateQrCode(url, QRCodeGenerator.ECCLevel.M);
+        return new SvgQRCode(codigo).GetGraphic(new System.Drawing.Size(160, 160), "#000000", "#ffffff", drawQuietZones: true,
+            sizingMode: SvgQRCode.SizingMode.ViewBoxAttribute);
+    }
+
+    private static string Cantidad(decimal cantidad) => cantidad.ToString(cantidad == Math.Truncate(cantidad) ? "0" : "0.##");
+}

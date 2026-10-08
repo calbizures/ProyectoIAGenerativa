@@ -1,0 +1,157 @@
+@page "/compras/ordenes/{OcpId:int}/imprimir"
+@layout Erp.Web.Components.Layout.ReporteLayout
+@attribute [Authorize(Policy = "Permiso:COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR_BODEGA,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR")]
+@using Erp.Data.Compras
+@using Erp.Web.Reportes
+@inject IOrdenCompraRepository OrdenCompraRepository
+
+<PageTitle>@(enc is null ? "Orden de compra" : $"Orden de compra {enc.Numero}")</PageTitle>
+
+@if (enc is null)
+{
+    <p class="mensaje-error" role="alert">@(error ?? $"No existe la orden de compra {OcpId}.")</p>
+}
+else
+{
+    <style>
+        @@page { size: letter portrait; margin: 11mm 12mm; }
+        @@media print { body { background: #fff; } .reporte-pagina { padding: 0; max-width: none; } }
+    </style>
+
+    <div class="reporte-acciones fac-acciones">
+        <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
+            <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+        </button>
+        <span class="texto-tenue">Formato carta.@(enc.Estado == "B" ? " Borrador: apruébela antes de enviarla al proveedor." : "")</span>
+    </div>
+
+    <article class="fac-carta">
+        @if (MarcaAgua is not null) { <div class="fac-marca">@MarcaAgua</div> }
+        <header class="fac-cab">
+            <div class="fac-emisor">
+                @if (enc.TieneLogo) { <img class="fac-logo" src="@($"compania/logo?cia={enc.CiaId}&v={enc.LogoActualizado?.Ticks ?? 0}")" alt="" /> }
+                <div>
+                    <div class="fac-comercial">@enc.NombreComercial</div>
+                    <div class="fac-razon">@enc.NombreEmisor</div>
+                    <div>NIT @enc.NitEmisor</div>
+                    <div>@enc.DireccionEmisor</div>
+                    <div>@string.Join(" · ", new[] { enc.TelefonoEmisor is null ? null : $"Tel. {enc.TelefonoEmisor}", enc.CorreoEmisor }.Where(t => !string.IsNullOrWhiteSpace(t)))</div>
+                </div>
+            </div>
+            <div class="fac-doc">
+                <div class="fac-doc-tipo">ORDEN DE COMPRA</div>
+                <div class="fac-doc-sub">Facture citando este número</div>
+                <dl>
+                    <dt>Número</dt><dd>@enc.Numero</dd>
+                    <dt>Fecha</dt><dd>@enc.Fecha.ToString("dd/MM/yyyy")</dd>
+                    <dt>Entrega</dt><dd><strong>@(enc.FechaEntrega?.ToString("dd/MM/yyyy") ?? "A convenir")</strong></dd>
+                </dl>
+            </div>
+        </header>
+        @if (AvisoEstado is not null) { <p class="fac-aviso">@AvisoEstado</p> }
+
+        <section class="fac-partes">
+            <div class="fac-bloque">
+                <div class="fac-bloque-titulo">Proveedor</div>
+                <div class="fac-fila"><span>Nombre</span><strong>@enc.Proveedor</strong></div>
+                <div class="fac-fila"><span>NIT</span>@(string.IsNullOrWhiteSpace(enc.Nit) ? "—" : enc.Nit)</div>
+                @if (!string.IsNullOrWhiteSpace(enc.ProveedorContacto)) { <div class="fac-fila"><span>Contacto</span>@enc.ProveedorContacto</div> }
+                @if (!string.IsNullOrWhiteSpace(enc.ProveedorTelefono) || !string.IsNullOrWhiteSpace(enc.ProveedorCorreo))
+                {
+                    <div class="fac-fila"><span>Teléfono / correo</span>@string.Join(" · ", new[] { enc.ProveedorTelefono, enc.ProveedorCorreo }.Where(t => !string.IsNullOrWhiteSpace(t)))</div>
+                }
+            </div>
+            <div class="fac-bloque">
+                <div class="fac-bloque-titulo">Entregar en</div>
+                <div class="fac-fila"><span>Bodega</span><strong>@enc.Bodega</strong></div>
+                <div class="fac-fila"><span>Sucursal</span>@enc.Sucursal</div>
+                <div class="fac-fila"><span>Dirección</span>@enc.DireccionEmisor</div>
+                <div class="fac-fila"><span>Moneda</span>@enc.Moneda</div>
+            </div>
+        </section>
+
+        <table class="fac-items">
+            <thead>
+                <tr><th class="num">#</th><th class="num">Cantidad</th><th>Unidad</th><th>Descripción</th><th class="num">Costo unitario</th><th class="num">Total</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var l in lineas)
+                {
+                    <tr>
+                        <td class="num">@l.Item</td>
+                        <td class="num">@l.Cantidad</td>
+                        <td>@l.Unidad</td>
+                        <td>@l.Descripcion<small> · @l.Codigo</small>@if (l.CodigoProveedor is not null) { <small class="fac-bs">Su código: @l.CodigoProveedor</small> }</td>
+                        <td class="num">@l.CostoUnitario.ToString("N2")</td>
+                        <td class="num">@l.Total.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <section class="fac-pie-tabla">
+            <div class="fac-notas">
+                <div class="fac-letras"><span>Total en letras</span>@NumeroALetras.Convertir(enc.Total)</div>
+                @if (!string.IsNullOrWhiteSpace(enc.Condiciones) || !string.IsNullOrWhiteSpace(enc.Observaciones))
+                {
+                    <div class="fac-mini">
+                        <div class="fac-bloque-titulo">Condiciones</div>
+                        @if (!string.IsNullOrWhiteSpace(enc.Condiciones)) { <p class="cot-observaciones">@enc.Condiciones</p> }
+                        @if (!string.IsNullOrWhiteSpace(enc.Observaciones)) { <p class="cot-observaciones">@enc.Observaciones</p> }
+                    </div>
+                }
+            </div>
+            <div class="fac-totales">
+                <div class="fac-fila"><span>IVA incluido (@enc.PorcentajeIva.ToString("0.##")%)</span>@enc.Simbolo @enc.IvaIncluido.ToString("N2")</div>
+                <div class="fac-total"><span>TOTAL @enc.Moneda</span>@enc.Simbolo @enc.Total.ToString("N2")</div>
+            </div>
+        </section>
+
+        <section class="oc-firmas">
+            <div><span class="oc-firma-linea"></span>Elaboró: @enc.Usuario</div>
+            <div><span class="oc-firma-linea"></span>Visto bueno (jefe de bodega): @(enc.VistoBueno is null ? "" : $"{enc.VistoBueno} · {enc.FechaVistoBueno:dd/MM/yyyy}")</div>
+            <div><span class="oc-firma-linea"></span>Aprobó (contador general): @(enc.Aprobo is null ? "" : $"{enc.Aprobo} · {enc.FechaAprobacion:dd/MM/yyyy}")</div>
+        </section>
+
+        <footer class="fac-final">
+            <div class="fac-final-texto">
+                <div>Costos en @enc.Moneda con IVA incluido. Cite el número @enc.Numero en su factura y en el envío; la mercadería se recibe contra esta orden.</div>
+            </div>
+        </footer>
+    </article>
+
+    @if (Auto == 1)
+    {
+        <script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 400); });</script>
+    }
+}
+
+@code {
+    [Parameter] public int OcpId { get; set; }
+    [SupplyParameterFromQuery] public int? Auto { get; set; }
+
+    private OrdenCompraEncabezado? enc;
+    private IReadOnlyList<OrdenCompraLinea> lineas = Array.Empty<OrdenCompraLinea>();
+    private string? error;
+
+    private string? MarcaAgua => enc?.Estado switch
+    {
+        "B" => "BORRADOR",
+        "N" => "ANULADA",
+        _ => null
+    };
+
+    private string? AvisoEstado => enc?.Estado switch
+    {
+        "B" => "BORRADOR SIN APROBAR: NO ES UN PEDIDO",
+        "N" => $"ORDEN ANULADA{(string.IsNullOrWhiteSpace(enc.MotivoCierre) ? "" : $" — {enc.MotivoCierre}")}",
+        "C" => $"ORDEN CERRADA: NO ENVÍE LO PENDIENTE{(string.IsNullOrWhiteSpace(enc.MotivoCierre) ? "" : $" — {enc.MotivoCierre}")}",
+        _ => null
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { (enc, lineas, _) = await OrdenCompraRepository.ConsultarPorIdAsync(OcpId); }
+        catch (Exception ex) { error = MensajesError.Traducir(ex); }
+    }
+}

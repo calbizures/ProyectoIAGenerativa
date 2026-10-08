@@ -1,0 +1,26 @@
+@* Mosaico de indicador: etiqueta, valor y variación contra el período anterior. *@
+<div class="kpi-mosaico">
+    <span class="kpi-mosaico-etiqueta">@Etiqueta</span>
+    <span class="kpi-mosaico-valor">@Valor</span>
+    @if (Variacion is decimal v)
+    {
+        var bueno = v == 0 || (v > 0) == SubirEsBueno;
+        <span class="kpi-mosaico-delta @(v == 0 ? "" : bueno ? "delta-bueno" : "delta-malo")">
+            <span aria-hidden="true">@(v > 0 ? "▲" : v < 0 ? "▼" : "■")</span>
+            @(v > 0 ? "+" : "")@PaletaGraficos.Porcentaje(v) @TextoVariacion
+        </span>
+    }
+    @if (!string.IsNullOrEmpty(Nota))
+    {
+        <span class="kpi-mosaico-nota">@Nota</span>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Etiqueta { get; set; } = "";
+    [Parameter, EditorRequired] public string Valor { get; set; } = "";
+    [Parameter] public decimal? Variacion { get; set; }
+    [Parameter] public bool SubirEsBueno { get; set; } = true;
+    [Parameter] public string TextoVariacion { get; set; } = "vs. período anterior";
+    [Parameter] public string? Nota { get; set; }
+}

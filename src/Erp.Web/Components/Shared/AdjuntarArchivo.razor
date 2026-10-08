@@ -1,0 +1,56 @@
+@* Botón para adjuntar un comprobante (PDF o imagen, hasta 5 MB) con el nombre
+   del archivo elegido y "Quitar". Si el archivo no sirve, avisa por AlError.
+   Uso: <AdjuntarArchivo Id="cob-comprobante" Etiqueta="Comprobante" @bind-Archivo="comprobante" AlError="MostrarAviso" /> *@
+@using Microsoft.AspNetCore.Components.Forms
+<div class="comprobante-adjunto @(Compacto ? "comprobante-adjunto-compacto" : "")">
+    <label class="boton-icono boton-icono-con-etiqueta" title="PDF o imagen de hasta 5 MB">
+        <Icono Nombre="upload" Tamano="16" /><span class="boton-icono-etiqueta">@(Archivo is null ? Etiqueta : "Cambiar")</span>
+        <InputFile id="@Id" OnChange="LeerAsync" accept="@ArchivoCargado.TiposAceptados" class="oculto" aria-label="@Etiqueta" />
+    </label>
+    @if (Archivo is not null)
+    {
+        <span class="comprobante-nombre"><Icono Nombre="file-text" Tamano="16" /> @Archivo.Nombre <span class="texto-tenue">(@ArchivoCargado.TamanoTexto(Archivo.Contenido.Length))</span></span>
+        <button type="button" class="boton-texto" @onclick="QuitarAsync">Quitar</button>
+    }
+    else if (!Compacto)
+    {
+        <span class="texto-tenue">PDF o imagen (JPG, PNG, WEBP o GIF), hasta 5 MB.</span>
+    }
+</div>
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+    [Parameter] public string Etiqueta { get; set; } = "Adjuntar comprobante";
+    [Parameter] public bool Compacto { get; set; }
+    [Parameter] public ArchivoCargado? Archivo { get; set; }
+    [Parameter] public EventCallback<ArchivoCargado?> ArchivoChanged { get; set; }
+    [Parameter] public EventCallback<string> AlError { get; set; }
+
+    private async Task LeerAsync(InputFileChangeEventArgs e)
+    {
+        if (e.File.Size > ArchivoCargado.TamanoMaximo)
+        {
+            await AlError.InvokeAsync($"El archivo pesa {ArchivoCargado.TamanoTexto(e.File.Size)}; el máximo es 5 MB.");
+            return;
+        }
+        try
+        {
+            using var memoria = new MemoryStream();
+            await e.File.OpenReadStream(ArchivoCargado.TamanoMaximo).CopyToAsync(memoria);
+            var datos = memoria.ToArray();
+            var tipo = ArchivoCargado.TipoDesdeContenido(datos);
+            if (tipo is null)
+            {
+                await AlError.InvokeAsync("El archivo debe ser un PDF o una imagen (JPG, PNG, WEBP o GIF).");
+                return;
+            }
+            await ArchivoChanged.InvokeAsync(new ArchivoCargado(Path.GetFileName(e.File.Name), tipo, datos));
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException)
+        {
+            await AlError.InvokeAsync("No se pudo leer el archivo. Vuelva a intentarlo.");
+        }
+    }
+
+    private Task QuitarAsync() => ArchivoChanged.InvokeAsync(null);
+}

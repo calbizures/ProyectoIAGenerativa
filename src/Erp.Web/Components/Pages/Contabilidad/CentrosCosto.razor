@@ -1,0 +1,154 @@
+@page "/contabilidad/centros-costo"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CONTABILIDAD_CENTRO_COSTO")]
+@using Erp.Data.Contabilidad
+@using Erp.Data.Rrhh
+@inject ICentroCostoRepository CentroCostoRepository
+@inject IRrhhRepository RrhhRepository
+
+<PageTitle>Centros de costo</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Gasto por centro de costo</h1>
+    <p>Cada departamento es un centro de costo. Suma las líneas de póliza que llevan departamento: sueldos y bonificaciones de la nómina (por el departamento de la plaza del empleado) y los cheques libres.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="mensaje-error" role="alert">@mensaje</p>
+}
+
+<div class="barra-herramientas">
+    <FiltroPeriodo @bind-Desde="desde" @bind-Hasta="hasta" />
+    <select @bind="idDepartamento" aria-label="Centro de costo">
+        <option value="">Todos los centros de costo</option>
+        @foreach (var d in departamentos)
+        {
+            <option value="@d.IdDepartamento">@d.Descripcion</option>
+        }
+    </select>
+    <BotonIcono Icono="search" Tooltip="Consultar" Etiqueta="Consultar" Variante="primario" OnClick="ConsultarAsync" />
+    <span class="barra-herramientas-separador"></span>
+    <a class="boton-icono boton-icono-con-etiqueta" href="@UrlExcel" download title="Exportar a Excel">
+        <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Excel</span>
+    </a>
+</div>
+
+@if (filas.Count == 0)
+{
+    <p class="estado-vacio">No hay movimientos con centro de costo en ese rango.</p>
+}
+else
+{
+    <div class="resumen-totales">
+        @foreach (var g in filas.GroupBy(f => f.Departamento))
+        {
+            <span>@g.Key: <strong>Q @g.Sum(f => f.Saldo).ToString("N2")</strong></span>
+        }
+        <span>Total: <strong>Q @filas.Sum(f => f.Saldo).ToString("N2")</strong></span>
+    </div>
+
+    <section class="tarjeta">
+        <table class="tabla-datos">
+            <thead><tr><th>Centro de costo</th><th class="col-codigo">Cuenta</th><th>Nombre</th><th class="num col-estado">Pólizas</th><th class="num col-monto">Debe</th><th class="num col-monto">Haber</th><th class="num col-monto">Saldo</th><th class="col-acciones">Detalle</th></tr></thead>
+            <tbody>
+                @foreach (var g in filas.GroupBy(f => (f.IdDepartamento, f.Departamento)))
+                {
+                    @foreach (var f in g)
+                    {
+                        <tr class="@(Expandida(f) ? "fila-seleccionada" : "")">
+                            <td>@f.Departamento</td>
+                            <td class="col-codigo">@f.CuentaCodigo</td>
+                            <td>@f.CuentaNombre</td>
+                            <td class="num col-estado">@f.Partidas</td>
+                            <td class="num col-monto">@f.Debe.ToString("N2")</td>
+                            <td class="num col-monto">@f.Haber.ToString("N2")</td>
+                            <td class="num col-monto">@f.Saldo.ToString("N2")</td>
+                            <td class="col-acciones">
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="@(Expandida(f) ? "x" : "list")" Tooltip="@(Expandida(f) ? "Ocultar pólizas" : "Ver pólizas")" OnClick="() => AlternarAsync(f)" />
+                                </div>
+                            </td>
+                        </tr>
+                        @if (Expandida(f))
+                        {
+                            <tr class="fila-subdetalle">
+                                <td colspan="8">
+                                    <table class="doc-tabla">
+                                        <thead><tr><th>Fecha</th><th>Póliza</th><th>Origen</th><th>Descripción</th><th class="num">Debe</th><th class="num">Haber</th></tr></thead>
+                                        <tbody>
+                                            @foreach (var l in lineas)
+                                            {
+                                                <tr>
+                                                    <td>@l.Fecha.ToString("dd/MM/yyyy")</td>
+                                                    <td>#@l.AsiId @l.Partida</td>
+                                                    <td>@l.Origen</td>
+                                                    <td>@l.Descripcion</td>
+                                                    <td class="num">@l.Debe.ToString("N2")</td>
+                                                    <td class="num">@l.Haber.ToString("N2")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    <tr>
+                        <td colspan="4"><strong>Total @g.Key.Departamento</strong></td>
+                        <td class="num col-monto"><strong>@g.Sum(f => f.Debe).ToString("N2")</strong></td>
+                        <td class="num col-monto"><strong>@g.Sum(f => f.Haber).ToString("N2")</strong></td>
+                        <td class="num col-monto"><strong>@g.Sum(f => f.Saldo).ToString("N2")</strong></td>
+                        <td></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+}
+
+@code {
+    private IReadOnlyList<Departamento> departamentos = Array.Empty<Departamento>();
+    private IReadOnlyList<CentroCostoFila> filas = Array.Empty<CentroCostoFila>();
+    private IReadOnlyList<CentroCostoLinea> lineas = Array.Empty<CentroCostoLinea>();
+    private DateTime? desde = new DateTime(DateTime.Today.Year, 1, 1);
+    private DateTime? hasta = DateTime.Today;
+    private DateTime Desde => desde ?? new DateTime(DateTime.Today.Year, 1, 1);
+    private DateTime Hasta => hasta ?? DateTime.Today;
+    private int? idDepartamento;
+    private (int Departamento, int Cuenta)? expandida;
+    private string? mensaje;
+
+    private string UrlExcel => $"reportes/contabilidad/centros-costo.xlsx?desde={Desde:yyyy-MM-dd}&hasta={Hasta:yyyy-MM-dd}{(idDepartamento is null ? "" : $"&departamento={idDepartamento}")}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            departamentos = await RrhhRepository.ConsultarDepartamentosAsync(soloActivos: false);
+            await ConsultarAsync();
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+    }
+
+    private bool Expandida(CentroCostoFila f) => expandida == (f.IdDepartamento, f.CtaId);
+
+    private async Task ConsultarAsync()
+    {
+        mensaje = null;
+        expandida = null;
+        try { filas = await CentroCostoRepository.ConsultarAsync(Desde, Hasta, idDepartamento); }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+    }
+
+    private async Task AlternarAsync(CentroCostoFila f)
+    {
+        if (Expandida(f)) { expandida = null; return; }
+        try
+        {
+            lineas = await CentroCostoRepository.ConsultarDetalleAsync(Desde, Hasta, f.IdDepartamento, f.CtaId);
+            expandida = (f.IdDepartamento, f.CtaId);
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+    }
+}

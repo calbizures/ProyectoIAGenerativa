@@ -1,0 +1,163 @@
+@page "/unidades-medida"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR")]
+@using Erp.Data.Inventario
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IBodegaRepository BodegaRepository
+
+<PageTitle>Unidades de medida</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Unidades de medida</h1>
+    <p>Se usan en el producto (unidad por defecto) y en cada línea de factura. Una unidad en uso no se elimina: se inactiva.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="barra-herramientas">
+    <span class="barra-herramientas-separador"></span>
+    <BotonIcono Icono="plus" Tooltip="Nueva unidad" Etiqueta="Nueva unidad" Variante="primario" OnClick="Nueva" />
+</div>
+
+@if (editandoId is not null)
+{
+    <section class="tarjeta" aria-labelledby="titulo-edicion">
+        <h2 id="titulo-edicion">@(editandoId == 0 ? "Nueva unidad de medida" : "Editar unidad de medida")</h2>
+        <div class="panel-formulario">
+            <div class="campo"><label for="ume-codigo">Código</label><input id="ume-codigo" @bind="formCodigo" maxlength="10" /></div>
+            <div class="campo"><label for="ume-desc">Descripción</label><input id="ume-desc" @bind="formDescripcion" maxlength="64" /></div>
+            <div class="campo">
+                <label for="ume-estado">Estado</label>
+                <select id="ume-estado" @bind="formEstado">
+                    <option value="A">Activa</option>
+                    <option value="I">Inactiva</option>
+                </select>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarAsync" />
+                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => editandoId = null" />
+            </div>
+        </div>
+    </section>
+}
+
+@if (unidades.Count == 0)
+{
+    <p class="estado-vacio">No hay unidades de medida registradas.</p>
+}
+else
+{
+    <table class="tabla-datos">
+        <thead><tr><th class="col-codigo">Código</th><th>Descripción</th><th class="num">Usos</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+        <tbody>
+            @foreach (var u in unidades)
+            {
+                <tr>
+                    <td class="col-codigo">@u.UmeCodigo</td>
+                    <td>@u.UmeDescripcion</td>
+                    <td class="num">@u.CantidadUsos</td>
+                    <td class="col-estado"><span class="estado-badge @(u.UmeEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(u.UmeEstado == "A" ? "Activa" : "Inactiva")</span></td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="pencil" Tooltip="Editar unidad" OnClick="() => Editar(u)" />
+                            <BotonIcono Icono="trash-2" Tooltip="@(u.CantidadUsos > 0 ? "En uso: inactívela en lugar de eliminarla" : "Eliminar unidad")" Confirmacion="¿Eliminar la unidad?" Variante="peligro"
+                                        Deshabilitado="u.CantidadUsos > 0" OnClick="() => EliminarAsync(u)" />
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<UnidadMedida> unidades = Array.Empty<UnidadMedida>();
+
+    // 0 = nueva, null = sin edición en curso.
+    private int? editandoId;
+    private string formCodigo = "";
+    private string formDescripcion = "";
+    private string formEstado = "A";
+
+    private string? mensaje;
+    private bool esMensajeError;
+
+    protected override Task OnInitializedAsync() => CargarAsync();
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        return (await AuthenticationStateTask).User.ObtenerUsuId();
+    }
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private async Task CargarAsync()
+    {
+        try
+        {
+            unidades = await BodegaRepository.ConsultarUnidadesAsync(soloActivas: false);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void Nueva()
+    {
+        mensaje = null;
+        editandoId = 0;
+        formCodigo = "";
+        formDescripcion = "";
+        formEstado = "A";
+    }
+
+    private void Editar(UnidadMedida u)
+    {
+        mensaje = null;
+        editandoId = u.UmeId;
+        formCodigo = u.UmeCodigo;
+        formDescripcion = u.UmeDescripcion;
+        formEstado = u.UmeEstado;
+    }
+
+    private async Task GuardarAsync()
+    {
+        if (string.IsNullOrWhiteSpace(formCodigo) || string.IsNullOrWhiteSpace(formDescripcion))
+        {
+            mensaje = "Ingrese el código y la descripción.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            await BodegaRepository.GuardarUnidadAsync(editandoId == 0 ? null : editandoId, formCodigo.Trim(), formDescripcion.Trim(), formEstado, await ObtenerUsuIdActualAsync());
+            mensaje = editandoId == 0 ? "Unidad creada." : "Unidad actualizada.";
+            esMensajeError = false;
+            editandoId = null;
+            await CargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task EliminarAsync(UnidadMedida u)
+    {
+        try
+        {
+            await BodegaRepository.EliminarUnidadAsync(u.UmeId);
+            mensaje = "Unidad eliminada.";
+            esMensajeError = false;
+            await CargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

@@ -1,0 +1,43 @@
+@using Erp.Data.Cargas
+@* Errores y advertencias de una carga desde Excel. Fila 0 = mensaje general. *@
+@if (Mensajes.Count > 0)
+{
+    var errores = Mensajes.Count(m => m.EsError);
+    var advertencias = Mensajes.Count - errores;
+    <div class="@(errores > 0 ? "mensaje-error" : "mensaje-ok")" role="@(errores > 0 ? "alert" : "status")">
+        @if (errores > 0)
+        {
+            <span>@errores error(es): corríjalos en el archivo y vuelva a subirlo. No se grabó nada.</span>
+        }
+        else
+        {
+            <span>Sin errores.</span>
+        }
+        @if (advertencias > 0)
+        {
+            <span> @advertencias advertencia(s) para revisar.</span>
+        }
+    </div>
+    <table class="tabla-datos">
+        <thead><tr><th class="num col-estado">Fila</th><th class="col-estado">Tipo</th><th>Mensaje</th></tr></thead>
+        <tbody>
+            @foreach (var m in Mensajes.Take(Maximo))
+            {
+                <tr>
+                    <td class="num col-estado">@(m.Fila == 0 ? "—" : m.Fila.ToString())</td>
+                    <td class="col-estado"><span class="estado-badge @(m.EsError ? "estado-badge-inactivo" : "estado-badge-pendiente")">@(m.EsError ? "Error" : "Aviso")</span></td>
+                    <td>@m.Mensaje</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (Mensajes.Count > Maximo)
+    {
+        <p class="texto-tenue">Se muestran los primeros @Maximo de @Mensajes.Count mensajes.</p>
+    }
+}
+
+@code {
+    [Parameter] public IReadOnlyList<MensajeCarga> Mensajes { get; set; } = Array.Empty<MensajeCarga>();
+    [Parameter] public int Maximo { get; set; } = 200;
+}

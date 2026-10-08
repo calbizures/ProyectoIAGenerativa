@@ -1,0 +1,143 @@
+@* Organigrama: unidades organizativas (recursivas) › departamentos › plazas
+   con el empleado que las ocupa. Se dibuja con listas anidadas y conectores
+   CSS (.organigrama en app.css). *@
+@using Erp.Data.Rrhh
+@inject IRrhhRepository RrhhRepository
+
+@if (mensaje is not null)
+{
+    <p class="mensaje-error" role="alert">@mensaje</p>
+}
+
+<div class="barra-herramientas organigrama-herramientas">
+    <label class="campo-checkbox"><input type="checkbox" @bind="mostrarPlazas" @bind:after="Reconstruir" /> Mostrar plazas y empleados</label>
+    <label class="campo-checkbox"><input type="checkbox" @bind="soloActivos" @bind:after="CargarAsync" /> Solo activos</label>
+    <span class="barra-herramientas-separador"></span>
+    <button type="button" class="boton-texto" @onclick="() => contraidos.Clear()">Expandir todo</button>
+    <button type="button" class="boton-texto" @onclick="ContraerAGerencias">Ver solo primeros dos niveles</button>
+    <div class="organigrama-leyenda" aria-hidden="true">
+        <span class="org-muestra org-u"></span> Unidad
+        <span class="org-muestra org-d"></span> Departamento
+        @if (mostrarPlazas)
+        {
+            <span class="org-muestra org-p"></span> <span>Plaza</span>
+        }
+    </div>
+</div>
+
+@if (raices.Count == 0)
+{
+    <p class="estado-vacio">No hay unidades ni departamentos para mostrar.</p>
+}
+else
+{
+    <div class="organigrama-lienzo" role="tree" aria-label="Organigrama">
+        <ul class="organigrama">
+            @foreach (var r in raices)
+            {
+                @Nodo(r)
+            }
+        </ul>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<OrganigramaNodo> nodos = Array.Empty<OrganigramaNodo>();
+    private List<OrganigramaCodigos.NodoGrafico> raices = new();
+    private readonly HashSet<string> contraidos = new();
+    private bool mostrarPlazas = true;
+    private bool soloActivos = true;
+    private string? mensaje;
+
+    protected override Task OnInitializedAsync() => CargarAsync();
+
+    // La página la llama cuando cambian unidades o departamentos en otra pestaña.
+    public async Task RecargarAsync()
+    {
+        await CargarAsync();
+        StateHasChanged();
+    }
+
+    private async Task CargarAsync()
+    {
+        try
+        {
+            nodos = await RrhhRepository.ConsultarOrganigramaAsync(soloActivos);
+            mensaje = null;
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+        Reconstruir();
+    }
+
+    private void Reconstruir() => raices = OrganigramaCodigos.Construir(nodos, mostrarPlazas);
+
+    private void Alternar(OrganigramaCodigos.NodoGrafico g)
+    {
+        if (!contraidos.Remove(g.Nodo.Clave)) contraidos.Add(g.Nodo.Clave);
+    }
+
+    private void ContraerAGerencias()
+    {
+        contraidos.Clear();
+        void Recorrer(OrganigramaCodigos.NodoGrafico g)
+        {
+            if (g.Nodo.Tipo == "U" && g.Nivel >= 2 && g.Hijos.Count > 0) contraidos.Add(g.Nodo.Clave);
+            foreach (var h in g.Hijos) Recorrer(h);
+        }
+        foreach (var r in raices) Recorrer(r);
+    }
+
+    private static string TipoTexto(string tipo) => tipo switch { "U" => "Unidad", "D" => "Departamento", _ => "Plaza" };
+
+    // Un nodo del organigrama; las plazas de un departamento se listan dentro
+    // de su tarjeta para que el dibujo no crezca a lo ancho.
+    private RenderFragment Nodo(OrganigramaCodigos.NodoGrafico g) => __builder =>
+    {
+        var subnodos = g.Hijos.Where(h => h.Nodo.Tipo != "P").ToList();
+        var plazas = g.Hijos.Where(h => h.Nodo.Tipo == "P").ToList();
+        var contraido = contraidos.Contains(g.Nodo.Clave);
+        var tieneHijos = subnodos.Count > 0 || plazas.Count > 0;
+        <li role="treeitem" aria-expanded="@(tieneHijos ? (!contraido ? "true" : "false") : null)">
+            <div class="org-tarjeta org-@g.Nodo.Tipo.ToLowerInvariant() @(g.Nodo.Estado != "A" ? "org-inactiva" : "")">
+                <div class="org-cabecera">
+                    <span class="org-codigo">@g.Codigo</span>
+                    <span class="org-tipo">@TipoTexto(g.Nodo.Tipo)</span>
+                </div>
+                <div class="org-nombre">@g.Nodo.Descripcion</div>
+                @if (g.Nodo.Tipo == "D" && !string.IsNullOrEmpty(g.Nodo.Detalle))
+                {
+                    <div class="org-detalle">@g.Nodo.Detalle</div>
+                }
+                @if (plazas.Count > 0 && !contraido)
+                {
+                    <ul class="org-plazas">
+                        @foreach (var p in plazas)
+                        {
+                            <li>
+                                <span class="org-codigo">@p.Codigo</span>
+                                <span class="org-plaza-nombre">@p.Nodo.Descripcion</span>
+                                <span class="org-empleado @(p.Nodo.Detalle == "Vacante" ? "org-vacante" : "")">@p.Nodo.Detalle</span>
+                            </li>
+                        }
+                    </ul>
+                }
+                @if (tieneHijos)
+                {
+                    <button type="button" class="org-alternar" @onclick="() => Alternar(g)"
+                            aria-label="@(contraido ? "Expandir" : "Contraer") @g.Nodo.Descripcion">
+                        @(contraido ? $"+ {subnodos.Count + plazas.Count}" : "−")
+                    </button>
+                }
+            </div>
+            @if (subnodos.Count > 0 && !contraido)
+            {
+                <ul>
+                    @foreach (var h in subnodos)
+                    {
+                        @Nodo(h)
+                    }
+                </ul>
+            }
+        </li>
+    };
+}

@@ -1,0 +1,310 @@
+@page "/bancos/cuentas"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:BANCOS_ADMIN")]
+@using Erp.Data.Bancos
+@using Erp.Data.Caja
+@using Erp.Data.General
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IBancosRepository BancosRepository
+@inject IGeneralRepository GeneralRepository
+
+<PageTitle>Cuentas bancarias</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Cuentas bancarias y chequeras</h1>
+    <p>Cuentas de la empresa (maestro) y las chequeras de cada una (detalle). Cada cuenta lleva dos cuentas contables: la de cargos, que reciben los depósitos, y la de abonos, que afectan los cheques y transferencias.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="maestro-detalle">
+    <section class="tarjeta maestro-detalle-maestro" aria-labelledby="titulo-cuentas">
+        <div class="maestro-detalle-encabezado">
+            <h2 id="titulo-cuentas">Cuentas</h2>
+            <BotonIcono Icono="plus" Tooltip="Nueva cuenta bancaria" Etiqueta="Nueva cuenta" Variante="primario" OnClick="NuevaCuenta" />
+        </div>
+        @if (cuentaEdicion is not null)
+        {
+            <div class="panel-formulario">
+                <div class="campo">
+                    <label for="cta-banco">Banco</label>
+                    <select id="cta-banco" @bind="cuentaEdicion.GefId">
+                        <option value="0">Seleccione...</option>
+                        @foreach (var b in bancos)
+                        {
+                            <option value="@b.GefId">@b.GefDescripcion</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo"><label for="cta-numero">Número de cuenta</label><input id="cta-numero" maxlength="16" @bind="cuentaEdicion.NumeroCuenta" /></div>
+                <div class="campo"><label for="cta-desc">Descripción</label><input id="cta-desc" maxlength="64" @bind="cuentaEdicion.Descripcion" /></div>
+                <div class="campo">
+                    <label for="cta-tipo">Tipo</label>
+                    <select id="cta-tipo" @bind="cuentaEdicion.Tipo">
+                        <option value="M">Monetaria</option>
+                        <option value="A">Ahorro</option>
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="cta-cargo">Cuenta contable de cargos (depósitos)</label>
+                    <select id="cta-cargo" @bind="cuentaEdicion.CtaIdCargo">
+                        <option value="">(La del concepto DEPOSITO_BANCOS)</option>
+                        @foreach (var c in cuentasContables)
+                        {
+                            <option value="@c.CtaId">@c.CtaCodigo — @c.CtaNombre</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="cta-contable">Cuenta contable de abonos (cheques y pagos)</label>
+                    <select id="cta-contable" @bind="cuentaEdicion.CtaId">
+                        <option value="">(La del concepto PAGO_BANCOS)</option>
+                        @foreach (var c in cuentasContables)
+                        {
+                            <option value="@c.CtaId">@c.CtaCodigo — @c.CtaNombre</option>
+                        }
+                    </select>
+                </div>
+                <p class="texto-ayuda">Un depósito a esta cuenta se carga (Debe) a la cuenta de cargos; un cheque o pago se abona (Haber) a la cuenta de abonos. Pueden ser la misma cuenta contable.</p>
+                <div class="campo">
+                    <label for="cta-estado">Estado</label>
+                    <select id="cta-estado" @bind="cuentaEdicion.Estado">
+                        <option value="A">Activa</option>
+                        <option value="I">Inactiva</option>
+                    </select>
+                </div>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Guardar cuenta" Etiqueta="Guardar" Variante="primario" OnClick="GuardarCuentaAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => cuentaEdicion = null" />
+                </div>
+            </div>
+        }
+        @if (cuentas.Count == 0)
+        {
+            <p class="estado-vacio">No hay cuentas bancarias registradas.</p>
+        }
+        else
+        {
+            <table class="tabla-datos">
+                <thead><tr><th>Cuenta</th><th class="col-estado">Tipo</th><th>Cuentas contables</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+                <tbody>
+                    @foreach (var c in cuentas)
+                    {
+                        <tr class="fila-seleccionable @(seleccionada?.BcbId == c.BcbId ? "fila-seleccionada" : "")" @onclick="() => SeleccionarAsync(c)">
+                            <td><strong>@c.Banco</strong> @c.NumeroCuenta<br /><span class="texto-tenue">@c.Descripcion</span></td>
+                            <td class="col-estado">@(c.Tipo == "A" ? "Ahorro" : "Monetaria")</td>
+                            <td>
+                                <span title="@c.CuentaCargoNombre"><span class="texto-tenue">Cargos:</span> @(c.CuentaCargoCodigo ?? "—")</span><br />
+                                <span title="@c.CuentaNombre"><span class="texto-tenue">Abonos:</span> @(c.CuentaCodigo ?? "—")</span>
+                            </td>
+                            <td class="col-estado"><span class="estado-badge @(c.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.Estado == "A" ? "Activa" : "Inactiva")</span></td>
+                            <td class="col-acciones" @onclick:stopPropagation="true">
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="pencil" Tooltip="Editar cuenta" OnClick="() => EditarCuenta(c)" />
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <section class="tarjeta maestro-detalle-detalle" aria-labelledby="titulo-chequeras">
+        <div class="maestro-detalle-encabezado">
+            <h2 id="titulo-chequeras">@(seleccionada is null ? "Chequeras" : $"Chequeras: {seleccionada.Nombre}")</h2>
+            @if (seleccionada is not null)
+            {
+                <BotonIcono Icono="plus" Tooltip="Nueva chequera" Etiqueta="Nueva chequera" Variante="primario" OnClick="NuevaChequera" />
+            }
+        </div>
+        @if (seleccionada is null)
+        {
+            <p class="estado-vacio">Seleccione una cuenta para ver y mantener sus chequeras.</p>
+        }
+        else
+        {
+            @if (chequeraEdicion is not null)
+            {
+                <div class="panel-formulario">
+                    <div class="campo"><label for="chq-del">Del cheque</label><input id="chq-del" type="number" min="1" @bind="chequeraEdicion.ChequeDel" /></div>
+                    <div class="campo"><label for="chq-al">Al cheque</label><input id="chq-al" type="number" min="1" @bind="chequeraEdicion.ChequeAl" /></div>
+                    <div class="campo"><label for="chq-recepcion">Fecha de recepción</label><input id="chq-recepcion" type="date" @bind="chequeraEdicion.FechaRecepcion" /></div>
+                    <div class="campo">
+                        <label for="chq-estado">Estado</label>
+                        <select id="chq-estado" @bind="chequeraEdicion.Estado">
+                            <option value="A">Activa</option>
+                            <option value="I">Inactiva</option>
+                        </select>
+                    </div>
+                    <div class="acciones-fila">
+                        <BotonIcono Icono="save" Tooltip="Guardar chequera" Etiqueta="Guardar" Variante="primario" OnClick="GuardarChequeraAsync" />
+                        <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => chequeraEdicion = null" />
+                    </div>
+                </div>
+            }
+            @if (chequeras.Count == 0)
+            {
+                <p class="estado-vacio">Esta cuenta todavía no tiene chequeras.</p>
+            }
+            else
+            {
+                <table class="tabla-datos">
+                    <thead><tr><th>Rango</th><th class="col-fecha">Recepción</th><th class="num col-estado">Emitidos</th><th class="num col-estado">Siguiente</th><th class="num col-estado">Disponibles</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+                    <tbody>
+                        @foreach (var q in chequeras)
+                        {
+                            <tr>
+                                <td>@q.ChequeDel – @q.ChequeAl</td>
+                                <td class="col-fecha">@(q.FechaRecepcion?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                <td class="num col-estado">@q.Emitidos</td>
+                                <td class="num col-estado">@(q.Siguiente?.ToString() ?? "Agotada")</td>
+                                <td class="num col-estado">@q.Disponibles</td>
+                                <td class="col-estado"><span class="estado-badge @(q.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(q.Estado == "A" ? "Activa" : "Inactiva")</span></td>
+                                <td class="col-acciones">
+                                    <div class="acciones-fila">
+                                        <BotonIcono Icono="pencil" Tooltip="Editar chequera" OnClick="() => EditarChequera(q)" />
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+    </section>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<CuentaBancaria> cuentas = Array.Empty<CuentaBancaria>();
+    private IReadOnlyList<Chequera> chequeras = Array.Empty<Chequera>();
+    private IReadOnlyList<EntidadFinanciera> bancos = Array.Empty<EntidadFinanciera>();
+    private IReadOnlyList<CuentaContable> cuentasContables = Array.Empty<CuentaContable>();
+    private CuentaBancaria? seleccionada;
+    private CuentaBancaria? cuentaEdicion;
+    private Chequera? chequeraEdicion;
+
+    private string? mensaje;
+    private bool esMensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var tipoBanco = (await GeneralRepository.ConsultarTiposEntidadAsync()).FirstOrDefault(t => t.GeftDescripcion == "Banco");
+            if (tipoBanco is not null) bancos = await GeneralRepository.ConsultarEntidadesAsync(tipoBanco.GeftId, soloActivas: true);
+            cuentasContables = (await GeneralRepository.ConsultarCuentasContablesAsync())
+                .Where(c => c.CtaAceptaMovimiento && c.CtaCodigo.StartsWith('1')).OrderBy(c => c.CtaCodigo).ToList();
+            await CargarCuentasAsync();
+            if (cuentas.Count > 0) await SeleccionarAsync(cuentas[0]);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private void MostrarOk(string texto)
+    {
+        mensaje = texto;
+        esMensajeError = false;
+    }
+
+    private async Task CargarCuentasAsync()
+    {
+        cuentas = await BancosRepository.ConsultarCuentasAsync(soloActivas: false);
+        if (seleccionada is not null) seleccionada = cuentas.FirstOrDefault(c => c.BcbId == seleccionada.BcbId);
+    }
+
+    private async Task SeleccionarAsync(CuentaBancaria cuenta)
+    {
+        seleccionada = cuenta;
+        chequeraEdicion = null;
+        try { chequeras = await BancosRepository.ConsultarChequerasAsync(cuenta.BcbId, soloActivas: false); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void NuevaCuenta()
+    {
+        mensaje = null;
+        cuentaEdicion = new CuentaBancaria { GefId = bancos.FirstOrDefault()?.GefId ?? 0 };
+    }
+
+    private void EditarCuenta(CuentaBancaria c)
+    {
+        mensaje = null;
+        cuentaEdicion = new CuentaBancaria
+        {
+            BcbId = c.BcbId, NumeroCuenta = c.NumeroCuenta, Descripcion = c.Descripcion, GefId = c.GefId,
+            Tipo = c.Tipo, CtaId = c.CtaId, CtaIdCargo = c.CtaIdCargo, Estado = c.Estado
+        };
+    }
+
+    private async Task GuardarCuentaAsync()
+    {
+        if (cuentaEdicion is null) return;
+        if (cuentaEdicion.GefId == 0 || string.IsNullOrWhiteSpace(cuentaEdicion.NumeroCuenta))
+        {
+            mensaje = "Seleccione el banco e ingrese el número de cuenta.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            var nueva = cuentaEdicion.BcbId == 0;
+            var id = await BancosRepository.GuardarCuentaAsync(cuentaEdicion, await ObtenerUsuIdActualAsync());
+            cuentaEdicion = null;
+            await CargarCuentasAsync();
+            var cuenta = cuentas.FirstOrDefault(c => c.BcbId == id);
+            if (cuenta is not null) await SeleccionarAsync(cuenta);
+            MostrarOk(nueva ? "Cuenta bancaria creada. Registre su chequera." : "Cuenta bancaria actualizada.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    // Una chequera nueva empieza donde terminó la última de la cuenta.
+    private void NuevaChequera()
+    {
+        if (seleccionada is null) return;
+        mensaje = null;
+        var desde = chequeras.Count == 0 ? 1 : chequeras.Max(q => q.ChequeAl) + 1;
+        chequeraEdicion = new Chequera { BcbId = seleccionada.BcbId, ChequeDel = desde, ChequeAl = desde + 49, FechaRecepcion = DateTime.Today };
+    }
+
+    private void EditarChequera(Chequera q)
+    {
+        mensaje = null;
+        chequeraEdicion = new Chequera
+        {
+            CbcId = q.CbcId, BcbId = q.BcbId, ChequeDel = q.ChequeDel, ChequeAl = q.ChequeAl, FechaRecepcion = q.FechaRecepcion, Estado = q.Estado
+        };
+    }
+
+    private async Task GuardarChequeraAsync()
+    {
+        if (chequeraEdicion is null || seleccionada is null) return;
+        try
+        {
+            var nueva = chequeraEdicion.CbcId == 0;
+            await BancosRepository.GuardarChequeraAsync(chequeraEdicion, await ObtenerUsuIdActualAsync());
+            chequeraEdicion = null;
+            await CargarCuentasAsync();
+            if (seleccionada is not null) await SeleccionarAsync(seleccionada);
+            MostrarOk(nueva ? "Chequera registrada." : "Chequera actualizada.");
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

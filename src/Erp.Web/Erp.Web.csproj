@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Erp.Data\Erp.Data.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
+    <PackageReference Include="PDFsharp-MigraDoc" Version="6.2.4" />
+    <PackageReference Include="QRCoder" Version="1.8.0" />
+  </ItemGroup>
+
+  <!-- Las pantallas y el menú, incrustados para saber dónde se usa cada
+       permiso (Security/PermisoMapa.cs). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Components\**\*.razor" LogicalName="razor:%(Filename)%(Extension)" WithCulture="false" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dbb72a78-8a95-4cae-adf6-dce2916d7b0c</UserSecretsId>
+  </PropertyGroup>
+
+</Project>

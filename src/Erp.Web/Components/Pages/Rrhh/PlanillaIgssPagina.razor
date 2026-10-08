@@ -1,0 +1,654 @@
+@page "/rrhh/planilla-igss"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:RRHH_ADMIN")]
+@using Erp.Data.General
+@using Erp.Data.Rrhh
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IRrhhRepository RrhhRepository
+@inject IGeneralRepository GeneralRepository
+@inject IIgssRepository IgssRepository
+@using Erp.Web.Reportes
+
+<PageTitle>Planilla del IGSS</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Planilla del IGSS</h1>
+    <p>Lo que se reporta y se paga al IGSS cada mes: salario afecto de cada trabajador, cuota laboral (descontada al trabajador) y cuotas patronales del IGSS, IRTRA e INTECAP, por centro de trabajo, con las altas y bajas del mes. Sale de las nóminas ordinarias aprobadas cuya fecha final cae en el mes.</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<BarraPestanas Pestanas="pestanas" @bind-PestanaActiva="pestanaActiva" @bind-PestanaActiva:after="CambiarPestanaAsync" />
+
+<div class="barra-herramientas">
+    <select @bind="ciaId" @bind:after="CambiarCompaniaAsync" aria-label="Compañía">
+        @foreach (var c in companias)
+        {
+            <option value="@c.CiaId">@c.CiaNombreComercial</option>
+        }
+    </select>
+    @if (pestanaActiva is "planilla" or "archivo")
+    {
+        <select @bind="mes" @bind:after="ConsultarAsync" aria-label="Mes">
+            @for (var m = 1; m <= 12; m++)
+            {
+                <option value="@m">@NombreMes(m)</option>
+            }
+        </select>
+        <label class="filtro-campo">Año <input type="number" min="2000" max="2100" @bind="anio" @bind:after="ConsultarAsync" /></label>
+        <span class="barra-herramientas-separador"></span>
+        @if (pestanaActiva == "planilla" && planilla?.Empleados.Count > 0)
+        {
+            <a class="boton-icono boton-icono-con-etiqueta" href="@($"reportes/rrhh/planilla-igss.xlsx?cia={ciaId}&anio={anio}&mes={mes}")" download title="Planilla en Excel: centros de trabajo y trabajadores"><Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Excel</span></a>
+            <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@($"rrhh/planilla-igss/imprimir?cia={ciaId}&anio={anio}&mes={mes}")" target="_blank" title="Planilla para imprimir o guardar en PDF"><Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span></a>
+        }
+    }
+</div>
+
+@if (pestanaActiva == "planilla")
+{
+    @if (planilla?.Resumen is { } resumen)
+    {
+        @if (string.IsNullOrWhiteSpace(resumen.IgssNumeroPatronal))
+        {
+            <p class="aviso-pendiente" role="status">La compañía no tiene número patronal del IGSS. Regístrelo en la pestaña Patrono y centros de trabajo.</p>
+        }
+        @if (resumen.NominasPendientes > 0)
+        {
+            <p class="aviso-pendiente" role="status">Hay @resumen.NominasPendientes nómina(s) de @NombreMes(mes).ToLowerInvariant() sin aprobar: no entran en la planilla hasta que se aprueben.</p>
+        }
+        @if (SinAfiliacion.Count > 0)
+        {
+            <p class="aviso-pendiente" role="status">Sin número de afiliación al IGSS: @string.Join(", ", SinAfiliacion.Select(e => $"{e.CodigoEmpleado} {e.Nombre}")). Complételo en RRHH &gt; Empleados.</p>
+        }
+
+        @if (planilla.Empleados.Count == 0)
+        {
+            <p class="estado-vacio">No hay nóminas ordinarias aprobadas en @NombreMes(mes).ToLowerInvariant() de @anio.</p>
+        }
+        else
+        {
+            <div class="resumen-totales">
+                <span>No. patronal: <strong>@(resumen.IgssNumeroPatronal ?? "—")</strong></span>
+                <span>Trabajadores: <strong>@resumen.Empleados</strong></span>
+                <span>Salario afecto: <strong>Q @resumen.SalarioAfecto.ToString("N2")</strong></span>
+                <span>Cuota laboral: <strong>Q @resumen.CuotaLaboral.ToString("N2")</strong></span>
+                <span>Cuota patronal IGSS: <strong>Q @resumen.CuotaPatronal.ToString("N2")</strong></span>
+                <span>IRTRA: <strong>Q @resumen.Irtra.ToString("N2")</strong></span>
+                <span>INTECAP: <strong>Q @resumen.Intecap.ToString("N2")</strong></span>
+                <span>Total a pagar al IGSS: <strong>Q @resumen.TotalPagar.ToString("N2")</strong></span>
+            </div>
+
+            <h2>Por centro de trabajo</h2>
+            <PlanillaIgssCentros Centros="planilla.Centros" />
+
+            <h2>Trabajadores</h2>
+            <PlanillaIgssEmpleados Empleados="planilla.Empleados" />
+
+            <p class="texto-ayuda">El archivo para el sistema de Planilla Electrónica del IGSS se genera en la pestaña <strong>Archivo para el IGSS</strong>.</p>
+        }
+    }
+}
+else if (pestanaActiva == "archivo")
+{
+    <section class="tarjeta" aria-labelledby="titulo-archivo">
+        <h2 id="titulo-archivo">Archivo para el IGSS · sistema propio 2.2.0</h2>
+        <p class="texto-ayuda">Archivo de texto para cargar en el sistema de Planilla Electrónica del IGSS, con el formato del manual GenerarArchivoPlanilla 2.2.0 y de la plantilla oficial SISTEMA_PROPIO_2.2.0. Sale de las nóminas ordinarias aprobadas del mes: una liquidación por tipo de planilla (o por nómina si el tipo es semanal o catorcenal).</p>
+        @if (archivo is null)
+        {
+            <p class="doc-tabla-vacia">Cargando…</p>
+        }
+        else
+        {
+            @foreach (var o in archivo.Observaciones)
+            {
+                <p class="@(o.Nivel == "E" ? "mensaje-error" : "aviso-pendiente")" role="@(o.Nivel == "E" ? "alert" : "status")">@o.Mensaje</p>
+            }
+            <div class="resumen-totales">
+                <span>Centros de trabajo: <strong>@archivo.Centros.Count</strong></span>
+                <span>Tipos de planilla: <strong>@archivo.TiposPlanilla.Count</strong></span>
+                <span>Liquidaciones: <strong>@archivo.Liquidaciones.Count</strong></span>
+                <span>Trabajadores: <strong>@archivo.Empleados.Select(e => e.CodigoEmpleado).Distinct().Count()</strong></span>
+                <span>Suspendidos: <strong>@archivo.Ausencias.Count(a => a.Tipo == "S")</strong></span>
+                <span>Licencias: <strong>@archivo.Ausencias.Count(a => a.Tipo == "L")</strong></span>
+                <span>Salario devengado: <strong>Q @archivo.Empleados.Sum(e => e.Sueldo).ToString("N2")</strong></span>
+            </div>
+            <div class="fel-formulario">
+                <div class="campo">
+                    <label for="igss-nota">Número de nota de cargo</label>
+                    <input id="igss-nota" maxlength="10" placeholder="Si el IGSS la emitió" @bind="notaCargo" @bind:after="Previsualizar" />
+                </div>
+                <div class="campo">
+                    <label for="igss-tipo-liq">Liquidación</label>
+                    <select id="igss-tipo-liq" @bind="complementaria" @bind:after="Previsualizar">
+                        <option value="false">Original (O)</option>
+                        <option value="true">Complementaria (C)</option>
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="igss-pruebas">Ambiente</label>
+                    <select id="igss-pruebas" @bind="pruebas" @bind:after="Previsualizar">
+                        <option value="false">Producción (0)</option>
+                        <option value="true">Pruebas (1)</option>
+                    </select>
+                </div>
+            </div>
+            @if (archivo.TieneErrores)
+            {
+                <p class="texto-ayuda">Corrija lo indicado arriba para poder generar el archivo.</p>
+            }
+            else
+            {
+                <div class="acciones-fila">
+                    <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@UrlArchivo" download>
+                        <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Descargar @nombreArchivo</span>
+                    </a>
+                </div>
+                <h3>Vista previa</h3>
+                <pre class="igss-vista" tabindex="0" aria-label="Vista previa del archivo">@vistaPrevia</pre>
+            }
+        }
+    </section>
+}
+else if (pestanaActiva == "tipos")
+{
+    <section class="tarjeta" aria-labelledby="titulo-tipos">
+        <h2 id="titulo-tipos">Tipos de planilla</h2>
+        <p class="texto-ayuda">El IGSS pide enviar en cada archivo todos los tipos de planilla del patrono. Cada empleado se asigna a uno en RRHH › Empleados (datos laborales).</p>
+        <div class="tabla-desplazable" tabindex="0">
+            <table class="tabla-datos">
+                <thead><tr><th class="num">Código</th><th>Nombre</th><th>Afiliados</th><th>Período</th><th>Depto.</th><th>Actividad</th><th>Clase</th><th>Contrato</th><th class="num">Empleados</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+                <tbody>
+                    @if (tipos.Count == 0)
+                    {
+                        <tr><td colspan="11" class="doc-tabla-vacia">No hay tipos de planilla.</td></tr>
+                    }
+                    @foreach (var t in tipos)
+                    {
+                        <tr class="@(tipoEdicion?.IdTipoPlanilla == t.IdTipoPlanilla ? "fila-seleccionada" : "")">
+                            <td class="num">@t.Codigo</td>
+                            <td>@t.Nombre</td>
+                            <td>@(t.TipoAfiliado == "C" ? "Con IVS" : "Sin IVS")</td>
+                            <td>@(t.Periodo switch { "M" => "Mensual", "C" => "Catorcenal", _ => "Semanal" })</td>
+                            <td>@t.Departamento</td>
+                            <td>@t.Actividad</td>
+                            <td>@(t.Clase == "N" ? "Normal" : "Sin movimiento")</td>
+                            <td>@t.TiempoContrato</td>
+                            <td class="num">@t.Empleados</td>
+                            <td class="col-estado"><span class="estado-badge @(t.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(t.Estado == "A" ? "Activo" : "Inactivo")</span></td>
+                            <td class="col-acciones"><div class="acciones-fila"><BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => EditarTipo(t)" /></div></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="plus" Tooltip="Nuevo tipo de planilla" Etiqueta="Nuevo tipo" Variante="primario" OnClick="NuevoTipo" />
+        </div>
+        @if (tipoEdicion is not null)
+        {
+            <div class="oc-recepcion">
+                <h3>@(tipoEdicion.IdTipoPlanilla == 0 ? "Nuevo tipo de planilla" : $"Editar tipo {tipoEdicion.Codigo}")</h3>
+                <div class="fel-formulario">
+                    <div class="campo"><label for="tp-codigo">Código</label><input id="tp-codigo" type="number" min="1" max="999" @bind="tipoEdicion.Codigo" /></div>
+                    <div class="campo campo-ancho"><label for="tp-nombre">Nombre</label><input id="tp-nombre" maxlength="100" @bind="tipoEdicion.Nombre" /></div>
+                    <div class="campo">
+                        <label for="tp-afiliado">Tipo de afiliados</label>
+                        <select id="tp-afiliado" @bind="tipoEdicion.TipoAfiliado"><option value="C">Con IVS (C)</option><option value="S">Sin IVS (S)</option></select>
+                    </div>
+                    <div class="campo">
+                        <label for="tp-periodo">Período</label>
+                        <select id="tp-periodo" @bind="tipoEdicion.Periodo"><option value="M">Mensual</option><option value="C">Catorcenal</option><option value="S">Semanal</option></select>
+                    </div>
+                    <div class="campo">
+                        <label for="tp-depto">Departamento</label>
+                        <select id="tp-depto" @bind="tipoEdicion.Departamento">
+                            @foreach (var d in catalogos.Departamentos) { <option value="@d.Codigo">@d.Texto</option> }
+                        </select>
+                    </div>
+                    <div class="campo campo-ancho">
+                        <label for="tp-actividad">Actividad económica</label>
+                        <select id="tp-actividad" @bind="tipoEdicion.Actividad">
+                            <option value="">Seleccione…</option>
+                            @foreach (var a in catalogos.Actividades) { <option value="@a.Codigo">@a.Texto</option> }
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label for="tp-clase">Clase</label>
+                        <select id="tp-clase" @bind="tipoEdicion.Clase"><option value="N">Normal</option><option value="V">Sin movimiento</option></select>
+                    </div>
+                    <div class="campo">
+                        <label for="tp-tiempo">Tiempo de contrato</label>
+                        <select id="tp-tiempo" @bind="tipoEdicion.TiempoContrato"><option value="TC">Tiempo completo (TC)</option><option value="TP">Tiempo parcial (TP)</option></select>
+                    </div>
+                    <div class="campo">
+                        <label for="tp-estado">Estado</label>
+                        <select id="tp-estado" @bind="tipoEdicion.Estado"><option value="A">Activo</option><option value="I">Inactivo</option></select>
+                    </div>
+                </div>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarTipoAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => tipoEdicion = null" />
+                </div>
+            </div>
+        }
+    </section>
+}
+else if (pestanaActiva == "ausencias")
+{
+    <section class="tarjeta" aria-labelledby="titulo-ausencias">
+        <h2 id="titulo-ausencias">Suspensiones y licencias</h2>
+        <p class="texto-ayuda">Suspensiones del IGSS (enfermedad, maternidad, accidente) y licencias sin goce de salario. Van en los bloques [suspendidos] y [licencias] del archivo, recortadas al período de cada liquidación.</p>
+        <div class="barra-herramientas">
+            <select aria-label="Empleado" @bind="idEmpleadoAusencia" @bind:after="CargarAusenciasAsync">
+                <option value="0">Elija el empleado…</option>
+                @foreach (var e in empleados)
+                {
+                    <option value="@e.IdEmpleado">@e.CodigoEmpleado · @e.Nombres @e.Apellidos</option>
+                }
+            </select>
+        </div>
+        @if (idEmpleadoAusencia > 0)
+        {
+            <table class="tabla-datos tabla-compacta">
+                <thead><tr><th>Tipo</th><th class="col-fecha">Desde</th><th class="col-fecha">Hasta</th><th class="num">Días</th><th>Observación</th><th class="col-acciones"><span class="sr-only">Quitar</span></th></tr></thead>
+                <tbody>
+                    @if (ausencias.Count == 0)
+                    {
+                        <tr><td colspan="6" class="doc-tabla-vacia">Sin suspensiones ni licencias registradas.</td></tr>
+                    }
+                    @foreach (var a in ausencias)
+                    {
+                        <tr>
+                            <td>@(a.Tipo == "S" ? "Suspensión IGSS" : "Licencia sin goce")</td>
+                            <td class="col-fecha">@a.FechaInicio.ToString("dd/MM/yyyy")</td>
+                            <td class="col-fecha">@a.FechaFin.ToString("dd/MM/yyyy")</td>
+                            <td class="num">@((a.FechaFin - a.FechaInicio).Days + 1)</td>
+                            <td>@a.Observacion</td>
+                            <td class="col-acciones"><BotonIcono Icono="trash-2" Tooltip="Quitar" Variante="peligro" Confirmacion="¿Quitar el registro?" OnClick="() => EliminarAusenciaAsync(a)" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="fel-formulario">
+                <div class="campo">
+                    <label for="aus-tipo">Tipo</label>
+                    <select id="aus-tipo" @bind="nuevaAusencia.Tipo"><option value="S">Suspensión del IGSS</option><option value="L">Licencia sin goce de salario</option></select>
+                </div>
+                <div class="campo"><label for="aus-inicio">Desde</label><input id="aus-inicio" type="date" @bind="nuevaAusencia.FechaInicio" /></div>
+                <div class="campo"><label for="aus-fin">Hasta</label><input id="aus-fin" type="date" @bind="nuevaAusencia.FechaFin" /></div>
+                <div class="campo campo-ancho"><label for="aus-obs">Observación</label><input id="aus-obs" maxlength="200" @bind="nuevaAusencia.Observacion" /></div>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="plus" Tooltip="Registrar" Etiqueta="Registrar" Variante="primario" OnClick="GuardarAusenciaAsync" />
+            </div>
+        }
+    </section>
+}
+else
+{
+    <section class="tarjeta" aria-labelledby="titulo-patrono">
+        <h2 id="titulo-patrono">Patrono</h2>
+        <div class="panel-formulario">
+            <div class="campo">
+                <label for="igss-patronal">Número patronal del IGSS</label>
+                <input id="igss-patronal" maxlength="20" inputmode="numeric" @bind="datosPatrono.IgssNumeroPatronal" />
+            </div>
+            <div class="campo">
+                <label for="igss-libro">Autorización del libro de salarios</label>
+                <input id="igss-libro" maxlength="60" placeholder="Número de autorización o registro del Ministerio de Trabajo" @bind="datosPatrono.LibroSalariosAutorizacion" />
+                <small class="texto-ayuda">Aparece en el encabezado de cada folio del libro de salarios.</small>
+            </div>
+            <div class="campo">
+                <label for="igss-correo">Correo para las respuestas del IGSS</label>
+                <input id="igss-correo" type="email" maxlength="100" placeholder="@(datosPatrono.CorreoCompania ?? "correo@empresa.com")" @bind="datosPatrono.IgssCorreo" />
+                <small class="texto-ayuda">Vacío: el correo de la compañía.</small>
+            </div>
+            <div class="campo">
+                <label for="igss-actividad">Actividad económica (CIIU)</label>
+                <select id="igss-actividad" @bind="datosPatrono.IgssActividad">
+                    <option value="">Seleccione…</option>
+                    @foreach (var a in catalogos.Actividades) { <option value="@a.Codigo">@a.Texto</option> }
+                </select>
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="Guardar datos del patrono" Etiqueta="Guardar" Variante="primario" OnClick="GuardarPatronoAsync" />
+            </div>
+        </div>
+    </section>
+
+    <section class="tarjeta" aria-labelledby="titulo-centros">
+        <h2 id="titulo-centros">Centros de trabajo</h2>
+        <p class="texto-ayuda">Cada sucursal es un centro de trabajo del IGSS. Las tasas por defecto son las de la ciudad de Guatemala; cámbielas si el centro está en un departamento con otras. La cuota laboral en blanco usa la del tipo de movimiento IGSS_LABORAL (4.83 %). Los cambios se aplican a las nóminas que se calculen desde ahora.</p>
+        <div class="tabla-desplazable" tabindex="0">
+            <table class="tabla-datos">
+                <thead>
+                    <tr><th class="col-codigo">Sucursal</th><th>Nombre</th><th>Centro de trabajo</th><th class="num">IGSS patronal %</th><th class="num">IGSS laboral %</th><th class="num">IRTRA %</th><th class="num">INTECAP %</th><th class="col-acciones">Acciones</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in centros)
+                    {
+                        @if (centroEdicion?.SucId == c.SucId)
+                        {
+                            <tr class="fila-seleccionada">
+                                <td class="col-codigo">@c.Codigo</td>
+                                <td>@c.Descripcion</td>
+                                <td><input aria-label="Número de centro de trabajo" maxlength="10" inputmode="numeric" @bind="centroEdicion.CentroTrabajo" /></td>
+                                <td class="num"><input aria-label="Tasa IGSS patronal" type="number" step="0.01" min="0" max="100" @bind="centroEdicion.TasaIgssPatronal" /></td>
+                                <td class="num"><input aria-label="Tasa IGSS laboral" type="number" step="0.01" min="0" max="100" placeholder="4.83" @bind="centroEdicion.TasaIgssLaboral" /></td>
+                                <td class="num"><input aria-label="Tasa IRTRA" type="number" step="0.01" min="0" max="100" @bind="centroEdicion.TasaIrtra" /></td>
+                                <td class="num"><input aria-label="Tasa INTECAP" type="number" step="0.01" min="0" max="100" @bind="centroEdicion.TasaIntecap" /></td>
+                                <td class="col-acciones">
+                                    <div class="acciones-fila">
+                                        <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="GuardarCentroAsync" />
+                                        <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => centroEdicion = null" />
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            <tr>
+                                <td class="col-codigo">@c.Codigo</td>
+                                <td>@c.Descripcion@(c.Estado == "A" ? "" : " (inactiva)")</td>
+                                <td>@(c.CentroTrabajo ?? "—")</td>
+                                <td class="num">@c.TasaIgssPatronal.ToString("0.###")</td>
+                                <td class="num">@(c.TasaIgssLaboral?.ToString("0.###") ?? "del tipo")</td>
+                                <td class="num">@c.TasaIrtra.ToString("0.###")</td>
+                                <td class="num">@c.TasaIntecap.ToString("0.###")</td>
+                                <td class="col-acciones"><div class="acciones-fila"><BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => EditarCentro(c)" /></div></td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (centroEdicion is not null)
+        {
+            <div class="oc-recepcion">
+                <h3>Datos del centro @centroEdicion.Descripcion para el IGSS</h3>
+                <p class="texto-ayuda">Dirección y teléfono son los de la sucursal (General › Sucursales).</p>
+                <div class="fel-formulario">
+                    <div class="campo"><label for="cen-zona">Zona</label><input id="cen-zona" type="number" min="0" max="99" @bind="centroEdicion.Zona" /></div>
+                    <div class="campo"><label for="cen-fax">Fax</label><input id="cen-fax" maxlength="60" @bind="centroEdicion.Fax" /></div>
+                    <div class="campo"><label for="cen-contacto">Contacto</label><input id="cen-contacto" maxlength="100" @bind="centroEdicion.Contacto" /></div>
+                    <div class="campo"><label for="cen-email">Correo</label><input id="cen-email" type="email" maxlength="60" @bind="centroEdicion.Email" /></div>
+                    <div class="campo">
+                        <label for="cen-depto">Departamento</label>
+                        <select id="cen-depto" @bind="centroEdicion.Departamento" @bind:after="() => centroEdicion.Municipio = null">
+                            <option value="">Seleccione…</option>
+                            @foreach (var d in catalogos.Departamentos) { <option value="@d.Codigo">@d.Texto</option> }
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label for="cen-muni">Municipio</label>
+                        <select id="cen-muni" @bind="centroEdicion.Municipio">
+                            <option value="">Seleccione…</option>
+                            @foreach (var m in catalogos.Municipios.Where(m => m.Departamento == centroEdicion.Departamento)) { <option value="@m.Municipio">@m.Municipio · @m.Nombre</option> }
+                        </select>
+                    </div>
+                    <div class="campo campo-ancho">
+                        <label for="cen-actividad">Actividad económica</label>
+                        <select id="cen-actividad" @bind="centroEdicion.Actividad">
+                            <option value="">La del patrono</option>
+                            @foreach (var a in catalogos.Actividades) { <option value="@a.Codigo">@a.Texto</option> }
+                        </select>
+                    </div>
+                </div>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Guardar el centro de trabajo" Etiqueta="Guardar" Variante="primario" OnClick="GuardarCentroAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => centroEdicion = null" />
+                </div>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    [SupplyParameterFromQuery(Name = "pestana")] public string? PestanaInicial { get; set; }
+
+    private static readonly IReadOnlyList<PestanaItem> pestanas =
+        [new("planilla", "Planilla del mes"), new("archivo", "Archivo para el IGSS"), new("patrono", "Patrono y centros de trabajo"),
+         new("tipos", "Tipos de planilla"), new("ausencias", "Suspensiones y licencias")];
+
+    private IgssCatalogos catalogos = new();
+    private IgssArchivoDatos? archivo;
+    private string? notaCargo;
+    private bool complementaria;
+    private bool pruebas;
+    private string vistaPrevia = "";
+    private string nombreArchivo = "";
+    private IReadOnlyList<IgssTipoPlanilla> tipos = Array.Empty<IgssTipoPlanilla>();
+    private IgssTipoPlanilla? tipoEdicion;
+    private IReadOnlyList<EmpleadoResumen> empleados = Array.Empty<EmpleadoResumen>();
+    private int idEmpleadoAusencia;
+    private IReadOnlyList<IgssAusencia> ausencias = Array.Empty<IgssAusencia>();
+    private IgssAusencia nuevaAusencia = new() { FechaInicio = DateTime.Today, FechaFin = DateTime.Today };
+
+    private string UrlArchivo => $"reportes/rrhh/planilla-igss.txt?cia={ciaId}&anio={anio}&mes={mes}&pruebas={pruebas.ToString().ToLowerInvariant()}"
+        + $"&complementaria={complementaria.ToString().ToLowerInvariant()}" + (string.IsNullOrWhiteSpace(notaCargo) ? "" : $"&nota={Uri.EscapeDataString(notaCargo.Trim())}");
+
+    private IReadOnlyList<Compania> companias = Array.Empty<Compania>();
+    private PlanillaIgss? planilla;
+    private IReadOnlyList<SucursalIgss> centros = Array.Empty<SucursalIgss>();
+    private SucursalIgss? centroEdicion;
+    private CompaniaRrhh datosPatrono = new();
+    private string pestanaActiva = "planilla";
+    private int ciaId;
+    // Por defecto el mes anterior: la planilla se presenta y paga el mes siguiente.
+    private int anio = DateTime.Today.AddMonths(-1).Year;
+    private int mes = DateTime.Today.AddMonths(-1).Month;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private List<PlanillaIgssEmpleado> SinAfiliacion =>
+        planilla?.Empleados.Where(e => string.IsNullOrWhiteSpace(e.NumeroAfiliacionIGSS)).ToList() ?? new();
+
+    private static string NombreMes(int m) =>
+        System.Globalization.CultureInfo.GetCultureInfo("es-GT").DateTimeFormat.GetMonthName(m) is var n && n.Length > 0
+            ? char.ToUpperInvariant(n[0]) + n[1..] : m.ToString();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (PestanaInicial is "patrono" or "archivo" or "tipos" or "ausencias") pestanaActiva = PestanaInicial;
+        try
+        {
+            catalogos = await IgssRepository.ConsultarCatalogosAsync();
+            empleados = await RrhhRepository.ConsultarEmpleadosAsync(null, "A");
+            companias = await GeneralRepository.ConsultarCompaniasAsync(soloActivas: true);
+            ciaId = companias.FirstOrDefault()?.CiaId ?? 0;
+            await CambiarCompaniaAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private async Task CambiarCompaniaAsync()
+    {
+        if (ciaId <= 0) return;
+        centroEdicion = null;
+        try
+        {
+            datosPatrono = await RrhhRepository.ConsultarCompaniaRrhhAsync(ciaId) ?? new CompaniaRrhh { CiaId = ciaId };
+            centros = await RrhhRepository.ConsultarSucursalesIgssAsync(ciaId);
+            tipos = await IgssRepository.ConsultarTiposPlanillaAsync(ciaId);
+            tipoEdicion = null;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        await ConsultarAsync();
+    }
+
+    private async Task CambiarPestanaAsync()
+    {
+        mensaje = null;
+        if (pestanaActiva == "archivo") await ConsultarArchivoAsync();
+    }
+
+    private async Task ConsultarArchivoAsync()
+    {
+        if (ciaId <= 0 || anio is < 2000 or > 2100) return;
+        try
+        {
+            archivo = await IgssRepository.ConsultarArchivoAsync(ciaId, anio, mes);
+            Previsualizar();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void Previsualizar()
+    {
+        if (archivo is null || archivo.TieneErrores) { vistaPrevia = ""; nombreArchivo = ""; return; }
+        var ahora = DateTime.Now;
+        vistaPrevia = ArchivoPlanillaIgss.Generar(archivo, new ArchivoPlanillaIgss.Opciones(ahora, pruebas, complementaria, notaCargo));
+        nombreArchivo = ArchivoPlanillaIgss.NombreArchivo(archivo, ahora);
+    }
+
+    private void NuevoTipo()
+    {
+        mensaje = null;
+        tipoEdicion = new IgssTipoPlanilla
+        {
+            CiaId = ciaId,
+            Codigo = tipos.Count == 0 ? 1 : tipos.Max(t => t.Codigo) + 1,
+            Departamento = centros.FirstOrDefault(c => c.Departamento is not null)?.Departamento ?? "01",
+            Actividad = datosPatrono.IgssActividad ?? ""
+        };
+    }
+
+    private void EditarTipo(IgssTipoPlanilla t)
+    {
+        mensaje = null;
+        tipoEdicion = new IgssTipoPlanilla
+        {
+            IdTipoPlanilla = t.IdTipoPlanilla, CiaId = t.CiaId, Codigo = t.Codigo, Nombre = t.Nombre, TipoAfiliado = t.TipoAfiliado, Periodo = t.Periodo,
+            Departamento = t.Departamento, Actividad = t.Actividad, Clase = t.Clase, TiempoContrato = t.TiempoContrato, Estado = t.Estado
+        };
+    }
+
+    private async Task GuardarTipoAsync()
+    {
+        if (tipoEdicion is null) return;
+        if (string.IsNullOrWhiteSpace(tipoEdicion.Nombre) || string.IsNullOrEmpty(tipoEdicion.Actividad))
+        {
+            mensaje = "Indique el nombre y la actividad económica del tipo de planilla.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            tipoEdicion.CiaId = ciaId;
+            await IgssRepository.GuardarTipoPlanillaAsync(tipoEdicion, await ObtenerUsuIdActualAsync());
+            tipos = await IgssRepository.ConsultarTiposPlanillaAsync(ciaId);
+            tipoEdicion = null;
+            mensaje = "Tipo de planilla guardado.";
+            esMensajeError = false;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task CargarAusenciasAsync()
+    {
+        ausencias = Array.Empty<IgssAusencia>();
+        if (idEmpleadoAusencia <= 0) return;
+        try { (_, ausencias) = await IgssRepository.ConsultarEmpleadoAsync(idEmpleadoAusencia); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task GuardarAusenciaAsync()
+    {
+        if (nuevaAusencia.FechaFin < nuevaAusencia.FechaInicio)
+        {
+            mensaje = "La fecha final no puede ser antes de la inicial.";
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            nuevaAusencia.IdEmpleado = idEmpleadoAusencia;
+            await IgssRepository.GuardarAusenciaAsync(nuevaAusencia, await ObtenerUsuIdActualAsync());
+            nuevaAusencia = new IgssAusencia { Tipo = nuevaAusencia.Tipo, FechaInicio = DateTime.Today, FechaFin = DateTime.Today };
+            await CargarAusenciasAsync();
+            mensaje = "Registrado.";
+            esMensajeError = false;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task EliminarAusenciaAsync(IgssAusencia a)
+    {
+        try
+        {
+            await IgssRepository.EliminarAusenciaAsync(a.IdAusencia);
+            await CargarAusenciasAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task ConsultarAsync()
+    {
+        if (ciaId <= 0 || anio is < 2000 or > 2100) return;
+        mensaje = null;
+        try
+        {
+            planilla = await RrhhRepository.ConsultarPlanillaIgssAsync(ciaId, anio, mes);
+            if (pestanaActiva == "archivo") await ConsultarArchivoAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task GuardarPatronoAsync()
+    {
+        try
+        {
+            datosPatrono.CiaId = ciaId;
+            datosPatrono.IgssNumeroPatronal = datosPatrono.IgssNumeroPatronal?.Trim();
+            await RrhhRepository.GuardarCompaniaRrhhAsync(datosPatrono, await ObtenerUsuIdActualAsync());
+            await ConsultarAsync();
+            mensaje = "Datos del patrono guardados.";
+            esMensajeError = false;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void EditarCentro(SucursalIgss c)
+    {
+        mensaje = null;
+        centroEdicion = new SucursalIgss
+        {
+            SucId = c.SucId, CiaId = c.CiaId, Codigo = c.Codigo, Descripcion = c.Descripcion, CentroTrabajo = c.CentroTrabajo,
+            TasaIgssPatronal = c.TasaIgssPatronal, TasaIgssLaboral = c.TasaIgssLaboral, TasaIrtra = c.TasaIrtra, TasaIntecap = c.TasaIntecap, Estado = c.Estado,
+            Direccion = c.Direccion, Telefono = c.Telefono, Zona = c.Zona, Fax = c.Fax, Contacto = c.Contacto, Email = c.Email,
+            Departamento = c.Departamento, Municipio = c.Municipio, Actividad = c.Actividad
+        };
+    }
+
+    private async Task GuardarCentroAsync()
+    {
+        if (centroEdicion is null) return;
+        try
+        {
+            centroEdicion.CentroTrabajo = string.IsNullOrWhiteSpace(centroEdicion.CentroTrabajo) ? null : centroEdicion.CentroTrabajo.Trim();
+            await RrhhRepository.GuardarSucursalIgssAsync(centroEdicion, await ObtenerUsuIdActualAsync());
+            centroEdicion = null;
+            centros = await RrhhRepository.ConsultarSucursalesIgssAsync(ciaId);
+            mensaje = "Centro de trabajo guardado. Las nóminas que se calculen desde ahora usan estas tasas.";
+            esMensajeError = false;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

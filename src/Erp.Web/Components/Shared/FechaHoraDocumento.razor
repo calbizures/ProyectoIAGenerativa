@@ -1,0 +1,17 @@
+@* Fecha del documento con la hora en que se grabó. Si se grabó otro día
+   (fecha atrasada o adelantada), se muestra también ese día. *@
+@if (Grabado is DateTime g)
+{
+    <span title="Grabado el @g.ToString("dd/MM/yyyy") a las @g.ToString("HH:mm:ss")">
+        @Fecha.ToString("dd/MM/yyyy") <span class="texto-tenue">@(g.Date == Fecha.Date ? g.ToString("HH:mm") : g.ToString("dd/MM HH:mm"))</span>
+    </span>
+}
+else
+{
+    @Fecha.ToString("dd/MM/yyyy")
+}
+
+@code {
+    [Parameter] public DateTime Fecha { get; set; }
+    [Parameter] public DateTime? Grabado { get; set; }
+}

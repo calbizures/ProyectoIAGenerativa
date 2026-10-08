@@ -1,0 +1,54 @@
+@* Planilla del IGSS: totales por centro de trabajo. *@
+@using Erp.Data.Rrhh
+
+<div class="tabla-desplazable" tabindex="0">
+    <table class="tabla-datos">
+        <thead>
+            <tr>
+                <th>Centro de trabajo</th><th class="num col-estado">Trabajadores</th><th class="num col-monto">Salario afecto</th>
+                <th class="num col-monto">Cuota laboral</th><th class="num col-monto">IGSS patronal</th><th class="num col-monto">IRTRA</th>
+                <th class="num col-monto">INTECAP</th><th class="num col-monto">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Centros)
+            {
+                <tr>
+                    <td>
+                        @(c.CentroTrabajo is null ? "Sin número" : $"No. {c.CentroTrabajo}") · @(c.Descripcion ?? "Sin sucursal")
+                        @if (c.TasaIgssPatronal is decimal tasa)
+                        {
+                            <br /><span class="texto-tenue">Tasas: IGSS @tasa.ToString("0.###") %, IRTRA @c.TasaIrtra?.ToString("0.###") %, INTECAP @c.TasaIntecap?.ToString("0.###") %</span>
+                        }
+                    </td>
+                    <td class="num col-estado">@c.Empleados</td>
+                    <td class="num col-monto">@c.SalarioAfecto.ToString("N2")</td>
+                    <td class="num col-monto">@c.CuotaLaboral.ToString("N2")</td>
+                    <td class="num col-monto">@c.CuotaPatronal.ToString("N2")</td>
+                    <td class="num col-monto">@c.Irtra.ToString("N2")</td>
+                    <td class="num col-monto">@c.Intecap.ToString("N2")</td>
+                    <td class="num col-monto"><strong>@c.TotalPagar.ToString("N2")</strong></td>
+                </tr>
+            }
+        </tbody>
+        @if (Centros.Count > 1)
+        {
+            <tfoot>
+                <tr>
+                    <td>Total</td>
+                    <td class="num col-estado">@Centros.Sum(c => c.Empleados)</td>
+                    <td class="num col-monto">@Centros.Sum(c => c.SalarioAfecto).ToString("N2")</td>
+                    <td class="num col-monto">@Centros.Sum(c => c.CuotaLaboral).ToString("N2")</td>
+                    <td class="num col-monto">@Centros.Sum(c => c.CuotaPatronal).ToString("N2")</td>
+                    <td class="num col-monto">@Centros.Sum(c => c.Irtra).ToString("N2")</td>
+                    <td class="num col-monto">@Centros.Sum(c => c.Intecap).ToString("N2")</td>
+                    <td class="num col-monto">@Centros.Sum(c => c.TotalPagar).ToString("N2")</td>
+                </tr>
+            </tfoot>
+        }
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PlanillaIgssCentro> Centros { get; set; } = Array.Empty<PlanillaIgssCentro>();
+}

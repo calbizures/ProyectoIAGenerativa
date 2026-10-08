@@ -1,0 +1,111 @@
+@* Balance General: activo = pasivo + capital, con columna comparativa opcional. *@
+@using Erp.Data.Contabilidad
+
+@{
+    var t = Balance.Totales;
+}
+<div class="tabla-desplazable" tabindex="0" aria-label="Balance General">
+    <table class="tabla-datos tabla-contable tabla-estado">
+        <thead>
+            <tr>
+                <th class="col-codigo">Cuenta</th><th>Nombre</th>
+                <th class="num col-monto">@Etiqueta</th>
+                @if (Comparar)
+                {
+                    <th class="num col-monto">@EtiquetaComparativa</th><th class="num col-monto">Variación</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @Seccion("A", "ACTIVO")
+            <tr class="fila-total"><td colspan="2">TOTAL ACTIVO</td>@Montos(t.Activo, t.ActivoComparativo)</tr>
+            @Seccion("P", "PASIVO")
+            <tr class="fila-subtotal"><td colspan="2">Total pasivo</td>@Montos(t.Pasivo, t.PasivoComparativo)</tr>
+            @Seccion("K", "CAPITAL")
+            @if (t.ResultadosAnteriores != 0 || t.ResultadosAnterioresComparativo != 0)
+            {
+                <tr><td></td><td class="sangria-2">Resultados de ejercicios anteriores (sin partida de cierre)</td>@Montos(t.ResultadosAnteriores, t.ResultadosAnterioresComparativo)</tr>
+            }
+            <tr><td></td><td class="sangria-2">@(t.ResultadoEjercicio >= 0 ? "Utilidad" : "Pérdida") del ejercicio</td>@Montos(t.ResultadoEjercicio, t.ResultadoEjercicioComparativo)</tr>
+            <tr class="fila-subtotal"><td colspan="2">Total capital</td>@Montos(t.Capital + t.ResultadoEjercicio + t.ResultadosAnteriores, t.CapitalComparativo + t.ResultadoEjercicioComparativo + t.ResultadosAnterioresComparativo)</tr>
+            <tr class="fila-total"><td colspan="2">TOTAL PASIVO Y CAPITAL</td>@Montos(t.PasivoCapital, t.PasivoCapitalComparativo)</tr>
+        </tbody>
+    </table>
+</div>
+@if (t.Diferencia != 0)
+{
+    <p class="mensaje-error" role="alert">El balance no cuadra por Q @t.Diferencia.ToString("N2"): revise Contabilidad &gt; Revisión de integridad.</p>
+}
+
+@code {
+    [Parameter, EditorRequired] public BalanceGeneral Balance { get; set; } = new();
+    [Parameter] public bool Comparar { get; set; }
+    [Parameter] public string Etiqueta { get; set; } = "Saldo";
+    [Parameter] public string EtiquetaComparativa { get; set; } = "Comparativo";
+    // Por nodos: las cuentas de agrupación se expanden y contraen.
+    [Parameter] public bool Nodos { get; set; }
+    [Parameter] public int ExpandirHasta { get; set; } = 3;
+    [Parameter] public int Version { get; set; }
+
+    private readonly ArbolEstado arbol = new();
+    private (BalanceGeneral?, int, int) cargado;
+
+    protected override void OnParametersSet()
+    {
+        if (!Nodos || cargado == (Balance, ExpandirHasta, Version)) return;
+        cargado = (Balance, ExpandirHasta, Version);
+        arbol.Cargar(Balance.Filas, ExpandirHasta);
+    }
+
+    private string ClaseFila(EstadoFila f) =>
+        (Nodos ? arbol.TieneHijos(f) : f.Nivel < Balance.Filas.Max(x => x.Nivel)) ? $"fila-nivel fila-nivel-{f.Nivel}" : "";
+
+    private RenderFragment Nombre(EstadoFila f) => __builder =>
+    {
+        if (Nodos && arbol.TieneHijos(f))
+        {
+            <button type="button" class="arbol-toggle" aria-expanded="@(arbol.Expandido(f) ? "true" : "false")"
+                    aria-label="@($"{(arbol.Expandido(f) ? "Contraer" : "Expandir")} {f.Cuenta}")" @onclick="() => arbol.Alternar(f)">@(arbol.Expandido(f) ? "▾" : "▸")</button>
+        }
+        else if (Nodos)
+        {
+            <span class="arbol-toggle-vacio"></span>
+        }
+        if (Nodos)
+        {
+            <a class="estado-cuenta" href="@($"contabilidad/libros?vista=mayor&cta={f.CtaId}")" title="Ver los movimientos en el libro mayor">@f.Cuenta</a>
+        }
+        else
+        {
+            @f.Cuenta
+        }
+    };
+
+    private RenderFragment Seccion(string tipo, string titulo) => __builder =>
+    {
+        var filas = Balance.Filas.Where(f => f.Tipo == tipo).ToList();
+        if (filas.Count == 0)
+        {
+            <tr class="fila-nivel fila-nivel-1"><td></td><td>@titulo</td>@Montos(0, 0)</tr>
+        }
+        foreach (var f in filas)
+        {
+            if (Nodos && !arbol.Visible(f)) continue;
+            <tr class="@ClaseFila(f)">
+                <td class="col-codigo">@f.Codigo</td>
+                <td class="sangria-@f.Nivel">@Nombre(f)</td>
+                @Montos(f.Saldo, f.SaldoComparativo)
+            </tr>
+        }
+    };
+
+    private RenderFragment Montos(decimal actual, decimal comparativo) => __builder =>
+    {
+        <td class="num col-monto">@actual.ToString("N2")</td>
+        if (Comparar)
+        {
+            <td class="num col-monto">@comparativo.ToString("N2")</td>
+            <td class="num col-monto">@((actual - comparativo).ToString("N2"))</td>
+        }
+    };
+}

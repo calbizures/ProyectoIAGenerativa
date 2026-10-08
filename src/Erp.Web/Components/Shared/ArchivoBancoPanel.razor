@@ -1,0 +1,111 @@
+@using System.Text
+@using Erp.Data.Pagos
+@using Erp.Web.Reportes
+@inject IPagosRepository PagosRepository
+
+@* Archivo de transferencias para el banco: elegir el formato, revisar y descargar.
+   Tipo = "lote" (proveedores) o "nomina" (pago de una nómina). *@
+<div class="archivo-banco">
+    @if (formatos.Count == 0)
+    {
+        <p class="mensaje-error" role="alert">No hay formatos de archivo activos para @(Tipo == "nomina" ? "planilla" : "proveedores"). Créelos en Caja y bancos › Formatos de archivo.</p>
+    }
+    else
+    {
+        <div class="archivo-banco-fila">
+            <div class="campo">
+                <label for="@($"archivo-formato-{Tipo}-{Id}")">Formato del banco</label>
+                <select id="@($"archivo-formato-{Tipo}-{Id}")" value="@bfaId" @onchange="CambiarFormato">
+                    @foreach (var f in formatos)
+                    {
+                        <option value="@f.BfaId">@f.Nombre@(f.Banco is null ? "" : $" ({f.Banco})")</option>
+                    }
+                </select>
+            </div>
+            @if (resultado?.Valido == true)
+            {
+                <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@Enlace" download="@resultado.NombreArchivo">
+                    <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Descargar @resultado.NombreArchivo</span>
+                </a>
+            }
+        </div>
+        @if (resultado is not null)
+        {
+            @foreach (var e in resultado.Errores)
+            {
+                <p class="mensaje-error" role="alert">@e</p>
+            }
+            @foreach (var a in resultado.Avisos)
+            {
+                <p class="texto-ayuda">⚠ @a</p>
+            }
+            @if (resultado.Valido)
+            {
+                <details class="archivo-banco-vista">
+                    <summary>Vista previa (@lineas línea@(lineas == 1 ? "" : "s"), @(resultado.Contenido!.Length.ToString("N0")) bytes)</summary>
+                    <pre tabindex="0" aria-label="Vista previa del archivo">@vista</pre>
+                </details>
+            }
+        }
+    }
+    @if (error is not null)
+    {
+        <p class="mensaje-error" role="alert">@error</p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Tipo { get; set; } = "lote";
+    [Parameter, EditorRequired] public int Id { get; set; }
+    // Banco de la cuenta que paga: se propone el formato de ese banco.
+    [Parameter] public int? GefIdOrigen { get; set; }
+
+    private IReadOnlyList<FormatoArchivo> formatos = Array.Empty<FormatoArchivo>();
+    private ArchivoBancoDatos? datos;
+    private int bfaId;
+    private ArchivoBanco.Resultado? resultado;
+    private string vista = "";
+    private int lineas;
+    private string? error;
+    private (string, int) cargado;
+
+    private string Enlace => $"bancos/archivo/{Tipo}/{Id}?formato={bfaId}";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (cargado == (Tipo, Id)) return;
+        cargado = (Tipo, Id);
+        try
+        {
+            var uso = Tipo == "nomina" ? "N" : "P";
+            formatos = (await PagosRepository.ConsultarFormatosAsync(null, soloActivos: true)).Where(f => f.Uso == uso || f.Uso == "A").ToList();
+            datos = Tipo == "nomina" ? await PagosRepository.ConsultarArchivoNominaAsync(Id) : await PagosRepository.ConsultarArchivoLoteAsync(Id);
+            var gef = GefIdOrigen ?? datos.Encabezado?.GefIdOrigen;
+            bfaId = (formatos.FirstOrDefault(f => f.GefId == gef) ?? formatos.FirstOrDefault())?.BfaId ?? 0;
+            Generar();
+        }
+        catch (Exception ex) { error = MensajesError.Traducir(ex); }
+    }
+
+    private void CambiarFormato(ChangeEventArgs e)
+    {
+        bfaId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        Generar();
+    }
+
+    private void Generar()
+    {
+        var formato = formatos.FirstOrDefault(f => f.BfaId == bfaId);
+        if (formato is null || datos is null) { resultado = null; return; }
+        resultado = ArchivoBanco.Generar(formato, datos);
+        if (resultado.Contenido is { } bytes)
+        {
+            var texto = (formato.Codificacion == "UTF-8" ? Encoding.UTF8 : Encoding.Latin1).GetString(bytes);
+            var filas = texto.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            lineas = filas.Length;
+            // La vista muestra los espacios de relleno como "·" para ver el ancho fijo.
+            vista = string.Join("\n", filas.Take(12).Select(f => f.TrimEnd('\r').Replace(' ', '·').Replace("\t", "→")))
+                + (filas.Length > 12 ? $"\n… {filas.Length - 12} línea(s) más" : "");
+        }
+    }
+}

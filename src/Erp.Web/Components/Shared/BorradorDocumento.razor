@@ -1,0 +1,183 @@
+@* Borrador de un documento en captura (factura, compra, cobro, póliza...).
+   Lo que devuelve Capturar se guarda cifrado en el navegador (ProtectedLocalStorage,
+   por usuario, sucursal y pantalla) cada vez que la pantalla cambia; si devuelve
+   null (nada capturado, o el documento ya se grabó) el borrador se borra.
+   Al volver a la pantalla se ofrece Recuperar o Descartar. Mientras esa decisión
+   está pendiente no se toca el borrador anterior; si el usuario empieza otro
+   documento sin decidir, el nuevo lo reemplaza (el aviso lo dice).
+   También informa a cambios.js que hay un documento sin grabar, para el aviso al
+   salir de la pantalla.
+   Uso:
+     <BorradorDocumento TDatos="BorradorFactura" Clave="facturas" Nombre="una factura"
+                        Capturar="CapturarBorrador" Describir="DescribirBorrador"
+                        Restaurar="RestaurarBorradorAsync" /> *@
+@typeparam TDatos
+@implements IAsyncDisposable
+@using System.Text.Json
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject ProtectedLocalStorage Almacen
+@inject AuthenticationStateProvider Autenticacion
+@inject IJSRuntime JS
+@inject ILogger<BorradorDocumento<TDatos>> Bitacora
+
+@if (pendiente is not null)
+{
+    <div class="borrador-aviso" role="status">
+        <span class="borrador-aviso-texto">
+            <Icono Nombre="file-text" Tamano="18" />
+            <span>
+                <strong>Tiene @Nombre sin terminar:</strong> @pendiente.Descripcion.
+                Se guardó el @pendiente.Fecha.ToString("dd/MM/yyyy") a las @pendiente.Fecha.ToString("HH:mm").
+                Si empieza otro documento sin recuperarlo, este borrador se reemplaza.
+            </span>
+        </span>
+        <span class="borrador-aviso-acciones">
+            <BotonIcono Icono="rotate-ccw" Tooltip="Recuperar el documento sin terminar" Etiqueta="Recuperar" Variante="primario" OnClick="RecuperarAsync" />
+            <BotonIcono Icono="x" Tooltip="Descartar el borrador" Etiqueta="Descartar"
+                        Confirmacion="¿Descartar el borrador? No se podrá recuperar." OnClick="DescartarAsync" />
+        </span>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Clave { get; set; } = "";
+    // Con artículo: "una factura", "un cobro". Se usa en el aviso.
+    [Parameter, EditorRequired] public string Nombre { get; set; } = "";
+    [Parameter, EditorRequired] public Func<TDatos?> Capturar { get; set; } = () => default;
+    // Resumen corto para los avisos: "Juan Pérez, 3 líneas, Q 1,250.00".
+    [Parameter, EditorRequired] public Func<TDatos, string> Describir { get; set; } = _ => "";
+    // EventCallback: la pantalla se vuelve a dibujar con lo recuperado.
+    [Parameter, EditorRequired] public EventCallback<TDatos> Restaurar { get; set; }
+
+    private sealed record Sobre(DateTime Fecha, string Descripcion, string Datos);
+
+    private static readonly JsonSerializerOptions Opciones = new() { IncludeFields = false };
+
+    private readonly string id = Guid.NewGuid().ToString("N");
+    private string? llave;
+    private Sobre? pendiente;
+    // Lo último que se escribió (o se encontró) en el navegador: null si no hay borrador.
+    private string? guardado;
+    private string? textoInformado;
+    private bool listo;
+    private bool revisando;
+    private bool revisarOtraVez;
+    private DotNetObjectReference<BorradorDocumento<TDatos>>? referencia;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await IniciarAsync();
+            return;
+        }
+        await RevisarAsync();
+    }
+
+    private async Task IniciarAsync()
+    {
+        var usuario = (await Autenticacion.GetAuthenticationStateAsync()).User;
+        llave = $"erp-borrador:{usuario.ObtenerUsuId()}:{usuario.ObtenerSucId()}:{Clave}";
+        referencia = DotNetObjectReference.Create(this);
+        try
+        {
+            var leido = await Almacen.GetAsync<Sobre>(llave);
+            if (leido.Success && leido.Value is { } sobre && Deserializar(sobre.Datos) is not null)
+            {
+                pendiente = sobre;
+                guardado = sobre.Datos;
+            }
+        }
+        catch (Exception ex) when (ex is not (JSDisconnectedException or TaskCanceledException or OperationCanceledException))
+        {
+            // Borrador ilegible (otra versión de la aplicación o llaves de cifrado nuevas).
+            Bitacora.LogInformation(ex, "Se descarta un borrador ilegible de {Clave}", Clave);
+            await BorrarAsync();
+        }
+        catch (Exception) { return; }
+        listo = true;
+        await RevisarAsync();
+        if (pendiente is not null) StateHasChanged();
+    }
+
+    // Compara lo capturado con lo guardado y escribe solo si cambió.
+    private async Task RevisarAsync()
+    {
+        if (!listo || llave is null) return;
+        if (revisando) { revisarOtraVez = true; return; }
+        revisando = true;
+        try
+        {
+            do
+            {
+                revisarOtraVez = false;
+                var datos = Capturar();
+                var json = datos is null ? null : JsonSerializer.Serialize(datos, Opciones);
+                var texto = datos is null ? null : Describir(datos);
+                if (json is not null)
+                {
+                    if (pendiente is not null) { pendiente = null; StateHasChanged(); }
+                    if (json != guardado)
+                    {
+                        await Almacen.SetAsync(llave, new Sobre(DateTime.Now, texto ?? "", json));
+                        guardado = json;
+                    }
+                }
+                else if (pendiente is null && guardado is not null)
+                {
+                    await BorrarAsync();
+                }
+                if (texto != textoInformado)
+                {
+                    await JS.InvokeVoidAsync("erpCambios.documento", id, texto is null ? null : $"{Nombre} ({texto})", referencia);
+                    textoInformado = texto;
+                }
+            } while (revisarOtraVez);
+        }
+        catch (Exception ex) when (ex is JSDisconnectedException or TaskCanceledException or OperationCanceledException or InvalidOperationException) { }
+        catch (JSException ex) { Bitacora.LogWarning(ex, "No se pudo guardar el borrador de {Clave}", Clave); }
+        finally { revisando = false; }
+    }
+
+    // cambios.js lo llama antes de salir de la pantalla.
+    [JSInvokable]
+    public Task GuardarAhora() => RevisarAsync();
+
+    private async Task RecuperarAsync()
+    {
+        if (pendiente is null) return;
+        var datos = Deserializar(pendiente.Datos);
+        pendiente = null;
+        if (datos is not null) await Restaurar.InvokeAsync(datos);
+    }
+
+    private async Task DescartarAsync()
+    {
+        pendiente = null;
+        await BorrarAsync();
+    }
+
+    private async Task BorrarAsync()
+    {
+        guardado = null;
+        if (llave is null) return;
+        try { await Almacen.DeleteAsync(llave); }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or TaskCanceledException or InvalidOperationException) { }
+    }
+
+    private TDatos? Deserializar(string json)
+    {
+        try { return JsonSerializer.Deserialize<TDatos>(json, Opciones); }
+        catch (JsonException) { return default; }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // Último guardado (la pantalla se cierra) y se quita del aviso al salir.
+        await RevisarAsync();
+        try { await JS.InvokeVoidAsync("erpCambios.quitarDocumento", id); }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or TaskCanceledException or InvalidOperationException) { }
+        referencia?.Dispose();
+    }
+}

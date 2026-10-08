@@ -1,0 +1,11 @@
+@page "/cxc/estado-cuenta"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CXC_ADMIN")]
+
+<PageTitle>Estado de cuenta de clientes</PageTitle>
+
+<EstadoCuentaVista EsCliente="true" TerceroId="Id" />
+
+@code {
+    [SupplyParameterFromQuery] public int? Id { get; set; }
+}
