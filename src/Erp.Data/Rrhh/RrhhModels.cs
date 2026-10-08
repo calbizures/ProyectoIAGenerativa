@@ -79,6 +79,14 @@ public sealed class Empleado
 	public DateTime FechaIngreso { get; set; } = DateTime.Today;
 	public DateTime? FechaBaja { get; set; }
 	public string? Direccion { get; set; }
+	// Ubicación (script 73): municipio; departamento y país se derivan.
+	public int? ProvId { get; set; }
+	public int? EstId { get; set; }
+	public int? PaiId { get; set; }
+	public string? Municipio { get; set; }
+	public string? Departamento { get; set; }
+	public string? Pais { get; set; }
+	public string? DireccionCompleta { get; set; }
 	public int? IdTipoDocumentoIdentificacion { get; set; }
 	public string? NumeroDocumento { get; set; }
 	public string? NumeroAfiliacionIGSS { get; set; }

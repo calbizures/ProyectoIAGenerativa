@@ -1,0 +1,106 @@
+@* Ubicación en cascada País › Departamento › Municipio (en Guatemala:
+   departamento y municipio). Solo se enlaza el municipio (ProvId); el país y
+   el departamento se deducen de él al abrir el formulario. Muestra los
+   registros activos más el que ya tuviera guardado aunque esté inactivo. *@
+@using Erp.Data.General
+@inject IGeneralRepository GeneralRepository
+
+<div class="campo">
+    <label for="@($"{IdPrefijo}-pais")">País</label>
+    <select id="@($"{IdPrefijo}-pais")" value="@paiId" @onchange="CambiarPaisAsync" disabled="@Deshabilitado">
+        <option value="">Seleccione...</option>
+        @foreach (var p in catalogo.Paises.Where(p => p.Estado == "A" || p.PaiId == paiId))
+        {
+            <option value="@p.PaiId">@p.Nombre</option>
+        }
+    </select>
+</div>
+<div class="campo">
+    <label for="@($"{IdPrefijo}-depto")">Departamento</label>
+    <select id="@($"{IdPrefijo}-depto")" value="@estId" @onchange="CambiarDepartamentoAsync" disabled="@(Deshabilitado || paiId is null)">
+        <option value="">@(paiId is null ? "Elija el país" : DepartamentosDelPais.Any() ? "Seleccione..." : "Sin departamentos")</option>
+        @foreach (var d in DepartamentosDelPais)
+        {
+            <option value="@d.EstId">@d.Nombre</option>
+        }
+    </select>
+</div>
+<div class="campo">
+    <label for="@($"{IdPrefijo}-muni")">Municipio</label>
+    <select id="@($"{IdPrefijo}-muni")" value="@ProvId" @onchange="CambiarMunicipioAsync" disabled="@(Deshabilitado || estId is null)">
+        <option value="">@(estId is null ? "Elija el departamento" : "Seleccione...")</option>
+        @foreach (var m in MunicipiosDelDepartamento)
+        {
+            <option value="@m.ProvId">@m.Nombre</option>
+        }
+    </select>
+</div>
+
+@code {
+    [Parameter] public int? ProvId { get; set; }
+    [Parameter] public EventCallback<int?> ProvIdChanged { get; set; }
+    // Prefijo de los id de los controles, para que las etiquetas apunten bien.
+    [Parameter] public string IdPrefijo { get; set; } = "ubicacion";
+    [Parameter] public bool Deshabilitado { get; set; }
+    // País que se propone en un registro nuevo (código ISO de 2 letras).
+    [Parameter] public string PaisPorOmision { get; set; } = "GT";
+
+    private CatalogoUbicacion catalogo = new();
+    private int? paiId, estId, provCargado;
+    private bool cargado;
+
+    private IEnumerable<DepartamentoGeografico> DepartamentosDelPais =>
+        catalogo.Departamentos.Where(d => d.PaiId == paiId && (d.Estado == "A" || d.EstId == estId)).OrderBy(d => d.Nombre);
+
+    private IEnumerable<Municipio> MunicipiosDelDepartamento =>
+        catalogo.Municipios.Where(m => m.EstId == estId && (m.Estado == "A" || m.ProvId == ProvId)).OrderBy(m => m.Nombre);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!cargado)
+        {
+            catalogo = await GeneralRepository.ConsultarUbicacionAsync(false);
+            cargado = true;
+            provCargado = -1;
+        }
+        // Solo se recalcula la cascada cuando el municipio cambia desde afuera.
+        if (provCargado != ProvId)
+        {
+            provCargado = ProvId;
+            var muni = catalogo.BuscarMunicipio(ProvId);
+            if (muni is not null)
+            {
+                estId = muni.EstId;
+                paiId = catalogo.BuscarDepartamento(muni.EstId)?.PaiId;
+            }
+            else if (ProvId is null && estId is null)
+            {
+                paiId ??= catalogo.Paises.FirstOrDefault(p => p.CodigoAlfa2 == PaisPorOmision && p.Estado == "A")?.PaiId;
+            }
+        }
+    }
+
+    private static int? Leer(ChangeEventArgs e) => int.TryParse(e.Value?.ToString(), out var v) ? v : null;
+
+    private async Task CambiarPaisAsync(ChangeEventArgs e)
+    {
+        paiId = Leer(e);
+        estId = null;
+        await FijarMunicipioAsync(null);
+    }
+
+    private async Task CambiarDepartamentoAsync(ChangeEventArgs e)
+    {
+        estId = Leer(e);
+        await FijarMunicipioAsync(null);
+    }
+
+    private Task CambiarMunicipioAsync(ChangeEventArgs e) => FijarMunicipioAsync(Leer(e));
+
+    private async Task FijarMunicipioAsync(int? provId)
+    {
+        ProvId = provId;
+        provCargado = provId;
+        await ProvIdChanged.InvokeAsync(provId);
+    }
+}

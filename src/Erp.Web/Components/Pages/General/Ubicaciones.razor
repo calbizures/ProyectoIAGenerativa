@@ -1,0 +1,355 @@
+@page "/general/ubicacion"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:GENERAL_CONFIG_ADMIN")]
+@* Catálogo geográfico por nodos: País › Departamento › Municipio
+   (gen_pais › gen_estado › gen_provincia). Árbol a la izquierda y nodo
+   seleccionado a la derecha, con alta, edición e inactivación. *@
+@using Erp.Data.General
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IGeneralRepository GeneralRepository
+
+<PageTitle>Ubicación geográfica</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>Ubicación geográfica</h1>
+    <p>Países, departamentos y municipios que se eligen en cascada en la dirección de la compañía, los empleados y demás registros. En Guatemala se usa el catálogo del INE (22 departamentos y 340 municipios).</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+}
+
+<div class="maestro-detalle nomenclatura">
+    <section class="tarjeta maestro-detalle-maestro" aria-labelledby="titulo-ubicaciones">
+        <div class="maestro-detalle-encabezado">
+            <h2 id="titulo-ubicaciones">Países</h2>
+            <BotonIcono Icono="plus" Tooltip="Nuevo país" Etiqueta="Nuevo país" OnClick="IniciarNuevoPais" />
+        </div>
+        <div class="arbol-acciones">
+            <label class="filtro-campo"><span class="sr-only">Buscar</span>
+                <input type="search" placeholder="Buscar departamento o municipio" @bind="filtro" @bind:event="oninput" aria-label="Buscar departamento o municipio" />
+            </label>
+            <button type="button" class="boton-texto" @onclick="ContraerTodo">Contraer</button>
+            <span class="arbol-conteo">@catalogo.Paises.Count países · @catalogo.Departamentos.Count departamentos · @catalogo.Municipios.Count municipios</span>
+        </div>
+        <div class="arbol-lista" role="tree" aria-label="Ubicación geográfica">
+            @foreach (var n in NodosVisibles())
+            {
+                var esSel = seleccionado is not null && seleccionado.Clave == n.Clave;
+                <div class="arbol-nodo arbol-nivel-@n.Nivel @(esSel ? "seleccionado" : "") @(n.Estado != "A" ? "inactivo" : "")"
+                     role="treeitem" aria-selected="@(esSel ? "true" : "false")"
+                     aria-expanded="@(n.TieneHijos ? (Expandido(n) ? "true" : "false") : null)"
+                     style="padding-left: @((n.Nivel - 1) * 18 + 6)px">
+                    @if (n.TieneHijos)
+                    {
+                        <button type="button" class="arbol-toggle" aria-label="@(Expandido(n) ? "Contraer" : "Expandir") @n.Nombre" @onclick="() => Alternar(n)">@(Expandido(n) ? "▾" : "▸")</button>
+                    }
+                    else
+                    {
+                        <span class="arbol-toggle-vacio"></span>
+                    }
+                    <button type="button" class="arbol-etiqueta" @onclick="() => Seleccionar(n)">
+                        <span class="arbol-codigo">@n.Codigo</span>
+                        <span class="arbol-nombre">@n.Nombre</span>
+                    </button>
+                </div>
+            }
+        </div>
+    </section>
+
+    <section class="tarjeta maestro-detalle-detalle" aria-labelledby="titulo-nodo">
+        @if (modo == Modo.Editar)
+        {
+            <h2 id="titulo-nodo">@TituloFormulario()</h2>
+            <div class="panel-formulario panel-ancho nodo-formulario">
+                @if (formTipo == 'P')
+                {
+                    <div class="campo"><label for="ubi-nombre">Nombre</label><input id="ubi-nombre" @bind="formNombre" maxlength="128" /></div>
+                    <div class="campo"><label for="ubi-alfa2">Código ISO de 2 letras</label><input id="ubi-alfa2" @bind="formCodigo" maxlength="2" placeholder="GT" /></div>
+                    <div class="campo"><label for="ubi-alfa3">Código ISO de 3 letras</label><input id="ubi-alfa3" @bind="formAlfa3" maxlength="3" placeholder="GTM" /></div>
+                    <div class="campo"><label for="ubi-numero">Código numérico</label><input id="ubi-numero" @bind="formNumero" maxlength="3" placeholder="320" /></div>
+                    <div class="campo"><label for="ubi-nacionalidad">Nacionalidad</label><input id="ubi-nacionalidad" @bind="formNacionalidad" maxlength="64" placeholder="Guatemalteca" /></div>
+                }
+                else
+                {
+                    <div class="campo"><label for="ubi-codigo">Código</label><input id="ubi-codigo" @bind="formCodigo" maxlength="2" placeholder="01" /></div>
+                    <div class="campo"><label for="ubi-nombre">Nombre</label><input id="ubi-nombre" @bind="formNombre" maxlength="128" /></div>
+                    <p class="texto-ayuda">@(formTipo == 'D' ? "En Guatemala, el código del INE del departamento (01 a 22)." : "En Guatemala, el código del INE del municipio dentro de su departamento (01, 02...).")</p>
+                }
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarAsync" />
+                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => modo = Modo.Ver" />
+                </div>
+            </div>
+        }
+        else if (seleccionado is null)
+        {
+            <h2 id="titulo-nodo">Ubicación seleccionada</h2>
+            <p class="estado-vacio">Seleccione un país, departamento o municipio en el árbol para ver su detalle, editarlo, agregarle departamentos o municipios, o inactivarlo.</p>
+        }
+        else
+        {
+            <div class="nodo-encabezado">
+                <span class="nodo-tipo nodo-tipo-@seleccionado.Nivel">@NombreTipo(seleccionado.Tipo) · @seleccionado.Codigo</span>
+                <h2 id="titulo-nodo">@seleccionado.Nombre</h2>
+                <p class="nodo-ruta">@Ruta(seleccionado)</p>
+            </div>
+            <dl class="nodo-datos">
+                <dt>Estado</dt><dd><span class="estado-badge @(seleccionado.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(seleccionado.Estado == "A" ? "Activo" : "Inactivo")</span></dd>
+                @if (seleccionado.Tipo == 'P' && catalogo.BuscarPais(seleccionado.Id) is { } pais)
+                {
+                    <dt>Códigos ISO</dt><dd>@pais.CodigoAlfa2 · @pais.CodigoAlfa3 @(pais.CodigoNumero is null ? "" : $"· {pais.CodigoNumero}")</dd>
+                    <dt>Nacionalidad</dt><dd>@(pais.Nacionalidad ?? "—")</dd>
+                    <dt>Departamentos</dt><dd>@catalogo.Departamentos.Count(d => d.PaiId == pais.PaiId)</dd>
+                }
+                else if (seleccionado.Tipo == 'D')
+                {
+                    <dt>Municipios</dt><dd>@catalogo.Municipios.Count(m => m.EstId == seleccionado.Id)</dd>
+                }
+                else if (seleccionado.Tipo == 'M' && catalogo.BuscarMunicipio(seleccionado.Id) is { } muni)
+                {
+                    <dt>Código completo</dt><dd>@(catalogo.BuscarDepartamento(muni.EstId)?.Codigo)@muni.Codigo</dd>
+                }
+            </dl>
+            @if (seleccionado.Estado != "A")
+            {
+                <p class="texto-ayuda">Inactivo: ya no se ofrece al capturar una dirección; los registros que lo usan lo conservan.</p>
+            }
+            <div class="acciones-fila">
+                <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+                @if (seleccionado.Tipo != 'M' && seleccionado.Estado == "A")
+                {
+                    <BotonIcono Icono="plus" Tooltip="@(seleccionado.Tipo == 'P' ? "Agregar departamento" : "Agregar municipio")"
+                                Etiqueta="@(seleccionado.Tipo == 'P' ? "Agregar departamento" : "Agregar municipio")" Variante="primario" OnClick="IniciarAgregarHijo" />
+                }
+                @if (seleccionado.Estado == "A")
+                {
+                    <BotonIcono Icono="ban" Tooltip="Inactivar" Etiqueta="Inactivar" Variante="peligro" Confirmacion="@($"¿Inactivar {seleccionado.Nombre}?")" OnClick='() => CambiarEstadoAsync("I")' />
+                }
+                else
+                {
+                    <BotonIcono Icono="check-circle" Tooltip="Activar" Etiqueta="Activar" OnClick='() => CambiarEstadoAsync("A")' />
+                }
+            </div>
+        }
+    </section>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private enum Modo { Ver, Editar }
+
+    // Tipo: P = país, D = departamento, M = municipio.
+    private sealed record Nodo(char Tipo, int Id, int? PadreId, string Codigo, string Nombre, string Estado, int Nivel, bool TieneHijos)
+    {
+        public string Clave => $"{Tipo}{Id}";
+    }
+
+    private CatalogoUbicacion catalogo = new();
+    private readonly HashSet<string> expandidos = new();
+    private Nodo? seleccionado;
+    private Modo modo = Modo.Ver;
+    private string filtro = "";
+
+    // Formulario: tipo del registro, id (0 = nuevo) y padre.
+    private char formTipo;
+    private int formId;
+    private int? formPadre;
+    private string formCodigo = "", formNombre = "", formAlfa3 = "", formEstado = "A";
+    private string? formNumero, formNacionalidad;
+
+    private string? mensaje;
+    private bool esMensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAsync();
+        var gt = catalogo.Paises.FirstOrDefault(p => p.CodigoAlfa2 == "GT");
+        if (gt is not null) expandidos.Add($"P{gt.PaiId}");
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        return (await AuthenticationStateTask).User.ObtenerUsuId();
+    }
+
+    private async Task CargarAsync()
+    {
+        catalogo = await GeneralRepository.ConsultarUbicacionAsync(false);
+        if (seleccionado is not null)
+            seleccionado = TodosLosNodos().FirstOrDefault(n => n.Clave == seleccionado.Clave);
+    }
+
+    private IEnumerable<Nodo> TodosLosNodos()
+    {
+        foreach (var p in catalogo.Paises)
+        {
+            var deptos = catalogo.Departamentos.Where(d => d.PaiId == p.PaiId).OrderBy(d => d.Codigo).ThenBy(d => d.Nombre).ToList();
+            yield return new Nodo('P', p.PaiId, null, p.CodigoAlfa2, p.Nombre, p.Estado, 1, deptos.Count > 0);
+            foreach (var d in deptos)
+            {
+                var munis = catalogo.Municipios.Where(m => m.EstId == d.EstId).OrderBy(m => m.Codigo).ThenBy(m => m.Nombre).ToList();
+                yield return new Nodo('D', d.EstId, p.PaiId, d.Codigo, d.Nombre, d.Estado, 2, munis.Count > 0);
+                foreach (var m in munis)
+                    yield return new Nodo('M', m.ProvId, d.EstId, m.Codigo, m.Nombre, m.Estado, 3, false);
+            }
+        }
+    }
+
+    private static bool Coincide(string texto, string filtro) =>
+        System.Globalization.CultureInfo.InvariantCulture.CompareInfo.IndexOf(texto, filtro,
+            System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace) >= 0;
+
+    private IEnumerable<Nodo> NodosVisibles()
+    {
+        var todos = TodosLosNodos().ToList();
+        var texto = filtro.Trim();
+        if (texto.Length > 0)
+        {
+            // Con búsqueda: los nodos que coinciden y la rama que los contiene.
+            var visibles = new HashSet<string>();
+            foreach (var n in todos.Where(n => Coincide(n.Nombre, texto)))
+            {
+                visibles.Add(n.Clave);
+                if (n.Tipo == 'M' && catalogo.BuscarDepartamento(n.PadreId) is { } d) { visibles.Add($"D{d.EstId}"); visibles.Add($"P{d.PaiId}"); }
+                if (n.Tipo == 'D') visibles.Add($"P{n.PadreId}");
+            }
+            return todos.Where(n => visibles.Contains(n.Clave));
+        }
+        return todos.Where(n => n.Tipo switch
+        {
+            'D' => expandidos.Contains($"P{n.PadreId}"),
+            'M' => expandidos.Contains($"D{n.PadreId}") && catalogo.BuscarDepartamento(n.PadreId) is { } d && expandidos.Contains($"P{d.PaiId}"),
+            _ => true
+        });
+    }
+
+    private bool Expandido(Nodo n) => filtro.Trim().Length > 0 || expandidos.Contains(n.Clave);
+
+    private void Alternar(Nodo n)
+    {
+        if (!expandidos.Remove(n.Clave)) expandidos.Add(n.Clave);
+    }
+
+    private void ContraerTodo()
+    {
+        expandidos.Clear();
+        filtro = "";
+    }
+
+    private void Seleccionar(Nodo n)
+    {
+        seleccionado = n;
+        modo = Modo.Ver;
+        mensaje = null;
+    }
+
+    private static string NombreTipo(char tipo) => tipo switch { 'P' => "País", 'D' => "Departamento", _ => "Municipio" };
+
+    private string Ruta(Nodo n)
+    {
+        if (n.Tipo == 'P') return "País";
+        if (n.Tipo == 'D') return catalogo.BuscarPais(n.PadreId)?.Nombre ?? "";
+        var d = catalogo.BuscarDepartamento(n.PadreId);
+        return $"{catalogo.BuscarPais(d?.PaiId)?.Nombre} › {d?.Nombre}";
+    }
+
+    private string TituloFormulario() => (formTipo, formId) switch
+    {
+        ('P', 0) => "Nuevo país",
+        ('D', 0) => $"Nuevo departamento de {catalogo.BuscarPais(formPadre)?.Nombre}",
+        ('M', 0) => $"Nuevo municipio de {catalogo.BuscarDepartamento(formPadre)?.Nombre}",
+        _ => $"Editar {formNombre}"
+    };
+
+    private void LimpiarFormulario(char tipo, int id, int? padre)
+    {
+        formTipo = tipo; formId = id; formPadre = padre;
+        formCodigo = ""; formNombre = ""; formAlfa3 = ""; formNumero = null; formNacionalidad = null; formEstado = "A";
+        mensaje = null;
+        modo = Modo.Editar;
+    }
+
+    private void IniciarNuevoPais() => LimpiarFormulario('P', 0, null);
+
+    private void IniciarAgregarHijo()
+    {
+        if (seleccionado is null) return;
+        var tipo = seleccionado.Tipo == 'P' ? 'D' : 'M';
+        LimpiarFormulario(tipo, 0, seleccionado.Id);
+        // Propone el siguiente código numérico libre.
+        var usados = tipo == 'D'
+            ? catalogo.Departamentos.Where(d => d.PaiId == seleccionado.Id).Select(d => d.Codigo)
+            : catalogo.Municipios.Where(m => m.EstId == seleccionado.Id).Select(m => m.Codigo);
+        var siguiente = usados.Select(c => int.TryParse(c, out var v) ? v : 0).DefaultIfEmpty(0).Max() + 1;
+        formCodigo = siguiente <= 99 ? siguiente.ToString("00") : "";
+    }
+
+    private void IniciarEdicion()
+    {
+        if (seleccionado is null) return;
+        LimpiarFormulario(seleccionado.Tipo, seleccionado.Id, seleccionado.PadreId);
+        formCodigo = seleccionado.Codigo;
+        formNombre = seleccionado.Nombre;
+        formEstado = seleccionado.Estado;
+        if (seleccionado.Tipo == 'P' && catalogo.BuscarPais(seleccionado.Id) is { } p)
+        {
+            formAlfa3 = p.CodigoAlfa3; formNumero = p.CodigoNumero; formNacionalidad = p.Nacionalidad;
+        }
+    }
+
+    private Task<int> GuardarRegistroAsync(char tipo, int id, int? padre, string codigo, string nombre, string estado, int? usuId) => tipo switch
+    {
+        'P' => GeneralRepository.GuardarPaisAsync(new Pais
+        {
+            PaiId = id, Nombre = nombre, CodigoAlfa2 = codigo, CodigoAlfa3 = formAlfa3, CodigoNumero = formNumero,
+            Nacionalidad = formNacionalidad, Estado = estado
+        }, usuId),
+        'D' => GeneralRepository.GuardarDepartamentoAsync(new DepartamentoGeografico { EstId = id, PaiId = padre ?? 0, Codigo = codigo, Nombre = nombre, Estado = estado }, usuId),
+        _ => GeneralRepository.GuardarMunicipioAsync(new Municipio { ProvId = id, EstId = padre ?? 0, Codigo = codigo, Nombre = nombre, Estado = estado }, usuId)
+    };
+
+    private async Task GuardarAsync()
+    {
+        try
+        {
+            var nuevo = formId == 0;
+            var id = await GuardarRegistroAsync(formTipo, formId, formPadre, formCodigo, formNombre, formEstado, await ObtenerUsuIdActualAsync());
+            if (formPadre is int padre) expandidos.Add($"{(formTipo == 'D' ? 'P' : 'D')}{padre}");
+            seleccionado = new Nodo(formTipo, id, formPadre, "", "", "A", 1, false);
+            await CargarAsync();
+            modo = Modo.Ver;
+            mensaje = nuevo ? $"{NombreTipo(formTipo)} creado." : "Cambios guardados.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private async Task CambiarEstadoAsync(string estado)
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            IniciarEdicion();
+            modo = Modo.Ver;
+            await GuardarRegistroAsync(seleccionado.Tipo, seleccionado.Id, seleccionado.PadreId, seleccionado.Codigo, seleccionado.Nombre, estado, await ObtenerUsuIdActualAsync());
+            await CargarAsync();
+            mensaje = estado == "A" ? "Activado." : "Inactivado: ya no se ofrece al capturar una dirección.";
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+}

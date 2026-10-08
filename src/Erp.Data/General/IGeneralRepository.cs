@@ -17,6 +17,12 @@ public interface IGeneralRepository
 	// Sin ciaId: la compañía de la sucursal o la primera activa.
 	Task<CompaniaLogo?> ConsultarLogoAsync(int? ciaId, int? sucId, bool soloVersion);
 
+	// Ubicación geográfica: país › departamento › municipio (script 73).
+	Task<CatalogoUbicacion> ConsultarUbicacionAsync(bool soloActivos);
+	Task<int> GuardarPaisAsync(Pais pais, int? usuarioAccionId);
+	Task<int> GuardarDepartamentoAsync(DepartamentoGeografico departamento, int? usuarioAccionId);
+	Task<int> GuardarMunicipioAsync(Municipio municipio, int? usuarioAccionId);
+
 	Task<IReadOnlyList<SucursalDetalle>> ConsultarSucursalesAsync(int? ciaId, bool soloActivas);
 	Task<int> GuardarSucursalAsync(SucursalDetalle sucursal, int? usuarioAccionId);
 	Task CambiarEstadoSucursalAsync(int sucId, string estado, int? usuarioAccionId);

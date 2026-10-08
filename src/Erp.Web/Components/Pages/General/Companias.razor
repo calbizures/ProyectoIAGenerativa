@@ -80,7 +80,9 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         <h3>Datos generales</h3>
         <div class="campo"><label>Nombre comercial</label><span class="valor-detalle">@seleccionada.CiaNombreComercial</span></div>
         <div class="campo"><label>NIT</label><span class="valor-detalle">@seleccionada.CiaNit</span></div>
-        <div class="campo"><label>Dirección</label><span class="valor-detalle">@seleccionada.CiaDireccion</span></div>
+        <div class="campo campo-ancho"><label>Dirección</label><span class="valor-detalle">@(seleccionada.CiaDireccionCompleta ?? "—")</span></div>
+        <div class="campo"><label>Departamento</label><span class="valor-detalle">@(seleccionada.Departamento ?? "—")</span></div>
+        <div class="campo"><label>Municipio</label><span class="valor-detalle">@(seleccionada.Municipio ?? "—")</span></div>
         <div class="campo"><label>Teléfono</label><span class="valor-detalle">@seleccionada.CiaTelefono</span></div>
         <div class="campo"><label>Correo electrónico</label><span class="valor-detalle">@seleccionada.CiaEmail</span></div>
         <div class="campo"><label>Representante legal</label><span class="valor-detalle">@seleccionada.CiaRepresentanteLegal</span></div>
@@ -244,7 +246,8 @@ else if (pestanaActiva == "editar")
             <h3>Datos generales</h3>
             <div class="campo"><label for="companias-cianombrecomercial">Nombre comercial</label><InputText id="companias-cianombrecomercial" @bind-Value="modelo.CiaNombreComercial" /></div>
             <div class="campo"><label for="companias-cianit">NIT</label><InputText id="companias-cianit" @bind-Value="modelo.CiaNit" /></div>
-            <div class="campo"><label for="companias-ciadireccion">Dirección</label><InputText id="companias-ciadireccion" @bind-Value="modelo.CiaDireccion" /></div>
+            <div class="campo"><label for="companias-ciadireccion">Dirección</label><InputText id="companias-ciadireccion" @bind-Value="modelo.CiaDireccion" placeholder="Calle, número, zona o colonia" /></div>
+            <SelectorUbicacion @bind-ProvId="modelo.ProvId" IdPrefijo="companias" />
             <div class="campo"><label for="companias-ciatelefono">Teléfono</label><InputText id="companias-ciatelefono" @bind-Value="modelo.CiaTelefono" /></div>
             <div class="campo"><label for="companias-ciaemail">Correo electrónico</label><InputText id="companias-ciaemail" @bind-Value="modelo.CiaEmail" /></div>
             <div class="campo"><label for="companias-ciarepresentantelegal">Representante legal</label><InputText id="companias-ciarepresentantelegal" @bind-Value="modelo.CiaRepresentanteLegal" /></div>
@@ -582,6 +585,7 @@ else if (pestanaActiva == "editar")
         public bool CiaPagaComision { get; set; }
         [Range(0, 999999, ErrorMessage = "La tolerancia de cierre de caja no puede ser negativa.")] public decimal CiaToleranciaCierreCaja { get; set; }
         public string CiaPeriodicidadNomina { get; set; } = "M";
+        public int? ProvId { get; set; }
 
         public static CompaniaModelo Desde(Compania c) => new()
         {
@@ -598,6 +602,7 @@ else if (pestanaActiva == "editar")
             CiaPagaComision = c.CiaPagaComision,
             CiaToleranciaCierreCaja = c.CiaToleranciaCierreCaja,
             CiaPeriodicidadNomina = c.CiaPeriodicidadNomina,
+            ProvId = c.ProvId,
         };
 
         public Compania ACompania() => new()
@@ -615,6 +620,7 @@ else if (pestanaActiva == "editar")
             CiaPagaComision = CiaPagaComision,
             CiaToleranciaCierreCaja = CiaToleranciaCierreCaja,
             CiaPeriodicidadNomina = CiaPeriodicidadNomina,
+            ProvId = ProvId,
         };
     }
 }

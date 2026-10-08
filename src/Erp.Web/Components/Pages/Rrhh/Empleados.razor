@@ -93,7 +93,9 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         <div class="campo"><label>Género</label><span class="valor-detalle">@(seleccionado.Genero switch { "M" => "Masculino", "F" => "Femenino", _ => "—" })</span></div>
         <div class="campo"><label>Fecha de nacimiento</label><span class="valor-detalle">@(seleccionado.FechaNacimiento?.ToString("dd/MM/yyyy") ?? "—")</span></div>
         <div class="campo"><label>Fecha de ingreso</label><span class="valor-detalle">@seleccionado.FechaIngreso.ToString("dd/MM/yyyy")</span></div>
-        <div class="campo"><label>Dirección</label><span class="valor-detalle">@seleccionado.Direccion</span></div>
+        <div class="campo campo-ancho"><label>Dirección</label><span class="valor-detalle">@(seleccionado.DireccionCompleta ?? "—")</span></div>
+        <div class="campo"><label>Departamento</label><span class="valor-detalle">@(seleccionado.Departamento ?? "—")</span></div>
+        <div class="campo"><label>Municipio</label><span class="valor-detalle">@(seleccionado.Municipio ?? "—")</span></div>
         <div class="campo"><label>Plaza</label><span class="valor-detalle">@(plazas.FirstOrDefault(p => p.IdPlaza == seleccionado.IdPlaza)?.Descripcion ?? "Sin plaza")</span></div>
         <div class="campo"><label>Salario base</label><span class="valor-detalle">Q @seleccionado.SalarioBase.ToString("N2")</span></div>
 
@@ -332,7 +334,8 @@ else if (pestanaActiva == "editar")
             </div>
             <div class="campo"><label for="empleados-fechanacimiento">Fecha de nacimiento</label><InputDate id="empleados-fechanacimiento" @bind-Value="modelo.FechaNacimiento" /></div>
             <div class="campo"><label for="empleados-fechaingreso">Fecha de ingreso</label><InputDate id="empleados-fechaingreso" @bind-Value="modelo.FechaIngreso" /></div>
-            <div class="campo"><label for="empleados-direccion">Dirección</label><InputText id="empleados-direccion" @bind-Value="modelo.Direccion" /></div>
+            <div class="campo"><label for="empleados-direccion">Dirección</label><InputText id="empleados-direccion" @bind-Value="modelo.Direccion" placeholder="Calle, número, zona o colonia" /></div>
+            <SelectorUbicacion @bind-ProvId="modelo.ProvId" IdPrefijo="empleados" />
             <div class="campo">
                 <label for="empleados-idtipodocumentoidentificacion">Tipo de documento</label>
                 <InputSelect id="empleados-idtipodocumentoidentificacion" @bind-Value="modelo.IdTipoDocumentoIdentificacion">
@@ -634,6 +637,7 @@ else if (pestanaActiva == "editar")
         public DateTime? FechaNacimiento { get; set; }
         public DateTime FechaIngreso { get; set; } = DateTime.Today;
         public string? Direccion { get; set; }
+        public int? ProvId { get; set; }
         public int? IdTipoDocumentoIdentificacion { get; set; }
         public string? NumeroDocumento { get; set; }
         public string? NumeroAfiliacionIGSS { get; set; }
@@ -647,7 +651,7 @@ else if (pestanaActiva == "editar")
             IdEmpleado = e.IdEmpleado, CodigoEmpleado = e.CodigoEmpleado, CiaId = e.CiaId,
             PrimerNombre = e.PrimerNombre, SegundoNombre = e.SegundoNombre, PrimerApellido = e.PrimerApellido,
             SegundoApellido = e.SegundoApellido, ApellidoCasada = e.ApellidoCasada, Genero = e.Genero,
-            FechaNacimiento = e.FechaNacimiento, FechaIngreso = e.FechaIngreso, Direccion = e.Direccion,
+            FechaNacimiento = e.FechaNacimiento, FechaIngreso = e.FechaIngreso, Direccion = e.Direccion, ProvId = e.ProvId,
             IdTipoDocumentoIdentificacion = e.IdTipoDocumentoIdentificacion, NumeroDocumento = e.NumeroDocumento,
             NumeroAfiliacionIGSS = e.NumeroAfiliacionIGSS, Nit = e.Nit, Email = e.Email, IdPlaza = e.IdPlaza,
             SalarioBase = e.SalarioBase,
@@ -658,7 +662,7 @@ else if (pestanaActiva == "editar")
             IdEmpleado = IdEmpleado, CodigoEmpleado = CodigoEmpleado.Trim(), CiaId = CiaId,
             PrimerNombre = PrimerNombre.Trim(), SegundoNombre = Vacio(SegundoNombre), PrimerApellido = PrimerApellido.Trim(),
             SegundoApellido = Vacio(SegundoApellido), ApellidoCasada = Vacio(ApellidoCasada), Genero = Vacio(Genero),
-            FechaNacimiento = FechaNacimiento, FechaIngreso = FechaIngreso, Direccion = Vacio(Direccion),
+            FechaNacimiento = FechaNacimiento, FechaIngreso = FechaIngreso, Direccion = Vacio(Direccion), ProvId = ProvId,
             IdTipoDocumentoIdentificacion = IdTipoDocumentoIdentificacion, NumeroDocumento = Vacio(NumeroDocumento),
             NumeroAfiliacionIGSS = Vacio(NumeroAfiliacionIGSS), Nit = Vacio(Nit), Email = Vacio(Email), IdPlaza = IdPlaza,
             SalarioBase = SalarioBase,

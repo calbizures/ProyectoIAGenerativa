@@ -87,30 +87,31 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 70_correo_proveedores.sql                     -- correo saliente por Gmail por defecto y otros tipos de salida
 71_pago_proveedor_transferencia.sql           -- pago a proveedores por transferencia con autorización y comprobante
 72_transferencias_boletas_hora.sql            -- comprobante de transferencias, pago con boleta verificado, hora en listados
+73_ubicacion_geografica.sql                   -- país › departamento › municipio (INE) en la compañía y los empleados
 ```
 
 **Instalación de una sola vez:** después de crear la base con
-`00_crear_base_datos.sql`, el archivo `instalar_01_al_72.sql` corre en orden
-del `01` al `72` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
+`00_crear_base_datos.sql`, el archivo `instalar_01_al_73.sql` corre en orden
+del `01` al `73` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
 active *Consulta › Modo SQLCMD*, cambie la ruta de la línea `:setvar RUTA` por la
 carpeta de los scripts y ejecútelo; desde la línea de comandos:
-`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_72.sql -o instalacion.log`.
+`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_73.sql -o instalacion.log`.
 Se detiene en el primer error y muestra en qué script ocurrió. Incluye los
 datos de prueba, así que es para una base nueva, no para una con datos reales.
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `72` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `73` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `72` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `73` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `paCajaCerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `72`. Si vuelves a
-correr `12`, corre después `22` a `72` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `73`. Si vuelves a
+correr `12`, corre después `22` a `73` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -128,7 +129,8 @@ correr `58`, corre después el `71` (numeración de los lotes LT- aparte de
 las transferencias directas TR-, y la consulta de lotes solo con lotes). Si
 vuelves a correr `10`, `17`, `34` o `35`, corre después el `72` (la hora en
 los listados de facturas y documentos electrónicos, y el recibo impreso de un
-pago con boleta).
+pago con boleta). Si vuelves a correr `25`, `26`, `36` o `40`, corre después el
+`73` (compañía y empleado con su municipio).
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -2025,6 +2027,53 @@ correo propio**, basta una cuenta de Gmail, Outlook.com/Hotmail o Microsoft
 acceso SMTP con contraseña en las cuentas personales de Outlook.com/Hotmail;
 si la cuenta lo rechaza, use Gmail o una cuenta de Microsoft 365 con SMTP
 autenticado habilitado.
+
+## Ubicación geográfica (`73`)
+
+La dirección de la compañía (`gen_compania`) y de los empleados
+(`rrhhEmpleado`) se amplía con la ubicación en cascada **País › Departamento ›
+Municipio**, usando las tablas que ya existían:
+
+| Tabla | En Guatemala | Llave |
+|---|---|---|
+| `gen_pais` | País | `pai_id` |
+| `gen_estado` | Departamento | `est_id` → `pai_id` |
+| `gen_provincia` | Municipio | `prov_id` → `est_id` |
+
+- **Solo se guarda el municipio** (`prov_id`): `gen_compania.prov_id` es
+  nuevo (con su llave foránea) y `rrhhEmpleado.prov_id` ya existía. El
+  departamento y el país se obtienen de la relación, así nunca se
+  contradicen. `cia_direccion` y `Direccion` quedan para la calle, el número
+  y la zona o colonia.
+- **Catálogo oficial del INE**: 22 departamentos (código `01`-`22`) y 340
+  municipios (código `01`-`nn` dentro de su departamento; el código
+  completo es departamento + municipio, p. ej. `0108` Mixco). Los
+  departamentos y municipios que ya había se reconocen por su nombre y
+  conservan su id, así que los clientes, sucursales y empleados que los
+  usaban no cambian; solo se corrige el código (y el nombre: *Ciudad de
+  Guatemala* → *Guatemala*, *Puerto San José* → *San José*).
+- **Para desplegarla o usarla en otros procesos**:
+  - `vwGenUbicacion`: una fila por municipio con su departamento, país,
+    códigos, el texto `Municipio, Departamento` y si está activo.
+  - `fnGenDireccionCompleta(@Direccion, @ProvId, @ConPais)`: devuelve
+    `calle, municipio, departamento` (y el país con `@ConPais = 1`), p. ej.
+    `SELECT dbo.fnGenDireccionCompleta(cia_direccion, prov_id, 0) FROM gen_compania`.
+  - `paCompaniaConsultar` y `paRrhhEmpleadoConsultarPorId` ya devuelven el
+    municipio, el departamento, el país y la dirección completa.
+- **Mantenimiento** (General › Ubicación geográfica, permiso
+  `GENERAL_CONFIG_ADMIN`): árbol por nodos con búsqueda; alta y edición de
+  países, departamentos y municipios, e inactivación (lo inactivo ya no se
+  ofrece al capturar, pero los registros que lo usan lo conservan).
+  Procedimientos: `paGenUbicacionConsultar`, `paGenPaisGuardar`,
+  `paGenDepartamentoGuardar` y `paGenMunicipioGuardar`.
+- **En los formularios** (Compañías y Empleados) el componente
+  `SelectorUbicacion` muestra tres listas en cascada: al cambiar el país se
+  cargan sus departamentos y al cambiar el departamento, sus municipios.
+- `paRrhhEmpleadoGuardar` recibe `@ProvId`; el valor por omisión `-1`
+  conserva el municipio que ya tenía el empleado, para que la carga de
+  empleados desde Excel no lo borre.
+
+Errores nuevos: 55901-55914.
 
 ## Módulos nuevos
 

@@ -37,6 +37,7 @@ public sealed class GeneralRepository(IDbConnectionFactory connectionFactory) : 
 		parametros.Add("@PagaComision", compania.CiaPagaComision);
 		parametros.Add("@ToleranciaCierreCaja", compania.CiaToleranciaCierreCaja);
 		parametros.Add("@PeriodicidadNomina", compania.CiaPeriodicidadNomina);
+		parametros.Add("@ProvId", compania.ProvId);
 		parametros.Add("@UsuId", usuarioAccionId);
 		parametros.Add("@IdResultado", dbType: DbType.Int32, direction: ParameterDirection.Output);
 		await connection.ExecuteAsync("dbo.paCompaniaGuardar", parametros, commandType: CommandType.StoredProcedure);
@@ -74,6 +75,52 @@ public sealed class GeneralRepository(IDbConnectionFactory connectionFactory) : 
 		using var connection = connectionFactory.CreateConnection();
 		return await connection.QueryFirstOrDefaultAsync<CompaniaLogo>("dbo.paCompaniaLogoConsultar",
 			new { CiaId = ciaId, SucId = sucId, SoloVersion = soloVersion }, commandType: CommandType.StoredProcedure);
+	}
+
+	public async Task<CatalogoUbicacion> ConsultarUbicacionAsync(bool soloActivos)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		using var lector = await connection.QueryMultipleAsync("dbo.paGenUbicacionConsultar",
+			new { SoloActivos = soloActivos }, commandType: CommandType.StoredProcedure);
+		return new CatalogoUbicacion
+		{
+			Paises = (await lector.ReadAsync<Pais>()).ToList(),
+			Departamentos = (await lector.ReadAsync<DepartamentoGeografico>()).ToList(),
+			Municipios = (await lector.ReadAsync<Municipio>()).ToList(),
+		};
+	}
+
+	public Task<int> GuardarPaisAsync(Pais pais, int? usuarioAccionId) =>
+		GuardarConResultadoAsync("dbo.paGenPaisGuardar", new
+		{
+			PaiId = pais.PaiId == 0 ? (int?)null : pais.PaiId,
+			pais.Nombre, pais.CodigoAlfa2, pais.CodigoAlfa3, pais.CodigoNumero, pais.Nacionalidad, pais.Estado,
+			UsuId = usuarioAccionId
+		});
+
+	public Task<int> GuardarDepartamentoAsync(DepartamentoGeografico departamento, int? usuarioAccionId) =>
+		GuardarConResultadoAsync("dbo.paGenDepartamentoGuardar", new
+		{
+			EstId = departamento.EstId == 0 ? (int?)null : departamento.EstId,
+			departamento.PaiId, departamento.Codigo, departamento.Nombre, departamento.Estado,
+			UsuId = usuarioAccionId
+		});
+
+	public Task<int> GuardarMunicipioAsync(Municipio municipio, int? usuarioAccionId) =>
+		GuardarConResultadoAsync("dbo.paGenMunicipioGuardar", new
+		{
+			ProvId = municipio.ProvId == 0 ? (int?)null : municipio.ProvId,
+			municipio.EstId, municipio.Codigo, municipio.Nombre, municipio.Estado,
+			UsuId = usuarioAccionId
+		});
+
+	private async Task<int> GuardarConResultadoAsync(string procedimiento, object valores)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new DynamicParameters(valores);
+		parametros.Add("@IdResultado", dbType: DbType.Int32, direction: ParameterDirection.Output);
+		await connection.ExecuteAsync(procedimiento, parametros, commandType: CommandType.StoredProcedure);
+		return parametros.Get<int>("@IdResultado");
 	}
 
 	public async Task<IReadOnlyList<SucursalDetalle>> ConsultarSucursalesAsync(int? ciaId, bool soloActivas)

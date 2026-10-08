@@ -18,6 +18,14 @@ public sealed class Compania
 	public string CiaPeriodicidadNomina { get; set; } = "M";
 	public bool CiaTieneLogo { get; set; }
 	public DateTime? CiaLogoActualizado { get; set; }
+	// Ubicación (script 73): solo se guarda el municipio; el resto se deriva.
+	public int? ProvId { get; set; }
+	public int? EstId { get; set; }
+	public int? PaiId { get; set; }
+	public string? Municipio { get; set; }
+	public string? Departamento { get; set; }
+	public string? Pais { get; set; }
+	public string? CiaDireccionCompleta { get; set; }
 }
 
 // Cómo se imprime la factura de la compañía.

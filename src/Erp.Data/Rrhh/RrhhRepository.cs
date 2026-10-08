@@ -122,6 +122,7 @@ public sealed class RrhhRepository(IDbConnectionFactory connectionFactory) : IRr
 			empleado.FechaNacimiento,
 			empleado.FechaIngreso,
 			empleado.Direccion,
+			empleado.ProvId,
 			empleado.IdTipoDocumentoIdentificacion,
 			empleado.NumeroDocumento,
 			empleado.NumeroAfiliacionIGSS,
