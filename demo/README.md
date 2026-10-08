@@ -67,7 +67,8 @@ envío al cliente.
 Para regrabar solo algunas secciones: `node grabar.js ventas fel` (inicia
 sesión fuera de cámara). Las secciones que graban datos (ventas, cxc,
 compras, ordencompra, inventario, proveedores, caja, bancos y admin) dependen
-del estado de la base.
+del estado de la base. Después, `SIN_GRABAR=1 ./generar.sh` vuelve a unir las
+tomas, la música, el guion y la presentación sin regrabar todo.
 
 ## Video de novedades de la Fase 4
 

@@ -19,9 +19,13 @@ curl -sf -o /dev/null "$ERP_URL/login" || { echo "La aplicación no responde en 
 
 [ -d node_modules ] || npm install --no-audit --no-fund
 
-echo "1/5 Grabando el recorrido..."
-rm -rf "$SALIDA/tomas"
-node grabar.js
+# SIN_GRABAR=1 reutiliza las tomas ya grabadas (por ejemplo, después de
+# regrabar una sección con «node grabar.js rrhh») y solo vuelve a montar.
+if [ -z "${SIN_GRABAR:-}" ]; then
+  echo "1/5 Grabando el recorrido..."
+  rm -rf "$SALIDA/tomas"
+  node grabar.js
+fi
 if ls "$SALIDA"/tomas/error_*.png >/dev/null 2>&1; then
   echo "Alguna sección falló (ver $SALIDA/tomas/error_*.png); reinstale la base y vuelva a correr." >&2
   exit 1

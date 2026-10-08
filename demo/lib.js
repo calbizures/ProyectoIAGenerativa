@@ -158,7 +158,7 @@ class Demo {
 // contenedor de SQL Server (SQL_CONTENEDOR) con la clave de SA_PASSWORD.
 function sql(q) {
   if (!process.env.SA_PASSWORD) throw new Error('Defina SA_PASSWORD con la clave de sa del contenedor de SQL Server.');
-  const out = execFileSync('docker', ['exec', process.env.SQL_CONTENEDOR || 'erpsql', '/opt/mssql-tools18/bin/sqlcmd', '-S', 'localhost', '-U', 'sa', '-P', process.env.SA_PASSWORD, '-C',
+  const out = execFileSync('docker', ['exec', process.env.SQL_CONTENEDOR || 'erpsql', '/opt/mssql-tools18/bin/sqlcmd', '-S', 'localhost', '-U', 'sa', '-P', process.env.SA_PASSWORD, '-C', '-I', '-b',
     '-d', 'erp_db', '-h', '-1', '-W', '-s', '|', '-Q', 'SET NOCOUNT ON; ' + q], { encoding: 'utf8' });
   return out.split('\n').map(x => x.trim()).filter(Boolean).map(x => x.split('|'));
 }
