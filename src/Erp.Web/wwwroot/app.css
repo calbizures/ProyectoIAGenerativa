@@ -2775,6 +2775,97 @@ a.boton-icono {
     color: var(--exito-texto);
 }
 
+/* Las vistas imprimibles son una hoja blanca también en el tema oscuro:
+   se vuelven a los colores claros dentro de la hoja. */
+.reporte-pagina {
+    color-scheme: light;
+    color: var(--texto);
+    --fondo-app: #f4f7fb;
+    --superficie: #ffffff;
+    --superficie-suave: #f8fafd;
+    --borde: #d7dee8;
+    --borde-suave: #e8edf4;
+    --texto: #1c2437;
+    --texto-tenue: #5f6a7f;
+    --exito-fondo: #e6f7ee;
+    --exito-texto: #146c43;
+    --exito-borde: #b7e4c7;
+    --error-fondo: #fdecea;
+    --error-texto: #b3261e;
+    --error-borde: #f5c2bd;
+    --aviso-texto: #8a5300;
+    --neutro-fondo: #eef1f6;
+    --neutro-texto: #4f5a6e;
+    --anillo-foco: 0 0 0 3px rgba(41, 182, 246, 0.35);
+    --radio: 8px;
+    --radio-grande: 14px;
+    --sombra-tarjeta: 0 2px 14px rgba(13, 27, 76, 0.06);
+    --alto-control: 38px;
+    --texto-titulo: var(--si-navy-900);
+    --texto-titulo-2: var(--si-navy-700);
+    --enlace: var(--si-blue-600);
+    --c-borde-21101192025: rgba(21, 101, 192, 0.25);
+    --c-borde-2e9e5b: #2e9e5b;
+    --c-borde-b9cbe8: #b9cbe8;
+    --c-borde-c9d2de: #c9d2de;
+    --c-borde-c9d4e3: #c9d4e3;
+    --c-borde-d9dee8: #d9dee8;
+    --c-borde-dce7f5: #dce7f5;
+    --c-borde-dde3ec: #dde3ec;
+    --c-borde-e0342a: #e0342a;
+    --c-borde-e3e8ef: #e3e8ef;
+    --c-borde-e8ecf2: #e8ecf2;
+    --c-borde-edf1f6: #edf1f6;
+    --c-borde-eef1f6: #eef1f6;
+    --c-borde-f0c36d: #f0c36d;
+    --c-borde-f1dca8: #f1dca8;
+    --c-borde-f1f4f8: #f1f4f8;
+    --c-borde-f3c6c1: #f3c6c1;
+    --c-borde-f3d19c: #f3d19c;
+    --c-fondo-132776006: rgba(13, 27, 76, 0.06);
+    --c-fondo-132776045: rgba(13, 27, 76, 0.45);
+    --c-fondo-2045110006: rgba(20, 45, 110, 0.06);
+    --c-fondo-e3ecfb: #e3ecfb;
+    --c-fondo-e6f2ff: #e6f2ff;
+    --c-fondo-e7f1fc: #e7f1fc;
+    --c-fondo-eaf3ff: #eaf3ff;
+    --c-fondo-eef1f7: #eef1f7;
+    --c-fondo-eef4fb: #eef4fb;
+    --c-fondo-f4f6fa: #f4f6fa;
+    --c-fondo-f4f8fd: #f4f8fd;
+    --c-fondo-f7faff: #f7faff;
+    --c-fondo-f8fbff: #f8fbff;
+    --c-fondo-fafbfd: #fafbfd;
+    --c-fondo-fff3dc: #fff3dc;
+    --c-fondo-fff4dc: #fff4dc;
+    --c-fondo-fff4e0: #fff4e0;
+    --c-fondo-fff8e6: #fff8e6;
+    --c-fondo-fff8ec: #fff8ec;
+    --c-fondo-fff8f7: #fff8f7;
+    --c-sombra-132776005: rgba(13, 27, 76, 0.05);
+    --c-sombra-132776006: rgba(13, 27, 76, 0.06);
+    --c-sombra-132776008: rgba(13, 27, 76, 0.08);
+    --c-sombra-13277601: rgba(13, 27, 76, 0.1);
+    --c-sombra-132776014: rgba(13, 27, 76, 0.14);
+    --c-sombra-132776018: rgba(13, 27, 76, 0.18);
+    --c-sombra-132776025: rgba(13, 27, 76, 0.25);
+    --c-sombra-179383002: rgba(179, 38, 30, 0.2);
+    --c-sombra-41182246015: rgba(41, 182, 246, 0.15);
+    --c-sombra-41182246025: rgba(41, 182, 246, 0.25);
+    --c-texto-157347: #157347;
+    --c-texto-34527a: #34527a;
+    --c-texto-5b6478: #5b6478;
+    --c-texto-667085: #667085;
+    --c-texto-6b7385: #6b7385;
+    --c-texto-7a4a00: #7a4a00;
+    --c-texto-9510612705: rgba(95, 106, 127, 0.5);
+    --c-texto-9fb3cf: #9fb3cf;
+    --c-texto-b26a00: #b26a00;
+    --c-texto-c0392b: #c0392b;
+    --c-texto-c7ceda: #c7ceda;
+    --c-texto-ffffff: #ffffff;
+}
+
 /* Vista imprimible (ReporteLayout): hoja blanca, sin menú. */
 .reporte-pagina {
     max-width: 1100px;
