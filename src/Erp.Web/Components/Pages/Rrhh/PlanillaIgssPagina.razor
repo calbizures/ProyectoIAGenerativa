@@ -59,16 +59,16 @@
         }
         @if (resumen.NominasPendientes > 0)
         {
-            <p class="aviso-pendiente" role="status">@L("Hay {0} nómina(s) de {1} sin aprobar: no entran en la planilla hasta que se aprueben.", resumen.NominasPendientes, NombreMes(mes).ToLowerInvariant())</p>
+            <p class="aviso-pendiente" role="status">@L("Hay {0} nómina(s) de {1} sin aprobar: no entran en la planilla hasta que se aprueben.", resumen.NominasPendientes, MesEnTexto(mes))</p>
         }
         @if (SinAfiliacion.Count > 0)
         {
-            <p class="aviso-pendiente" role="status">Sin número de afiliación al IGSS: @string.Join(", ", SinAfiliacion.Select(e => $"{e.CodigoEmpleado} {e.Nombre}")). Complételo en RRHH &gt; Empleados.</p>
+            <p class="aviso-pendiente" role="status">@L("Sin número de afiliación al IGSS: {0}. Complételo en RRHH > Empleados.", string.Join(", ", SinAfiliacion.Select(e => $"{e.CodigoEmpleado} {e.Nombre}")))</p>
         }
 
         @if (planilla.Empleados.Count == 0)
         {
-            <p class="estado-vacio">@L("No hay nóminas ordinarias aprobadas en {0} de {1}.", NombreMes(mes).ToLowerInvariant(), anio)</p>
+            <p class="estado-vacio">@L("No hay nóminas ordinarias aprobadas en {0} de {1}.", MesEnTexto(mes), anio)</p>
         }
         else
         {
@@ -451,8 +451,11 @@ else
     private List<PlanillaIgssEmpleado> SinAfiliacion =>
         planilla?.Empleados.Where(e => string.IsNullOrWhiteSpace(e.NumeroAfiliacionIGSS)).ToList() ?? new();
 
+    // "septiembre" dentro de una oración en español; "September" en inglés.
+    private static string MesEnTexto(int m) => EsIngles ? NombreMes(m) : NombreMes(m).ToLowerInvariant();
+
     private static string NombreMes(int m) =>
-        System.Globalization.CultureInfo.GetCultureInfo("es-GT").DateTimeFormat.GetMonthName(m) is var n && n.Length > 0
+        System.Globalization.CultureInfo.GetCultureInfo(EsIngles ? "en-US" : "es-GT").DateTimeFormat.GetMonthName(m) is var n && n.Length > 0
             ? char.ToUpperInvariant(n[0]) + n[1..] : m.ToString();
 
     protected override async Task OnInitializedAsync()

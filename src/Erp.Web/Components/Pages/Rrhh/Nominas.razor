@@ -553,7 +553,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             nuevaFechaDel = sugerido.FechaDel;
             nuevaFechaAl = sugerido.FechaAl;
             nuevaFechaPago = sugerido.FechaPago;
-            nuevaDescripcion = L("Nómina {0} - {1}", NombrePeriodo(nuevoTipoPeriodo).ToLowerInvariant(), sugerido.Descripcion);
+            nuevaDescripcion = $"Nómina {nuevoTipoPeriodo switch { "S" => "semanal", "Q" => "quincenal", _ => "mensual" }} - {sugerido.Descripcion}";
         }
         catch (Exception ex) { MostrarError(ex); }
     }

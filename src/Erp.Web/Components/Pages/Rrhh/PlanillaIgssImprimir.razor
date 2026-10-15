@@ -4,7 +4,7 @@
 @using Erp.Data.Rrhh
 @inject IRrhhRepository RrhhRepository
 
-<PageTitle>@L("Planilla del IGSS {0}/{1}", Mes, Anio)</PageTitle>
+<PageTitle>Planilla del IGSS @Mes/@Anio</PageTitle>
 
 <div class="reporte-acciones">
     <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
@@ -14,27 +14,27 @@
 
 @if (error is not null)
 {
-    <p class="mensaje-error" role="alert">@Textos.Mensaje(error)</p>
+    <p class="mensaje-error" role="alert">@error</p>
 }
 else if (planilla?.Resumen is { } resumen)
 {
     <div class="reporte-encabezado">
         <div>
             <LogoCompania CiaId="resumen.CiaId" Clase="reporte-logo" />
-            <div class="reporte-compania">@L("{0} · NIT {1}", resumen.NombreComercial, resumen.Nit)</div>
-            <h1>@L("Planilla de seguridad social · {0} {1}", NombreMes, resumen.Anio)</h1>
+            <div class="reporte-compania">@resumen.NombreComercial · NIT @resumen.Nit</div>
+            <h1>Planilla de seguridad social · @NombreMes @resumen.Anio</h1>
         </div>
         <div class="reporte-meta">
-            @L("Número patronal:") <strong>@(resumen.IgssNumeroPatronal ?? L("sin registrar"))</strong><br />
-            @L("Trabajadores: {0} · Salario afecto: Q {1}", resumen.Empleados, resumen.SalarioAfecto.ToString("N2"))<br />
-            @L("Total a pagar:") <strong>Q @resumen.TotalPagar.ToString("N2")</strong>
+            Número patronal: <strong>@(resumen.IgssNumeroPatronal ?? "sin registrar")</strong><br />
+            Trabajadores: @resumen.Empleados · Salario afecto: Q @resumen.SalarioAfecto.ToString("N2")<br />
+            Total a pagar: <strong>Q @resumen.TotalPagar.ToString("N2")</strong>
         </div>
     </div>
-    <h2>@L("Por centro de trabajo")</h2>
+    <h2>Por centro de trabajo</h2>
     <PlanillaIgssCentros Centros="planilla.Centros" />
-    <h2>@L("Trabajadores")</h2>
+    <h2>Trabajadores</h2>
     <PlanillaIgssEmpleados Empleados="planilla.Empleados" />
-    <p class="reporte-pie">@L("Generado el {0}. Nóminas ordinarias aprobadas con fecha final en el mes.", DateTime.Now.ToString("dd/MM/yyyy HH:mm"))</p>
+    <p class="reporte-pie">Generado el @DateTime.Now.ToString("dd/MM/yyyy HH:mm"). Nóminas ordinarias aprobadas con fecha final en el mes.</p>
 }
 
 @code {

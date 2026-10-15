@@ -325,7 +325,7 @@
         public string? Descripcion { get; set; }
     }
 
-    private static string NombreMes(int mes) => Meses[mes - 1];
+    private static string NombreMes(int mes) => L(Meses[mes - 1]);
     private static string NombreForma(string? forma) => forma switch { "A" => L("Automática"), "M" => L("Manual"), "J" => L("Ajuste"), _ => "" };
 
     protected override async Task OnInitializedAsync()

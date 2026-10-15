@@ -241,7 +241,8 @@
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
-    private static readonly CultureInfo Es = CultureInfo.GetCultureInfo("es-GT");
+    // Nombres de días y meses en el idioma de la pantalla.
+    private static CultureInfo Es => CultureInfo.GetCultureInfo(EsIngles ? "en-US" : "es-GT");
 
     private DateTime proximoDia = DateTime.Today;
     private DateTime pagoHasta = DateTime.Today;

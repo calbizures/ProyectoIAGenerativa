@@ -109,7 +109,7 @@
     private string? mensaje;
     private bool esMensajeError;
 
-    private static string NombreMes(int mes) => Meses[mes - 1];
+    private static string NombreMes(int mes) => L(Meses[mes - 1]);
 
     protected override Task OnInitializedAsync() => ConsultarAsync();
 

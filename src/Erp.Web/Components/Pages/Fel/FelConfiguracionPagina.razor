@@ -63,7 +63,7 @@
             <div class="campo campo-ancho"><label for="c-ns">@L("Espacio de nombres del DTE")</label><input id="c-ns" @bind="config.XmlnsDte" maxlength="128" /></div>
             <div class="campo"><label for="c-ver">@L("Versión del DTE")</label><input id="c-ver" @bind="config.VersionDte" maxlength="10" /></div>
         </div>
-        <p class="texto-ayuda">@L("Las llaves de firma y de la API no se guardan en la base: van en la configuración de la aplicación como") <code>@L("Fel:Credenciales:{0}:LlaveFirma", config.Nit.Replace("-", ""))</code> @L("y") <code>@L(":LlaveApi")</code> @L("(appsettings, variables de entorno o secretos del servidor).")</p>
+        <p class="texto-ayuda">@L("Las llaves de firma y de la API no se guardan en la base: van en la configuración de la aplicación como") <code>Fel:Credenciales:@(config.Nit.Replace("-", "")):LlaveFirma</code> @L("y") <code>:LlaveApi</code> @L("(appsettings, variables de entorno o secretos del servidor).")</p>
     </section>
 
     <section class="tarjeta" aria-labelledby="t-emi">
@@ -110,7 +110,7 @@ else if (pestana == "nit" && consultaNit is not null)
                 <span class="texto-ayuda">@L("Déjela vacía para usar la del catálogo según el ambiente. Use {nit} donde va el número.")</span>
             </div>
         </div>
-        <p class="texto-ayuda">@L("Credenciales (no se guardan en la base):") <code>@L("Fel:Credenciales:{0}:ConsultaNitUsuario", consultaNit.NitEmisor)</code> @L("y") <code>@L(":ConsultaNitLlave")</code>@L("; si faltan, se usan el usuario de la API y") <code>@L(":LlaveApi")</code>.</p>
+        <p class="texto-ayuda">@L("Credenciales (no se guardan en la base):") <code>Fel:Credenciales:@(consultaNit.NitEmisor):ConsultaNitUsuario</code> @L("y") <code>:ConsultaNitLlave</code>@L("; si faltan, se usan el usuario de la API y") <code>:LlaveApi</code>.</p>
         <div class="acciones-fila">
             <BotonIcono Icono="save" Tooltip="@L("Guardar la consulta de NIT")" Etiqueta="@L("Guardar")" Variante="primario" OnClick="GuardarConsultaNitAsync" />
         </div>

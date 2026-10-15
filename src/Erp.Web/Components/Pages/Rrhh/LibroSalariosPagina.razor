@@ -51,7 +51,7 @@
     @if (string.IsNullOrWhiteSpace(patrono.IgssNumeroPatronal) || string.IsNullOrWhiteSpace(patrono.LibroSalariosAutorizacion))
     {
         <p class="aviso-pendiente" role="status">
-            @L("Faltan datos del patrono: {0}{1}{2}. Regístrelos en", string.IsNullOrWhiteSpace(patrono.IgssNumeroPatronal) ? L("número patronal del IGSS") : "", string.IsNullOrWhiteSpace(patrono.IgssNumeroPatronal) && string.IsNullOrWhiteSpace(patrono.LibroSalariosAutorizacion) ? " y " : "", string.IsNullOrWhiteSpace(patrono.LibroSalariosAutorizacion) ? L("número de autorización del libro de salarios del Ministerio de Trabajo") : "") <a href="rrhh/planilla-igss?pestana=patrono">@L("RRHH > Planilla del IGSS > Patrono y centros de trabajo")</a>.
+            @L("Faltan datos del patrono: {0}{1}{2}. Regístrelos en", string.IsNullOrWhiteSpace(patrono.IgssNumeroPatronal) ? L("número patronal del IGSS") : "", string.IsNullOrWhiteSpace(patrono.IgssNumeroPatronal) && string.IsNullOrWhiteSpace(patrono.LibroSalariosAutorizacion) ? L(" y ") : "", string.IsNullOrWhiteSpace(patrono.LibroSalariosAutorizacion) ? L("número de autorización del libro de salarios del Ministerio de Trabajo") : "") <a href="rrhh/planilla-igss?pestana=patrono">@L("RRHH > Planilla del IGSS > Patrono y centros de trabajo")</a>.
         </p>
     }
 

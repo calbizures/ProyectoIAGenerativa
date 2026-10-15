@@ -269,8 +269,7 @@ else if (pestanaActiva == "editar")
                 </InputSelect>
             </div>
             <p class="texto-ayuda">
-                @L("El % IVA se usa al facturar y comprar; la tolerancia es la diferencia máxima (en quetzales) permitida")
-                @L("entre el teórico y lo contado para cerrar una caja (0.00 = debe cuadrar exacto).")
+                @L("El % IVA se usa al facturar y comprar; la tolerancia es la diferencia máxima (en quetzales) permitida entre el teórico y lo contado para cerrar una caja (0.00 = debe cuadrar exacto).")
             </p>
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="@L("Guardar")" Etiqueta="@L("Guardar")" Variante="primario" TipoBoton="submit" />
@@ -440,7 +439,7 @@ else if (pestanaActiva == "editar")
         try
         {
             await PagosRepository.GuardarDiaPagoAsync(seleccionada.CiaId, diaPago, await ObtenerUsuIdActualAsync());
-            mensaje = diaPago is int d ? L("Día de pago a proveedores: {0}.", Dias[d]) : L("Los proveedores se pueden pagar cualquier día.");
+            mensaje = diaPago is int d ? L("Día de pago a proveedores: {0}.", L(Dias[d])) : L("Los proveedores se pueden pagar cualquier día.");
             esMensajeError = false;
         }
         catch (Exception ex)

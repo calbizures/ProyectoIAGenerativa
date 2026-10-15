@@ -45,7 +45,7 @@ else
             {
                 <tr>
                     <td class="col-codigo">@c.CcpCodigo</td>
-                    <td>@c.CcpDescripcion</td>
+                    <td>@L(c.CcpDescripcion)</td>
                     <td class="col-estado">@(c.CcpNaturaleza == "D" ? L("Debe") : L("Haber"))</td>
                     @if (editandoCodigo == c.CcpCodigo)
                     {
