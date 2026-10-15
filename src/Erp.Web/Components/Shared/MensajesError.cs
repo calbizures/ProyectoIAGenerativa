@@ -1,16 +1,20 @@
 using System.Text.RegularExpressions;
 using Microsoft.Data.SqlClient;
+using static Erp.Web.Idioma.Textos;
 
 namespace Erp.Web.Components.Shared;
 
-// Traduce las excepciones que llegan a las pantallas a mensajes en español
-// que el usuario pueda entender. Los errores de negocio lanzados por los
+// Traduce las excepciones que llegan a las pantallas a mensajes que el
+// usuario pueda entender, en su idioma (los de la base de datos y los propios
+// vienen en español y se pasan al inglés con Textos.Mensaje). Los errores de negocio lanzados por los
 // procedimientos (THROW 5xxxx) ya vienen redactados en español y se muestran
 // tal cual; los errores propios del motor (llaves foráneas, duplicados,
 // longitudes, conexión) se reemplazan por un texto equivalente.
 public static partial class MensajesError
 {
-	public static string Traducir(Exception ex)
+	public static string Traducir(Exception ex) => Mensaje(TraducirEspanol(ex));
+
+	private static string TraducirEspanol(Exception ex)
 	{
 		var sql = ex as SqlException ?? ex.InnerException as SqlException;
 		if (sql is not null)
@@ -56,11 +60,11 @@ public static partial class MensajesError
 				}
 				if (sql.Message.Contains("CHECK", StringComparison.OrdinalIgnoreCase))
 				{
-					return "Uno de los valores no cumple las reglas permitidas para este dato" + Detalle(sql.Message) + ".";
+					return $"Uno de los valores no cumple las reglas permitidas para este dato{Detalle(sql.Message)}.";
 				}
 				return sql.Message.Contains("DELETE", StringComparison.OrdinalIgnoreCase)
-					? "No se puede eliminar el registro porque está siendo utilizado por otros datos" + Detalle(sql.Message) + "."
-					: "El registro hace referencia a un dato que no existe o fue eliminado" + Detalle(sql.Message) + ".";
+					? $"No se puede eliminar el registro porque está siendo utilizado por otros datos{Detalle(sql.Message)}."
+					: $"El registro hace referencia a un dato que no existe o fue eliminado{Detalle(sql.Message)}.";
 			case 2627:
 			case 2601:
 				if (sql.Message.Contains("UQ_bco_cheque_emitido_enc_numero", StringComparison.OrdinalIgnoreCase))
@@ -98,26 +102,27 @@ public static partial class MensajesError
 				return "La base de datos no tiene instalado un procedimiento requerido. Ejecute los scripts pendientes.";
 			case 207:
 			case 208:
-				return "La base de datos no está actualizada con esta versión del sistema. Ejecute los scripts pendientes" + Referencia(sql) + ".";
+				return $"La base de datos no está actualizada con esta versión del sistema. Ejecute los scripts pendientes{Referencia(sql)}.";
 			case 1934:
 				// Procedimiento creado con QUOTED_IDENTIFIER u otra opción SET en OFF.
-				return "Un procedimiento de la base de datos se creó con opciones SET incorrectas y no puede grabar" + Referencia(sql)
-					+ ". Ejecute el script 47_reparar_opciones_set.sql y vuelva a intentarlo.";
+				return $"Un procedimiento de la base de datos se creó con opciones SET incorrectas y no puede grabar{Referencia(sql)}. Ejecute el script 47_reparar_opciones_set.sql y vuelva a intentarlo.";
 			default:
 				// Sin el número y el procedimiento el error no se puede diagnosticar.
-				return "Ocurrió un error en la base de datos" + Referencia(sql) + ". Comuníquese con el administrador del sistema.";
+				return $"Ocurrió un error en la base de datos{Referencia(sql)}. Comuníquese con el administrador del sistema.";
 		}
 	}
 
-	// "(error SQL 1934 en dbo.paClienteInsertar, línea 25)" para el soporte.
+	// "(error SQL 1934 en dbo.paClienteInsertar, línea 25)" para el soporte. Esta
+	// parte y la tabla ya salen en el idioma del usuario; el resto del mensaje
+	// se traduce al final (Traducir).
 	private static string Referencia(SqlException sql) =>
-		$" (error SQL {sql.Number}{(string.IsNullOrEmpty(sql.Procedure) ? "" : $" en {sql.Procedure}")}{(sql.LineNumber > 0 ? $", línea {sql.LineNumber}" : "")})";
+		L(" (error SQL {0}{1}{2})", sql.Number, string.IsNullOrEmpty(sql.Procedure) ? "" : L(" en {0}", sql.Procedure), sql.LineNumber > 0 ? L(", línea {0}", sql.LineNumber) : "");
 
 	// Nombre de la tabla involucrada en una violación de llave foránea, si aparece.
 	private static string Detalle(string mensaje)
 	{
 		var tabla = TablaRegex().Match(mensaje);
-		return tabla.Success ? $" (tabla {tabla.Groups[1].Value})" : "";
+		return tabla.Success ? L(" (tabla {0})", tabla.Groups[1].Value) : "";
 	}
 
 	// Heurística simple: los mensajes propios llevan tildes o signos del español.

@@ -7,25 +7,25 @@
     <div class="@(errores > 0 ? "mensaje-error" : "mensaje-ok")" role="@(errores > 0 ? "alert" : "status")">
         @if (errores > 0)
         {
-            <span>@errores error(es): corríjalos en el archivo y vuelva a subirlo. No se grabó nada.</span>
+            <span>@L("{0} error(es): corríjalos en el archivo y vuelva a subirlo. No se grabó nada.", errores)</span>
         }
         else
         {
-            <span>Sin errores.</span>
+            <span>@L("Sin errores.")</span>
         }
         @if (advertencias > 0)
         {
-            <span> @advertencias advertencia(s) para revisar.</span>
+            <span> @L("{0} advertencia(s) para revisar.", advertencias)</span>
         }
     </div>
     <table class="tabla-datos">
-        <thead><tr><th class="num col-estado">Fila</th><th class="col-estado">Tipo</th><th>Mensaje</th></tr></thead>
+        <thead><tr><th class="num col-estado">@L("Fila")</th><th class="col-estado">@L("Tipo")</th><th>@L("Mensaje")</th></tr></thead>
         <tbody>
             @foreach (var m in Mensajes.Take(Maximo))
             {
                 <tr>
                     <td class="num col-estado">@(m.Fila == 0 ? "—" : m.Fila.ToString())</td>
-                    <td class="col-estado"><span class="estado-badge @(m.EsError ? "estado-badge-inactivo" : "estado-badge-pendiente")">@(m.EsError ? "Error" : "Aviso")</span></td>
+                    <td class="col-estado"><span class="estado-badge @(m.EsError ? "estado-badge-inactivo" : "estado-badge-pendiente")">@(m.EsError ? L("Error") : L("Aviso"))</span></td>
                     <td>@m.Mensaje</td>
                 </tr>
             }
@@ -33,7 +33,7 @@
     </table>
     @if (Mensajes.Count > Maximo)
     {
-        <p class="texto-tenue">Se muestran los primeros @Maximo de @Mensajes.Count mensajes.</p>
+        <p class="texto-tenue">@L("Se muestran los primeros {0} de {1} mensajes.", Maximo, Mensajes.Count)</p>
     }
 }
 

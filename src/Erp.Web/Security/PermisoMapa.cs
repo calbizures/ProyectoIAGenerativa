@@ -77,6 +77,8 @@ public sealed partial class PermisoMapa
 	// Ruta -> "Grupo › Opción" según el menú lateral.
 	private static Dictionary<string, string> OpcionesMenu(string nav)
 	{
+		// Los textos del menú van como @L("..."): se toma el texto en español.
+		nav = TextoTraducible().Replace(nav, "$1");
 		var grupos = Nodo().Matches(nav).Select(m => (Inicio: m.Index, Fin: nav.IndexOf("</SidebarNodo>", m.Index, StringComparison.Ordinal), Titulo: m.Groups[1].Value)).ToList();
 		var resultado = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 		foreach (Match enlace in Enlace().Matches(nav))
@@ -99,6 +101,8 @@ public sealed partial class PermisoMapa
 	private static partial Regex Nodo();
 	[GeneratedRegex("""<NavLink\s+href="([^"]*)"[^>]*>(.*?)</NavLink>""", RegexOptions.Singleline)]
 	private static partial Regex Enlace();
+	[GeneratedRegex(@"@L\(""((?:[^""\\]|\\.)*)""\)")]
+	private static partial Regex TextoTraducible();
 	[GeneratedRegex("<[^>]+>")]
 	private static partial Regex Etiquetas();
 	[GeneratedRegex(@"\s+")]

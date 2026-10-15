@@ -27,15 +27,13 @@
         <span class="borrador-aviso-texto">
             <Icono Nombre="file-text" Tamano="18" />
             <span>
-                <strong>Tiene @Nombre sin terminar:</strong> @pendiente.Descripcion.
-                Se guardó el @pendiente.Fecha.ToString("dd/MM/yyyy") a las @pendiente.Fecha.ToString("HH:mm").
-                Si empieza otro documento sin recuperarlo, este borrador se reemplaza.
+                <strong>@L("Tiene {0} sin terminar:", Nombre)</strong> @L("{0}. Se guardó el {1} a las {2}. Si empieza otro documento sin recuperarlo, este borrador se reemplaza.", pendiente.Descripcion, pendiente.Fecha.ToString("dd/MM/yyyy"), pendiente.Fecha.ToString("HH:mm"))
             </span>
         </span>
         <span class="borrador-aviso-acciones">
-            <BotonIcono Icono="rotate-ccw" Tooltip="Recuperar el documento sin terminar" Etiqueta="Recuperar" Variante="primario" OnClick="RecuperarAsync" />
-            <BotonIcono Icono="x" Tooltip="Descartar el borrador" Etiqueta="Descartar"
-                        Confirmacion="¿Descartar el borrador? No se podrá recuperar." OnClick="DescartarAsync" />
+            <BotonIcono Icono="rotate-ccw" Tooltip="@L("Recuperar el documento sin terminar")" Etiqueta="@L("Recuperar")" Variante="primario" OnClick="RecuperarAsync" />
+            <BotonIcono Icono="x" Tooltip="@L("Descartar el borrador")" Etiqueta="@L("Descartar")"
+                        Confirmacion="@L("¿Descartar el borrador? No se podrá recuperar.")" OnClick="DescartarAsync" />
         </span>
     </div>
 }

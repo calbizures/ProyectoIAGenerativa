@@ -6,9 +6,9 @@
 @inject IGeneralRepository GeneralRepository
 
 <div class="campo">
-    <label for="@($"{IdPrefijo}-pais")">País</label>
+    <label for="@($"{IdPrefijo}-pais")">@L("País")</label>
     <select id="@($"{IdPrefijo}-pais")" value="@paiId" @onchange="CambiarPaisAsync" disabled="@Deshabilitado">
-        <option value="">Seleccione...</option>
+        <option value="">@L("Seleccione...")</option>
         @foreach (var p in catalogo.Paises.Where(p => p.Estado == "A" || p.PaiId == paiId))
         {
             <option value="@p.PaiId">@p.Nombre</option>
@@ -16,9 +16,9 @@
     </select>
 </div>
 <div class="campo">
-    <label for="@($"{IdPrefijo}-depto")">Departamento</label>
+    <label for="@($"{IdPrefijo}-depto")">@L("Departamento")</label>
     <select id="@($"{IdPrefijo}-depto")" value="@estId" @onchange="CambiarDepartamentoAsync" disabled="@(Deshabilitado || paiId is null)">
-        <option value="">@(paiId is null ? "Elija el país" : DepartamentosDelPais.Any() ? "Seleccione..." : "Sin departamentos")</option>
+        <option value="">@(paiId is null ? L("Elija el país") : DepartamentosDelPais.Any() ? "Seleccione..." : L("Sin departamentos"))</option>
         @foreach (var d in DepartamentosDelPais)
         {
             <option value="@d.EstId">@d.Nombre</option>
@@ -26,9 +26,9 @@
     </select>
 </div>
 <div class="campo">
-    <label for="@($"{IdPrefijo}-muni")">Municipio</label>
+    <label for="@($"{IdPrefijo}-muni")">@L("Municipio")</label>
     <select id="@($"{IdPrefijo}-muni")" value="@ProvId" @onchange="CambiarMunicipioAsync" disabled="@(Deshabilitado || estId is null)">
-        <option value="">@(estId is null ? "Elija el departamento" : "Seleccione...")</option>
+        <option value="">@(estId is null ? L("Elija el departamento") : "Seleccione...")</option>
         @foreach (var m in MunicipiosDelDepartamento)
         {
             <option value="@m.ProvId">@m.Nombre</option>

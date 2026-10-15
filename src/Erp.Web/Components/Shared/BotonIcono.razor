@@ -24,14 +24,14 @@
 {
     <span class="confirmacion-en-linea" role="group" aria-label="@Confirmacion">
         <span class="confirmacion-texto">@Confirmacion</span>
-        <button type="button" class="boton-mini boton-mini-peligro" @onclick="ConfirmarAsync" @ref="botonSi">Sí</button>
-        <button type="button" class="boton-mini" @onclick="() => confirmando = false">No</button>
+        <button type="button" class="boton-mini boton-mini-peligro" @onclick="ConfirmarAsync" @ref="botonSi">@L("Sí")</button>
+        <button type="button" class="boton-mini" @onclick="() => confirmando = false">@L("No")</button>
     </span>
 }
 else
 {
     <button type="@TipoBoton" @ref="boton"
-            title="@(guardado ? "Ya se guardó. Para volver a guardar pulse Editar o cambie algún dato." : null)"
+            title="@(guardado ? L("Ya se guardó. Para volver a guardar pulse Editar o cambie algún dato.") : null)"
             class="boton-icono boton-icono-@Variante @(string.IsNullOrEmpty(Etiqueta) ? "" : "boton-icono-con-etiqueta")"
             aria-label="@(string.IsNullOrEmpty(Etiqueta) ? Tooltip : null)"
             disabled="@(Deshabilitado || ejecutando || guardado)"

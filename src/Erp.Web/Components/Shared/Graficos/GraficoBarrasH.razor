@@ -32,16 +32,16 @@ else
 
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<BarraFila> Filas { get; set; } = Array.Empty<BarraFila>();
-    [Parameter] public string Titulo { get; set; } = "Ranking";
+    [Parameter] public string Titulo { get; set; } = L("Ranking");
     [Parameter] public int Slot { get; set; } = 1;
     [Parameter] public EventCallback<int> OnSeleccionar { get; set; }
     [Parameter] public string? PistaSeleccion { get; set; }
-    [Parameter] public string TextoVacio { get; set; } = "Sin datos para el período.";
+    [Parameter] public string TextoVacio { get; set; } = L("Sin datos para el período.");
 
     private RenderFragment Contenido(BarraFila f, double ancho) => __builder =>
     {
         <span class="ranking-etiqueta">@f.Etiqueta</span>
-        <span class="ranking-pista"><span class="ranking-barra" style="width:@(ancho.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))%;background:@PaletaGraficos.Color(Slot)"></span></span>
+        <span class="ranking-pista"><span class="ranking-barra" style=L("width:@(ancho.ToString(")0.##L(", System.Globalization.CultureInfo.InvariantCulture))%;background:@PaletaGraficos.Color(Slot)")></span></span>
         <span class="ranking-valor">@PaletaGraficos.MonedaCompacta(f.Valor)@if (f.Detalle is not null) {<small>@f.Detalle</small>}</span>
     };
 }

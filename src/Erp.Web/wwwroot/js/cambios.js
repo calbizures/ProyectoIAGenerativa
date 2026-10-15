@@ -100,8 +100,8 @@
             '<div class="salir-dialogo" role="alertdialog" aria-modal="true" aria-labelledby="salir-titulo" aria-describedby="salir-mensaje">' +
             '<h2 id="salir-titulo"></h2><div id="salir-mensaje"></div>' +
             '<div class="salir-acciones">' +
-            '<button type="button" class="boton-icono boton-icono-neutral boton-icono-con-etiqueta" data-accion="quedar"><span class="boton-icono-etiqueta">Quedarme</span></button>' +
-            '<button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" data-accion="salir"><span class="boton-icono-etiqueta">Salir</span></button>' +
+            '<button type="button" class="boton-icono boton-icono-neutral boton-icono-con-etiqueta" data-accion="quedar"><span class="boton-icono-etiqueta">' + t('Quedarme') + '</span></button>' +
+            '<button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" data-accion="salir"><span class="boton-icono-etiqueta">' + t('Salir') + '</span></button>' +
             '</div></div>';
         document.body.appendChild(fondo);
         titulo = fondo.querySelector('#salir-titulo');
@@ -110,17 +110,34 @@
         botonSalir = fondo.querySelector('[data-accion=salir]');
     }
 
+    // Textos del diálogo en el idioma de la página (<html lang>).
+    const INGLES = {
+        "Quedarme": "Stay",
+        "Salir": "Leave",
+        "Documento sin grabar": "Unsaved document",
+        "Tiene sin grabar: ": "Not saved yet: ",
+        "Tiene sin grabar:": "Not saved yet:",
+        "Si sale, queda guardado como borrador en este navegador y podrá recuperarlo al volver a esta opción.": "If you leave, it is kept as a draft in this browser and you can recover it when you come back to this option.",
+        "Salir y guardar borrador": "Leave and keep draft",
+        "Cambios sin grabar": "Unsaved changes",
+        "Hay cambios en esta pantalla que no se han grabado. Si sale, se perderán.": "There are changes on this screen that have not been saved. If you leave, they will be lost.",
+        "Salir sin grabar": "Leave without saving"
+    };
+    function t(texto) {
+        return document.documentElement.lang === 'en' ? (INGLES[texto] || texto) : texto;
+    }
+
     function confirmarSalida(estado) {
         if (!fondo) crearDialogo();
         preguntando = true;
         const previo = document.activeElement;
         mensaje.replaceChildren();
         if (estado.borrador) {
-            titulo.textContent = 'Documento sin grabar';
+            titulo.textContent = t('Documento sin grabar');
             const p = document.createElement('p');
             p.textContent = estado.textos.length === 1
-                ? 'Tiene sin grabar: ' + estado.textos[0] + '.'
-                : 'Tiene sin grabar:';
+                ? t('Tiene sin grabar: ') + estado.textos[0] + '.'
+                : t('Tiene sin grabar:');
             mensaje.appendChild(p);
             if (estado.textos.length > 1) {
                 const ul = document.createElement('ul');
@@ -128,15 +145,15 @@
                 mensaje.appendChild(ul);
             }
             const p2 = document.createElement('p');
-            p2.textContent = 'Si sale, queda guardado como borrador en este navegador y podrá recuperarlo al volver a esta opción.';
+            p2.textContent = t('Si sale, queda guardado como borrador en este navegador y podrá recuperarlo al volver a esta opción.');
             mensaje.appendChild(p2);
-            botonSalir.querySelector('span').textContent = 'Salir y guardar borrador';
+            botonSalir.querySelector('span').textContent = t('Salir y guardar borrador');
         } else {
-            titulo.textContent = 'Cambios sin grabar';
+            titulo.textContent = t('Cambios sin grabar');
             const p = document.createElement('p');
-            p.textContent = 'Hay cambios en esta pantalla que no se han grabado. Si sale, se perderán.';
+            p.textContent = t('Hay cambios en esta pantalla que no se han grabado. Si sale, se perderán.');
             mensaje.appendChild(p);
-            botonSalir.querySelector('span').textContent = 'Salir sin grabar';
+            botonSalir.querySelector('span').textContent = t('Salir sin grabar');
         }
         fondo.hidden = false;
         botonQuedar.focus();

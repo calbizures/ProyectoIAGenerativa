@@ -2,15 +2,15 @@
    Últimos 2 meses, más el rango manual Desde / Hasta. Al cambiar cualquiera
    avisa con AlCambiar para que la pantalla vuelva a consultar. *@
 
-<span class="grupo-rango" role="group" aria-label="Período">
+<span class="grupo-rango" role="group" aria-label="@L("Período")">
     @foreach (var (clave, texto, ayuda) in Atajos)
     {
         <button type="button" class="boton-icono boton-icono-neutral boton-icono-con-etiqueta @(AtajoActivo == clave ? "activo" : "")"
-                title="@ayuda" aria-pressed="@(AtajoActivo == clave ? "true" : "false")" @onclick="() => AplicarAsync(clave)">@texto</button>
+                title="@L(ayuda)" aria-pressed="@(AtajoActivo == clave ? "true" : "false")" @onclick="() => AplicarAsync(clave)">@L(texto)</button>
     }
 </span>
-<label class="filtro-campo">Desde <input type="date" value="@Formato(Desde)" @onchange="CambiarDesdeAsync" /></label>
-<label class="filtro-campo">Hasta <input type="date" value="@Formato(Hasta)" @onchange="CambiarHastaAsync" /></label>
+<label class="filtro-campo">@L("Desde") <input type="date" value="@Formato(Desde)" @onchange="CambiarDesdeAsync" /></label>
+<label class="filtro-campo">@L("Hasta") <input type="date" value="@Formato(Hasta)" @onchange="CambiarHastaAsync" /></label>
 
 @code {
     [Parameter] public DateTime? Desde { get; set; }
@@ -19,6 +19,7 @@
     [Parameter] public EventCallback<DateTime?> HastaChanged { get; set; }
     [Parameter] public EventCallback AlCambiar { get; set; }
 
+    // Textos en español: se traducen al mostrarlos.
     private static readonly (string Clave, string Texto, string Ayuda)[] Atajos =
     {
         ("dia", "Este día", "Solo hoy"),

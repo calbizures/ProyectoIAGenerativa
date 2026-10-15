@@ -29,7 +29,7 @@ public static class PaletaGraficos
 		var abs = Math.Abs(valor);
 		var signo = valor < 0 ? "-" : "";
 		if (abs >= 1_000_000m) return $"{signo}Q{(abs / 1_000_000m).ToString("0.#", CultureInfo.InvariantCulture)} M";
-		if (abs >= 1_000m) return $"{signo}Q{(abs / 1_000m).ToString("0.#", CultureInfo.InvariantCulture)} mil";
+		if (abs >= 1_000m) return L("{0}Q{1} mil", signo, (abs / 1_000m).ToString("0.#", CultureInfo.InvariantCulture));
 		return $"{signo}Q{abs.ToString("#,0", CultureInfo.InvariantCulture)}";
 	}
 

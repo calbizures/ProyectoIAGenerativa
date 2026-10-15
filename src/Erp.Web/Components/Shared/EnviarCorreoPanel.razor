@@ -8,9 +8,9 @@
 @inject AuthenticationStateProvider Autenticacion
 
 <section class="tarjeta enviar-correo" aria-labelledby="@($"titulo-correo-{Documento.Tipo}")">
-    <h2 id="@($"titulo-correo-{Documento.Tipo}")">Enviar @Documento.Nombre por correo</h2>
+    <h2 id="@($"titulo-correo-{Documento.Tipo}")">@L("Enviar {0} por correo", Documento.Nombre)</h2>
     <p class="texto-tenue">
-        Se envía con la cuenta de correo de la compañía (General › Compañías › Correo saliente). Adjuntos:
+        @L("Se envía con la cuenta de correo de la compañía (General › Compañías › Correo saliente). Adjuntos:")
         @foreach (var (a, i) in Documento.Adjuntos.Select((a, i) => (a, i)))
         {
             @(i > 0 ? ", " : "")<a href="@($"data:{a.Tipo};base64,{Convert.ToBase64String(a.Contenido)}")" download="@a.Nombre">@a.Nombre</a>
@@ -18,18 +18,18 @@
     </p>
     <div class="panel-formulario panel-ancho">
         <div class="campo campo-ancho">
-            <label for="@($"cor-para-{Documento.Tipo}")">Para</label>
+            <label for="@($"cor-para-{Documento.Tipo}")">@L("Para")</label>
             <input id="@($"cor-para-{Documento.Tipo}")" type="email" multiple maxlength="300" placeholder="correo@cliente.com" @bind="para" @bind:event="oninput" />
             @if (string.IsNullOrWhiteSpace(Documento.Para))
             {
-                <small class="texto-ayuda" role="alert">El cliente no tiene correo registrado: escríbalo aquí o regístrelo en Ventas › Clientes.</small>
+                <small class="texto-ayuda" role="alert">@L("El cliente no tiene correo registrado: escríbalo aquí o regístrelo en Ventas › Clientes.")</small>
             }
         </div>
-        <div class="campo campo-ancho"><label for="@($"cor-copia-{Documento.Tipo}")">Copia</label><input id="@($"cor-copia-{Documento.Tipo}")" maxlength="300" placeholder="Opcional; varios separados por coma" @bind="copia" /></div>
-        <div class="campo campo-ancho"><label for="@($"cor-asunto-{Documento.Tipo}")">Asunto</label><input id="@($"cor-asunto-{Documento.Tipo}")" maxlength="200" @bind="asunto" /></div>
+        <div class="campo campo-ancho"><label for="@($"cor-copia-{Documento.Tipo}")">@L("Copia")</label><input id="@($"cor-copia-{Documento.Tipo}")" maxlength="300" placeholder="@L("Opcional; varios separados por coma")" @bind="copia" /></div>
+        <div class="campo campo-ancho"><label for="@($"cor-asunto-{Documento.Tipo}")">@L("Asunto")</label><input id="@($"cor-asunto-{Documento.Tipo}")" maxlength="200" @bind="asunto" /></div>
         <div class="campo campo-ancho">
-            <label for="@($"cor-mensaje-{Documento.Tipo}")">Mensaje</label>
-            <textarea id="@($"cor-mensaje-{Documento.Tipo}")" rows="3" maxlength="1000" placeholder="Opcional: se agrega al texto del correo" @bind="mensaje"></textarea>
+            <label for="@($"cor-mensaje-{Documento.Tipo}")">@L("Mensaje")</label>
+            <textarea id="@($"cor-mensaje-{Documento.Tipo}")" rows="3" maxlength="1000" placeholder="@L("Opcional: se agrega al texto del correo")" @bind="mensaje"></textarea>
         </div>
     </div>
     @if (resultado is not null)
@@ -37,9 +37,9 @@
         <p class="@(resultado.Enviado ? "mensaje-ok" : "mensaje-error")" role="@(resultado.Enviado ? "status" : "alert")">@resultado.Mensaje</p>
     }
     <div class="acciones-fila">
-        <BotonIcono Icono="send" Tooltip="Enviar el correo con los adjuntos" Etiqueta="Enviar" Variante="primario" BloquearTrasGuardar="false"
+        <BotonIcono Icono="send" Tooltip="@L("Enviar el correo con los adjuntos")" Etiqueta="@L("Enviar")" Variante="primario" BloquearTrasGuardar="false"
                     Deshabilitado="enviando || string.IsNullOrWhiteSpace(para)" OnClick="EnviarAsync" />
-        <BotonIcono Icono="x" Tooltip="Cerrar" Etiqueta="Cerrar" OnClick="Cerrar" />
+        <BotonIcono Icono="x" Tooltip="@L("Cerrar")" Etiqueta="@L("Cerrar")" OnClick="Cerrar" />
     </div>
 </section>
 

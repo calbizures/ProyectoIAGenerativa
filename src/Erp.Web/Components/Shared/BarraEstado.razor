@@ -6,26 +6,26 @@
 @inject Erp.Data.Security.IUsuarioRepository UsuarioRepository
 @inject NavigationManager NavigationManager
 
-<footer class="barra-estado" aria-label="Barra de estado">
+<footer class="barra-estado" aria-label="@L("Barra de estado")">
     @if (mostrarAdvertenciaCaja)
     {
         <span class="barra-estado-advertencia" role="status">
             <Icono Nombre="alert-triangle" Tamano="14" />
             @if (puedeAbrirCaja)
             {
-                <span>No hay una caja abierta en esta sucursal. <a href="caja">Abrir caja</a></span>
+                <span>@L("No hay una caja abierta en esta sucursal.") <a href="caja">@L("Abrir caja")</a></span>
             }
             else
             {
-                <span>No hay una caja abierta en esta sucursal. Pida al encargado que la abra.</span>
+                <span>@L("No hay una caja abierta en esta sucursal. Pida al encargado que la abra.")</span>
             }
         </span>
     }
-    <span class="barra-estado-sucursal" title="Sucursal"><Icono Nombre="map-pin" Tamano="13" /> @(nombreSucursal ?? "Sin sucursal")</span>
-    <span title="Usuario"><Icono Nombre="user" Tamano="13" /> @(nombreUsuario ?? "—")</span>
-    <span title="Módulo"><Icono Nombre="layout-grid" Tamano="13" /> @ObtenerModulo()</span>
-    <span title="Base de datos"><Icono Nombre="database" Tamano="13" /> @nombreBaseDatos</span>
-    <span class="barra-estado-hora" title="Fecha y hora"><Icono Nombre="calendar" Tamano="13" /> @horaActual.ToString("dd/MM/yyyy HH:mm:ss")</span>
+    <span class="barra-estado-sucursal" title="@L("Sucursal")"><Icono Nombre="map-pin" Tamano="13" /> @(nombreSucursal ?? L("Sin sucursal"))</span>
+    <span title="@L("Usuario")"><Icono Nombre="user" Tamano="13" /> @(nombreUsuario ?? "—")</span>
+    <span title="@L("Módulo")"><Icono Nombre="layout-grid" Tamano="13" /> @ObtenerModulo()</span>
+    <span title="@L("Base de datos")"><Icono Nombre="database" Tamano="13" /> @nombreBaseDatos</span>
+    <span class="barra-estado-hora" title="@L("Fecha y hora")"><Icono Nombre="calendar" Tamano="13" /> @horaActual.ToString("dd/MM/yyyy HH:mm:ss")</span>
 </footer>
 
 @code {
@@ -162,7 +162,8 @@
     private string ObtenerModulo()
     {
         var ruta = new Uri(NavigationManager.Uri).AbsolutePath.Trim('/').ToLowerInvariant();
-        return ModulosPorRuta.TryGetValue(ruta, out var modulo) ? modulo : ruta;
+        // Las rutas están en español; cada parte ("Ventas / POS", "Facturas") se traduce.
+        return ModulosPorRuta.TryGetValue(ruta, out var modulo) ? string.Join(" > ", modulo.Split(" > ").Select(L)) : ruta;
     }
 
     public void Dispose()

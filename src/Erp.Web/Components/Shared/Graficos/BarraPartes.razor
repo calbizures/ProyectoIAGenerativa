@@ -3,7 +3,7 @@
 @{ var total = Partes.Sum(p => Math.Max(0, p.Valor)); }
 @if (total <= 0)
 {
-    <p class="estado-vacio">Sin datos para el período.</p>
+    <p class="estado-vacio">@L("Sin datos para el período.")</p>
 }
 else
 {

@@ -2,18 +2,18 @@
 
 @if (Total > TamanoPagina)
 {
-    <nav class="paginador" aria-label="Paginación">
-        <span>Mostrando @(Desde + 1)–@Math.Min(Desde + TamanoPagina, Total) de @Total</span>
+    <nav class="paginador" aria-label="@L("Paginación")">
+        <span>@L("Mostrando {0}–{1} de {2}", Desde + 1, Math.Min(Desde + TamanoPagina, Total), Total)</span>
         <div class="paginador-botones">
-            <BotonIcono Icono="chevron-left" Tooltip="Página anterior" Deshabilitado="Pagina <= 1" OnClick="() => IrAAsync(Pagina - 1)" />
-            <span class="pagina-actual">Página @Pagina de @Paginas</span>
-            <BotonIcono Icono="chevron-right" Tooltip="Página siguiente" Deshabilitado="Pagina >= Paginas" OnClick="() => IrAAsync(Pagina + 1)" />
+            <BotonIcono Icono="chevron-left" Tooltip="@L("Página anterior")" Deshabilitado="Pagina <= 1" OnClick="() => IrAAsync(Pagina - 1)" />
+            <span class="pagina-actual">@L("Página {0} de {1}", Pagina, Paginas)</span>
+            <BotonIcono Icono="chevron-right" Tooltip="@L("Página siguiente")" Deshabilitado="Pagina >= Paginas" OnClick="() => IrAAsync(Pagina + 1)" />
         </div>
     </nav>
 }
 else if (Total > 0)
 {
-    <div class="paginador"><span>@Total registro@(Total == 1 ? "" : "s")</span></div>
+    <div class="paginador"><span>@L("{0} registro{1}", Total, Total == 1 ? "" : "s")</span></div>
 }
 
 @code {

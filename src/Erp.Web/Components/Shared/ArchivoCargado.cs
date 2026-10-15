@@ -20,5 +20,5 @@ public sealed record ArchivoCargado(string Nombre, string Tipo, byte[] Contenido
 	}
 
 	public static string TamanoTexto(long bytes) =>
-		bytes < 1024 * 1024 ? $"{Math.Max(1, bytes / 1024)} KB" : $"{bytes / (1024d * 1024):N1} MB";
+		bytes < 1024 * 1024 ? L("{0} KB", Math.Max(1, bytes / 1024)) : L("{0:N1} MB", bytes / (1024d * 1024));
 }

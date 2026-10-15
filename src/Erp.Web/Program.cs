@@ -5,6 +5,7 @@ using Erp.Data.General;
 using Erp.Data.Ventas;
 using Erp.Web.Components;
 using Erp.Web.Fel;
+using Erp.Web.Idioma;
 using Erp.Web.Reportes;
 using Erp.Web.Security;
 using Microsoft.AspNetCore.Authentication;
@@ -64,6 +65,9 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+// Textos en inglés (Idioma/en/*.json).
+Textos.Cargar();
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -72,6 +76,16 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Idioma de la interfaz según la cookie erp-idioma (español por omisión).
+// Solo cambia CurrentUICulture: el formato de números y fechas no cambia. El
+// circuito de Blazor toma el idioma de la petición que lo abre.
+app.Use((contexto, siguiente) =>
+{
+	var idioma = contexto.Request.Cookies[Textos.CookieIdioma] == "en" ? "en-US" : "es-GT";
+	System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo(idioma);
+	return siguiente(contexto);
+});
 
 app.UseStaticFiles();
 
@@ -431,6 +445,22 @@ app.MapGet("/reportes/rrhh/plantilla-empleados.xlsx", async (HttpContext context
 		await rrhh.ConsultarCatalogoAsync("TipoDocumentoIdentificacion", soloActivos: true), await CompaniaReporteAsync(contexto, general));
 	return Results.File(archivo, TipoExcel, "plantilla-empleados.xlsx");
 }).RequireAuthorization();
+
+// Cambio de idioma: guarda la cookie y vuelve a la pantalla (con recarga
+// completa, para que el circuito de Blazor tome el nuevo idioma).
+app.MapGet("/idioma/{codigo}", (string codigo, string? volver, HttpContext contexto) =>
+{
+	contexto.Response.Cookies.Append(Textos.CookieIdioma, codigo == "en" ? "en" : "es", new CookieOptions
+	{
+		Expires = DateTimeOffset.UtcNow.AddYears(1),
+		IsEssential = true,
+		SameSite = SameSiteMode.Lax,
+		HttpOnly = true,
+		Secure = contexto.Request.IsHttps
+	});
+	var destino = !string.IsNullOrEmpty(volver) && volver.StartsWith('/') && !volver.StartsWith("//") && !volver.StartsWith("/\\") ? volver : "/";
+	return Results.LocalRedirect(destino);
+}).AllowAnonymous();
 
 app.MapPost("/logout", async (HttpContext context) =>
 {

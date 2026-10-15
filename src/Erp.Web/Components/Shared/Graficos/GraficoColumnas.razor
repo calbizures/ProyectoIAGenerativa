@@ -7,13 +7,13 @@
 
 @if (Categorias.Count == 0 || Series.Count == 0)
 {
-    <p class="estado-vacio">Sin datos para el período.</p>
+    <p class="estado-vacio">@L("Sin datos para el período.")</p>
 }
 else
 {
     @if (Series.Count > 1)
     {
-        <ul class="grafico-leyenda" aria-label="Leyenda">
+        <ul class="grafico-leyenda" aria-label="@L("Leyenda")">
             @foreach (var s in Series)
             {
                 <li><span class="leyenda-muestra" style="background:@PaletaGraficos.Color(s.Slot)"></span>@s.Nombre</li>
@@ -59,7 +59,7 @@ else
                         }
                         @if (Apiladas && Series.Count > 1)
                         {
-                            <span class="tooltip-fila tooltip-total"><strong>@PaletaGraficos.Moneda(Series.Sum(s => s.Valores[i]))</strong> Total</span>
+                            <span class="tooltip-fila tooltip-total"><strong>@PaletaGraficos.Moneda(Series.Sum(s => s.Valores[i]))</strong> @L("Total")</span>
                         }
                         @if (!string.IsNullOrEmpty(PistaSeleccion) && OnSeleccionar.HasDelegate)
                         {
@@ -76,7 +76,7 @@ else
     [Parameter, EditorRequired] public IReadOnlyList<string> Categorias { get; set; } = Array.Empty<string>();
     [Parameter, EditorRequired] public IReadOnlyList<SerieGrafico> Series { get; set; } = Array.Empty<SerieGrafico>();
     [Parameter] public bool Apiladas { get; set; }
-    [Parameter] public string Titulo { get; set; } = "Gráfico";
+    [Parameter] public string Titulo { get; set; } = L("Gráfico");
     [Parameter] public int Alto { get; set; } = 260;
     [Parameter] public EventCallback<int> OnSeleccionar { get; set; }
     [Parameter] public string? PistaSeleccion { get; set; }

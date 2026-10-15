@@ -11,7 +11,7 @@
         @if (Tabla is not null)
         {
             <button type="button" class="boton-texto" aria-pressed="@(verTabla ? "true" : "false")" @onclick="() => verTabla = !verTabla">
-                @(verTabla ? "Ver gráfico" : "Ver tabla")
+                @(verTabla ? L("Ver gráfico") : L("Ver tabla"))
             </button>
         }
     </div>

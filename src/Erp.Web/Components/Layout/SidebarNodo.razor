@@ -10,7 +10,7 @@
         <span class="sidebar-titulo">@Titulo</span>
         @if (!Disponible)
         {
-            <span class="sidebar-badge">Próx.</span>
+            <span class="sidebar-badge">@L("Próx.")</span>
         }
         <span class="sidebar-chevron @(expandido ? "sidebar-chevron-abierto" : "")" aria-hidden="true">›</span>
     </button>
@@ -24,7 +24,7 @@
             }
             else
             {
-                <span class="sidebar-proximamente">Módulo en construcción</span>
+                <span class="sidebar-proximamente">@L("Módulo en construcción")</span>
             }
         </div>
     }
