@@ -25,7 +25,7 @@
         <h1>@L("Estado de cuenta · {0}", tercero)</h1>
     </div>
     <div class="reporte-meta">
-        @(Desde is null ? L("Desde el inicio") : L("Del {0:dd/MM/yyyy}", Desde)) al @((Hasta ?? DateTime.Today).ToString("dd/MM/yyyy"))<br />
+        @L("{0} al {1}", Desde is null ? L("Desde el inicio") : L("Del {0:dd/MM/yyyy}", Desde), (Hasta ?? DateTime.Today).ToString("dd/MM/yyyy"))<br />
         @L("Saldo pendiente:") <strong>Q@(documentos.Sum(d => d.Saldo).ToString("N2"))</strong>
     </div>
 </div>

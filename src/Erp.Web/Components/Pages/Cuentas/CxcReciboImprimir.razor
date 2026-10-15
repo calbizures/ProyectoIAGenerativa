@@ -4,7 +4,7 @@
 @using Erp.Data.Cuentas
 @inject ICuentasRepository CuentasRepository
 
-<PageTitle>@L("Recibo de caja {0}", Id)</PageTitle>
+<PageTitle>Recibo de caja @Id</PageTitle>
 
 <div class="reporte-acciones">
     <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
@@ -23,44 +23,45 @@ else
         <div>
             <LogoCompania Clase="reporte-logo" />
             <div class="reporte-compania">@enc.Compania</div>
-            <div class="texto-tenue">@L("NIT {0} · {1}", enc.CompaniaNit, enc.CompaniaDireccion)</div>
-            <h1>@L("Recibo de caja No. {0}", enc.PpeId)</h1>
+            <div class="texto-tenue">NIT @enc.CompaniaNit · @enc.CompaniaDireccion</div>
+            <h1>Recibo de caja No. @enc.PpeId</h1>
         </div>
         <div class="reporte-meta">
             @enc.Fecha.ToString("dd/MM/yyyy HH:mm")<br />
             @enc.Sucursal · @enc.Caja<br />
-            @L("Cajero: {0}", enc.Usuario)
+            Cajero: @enc.Usuario
         </div>
     </div>
 
     @if (enc.Estado == "N")
     {
-        <p class="recibo-anulado">@L("ANULADO — {0}", enc.MotivoAnulacion)</p>
+        <p class="recibo-anulado">ANULADO — @enc.MotivoAnulacion</p>
     }
 
     <p class="recibo-cliente">
-        @L("Recibimos de") <strong>@enc.Cliente</strong> @L("({0}, NIT {1}) la cantidad de", enc.ClienteCodigo, enc.ClienteNit ?? "C/F") <strong>Q@(recibo.Aplicaciones.Sum(a => a.Monto).ToString("N2"))</strong>@L(", aplicada así:")
+        Recibimos de <strong>@enc.Cliente</strong> (@enc.ClienteCodigo, NIT @(enc.ClienteNit ?? "C/F"))
+        la cantidad de <strong>Q@(recibo.Aplicaciones.Sum(a => a.Monto).ToString("N2"))</strong>, aplicada así:
     </p>
 
     <table class="tabla-datos">
-        <thead><tr><th>@L("Documento")</th><th class="num">@L("Cuota")</th><th class="col-fecha">@L("Vencimiento")</th><th class="num">@L("Monto aplicado")</th></tr></thead>
+        <thead><tr><th>Documento</th><th class="num">Cuota</th><th class="col-fecha">Vencimiento</th><th class="num">Monto aplicado</th></tr></thead>
         <tbody>
             @foreach (var a in recibo.Aplicaciones)
             {
                 <tr>
                     <td>@a.Documento</td>
-                    <td class="num">@(a.Cuota?.ToString() ?? L("Pago inicial"))</td>
+                    <td class="num">@(a.Cuota?.ToString() ?? "Pago inicial")</td>
                     <td class="col-fecha">@(a.Vencimiento?.ToString("dd/MM/yyyy") ?? "—")</td>
                     <td class="num">@a.Monto.ToString("N2")</td>
                 </tr>
             }
         </tbody>
-        <tfoot><tr><td colspan="3">@L("Total")</td><td class="num">Q@(recibo.Aplicaciones.Sum(a => a.Monto).ToString("N2"))</td></tr></tfoot>
+        <tfoot><tr><td colspan="3">Total</td><td class="num">Q@(recibo.Aplicaciones.Sum(a => a.Monto).ToString("N2"))</td></tr></tfoot>
     </table>
 
-    <h2>@L("Forma de pago")</h2>
+    <h2>Forma de pago</h2>
     <table class="tabla-datos">
-        <thead><tr><th>@L("Forma")</th><th>@L("Entidad")</th><th>@L("Referencia")</th><th class="num">@L("Monto")</th></tr></thead>
+        <thead><tr><th>Forma</th><th>Entidad</th><th>Referencia</th><th class="num">Monto</th></tr></thead>
         <tbody>
             @foreach (var f in recibo.Formas)
             {
@@ -70,12 +71,12 @@ else
     </table>
 
     <div class="recibo-firmas">
-        <div>@L("Recibí conforme")</div>
-        <div>@L("Entregué conforme")</div>
+        <div>Recibí conforme</div>
+        <div>Entregué conforme</div>
     </div>
 }
 
-<p class="reporte-pie">@L("Impreso el {0}.", DateTime.Now.ToString("dd/MM/yyyy HH:mm"))</p>
+<p class="reporte-pie">Impreso el @DateTime.Now.ToString("dd/MM/yyyy HH:mm").</p>
 
 @code {
     [SupplyParameterFromQuery] public int Id { get; set; }

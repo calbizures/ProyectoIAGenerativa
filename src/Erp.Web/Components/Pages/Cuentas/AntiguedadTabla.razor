@@ -15,7 +15,7 @@ else if (Vista == "tercero")
                 <th class="num">@L("Documentos")</th>
                 @foreach (var r in RangosAntiguedad.Etiquetas)
                 {
-                    <th class="num">@r</th>
+                    <th class="num">@L(r)</th>
                 }
                 <th class="num">@L("Total")</th>
                 @if (ConPago)
@@ -68,7 +68,7 @@ else
                 <th class="num">@L("Días")</th>
                 @foreach (var r in RangosAntiguedad.Etiquetas)
                 {
-                    <th class="num">@r</th>
+                    <th class="num">@L(r)</th>
                 }
                 <th class="num">@L("Total")</th>
                 @if (ConPago)
@@ -160,7 +160,7 @@ else
             }
         </tr>
         <tr class="antiguedad-porcentaje">
-            <td colspan="@columnasEtiqueta">% del total</td>
+            <td colspan="@columnasEtiqueta">@L("% del total")</td>
             @foreach (var t in totales)
             {
                 <td class="num">@(total == 0 ? "0.0" : (t * 100 / total).ToString("N1"))%</td>

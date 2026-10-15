@@ -6,7 +6,7 @@
 @inject ICuentasRepository CuentasRepository
 @inject IGeneralRepository GeneralRepository
 
-<PageTitle>@L("Antigüedad de saldos de {0}", EsCliente ? L("clientes") : "proveedores")</PageTitle>
+<PageTitle>@L("Antigüedad de saldos de {0}", EsCliente ? L("clientes") : L("proveedores"))</PageTitle>
 
 <div class="reporte-acciones">
     <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
@@ -18,7 +18,7 @@
     <div>
         <LogoCompania Clase="reporte-logo" />
         <div class="reporte-compania">@compania</div>
-        <h1>@L("Antigüedad de saldos de {0} · {1}", EsCliente ? L("clientes") : "proveedores", Vista == "documento" ? (EsCliente ? L("por factura") : L("por compra")) : (EsCliente ? L("por cliente") : L("por proveedor")))</h1>
+        <h1>@L("Antigüedad de saldos de {0} · {1}", EsCliente ? L("clientes") : L("proveedores"), Vista == "documento" ? (EsCliente ? L("por factura") : L("por compra")) : (EsCliente ? L("por cliente") : L("por proveedor")))</h1>
     </div>
     <div class="reporte-meta">
         @L("Fecha de corte:") <strong>@FechaCorte.ToString("dd/MM/yyyy")</strong><br />

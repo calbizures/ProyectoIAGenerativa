@@ -342,9 +342,9 @@
             Nombre = "",
             Columnas =
             [
-                new() { Campo = "CUENTA_DESTINO", Titulo = L("Cuenta") },
-                new() { Campo = "BENEFICIARIO", Titulo = L("Nombre") },
-                new() { Campo = "MONTO", Titulo = L("Monto"), Alineacion = "D" }
+                new() { Campo = "CUENTA_DESTINO", Titulo = "Cuenta" },
+                new() { Campo = "BENEFICIARIO", Titulo = "Nombre" },
+                new() { Campo = "MONTO", Titulo = "Monto", Alineacion = "D" }
             ]
         };
         editando = true;
@@ -372,7 +372,7 @@
 
     private void Agregar()
     {
-        edicion?.Columnas.Add(new FormatoColumna { Campo = "REFERENCIA", Titulo = L("Referencia") });
+        edicion?.Columnas.Add(new FormatoColumna { Campo = "REFERENCIA", Titulo = "Referencia" });
         Previsualizar();
     }
 

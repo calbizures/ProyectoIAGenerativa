@@ -530,7 +530,7 @@
     private void IniciarAjuste(LineaExtracto l)
     {
         bancoElegido = null;
-        ajuste = new AjusteModelo { Linea = l, Descripcion = L("Conciliación bancaria: {0}", l.Descripcion ?? (l.Debito > 0 ? L("cargo del banco") : L("crédito del banco"))) };
+        ajuste = new AjusteModelo { Linea = l, Descripcion = $"Conciliación bancaria: {l.Descripcion ?? (l.Debito > 0 ? "cargo del banco" : "crédito del banco")}" };
     }
 
     private async Task GrabarAjusteAsync()

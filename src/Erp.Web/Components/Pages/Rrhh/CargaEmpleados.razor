@@ -136,7 +136,7 @@
                         PrimerApellido = lector.Texto(f, "Primer apellido"),
                         SegundoApellido = lector.Texto(f, "Segundo apellido"),
                         // "Masculino", "m", "M" → M; lo mismo con tipo de nómina, forma de pago y tipo de cuenta.
-                        Genero = lector.Letra(f, L("Género")),
+                        Genero = lector.Letra(f, "Género"),
                         FechaNacimiento = lector.Fecha(f, "Fecha nacimiento"),
                         FechaIngreso = lector.Fecha(f, "Fecha ingreso"),
                         TipoDocumento = lector.Texto(f, "Tipo documento"),
@@ -147,10 +147,10 @@
                         Direccion = lector.Texto(f, "Dirección"),
                         Plaza = lector.Texto(f, "Plaza"),
                         SalarioBase = lector.Numero(f, "Salario base"),
-                        TipoNomina = lector.Letra(f, L("Tipo nómina")),
-                        FormaPago = lector.Letra(f, L("Forma pago")),
+                        TipoNomina = lector.Letra(f, "Tipo nómina"),
+                        FormaPago = lector.Letra(f, "Forma pago"),
                         Banco = lector.Texto(f, "Banco"),
-                        TipoCuenta = lector.Letra(f, L("Tipo cuenta")),
+                        TipoCuenta = lector.Letra(f, "Tipo cuenta"),
                         NumeroCuenta = lector.Texto(f, "Número cuenta")
                     });
 

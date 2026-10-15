@@ -8,7 +8,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 
 <div class="pagina-encabezado">
-    <h1>@L("Estado de cuenta de {0}", EsCliente ? L("clientes") : "proveedores")</h1>
+    <h1>@L("Estado de cuenta de {0}", EsCliente ? L("clientes") : L("proveedores"))</h1>
     <p>@L("Documentos con saldo y movimientos ({0}) con saldo corrido.", EsCliente ? L("facturas, pagos y notas") : L("compras, cheques y notas"))</p>
 </div>
 
@@ -52,7 +52,7 @@
 {
     @if (cartera.Count == 0)
     {
-        <p class="estado-vacio">@L("No hay {0} con saldo pendiente. Busque uno arriba para ver su historial.", EsCliente ? L("clientes") : "proveedores")</p>
+        <p class="estado-vacio">@L("No hay {0} con saldo pendiente. Busque uno arriba para ver su historial.", EsCliente ? L("clientes") : L("proveedores"))</p>
     }
     else
     {
@@ -105,9 +105,8 @@ else if (consultado)
         <section class="tarjeta" aria-labelledby="titulo-correo">
             <h2 id="titulo-correo">@L("Enviar el estado de cuenta por correo")</h2>
             <p class="texto-tenue">
-                Saldo Q@(correo.Datos.Cliente.Saldo.ToString("N2")) · vencido Q@(correo.Datos.Cliente.Vencido.ToString("N2"))
-                · límite @(correo.Datos.Cliente.Limite > 0 ? $"Q{correo.Datos.Cliente.Limite:N2}" : L("sin límite"))
-                · disponible @(correo.Datos.Cliente.Disponible is decimal disp ? $"Q{disp:N2}" : "—").
+                @L("Saldo Q{0} · vencido Q{1} · límite {2} · disponible {3}.", correo.Datos.Cliente.Saldo.ToString("N2"), correo.Datos.Cliente.Vencido.ToString("N2"),
+                    correo.Datos.Cliente.Limite > 0 ? $"Q{correo.Datos.Cliente.Limite:N2}" : L("sin límite"), correo.Datos.Cliente.Disponible is decimal disp ? $"Q{disp:N2}" : "—")
                 @L("Se adjunta") <a href="@($"reportes/cxc/estado-cuenta.pdf?{Filtros}")" download>@correo.NombreArchivo</a> @L("con el detalle.")
             </p>
             <div class="panel-formulario panel-ancho">

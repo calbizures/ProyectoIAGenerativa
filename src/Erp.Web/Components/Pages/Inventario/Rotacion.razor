@@ -300,7 +300,7 @@
                     FechaEntrega = DateTime.Today.AddDays(grupo.Max(f => f.DiasEntrega)),
                     PrvId = grupo.Key.PrvId,
                     BodId = grupo.Key.BodId,
-                    Observaciones = L("Sugerida por el punto de reorden ({0} días de análisis al {1:dd/MM/yyyy}).", dias, hasta)
+                    Observaciones = $"Sugerida por el punto de reorden ({dias} días de análisis al {hasta:dd/MM/yyyy})."
                 };
                 var lineas = grupo.Select(f => new NuevaLineaOrdenCompra
                 {

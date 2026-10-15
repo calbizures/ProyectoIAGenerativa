@@ -6,7 +6,7 @@
 @inject ICuentasRepository CuentasRepository
 
 <div class="pagina-encabezado">
-    <h1>@L("Antigüedad de saldos de {0}", EsCliente ? L("clientes") : "proveedores")</h1>
+    <h1>@L("Antigüedad de saldos de {0}", EsCliente ? L("clientes") : L("proveedores"))</h1>
     <p>@L("Saldo pendiente de cada cuota según los días transcurridos desde su vencimiento a la fecha de corte.")</p>
 </div>
 

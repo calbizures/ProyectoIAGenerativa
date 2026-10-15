@@ -12,8 +12,8 @@
 <div class="pagina-encabezado">
     <h1>@L("Notas de crédito y débito {0}", EsCliente ? L("a clientes") : L("de proveedores"))</h1>
     <p>
-        La nota de crédito rebaja el saldo de @(EsCliente ? L("una factura") : L("una compra")) desde la última cuota; puede incluir devolución de mercadería
-        (@(EsCliente ? L("reingresa al inventario") : L("sale del inventario"))) y rebajas por monto. La nota de débito agrega una cuota nueva con su vencimiento.
+        @L("La nota de crédito rebaja el saldo de {0} desde la última cuota; puede incluir devolución de mercadería ({1}) y rebajas por monto. La nota de débito agrega una cuota nueva con su vencimiento.",
+            EsCliente ? L("una factura") : L("una compra"), EsCliente ? L("reingresa al inventario") : L("sale del inventario"))
         @L("Cada nota genera su póliza. Una nota no se anula: se corrige con la nota contraria.")
     </p>
 </div>
@@ -337,7 +337,7 @@ else
             var iva = d.Origen.DetPorcIva ?? porcentajeIva;
             lineas.Add(new NuevaLineaNota
             {
-                Descripcion = L("Devolución: {0}", d.Origen.DetDescripcion),
+                Descripcion = $"Devolución: {d.Origen.DetDescripcion}",
                 Cantidad = d.Cantidad,
                 PrecioUnitario = Math.Round(d.PrecioConIva / (1 + iva / 100m), 2),
                 PorcentajeIva = iva,

@@ -288,7 +288,7 @@
                     </div>
                 </div>
                 <p class="texto-tenue">
-                    A <strong>@proveedor.Nombre</strong> @L("por") <strong>Q@(TotalCheque.ToString("N2"))</strong>:
+                    @L("A {0} por Q{1}:", proveedor.Nombre, TotalCheque.ToString("N2"))
                     @string.Join("; ", FacturasMarcadas.Select(f => $"{f.Documento} Q{f.Monto:N2}")).
                 </p>
                 <div class="acciones-fila">
@@ -866,7 +866,7 @@
     {
         var facturas = FacturasMarcadas;
         if (facturas.Count == 0) return "";
-        var texto = (facturas.Count == 1 ? L("Pago factura ") : L("Pago facturas ")) + string.Join(", ", facturas.Select(f => f.Numero));
+        var texto = (facturas.Count == 1 ? "Pago factura " : "Pago facturas ") + string.Join(", ", facturas.Select(f => f.Numero));
         return texto.Length <= 250 ? texto : texto[..247] + "...";
     }
 
