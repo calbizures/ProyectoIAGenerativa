@@ -27,11 +27,11 @@
             {
                 var filas = Pivote.Filas.Where(f => f.Actividad == actividad).ToList();
                 if (filas.Count == 0) continue;
-                <tr class="fila-nivel fila-nivel-1"><td colspan="@(Pivote.Periodos.Count + 2)">@nombre</td></tr>
+                <tr class="fila-nivel fila-nivel-1"><td colspan="@(Pivote.Periodos.Count + 2)">@L(nombre)</td></tr>
                 @foreach (var f in filas)
                 {
                     <tr>
-                        <td class="sangria-2">@f.Concepto</td>
+                        <td class="sangria-2">@L(f.Concepto)</td>
                         @foreach (var p in Pivote.Periodos)
                         {
                             var monto = f.Montos.GetValueOrDefault(p);
@@ -41,7 +41,7 @@
                     </tr>
                 }
                 <tr class="fila-subtotal">
-                    <td>@L("Flujo neto de {0}", nombre.Replace("Actividades de ", ""))</td>
+                    <td>@L("Flujo neto de " + nombre.Replace("Actividades de ", ""))</td>
                     @foreach (var p in Pivote.Periodos)
                     {
                         <td class="num">@Pivote.Neto(p, actividad).ToString("N2")</td>

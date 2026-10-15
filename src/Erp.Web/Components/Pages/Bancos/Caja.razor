@@ -191,7 +191,7 @@ else if (pestanaActiva == "corte")
             </div>
             @if (Cuadra)
             {
-                <p class="mensaje-ok" role="status">La caja cuadra@(ToleranciaCierre > 0 ? L(" (tolerancia permitida Q{0:N2})", ToleranciaCierre) : "").</p>
+                <p class="mensaje-ok" role="status">@L("La caja cuadra")@(ToleranciaCierre > 0 ? L(" (tolerancia permitida Q{0:N2})", ToleranciaCierre) : "").</p>
             }
             else
             {

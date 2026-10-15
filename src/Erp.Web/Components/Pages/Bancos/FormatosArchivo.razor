@@ -168,7 +168,7 @@
                     <div class="campo campo-ancho">
                         <label for="fmt-pie">@L("Línea final (opcional)")</label>
                         <input id="fmt-pie" maxlength="500" @bind="edicion.Pie" @bind:after="Previsualizar" placeholder="@L("Ej.: T{CANTIDAD,5}{TOTAL,15}")" />
-                        <small class="texto-ayuda">Marcadores: {NUMERO} {FECHA} {REFERENCIA} {DESCRIPCION} {TOTAL} {CANTIDAD} {CUENTA_ORIGEN} {MONEDA}; con L(",ancho") se rellenan (los números con ceros a la izquierda).</small>
+                        <small class="texto-ayuda">@L("Marcadores: {NUMERO} {FECHA} {REFERENCIA} {DESCRIPCION} {TOTAL} {CANTIDAD} {CUENTA_ORIGEN} {MONEDA}; con \",ancho\" se rellenan (los números con ceros a la izquierda).")</small>
                     </div>
                     <div class="campo">
                         <label for="fmt-estado">@L("Estado")</label>
@@ -299,7 +299,7 @@
         catch (Exception ex) { MostrarError(ex); }
     }
 
-    private static string SeparadorTexto(string? s) => s switch { ";" => L("punto y coma"), "|" => "barra", "TAB" => "tabulador", _ => "coma" };
+    private static string SeparadorTexto(string? s) => s switch { ";" => L("punto y coma"), "|" => L("barra"), "TAB" => L("tabulador"), _ => L("coma") };
 
     private static string UsoTexto(string uso) => uso switch { "P" => L("Proveedores"), "N" => L("Planilla"), _ => L("Ambos") };
 
