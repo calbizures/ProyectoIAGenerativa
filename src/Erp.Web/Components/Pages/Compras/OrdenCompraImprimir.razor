@@ -5,7 +5,7 @@
 @using Erp.Web.Reportes
 @inject IOrdenCompraRepository OrdenCompraRepository
 
-<PageTitle>@(enc is null ? L("Orden de compra") : L("Orden de compra {0}", enc.Numero))</PageTitle>
+<PageTitle>@(enc is null ? "Orden de compra" : $"Orden de compra {enc.Numero}")</PageTitle>
 
 @if (enc is null)
 {
@@ -22,10 +22,10 @@ else
         <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
             <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">@L("Imprimir")</span>
         </button>
-        <span class="texto-tenue">@L("Formato carta.{0}", enc.Estado == "B" ? L(" Borrador: apruébela antes de enviarla al proveedor.") : "")</span>
+        <span class="texto-tenue">@L("Formato carta.")@(enc.Estado == "B" ? L(" Borrador: apruébela antes de enviarla al proveedor.") : "")</span>
     </div>
 
-    <article class="fac-carta">
+    <article lang="es" class="fac-carta">
         @if (MarcaAgua is not null) { <div class="fac-marca">@MarcaAgua</div> }
         <header class="fac-cab">
             <div class="fac-emisor">
@@ -33,18 +33,18 @@ else
                 <div>
                     <div class="fac-comercial">@enc.NombreComercial</div>
                     <div class="fac-razon">@enc.NombreEmisor</div>
-                    <div>@L("NIT {0}", enc.NitEmisor)</div>
+                    <div>NIT @enc.NitEmisor</div>
                     <div>@enc.DireccionEmisor</div>
-                    <div>@string.Join(" · ", new[] { enc.TelefonoEmisor is null ? null : L("Tel. {0}", enc.TelefonoEmisor), enc.CorreoEmisor }.Where(t => !string.IsNullOrWhiteSpace(t)))</div>
+                    <div>@string.Join(" · ", new[] { enc.TelefonoEmisor is null ? null : $"Tel. {enc.TelefonoEmisor}", enc.CorreoEmisor }.Where(t => !string.IsNullOrWhiteSpace(t)))</div>
                 </div>
             </div>
             <div class="fac-doc">
-                <div class="fac-doc-tipo">@L("ORDEN DE COMPRA")</div>
-                <div class="fac-doc-sub">@L("Facture citando este número")</div>
+                <div class="fac-doc-tipo">ORDEN DE COMPRA</div>
+                <div class="fac-doc-sub">Facture citando este número</div>
                 <dl>
-                    <dt>@L("Número")</dt><dd>@enc.Numero</dd>
-                    <dt>@L("Fecha")</dt><dd>@enc.Fecha.ToString("dd/MM/yyyy")</dd>
-                    <dt>@L("Entrega")</dt><dd><strong>@(enc.FechaEntrega?.ToString("dd/MM/yyyy") ?? L("A convenir"))</strong></dd>
+                    <dt>Número</dt><dd>@enc.Numero</dd>
+                    <dt>Fecha</dt><dd>@enc.Fecha.ToString("dd/MM/yyyy")</dd>
+                    <dt>Entrega</dt><dd><strong>@(enc.FechaEntrega?.ToString("dd/MM/yyyy") ?? "A convenir")</strong></dd>
                 </dl>
             </div>
         </header>
@@ -52,27 +52,27 @@ else
 
         <section class="fac-partes">
             <div class="fac-bloque">
-                <div class="fac-bloque-titulo">@L("Proveedor")</div>
-                <div class="fac-fila"><span>@L("Nombre")</span><strong>@enc.Proveedor</strong></div>
-                <div class="fac-fila"><span>@L("NIT")</span>@(string.IsNullOrWhiteSpace(enc.Nit) ? "—" : enc.Nit)</div>
-                @if (!string.IsNullOrWhiteSpace(enc.ProveedorContacto)) { <div class="fac-fila"><span>@L("Contacto")</span>@enc.ProveedorContacto</div> }
+                <div class="fac-bloque-titulo">Proveedor</div>
+                <div class="fac-fila"><span>Nombre</span><strong>@enc.Proveedor</strong></div>
+                <div class="fac-fila"><span>NIT</span>@(string.IsNullOrWhiteSpace(enc.Nit) ? "—" : enc.Nit)</div>
+                @if (!string.IsNullOrWhiteSpace(enc.ProveedorContacto)) { <div class="fac-fila"><span>Contacto</span>@enc.ProveedorContacto</div> }
                 @if (!string.IsNullOrWhiteSpace(enc.ProveedorTelefono) || !string.IsNullOrWhiteSpace(enc.ProveedorCorreo))
                 {
-                    <div class="fac-fila"><span>@L("Teléfono / correo")</span>@string.Join(" · ", new[] { enc.ProveedorTelefono, enc.ProveedorCorreo }.Where(t => !string.IsNullOrWhiteSpace(t)))</div>
+                    <div class="fac-fila"><span>Teléfono / correo</span>@string.Join(" · ", new[] { enc.ProveedorTelefono, enc.ProveedorCorreo }.Where(t => !string.IsNullOrWhiteSpace(t)))</div>
                 }
             </div>
             <div class="fac-bloque">
-                <div class="fac-bloque-titulo">@L("Entregar en")</div>
-                <div class="fac-fila"><span>@L("Bodega")</span><strong>@enc.Bodega</strong></div>
-                <div class="fac-fila"><span>@L("Sucursal")</span>@enc.Sucursal</div>
-                <div class="fac-fila"><span>@L("Dirección")</span>@enc.DireccionEmisor</div>
-                <div class="fac-fila"><span>@L("Moneda")</span>@enc.Moneda</div>
+                <div class="fac-bloque-titulo">Entregar en</div>
+                <div class="fac-fila"><span>Bodega</span><strong>@enc.Bodega</strong></div>
+                <div class="fac-fila"><span>Sucursal</span>@enc.Sucursal</div>
+                <div class="fac-fila"><span>Dirección</span>@enc.DireccionEmisor</div>
+                <div class="fac-fila"><span>Moneda</span>@enc.Moneda</div>
             </div>
         </section>
 
         <table class="fac-items">
             <thead>
-                <tr><th class="num">#</th><th class="num">@L("Cantidad")</th><th>@L("Unidad")</th><th>@L("Descripción")</th><th class="num">@L("Costo unitario")</th><th class="num">@L("Total")</th></tr>
+                <tr><th class="num">#</th><th class="num">Cantidad</th><th>Unidad</th><th>Descripción</th><th class="num">Costo unitario</th><th class="num">Total</th></tr>
             </thead>
             <tbody>
                 @foreach (var l in lineas)
@@ -81,7 +81,7 @@ else
                         <td class="num">@l.Item</td>
                         <td class="num">@l.Cantidad</td>
                         <td>@l.Unidad</td>
-                        <td>@l.Descripcion<small> · @l.Codigo</small>@if (l.CodigoProveedor is not null) { <small class="fac-bs">@L("Su código: {0}", l.CodigoProveedor)</small> }</td>
+                        <td>@l.Descripcion<small> · @l.Codigo</small>@if (l.CodigoProveedor is not null) { <small class="fac-bs">Su código: @l.CodigoProveedor</small> }</td>
                         <td class="num">@l.CostoUnitario.ToString("N2")</td>
                         <td class="num">@l.Total.ToString("N2")</td>
                     </tr>
@@ -91,31 +91,31 @@ else
 
         <section class="fac-pie-tabla">
             <div class="fac-notas">
-                <div class="fac-letras"><span>@L("Total en letras")</span>@NumeroALetras.Convertir(enc.Total)</div>
+                <div class="fac-letras"><span>Total en letras</span>@NumeroALetras.Convertir(enc.Total)</div>
                 @if (!string.IsNullOrWhiteSpace(enc.Condiciones) || !string.IsNullOrWhiteSpace(enc.Observaciones))
                 {
                     <div class="fac-mini">
-                        <div class="fac-bloque-titulo">@L("Condiciones")</div>
+                        <div class="fac-bloque-titulo">Condiciones</div>
                         @if (!string.IsNullOrWhiteSpace(enc.Condiciones)) { <p class="cot-observaciones">@enc.Condiciones</p> }
                         @if (!string.IsNullOrWhiteSpace(enc.Observaciones)) { <p class="cot-observaciones">@enc.Observaciones</p> }
                     </div>
                 }
             </div>
             <div class="fac-totales">
-                <div class="fac-fila"><span>@L("IVA incluido ({0}%)", enc.PorcentajeIva.ToString("0.##"))</span>@enc.Simbolo @enc.IvaIncluido.ToString("N2")</div>
-                <div class="fac-total"><span>@L("TOTAL {0}", enc.Moneda)</span>@enc.Simbolo @enc.Total.ToString("N2")</div>
+                <div class="fac-fila"><span>IVA incluido (@enc.PorcentajeIva.ToString("0.##")%)</span>@enc.Simbolo @enc.IvaIncluido.ToString("N2")</div>
+                <div class="fac-total"><span>TOTAL @enc.Moneda</span>@enc.Simbolo @enc.Total.ToString("N2")</div>
             </div>
         </section>
 
         <section class="oc-firmas">
-            <div><span class="oc-firma-linea"></span>@L("Elaboró: {0}", enc.Usuario)</div>
+            <div><span class="oc-firma-linea"></span>Elaboró: @enc.Usuario</div>
             <div><span class="oc-firma-linea"></span>Visto bueno (jefe de bodega): @(enc.VistoBueno is null ? "" : $"{enc.VistoBueno} · {enc.FechaVistoBueno:dd/MM/yyyy}")</div>
             <div><span class="oc-firma-linea"></span>Aprobó (contador general): @(enc.Aprobo is null ? "" : $"{enc.Aprobo} · {enc.FechaAprobacion:dd/MM/yyyy}")</div>
         </section>
 
         <footer class="fac-final">
             <div class="fac-final-texto">
-                <div>@L("Costos en {0} con IVA incluido. Cite el número {1} en su factura y en el envío; la mercadería se recibe contra esta orden.", enc.Moneda, enc.Numero)</div>
+                <div>Costos en @enc.Moneda con IVA incluido. Cite el número @enc.Numero en su factura y en el envío; la mercadería se recibe contra esta orden.</div>
             </div>
         </footer>
     </article>
@@ -143,9 +143,9 @@ else
 
     private string? AvisoEstado => enc?.Estado switch
     {
-        "B" => L("BORRADOR SIN APROBAR: NO ES UN PEDIDO"),
-        "N" => L("ORDEN ANULADA{0}", (string.IsNullOrWhiteSpace(enc.MotivoCierre) ? "" : $" — {enc.MotivoCierre}")),
-        "C" => L("ORDEN CERRADA: NO ENVÍE LO PENDIENTE{0}", (string.IsNullOrWhiteSpace(enc.MotivoCierre) ? "" : $" — {enc.MotivoCierre}")),
+        "B" => "BORRADOR SIN APROBAR: NO ES UN PEDIDO",
+        "N" => $"ORDEN ANULADA{(string.IsNullOrWhiteSpace(enc.MotivoCierre) ? "" : $" — {enc.MotivoCierre}")}",
+        "C" => $"ORDEN CERRADA: NO ENVÍE LO PENDIENTE{(string.IsNullOrWhiteSpace(enc.MotivoCierre) ? "" : $" — {enc.MotivoCierre}")}",
         _ => null
     };
 

@@ -432,7 +432,7 @@
                     <tr class="fila-edicion-tabla">
                         <td colspan="7">
                             <div class="anulacion-form">
-                                <label>¿Anular la compra @(string.IsNullOrWhiteSpace(c.EncSerieDocto) ? c.EncNumeroDocto : $"{c.EncSerieDocto}-{c.EncNumeroDocto}") de @c.PrvNombreComercial por @c.EncMontoTotal.ToString("N2")?</label>
+                                <label>@L("¿Anular la compra {0} de {1} por {2}?", string.IsNullOrWhiteSpace(c.EncSerieDocto) ? c.EncNumeroDocto : $"{c.EncSerieDocto}-{c.EncNumeroDocto}", c.PrvNombreComercial, c.EncMontoTotal.ToString("N2"))</label>
                                 <BotonIcono Icono="ban" Tooltip="@L("Confirmar anulación")" Etiqueta="@L("Sí, anular compra")" Variante="peligro" OnClick="() => AnularAsync(c)" />
                                 <BotonIcono Icono="x" Tooltip="@L("No anular")" Etiqueta="@L("Cancelar")" OnClick="() => anulandoId = null" />
                                 <small class="texto-ayuda">@L("Se reversa la entrada al inventario y se anula la póliza. Si tiene cheques emitidos o notas, primero hay que anularlos.")</small>

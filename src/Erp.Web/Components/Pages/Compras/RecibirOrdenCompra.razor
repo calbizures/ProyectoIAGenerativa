@@ -11,7 +11,7 @@
 
 <section class="oc-recepcion" aria-labelledby="titulo-recepcion-@Orden.OcpId">
     <h3 id="titulo-recepcion-@Orden.OcpId">@Titulo</h3>
-    <p class="texto-ayuda">@L("Indique lo que llegó; lo que falte queda pendiente para otra recepción. Se graba una compra de") <strong>@Orden.Proveedor</strong> @L("en") <strong>@Orden.Bodega</strong> @L("con su cuenta por pagar y su póliza.")</p>
+    <p class="texto-ayuda">@L("Indique lo que llegó; lo que falte queda pendiente para otra recepción. Se graba una compra de {0} en {1} con su cuenta por pagar y su póliza.", Orden.Proveedor, Orden.Bodega)</p>
     @if (error is not null)
     {
         <p class="mensaje-error" role="alert">@Textos.Mensaje(error)</p>
