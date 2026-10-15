@@ -3066,7 +3066,8 @@ a.boton-icono { text-decoration: none; }
 .barra-herramientas > .boton-icono:last-child .boton-icono-tip,
 .barra-filtros > .boton-icono:last-child .boton-icono-tip,
 .maestro-detalle-encabezado > .boton-icono:last-child .boton-icono-tip,
-.paginador-botones > .boton-icono:last-child .boton-icono-tip {
+.paginador-botones > .boton-icono:last-child .boton-icono-tip,
+.doc-buscador-fila > .boton-icono:last-child .boton-icono-tip {
     left: auto;
     right: 0;
     transform: translateY(4px);
@@ -3076,7 +3077,8 @@ a.boton-icono { text-decoration: none; }
 .barra-herramientas > .boton-icono:last-child .boton-icono-tip::after,
 .barra-filtros > .boton-icono:last-child .boton-icono-tip::after,
 .maestro-detalle-encabezado > .boton-icono:last-child .boton-icono-tip::after,
-.paginador-botones > .boton-icono:last-child .boton-icono-tip::after {
+.paginador-botones > .boton-icono:last-child .boton-icono-tip::after,
+.doc-buscador-fila > .boton-icono:last-child .boton-icono-tip::after {
     left: auto;
     right: 12px;
     transform: none;
@@ -3090,7 +3092,11 @@ a.boton-icono { text-decoration: none; }
 .barra-filtros > .boton-icono:last-child:hover .boton-icono-tip,
 .barra-filtros > .boton-icono:last-child:focus-visible .boton-icono-tip,
 .maestro-detalle-encabezado > .boton-icono:last-child:hover .boton-icono-tip,
-.maestro-detalle-encabezado > .boton-icono:last-child:focus-visible .boton-icono-tip {
+.maestro-detalle-encabezado > .boton-icono:last-child:focus-visible .boton-icono-tip,
+.paginador-botones > .boton-icono:last-child:hover .boton-icono-tip,
+.paginador-botones > .boton-icono:last-child:focus-visible .boton-icono-tip,
+.doc-buscador-fila > .boton-icono:last-child:hover .boton-icono-tip,
+.doc-buscador-fila > .boton-icono:last-child:focus-visible .boton-icono-tip {
     transform: translateY(0);
 }
 
