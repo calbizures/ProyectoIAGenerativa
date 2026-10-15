@@ -9,11 +9,11 @@
 @inject IRolRepository RolRepository
 @inject Erp.Data.Caja.ICajaRepository CajaRepository
 
-<PageTitle>Usuarios</PageTitle>
+<PageTitle>@L("Usuarios")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Usuarios</h1>
-    <p>Cuentas de acceso, roles asignados y sucursales permitidas.</p>
+    <h1>@L("Usuarios")</h1>
+    <p>@L("Cuentas de acceso, roles asignados y sucursales permitidas.")</p>
 </div>
 
 @if (mensaje is not null)
@@ -26,14 +26,14 @@
 @if (pestanaActiva == "lista")
 {
     <div class="barra-filtros">
-        <input placeholder="Buscar por usuario" aria-label="Buscar por usuario" @bind="filtroUsuario" type="search" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
-        <select @bind="filtroEstado" aria-label="Estado">
-            <option value="A">Activos</option>
-            <option value="I">Inactivos</option>
-            <option value="">Todos</option>
+        <input placeholder="@L("Buscar por usuario")" aria-label="@L("Buscar por usuario")" @bind="filtroUsuario" type="search" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
+        <select @bind="filtroEstado" aria-label="@L("Estado")">
+            <option value="A">@L("Activos")</option>
+            <option value="I">@L("Inactivos")</option>
+            <option value="">@L("Todos")</option>
         </select>
-        <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
-        <BotonIcono Icono="plus" Tooltip="Nuevo usuario" Etiqueta="Nuevo usuario" Variante="primario" OnClick="MostrarFormularioNuevo" />
+        <BotonIcono Icono="search" Tooltip="@L("Buscar")" Etiqueta="@L("Buscar")" OnClick="BuscarAsync" />
+        <BotonIcono Icono="plus" Tooltip="@L("Nuevo usuario")" Etiqueta="@L("Nuevo usuario")" Variante="primario" OnClick="MostrarFormularioNuevo" />
     </div>
 
     @if (mostrarNuevo)
@@ -41,13 +41,13 @@
         <EditForm Model="nuevoUsuario" OnValidSubmit="CrearUsuarioAsync" class="panel-formulario">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label for="usuarios-usuario-codigo">Código</label><InputText id="usuarios-usuario-codigo" @bind-Value="nuevoUsuario.Codigo" /></div>
-            <div class="campo"><label for="usuarios-usuario-usuario">Usuario</label><InputText id="usuarios-usuario-usuario" @bind-Value="nuevoUsuario.Usuario" /></div>
-            <div class="campo"><label for="usuarios-usuario-email">Email</label><InputText id="usuarios-usuario-email" @bind-Value="nuevoUsuario.Email" /></div>
-            <div class="campo"><label for="usuarios-usuario-password">Contraseña</label><InputText id="usuarios-usuario-password" type="password" @bind-Value="nuevoUsuario.Password" /></div>
+            <div class="campo"><label for="usuarios-usuario-codigo">@L("Código")</label><InputText id="usuarios-usuario-codigo" @bind-Value="nuevoUsuario.Codigo" /></div>
+            <div class="campo"><label for="usuarios-usuario-usuario">@L("Usuario")</label><InputText id="usuarios-usuario-usuario" @bind-Value="nuevoUsuario.Usuario" /></div>
+            <div class="campo"><label for="usuarios-usuario-email">@L("Email")</label><InputText id="usuarios-usuario-email" @bind-Value="nuevoUsuario.Email" /></div>
+            <div class="campo"><label for="usuarios-usuario-password">@L("Contraseña")</label><InputText id="usuarios-usuario-password" type="password" @bind-Value="nuevoUsuario.Password" /></div>
             <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
-                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+                <BotonIcono Icono="save" Tooltip="@L("Guardar")" Etiqueta="@L("Guardar")" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => mostrarNuevo = false" />
             </div>
         </EditForm>
     }
@@ -55,20 +55,20 @@
     <table class="tabla-datos">
         <thead>
             <tr>
-                <th class="col-codigo">Código</th>
-                <th>Usuario</th>
-                <th>Empleado</th>
-                <th class="col-codigo">Vendedor</th>
-                <th>Email</th>
-                <th class="col-estado">Estado</th>
-                <th class="col-estado">Bloqueado</th>
-                <th class="col-acciones">Acciones</th>
+                <th class="col-codigo">@L("Código")</th>
+                <th>@L("Usuario")</th>
+                <th>@L("Empleado")</th>
+                <th class="col-codigo">@L("Vendedor")</th>
+                <th>@L("Email")</th>
+                <th class="col-estado">@L("Estado")</th>
+                <th class="col-estado">@L("Bloqueado")</th>
+                <th class="col-acciones">@L("Acciones")</th>
             </tr>
         </thead>
         <tbody>
             @if (!usuarios.Any())
             {
-                <tr><td colspan="8" class="doc-tabla-vacia">Ningún usuario coincide con la búsqueda.</td></tr>
+                <tr><td colspan="8" class="doc-tabla-vacia">@L("Ningún usuario coincide con la búsqueda.")</td></tr>
             }
             @foreach (var u in usuarios)
             {
@@ -78,18 +78,18 @@
                     <td>@(u.Empleado ?? "—")</td>
                     <td class="col-codigo">@(u.VendedorCodigo ?? "—")</td>
                     <td>@u.UsuEmail</td>
-                    <td class="col-estado"><span class="estado-badge @(u.UsuEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(u.UsuEstado == "A" ? "Activo" : "Inactivo")</span></td>
-                    <td class="col-estado">@(u.UsuBloqueado ? "Sí" : "No")</td>
+                    <td class="col-estado"><span class="estado-badge @(u.UsuEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(u.UsuEstado == "A" ? L("Activo") : L("Inactivo"))</span></td>
+                    <td class="col-estado">@(u.UsuBloqueado ? L("Sí") : L("No"))</td>
                     <td class="col-acciones">
                         <div class="acciones-fila">
-                            <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(u)" />
+                            <BotonIcono Icono="eye" Tooltip="@L("Ver detalle")" OnClick="() => SeleccionarAsync(u)" />
                             @if (u.UsuEstado == "A")
                             {
-                                <BotonIcono Icono="trash-2" Tooltip="Desactivar usuario" Confirmacion="¿Desactivar el usuario?" Variante="peligro" OnClick="() => DesactivarAsync(u)" />
+                                <BotonIcono Icono="trash-2" Tooltip="@L("Desactivar usuario")" Confirmacion="@L("¿Desactivar el usuario?")" Variante="peligro" OnClick="() => DesactivarAsync(u)" />
                             }
                             else
                             {
-                                <BotonIcono Icono="refresh-cw" Tooltip="Activar usuario" Variante="primario" OnClick="() => ActivarAsync(u)" />
+                                <BotonIcono Icono="refresh-cw" Tooltip="@L("Activar usuario")" Variante="primario" OnClick="() => ActivarAsync(u)" />
                             }
                         </div>
                     </td>
@@ -101,39 +101,39 @@
 else if (pestanaActiva == "detalle" && seleccionado is not null)
 {
     <div class="panel-detalle">
-        <h2>Detalle: @seleccionado.UsuUsuario</h2>
+        <h2>@L("Detalle: {0}", seleccionado.UsuUsuario)</h2>
 
-        <div class="campo"><label>Usuario</label><span class="valor-detalle">@seleccionado.UsuUsuario</span></div>
-        <div class="campo"><label>Email</label><span class="valor-detalle">@seleccionado.UsuEmail</span></div>
+        <div class="campo"><label>@L("Usuario")</label><span class="valor-detalle">@seleccionado.UsuUsuario</span></div>
+        <div class="campo"><label>@L("Email")</label><span class="valor-detalle">@seleccionado.UsuEmail</span></div>
         <div class="acciones-fila">
-            <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+            <BotonIcono Icono="pencil" Tooltip="@L("Editar")" Etiqueta="@L("Editar")" OnClick="IniciarEdicion" />
         </div>
 
-        <h3>Cambiar contraseña</h3>
+        <h3>@L("Cambiar contraseña")</h3>
         <EditForm Model="cambioPassword" OnValidSubmit="CambiarPasswordAsync">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label for="usuarios-cambiopassword-actual">Contraseña actual</label><InputText id="usuarios-cambiopassword-actual" type="password" @bind-Value="cambioPassword.Actual" /></div>
-            <div class="campo"><label for="usuarios-cambiopassword-nueva">Contraseña nueva</label><InputText id="usuarios-cambiopassword-nueva" type="password" @bind-Value="cambioPassword.Nueva" /></div>
-            <BotonIcono Icono="save" Tooltip="Cambiar contraseña" Etiqueta="Cambiar contraseña" Variante="primario" TipoBoton="submit" />
+            <div class="campo"><label for="usuarios-cambiopassword-actual">@L("Contraseña actual")</label><InputText id="usuarios-cambiopassword-actual" type="password" @bind-Value="cambioPassword.Actual" /></div>
+            <div class="campo"><label for="usuarios-cambiopassword-nueva">@L("Contraseña nueva")</label><InputText id="usuarios-cambiopassword-nueva" type="password" @bind-Value="cambioPassword.Nueva" /></div>
+            <BotonIcono Icono="save" Tooltip="@L("Cambiar contraseña")" Etiqueta="@L("Cambiar contraseña")" Variante="primario" TipoBoton="submit" />
         </EditForm>
 
-        <h3>Roles y sucursales</h3>
-        <div class="campo"><label>Roles asignados</label><span class="valor-detalle">@NombresRolesAsignados</span></div>
-        <div class="campo"><label>Sucursales asignadas</label><span class="valor-detalle">@NombresSucursalesAsignadas</span></div>
+        <h3>@L("Roles y sucursales")</h3>
+        <div class="campo"><label>@L("Roles asignados")</label><span class="valor-detalle">@NombresRolesAsignados</span></div>
+        <div class="campo"><label>@L("Sucursales asignadas")</label><span class="valor-detalle">@NombresSucursalesAsignadas</span></div>
         <div class="acciones-fila">
-            <BotonIcono Icono="pencil" Tooltip="Editar roles y sucursales" Etiqueta="Editar roles y sucursales" OnClick="IniciarEdicionAccesos" />
+            <BotonIcono Icono="pencil" Tooltip="@L("Editar roles y sucursales")" Etiqueta="@L("Editar roles y sucursales")" OnClick="IniciarEdicionAccesos" />
         </div>
     </div>
 }
 else if (pestanaActiva == "accesos" && seleccionado is not null)
 {
     <div class="panel-formulario">
-        <h2>Roles y sucursales: @seleccionado.UsuUsuario</h2>
+        <h2>@L("Roles y sucursales: {0}", seleccionado.UsuUsuario)</h2>
 
-        <h3>Roles</h3>
+        <h3>@L("Roles")</h3>
         <table class="tabla-datos">
-            <thead><tr><th>Rol</th><th>Asignado</th></tr></thead>
+            <thead><tr><th>@L("Rol")</th><th>@L("Asignado")</th></tr></thead>
             <tbody>
                 @foreach (var rol in todosLosRoles)
                 {
@@ -148,10 +148,10 @@ else if (pestanaActiva == "accesos" && seleccionado is not null)
             </tbody>
         </table>
 
-        <h3>Sucursales</h3>
-        <p class="doc-nota"><Icono Nombre="info" Tamano="15" /> <span>Solo estas sucursales aparecerán para elegir al iniciar sesión.</span></p>
+        <h3>@L("Sucursales")</h3>
+        <p class="doc-nota"><Icono Nombre="info" Tamano="15" /> <span>@L("Solo estas sucursales aparecerán para elegir al iniciar sesión.")</span></p>
         <table class="tabla-datos">
-            <thead><tr><th>Sucursal</th><th>Asignada</th></tr></thead>
+            <thead><tr><th>@L("Sucursal")</th><th>@L("Asignada")</th></tr></thead>
             <tbody>
                 @foreach (var suc in todasLasSucursales)
                 {
@@ -167,23 +167,23 @@ else if (pestanaActiva == "accesos" && seleccionado is not null)
         </table>
 
         <div class="acciones-fila">
-            <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" OnClick="GuardarAccesosAsync" />
-            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicionAccesos" />
+            <BotonIcono Icono="save" Tooltip="@L("Guardar cambios")" Etiqueta="@L("Guardar cambios")" Variante="primario" OnClick="GuardarAccesosAsync" />
+            <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="CancelarEdicionAccesos" />
         </div>
     </div>
 }
 else if (pestanaActiva == "editar" && seleccionado is not null)
 {
     <div class="panel-formulario">
-        <h2>Editar: @seleccionado.UsuUsuario</h2>
+        <h2>@L("Editar: {0}", seleccionado.UsuUsuario)</h2>
         <EditForm Model="edicionUsuario" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label for="usuarios-edicionusuario-usuario">Usuario</label><InputText id="usuarios-edicionusuario-usuario" @bind-Value="edicionUsuario.Usuario" /></div>
-            <div class="campo"><label for="usuarios-edicionusuario-email">Email</label><InputText id="usuarios-edicionusuario-email" @bind-Value="edicionUsuario.Email" /></div>
+            <div class="campo"><label for="usuarios-edicionusuario-usuario">@L("Usuario")</label><InputText id="usuarios-edicionusuario-usuario" @bind-Value="edicionUsuario.Usuario" /></div>
+            <div class="campo"><label for="usuarios-edicionusuario-email">@L("Email")</label><InputText id="usuarios-edicionusuario-email" @bind-Value="edicionUsuario.Email" /></div>
             <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
-                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicionAsync" />
+                <BotonIcono Icono="save" Tooltip="@L("Guardar cambios")" Etiqueta="@L("Guardar cambios")" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="CancelarEdicionAsync" />
             </div>
         </EditForm>
     </div>
@@ -202,23 +202,23 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
     private string pestanaActiva = "lista";
 
     private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
-        ? new[] { new PestanaItem("lista", "Lista") }
+        ? new[] { new PestanaItem("lista", L("Lista")) }
         : pestanaActiva switch
         {
-            "editar" => new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar") },
-            "accesos" => new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("accesos", "Roles y sucursales") },
-            _ => new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle") }
+            "editar" => new[] { new PestanaItem("lista", L("Lista")), new PestanaItem("detalle", L("Detalle")), new PestanaItem("editar", L("Editar")) },
+            "accesos" => new[] { new PestanaItem("lista", L("Lista")), new PestanaItem("detalle", L("Detalle")), new PestanaItem("accesos", L("Roles y sucursales")) },
+            _ => new[] { new PestanaItem("lista", L("Lista")), new PestanaItem("detalle", L("Detalle")) }
         };
 
     private readonly HashSet<int> rolesDraft = new();
     private readonly HashSet<int> sucursalesDraft = new();
 
     private string NombresRolesAsignados => rolesAsignados.Count == 0
-        ? "Ninguno"
+        ? L("Ninguno")
         : string.Join(", ", rolesAsignados.Select(r => r.RolNombre));
 
     private string NombresSucursalesAsignadas => sucursalesAsignadas.Count == 0
-        ? "Ninguna"
+        ? L("Ninguna")
         : string.Join(", ", sucursalesAsignadas.Select(s => s.SucDescripcion));
 
     private string filtroUsuario = "";
@@ -267,7 +267,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
             var usuId = await ObtenerUsuIdActualAsync();
             await UsuarioRepository.InsertarAsync(nuevoUsuario.Codigo, nuevoUsuario.Usuario, nuevoUsuario.Password, nuevoUsuario.Email, usuId);
             mostrarNuevo = false;
-            mensaje = "Usuario creado correctamente.";
+            mensaje = L("Usuario creado correctamente.");
             esMensajeError = false;
             await BuscarAsync();
         }
@@ -314,7 +314,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         {
             var usuId = await ObtenerUsuIdActualAsync();
             await UsuarioRepository.ActualizarAsync(seleccionado.UsuId, edicionUsuario.Usuario, edicionUsuario.Email, usuId);
-            mensaje = "Cambios guardados.";
+            mensaje = L("Cambios guardados.");
             esMensajeError = false;
             await BuscarAsync();
             seleccionado = usuarios.FirstOrDefault(u => u.UsuId == seleccionado.UsuId) ?? seleccionado;
@@ -335,7 +335,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
             await UsuarioRepository.CambiarPasswordAsync(seleccionado.UsuId, cambioPassword.Actual, cambioPassword.Nueva);
             cambioPassword.Actual = "";
             cambioPassword.Nueva = "";
-            mensaje = "Contraseña actualizada.";
+            mensaje = L("Contraseña actualizada.");
             esMensajeError = false;
         }
         catch (Exception ex)
@@ -351,7 +351,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         {
             var usuId = await ObtenerUsuIdActualAsync();
             await UsuarioRepository.EliminarAsync(usuario.UsuId, usuId);
-            mensaje = "Usuario desactivado.";
+            mensaje = L("Usuario desactivado.");
             esMensajeError = false;
             if (seleccionado?.UsuId == usuario.UsuId)
             {
@@ -373,7 +373,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         {
             var usuId = await ObtenerUsuIdActualAsync();
             await UsuarioRepository.ActivarAsync(usuario.UsuId, usuId);
-            mensaje = "Usuario activado.";
+            mensaje = L("Usuario activado.");
             esMensajeError = false;
             await BuscarAsync();
         }
@@ -430,7 +430,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
             rolesAsignados = roles;
             sucursalesAsignadas = await UsuarioRepository.ConsultarSucursalesAsignadasAsync(seleccionado.UsuId);
 
-            mensaje = "Roles y sucursales actualizados.";
+            mensaje = L("Roles y sucursales actualizados.");
             esMensajeError = false;
             pestanaActiva = "detalle";
         }
