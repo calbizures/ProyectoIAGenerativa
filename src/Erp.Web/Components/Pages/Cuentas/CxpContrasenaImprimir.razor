@@ -6,11 +6,11 @@
 @using Erp.Web.Reportes
 @inject IPagosRepository PagosRepository
 
-<PageTitle>@(enc is null ? "Contraseña de pago" : $"Contraseña de pago {enc.Numero}")</PageTitle>
+<PageTitle>@(enc is null ? L("Contraseña de pago") : L("Contraseña de pago {0}", enc.Numero))</PageTitle>
 
 @if (enc is null)
 {
-    <p class="mensaje-error" role="alert">@(error ?? $"No existe la contraseña {CpaId}.")</p>
+    <p class="mensaje-error" role="alert">@(error ?? L("No existe la contraseña {0}.", CpaId))</p>
 }
 else
 {
@@ -21,31 +21,31 @@ else
 
     <div class="reporte-acciones fac-acciones">
         <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
-            <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+            <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">@L("Imprimir")</span>
         </button>
-        <span class="texto-tenue">Formato carta. Entregue el original al proveedor y archive la copia firmada.</span>
+        <span class="texto-tenue">@L("Formato carta. Entregue el original al proveedor y archive la copia firmada.")</span>
     </div>
 
     <article class="fac-carta">
-        @if (enc.Estado == "A") { <div class="fac-marca">ANULADA</div> }
+        @if (enc.Estado == "A") { <div class="fac-marca">@L("ANULADA")</div> }
         <header class="fac-cab">
             <div class="fac-emisor">
                 @if (enc.TieneLogo) { <img class="fac-logo" src="@($"compania/logo?cia={enc.CiaId}&v={enc.LogoActualizado?.Ticks ?? 0}")" alt="" /> }
                 <div>
                     <div class="fac-comercial">@enc.NombreComercial</div>
                     <div class="fac-razon">@enc.NombreEmisor</div>
-                    <div>NIT @enc.NitEmisor</div>
+                    <div>@L("NIT {0}", enc.NitEmisor)</div>
                     <div>@enc.DireccionEmisor</div>
-                    @if (!string.IsNullOrWhiteSpace(enc.TelefonoEmisor)) { <div>Tel. @enc.TelefonoEmisor</div> }
+                    @if (!string.IsNullOrWhiteSpace(enc.TelefonoEmisor)) { <div>@L("Tel. {0}", enc.TelefonoEmisor)</div> }
                 </div>
             </div>
             <div class="fac-doc">
-                <div class="fac-doc-tipo">CONTRASEÑA DE PAGO</div>
-                <div class="fac-doc-sub">Presente este documento para cobrar</div>
+                <div class="fac-doc-tipo">@L("CONTRASEÑA DE PAGO")</div>
+                <div class="fac-doc-sub">@L("Presente este documento para cobrar")</div>
                 <dl>
-                    <dt>Número</dt><dd>@enc.Numero</dd>
-                    <dt>Fecha</dt><dd>@enc.Fecha.ToString("dd/MM/yyyy")</dd>
-                    <dt>Fecha de pago</dt><dd><strong>@enc.FechaPago.ToString("dddd dd/MM/yyyy", Es)</strong></dd>
+                    <dt>@L("Número")</dt><dd>@enc.Numero</dd>
+                    <dt>@L("Fecha")</dt><dd>@enc.Fecha.ToString("dd/MM/yyyy")</dd>
+                    <dt>@L("Fecha de pago")</dt><dd><strong>@enc.FechaPago.ToString("dddd dd/MM/yyyy", Es)</strong></dd>
                 </dl>
             </div>
         </header>
@@ -55,37 +55,37 @@ else
         }
         else if (enc.Estado == "P")
         {
-            <p class="fac-aviso">PAGADA @(enc.Cheque is not null ? $"CON CHEQUE {enc.Cheque}" : $"POR TRANSFERENCIA ({enc.Lote})")</p>
+            <p class="fac-aviso">PAGADA @(enc.Cheque is not null ? L("CON CHEQUE {0}", enc.Cheque) : L("POR TRANSFERENCIA ({0})", enc.Lote))</p>
         }
 
         <section class="fac-partes">
             <div class="fac-bloque">
-                <div class="fac-bloque-titulo">Proveedor</div>
-                <div class="fac-fila"><span>Nombre</span><strong>@enc.Proveedor</strong></div>
-                <div class="fac-fila"><span>Código</span>@enc.ProveedorCodigo</div>
-                <div class="fac-fila"><span>NIT</span>@(string.IsNullOrWhiteSpace(enc.Nit) ? "—" : enc.Nit)</div>
-                @if (!string.IsNullOrWhiteSpace(enc.ProveedorDireccion)) { <div class="fac-fila"><span>Dirección</span>@enc.ProveedorDireccion</div> }
+                <div class="fac-bloque-titulo">@L("Proveedor")</div>
+                <div class="fac-fila"><span>@L("Nombre")</span><strong>@enc.Proveedor</strong></div>
+                <div class="fac-fila"><span>@L("Código")</span>@enc.ProveedorCodigo</div>
+                <div class="fac-fila"><span>@L("NIT")</span>@(string.IsNullOrWhiteSpace(enc.Nit) ? "—" : enc.Nit)</div>
+                @if (!string.IsNullOrWhiteSpace(enc.ProveedorDireccion)) { <div class="fac-fila"><span>@L("Dirección")</span>@enc.ProveedorDireccion</div> }
             </div>
             <div class="fac-bloque">
-                <div class="fac-bloque-titulo">Forma de pago</div>
+                <div class="fac-bloque-titulo">@L("Forma de pago")</div>
                 @if (enc.FormaPago == "T")
                 {
-                    <div class="fac-fila"><span>Pago</span><strong>Transferencia bancaria</strong></div>
-                    <div class="fac-fila"><span>Banco</span>@(enc.Banco ?? "—")</div>
-                    <div class="fac-fila"><span>Cuenta</span>@(enc.TipoCuenta == "A" ? "Ahorro" : "Monetaria") @CuentaOculta(enc.CuentaProveedor)</div>
+                    <div class="fac-fila"><span>@L("Pago")</span><strong>@L("Transferencia bancaria")</strong></div>
+                    <div class="fac-fila"><span>@L("Banco")</span>@(enc.Banco ?? "—")</div>
+                    <div class="fac-fila"><span>@L("Cuenta")</span>@(enc.TipoCuenta == "A" ? L("Ahorro") : L("Monetaria")) @CuentaOculta(enc.CuentaProveedor)</div>
                 }
                 else
                 {
-                    <div class="fac-fila"><span>Pago</span><strong>Cheque</strong></div>
-                    <div class="fac-fila"><span>A nombre de</span>@enc.Proveedor</div>
+                    <div class="fac-fila"><span>@L("Pago")</span><strong>@L("Cheque")</strong></div>
+                    <div class="fac-fila"><span>@L("A nombre de")</span>@enc.Proveedor</div>
                 }
-                <div class="fac-fila"><span>Emitió</span>@enc.Usuario</div>
+                <div class="fac-fila"><span>@L("Emitió")</span>@enc.Usuario</div>
             </div>
         </section>
 
         <table class="fac-items">
             <thead>
-                <tr><th class="num">#</th><th>Documento</th><th class="col-fecha">Fecha</th><th class="num">Cuota</th><th class="col-fecha">Vence</th><th class="num">Monto</th></tr>
+                <tr><th class="num">#</th><th>@L("Documento")</th><th class="col-fecha">@L("Fecha")</th><th class="num">@L("Cuota")</th><th class="col-fecha">@L("Vence")</th><th class="num">@L("Monto")</th></tr>
             </thead>
             <tbody>
                 @{ var i = 0; }
@@ -105,28 +105,28 @@ else
 
         <section class="fac-pie-tabla">
             <div class="fac-notas">
-                <div class="fac-letras"><span>Total en letras</span>@NumeroALetras.Convertir(enc.Total)</div>
+                <div class="fac-letras"><span>@L("Total en letras")</span>@NumeroALetras.Convertir(enc.Total)</div>
                 @if (!string.IsNullOrWhiteSpace(enc.Observaciones))
                 {
                     <div class="fac-mini">
-                        <div class="fac-bloque-titulo">Observaciones</div>
+                        <div class="fac-bloque-titulo">@L("Observaciones")</div>
                         <p class="cot-observaciones">@enc.Observaciones</p>
                     </div>
                 }
             </div>
             <div class="fac-totales">
-                <div class="fac-total"><span>TOTAL A PAGAR</span>Q @enc.Total.ToString("N2")</div>
+                <div class="fac-total"><span>@L("TOTAL A PAGAR")</span>Q @enc.Total.ToString("N2")</div>
             </div>
         </section>
 
         <section class="oc-firmas oc-firmas-2">
-            <div><span class="oc-firma-linea"></span>Entregó: @enc.Usuario</div>
-            <div><span class="oc-firma-linea"></span>Recibió (nombre, firma y DPI)</div>
+            <div><span class="oc-firma-linea"></span>@L("Entregó: {0}", enc.Usuario)</div>
+            <div><span class="oc-firma-linea"></span>@L("Recibió (nombre, firma y DPI)")</div>
         </section>
 
         <footer class="fac-final">
             <div class="fac-final-texto">
-                <div>El pago se hace a partir de la fecha indicada@(enc.FormaPago == "T" ? " por transferencia a la cuenta registrada" : ", contra entrega de esta contraseña"). Cite el número @enc.Numero en cualquier consulta.</div>
+                <div>@L("El pago se hace a partir de la fecha indicada{0}. Cite el número {1} en cualquier consulta.", enc.FormaPago == "T" ? L(" por transferencia a la cuenta registrada") : L(", contra entrega de esta contraseña"), enc.Numero)</div>
             </div>
         </footer>
     </article>

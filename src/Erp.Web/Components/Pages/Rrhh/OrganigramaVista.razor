@@ -10,28 +10,28 @@
 }
 
 <div class="barra-herramientas organigrama-herramientas">
-    <label class="campo-checkbox"><input type="checkbox" @bind="mostrarPlazas" @bind:after="Reconstruir" /> Mostrar plazas y empleados</label>
-    <label class="campo-checkbox"><input type="checkbox" @bind="soloActivos" @bind:after="CargarAsync" /> Solo activos</label>
+    <label class="campo-checkbox"><input type="checkbox" @bind="mostrarPlazas" @bind:after="Reconstruir" /> @L("Mostrar plazas y empleados")</label>
+    <label class="campo-checkbox"><input type="checkbox" @bind="soloActivos" @bind:after="CargarAsync" /> @L("Solo activos")</label>
     <span class="barra-herramientas-separador"></span>
-    <button type="button" class="boton-texto" @onclick="() => contraidos.Clear()">Expandir todo</button>
-    <button type="button" class="boton-texto" @onclick="ContraerAGerencias">Ver solo primeros dos niveles</button>
+    <button type="button" class="boton-texto" @onclick="() => contraidos.Clear()">@L("Expandir todo")</button>
+    <button type="button" class="boton-texto" @onclick="ContraerAGerencias">@L("Ver solo primeros dos niveles")</button>
     <div class="organigrama-leyenda" aria-hidden="true">
-        <span class="org-muestra org-u"></span> Unidad
-        <span class="org-muestra org-d"></span> Departamento
+        <span class="org-muestra org-u"></span> @L("Unidad")
+        <span class="org-muestra org-d"></span> @L("Departamento")
         @if (mostrarPlazas)
         {
-            <span class="org-muestra org-p"></span> <span>Plaza</span>
+            <span class="org-muestra org-p"></span> <span>@L("Plaza")</span>
         }
     </div>
 </div>
 
 @if (raices.Count == 0)
 {
-    <p class="estado-vacio">No hay unidades ni departamentos para mostrar.</p>
+    <p class="estado-vacio">@L("No hay unidades ni departamentos para mostrar.")</p>
 }
 else
 {
-    <div class="organigrama-lienzo" role="tree" aria-label="Organigrama">
+    <div class="organigrama-lienzo" role="tree" aria-label="@L("Organigrama")">
         <ul class="organigrama">
             @foreach (var r in raices)
             {
@@ -87,7 +87,7 @@ else
         foreach (var r in raices) Recorrer(r);
     }
 
-    private static string TipoTexto(string tipo) => tipo switch { "U" => "Unidad", "D" => "Departamento", _ => "Plaza" };
+    private static string TipoTexto(string tipo) => tipo switch { "U" => L("Unidad"), "D" => L("Departamento"), _ => L("Plaza") };
 
     // Un nodo del organigrama; las plazas de un departamento se listan dentro
     // de su tarjeta para que el dibujo no crezca a lo ancho.
@@ -124,7 +124,7 @@ else
                 @if (tieneHijos)
                 {
                     <button type="button" class="org-alternar" @onclick="() => Alternar(g)"
-                            aria-label="@(contraido ? "Expandir" : "Contraer") @g.Nodo.Descripcion">
+                            aria-label="@(contraido ? L("Expandir") : L("Contraer")) @g.Nodo.Descripcion">
                         @(contraido ? $"+ {subnodos.Count + plazas.Count}" : "−")
                     </button>
                 }

@@ -3,16 +3,16 @@
 
 @if (Filas.Count == 0)
 {
-    <p class="estado-vacio">No hay saldos ni movimientos en ese rango.</p>
+    <p class="estado-vacio">@L("No hay saldos ni movimientos en ese rango.")</p>
 }
 else
 {
     var raiz = Filas.Where(f => f.Nivel == Filas.Min(x => x.Nivel)).ToList();
-    <div class="tabla-desplazable" tabindex="0" aria-label="Balanza de comprobación">
+    <div class="tabla-desplazable" tabindex="0" aria-label="@L("Balanza de comprobación")">
         <table class="tabla-datos tabla-contable">
             <thead>
-                <tr><th rowspan="2" class="col-codigo">Cuenta</th><th rowspan="2">Nombre</th><th colspan="2" class="centrado">Saldo inicial</th><th colspan="2" class="centrado">Movimientos</th><th colspan="2" class="centrado">Saldo final</th></tr>
-                <tr><th class="num col-monto">Deudor</th><th class="num col-monto">Acreedor</th><th class="num col-monto">Debe</th><th class="num col-monto">Haber</th><th class="num col-monto">Deudor</th><th class="num col-monto">Acreedor</th></tr>
+                <tr><th rowspan="2" class="col-codigo">@L("Cuenta")</th><th rowspan="2">@L("Nombre")</th><th colspan="2" class="centrado">@L("Saldo inicial")</th><th colspan="2" class="centrado">@L("Movimientos")</th><th colspan="2" class="centrado">@L("Saldo final")</th></tr>
+                <tr><th class="num col-monto">@L("Deudor")</th><th class="num col-monto">@L("Acreedor")</th><th class="num col-monto">@L("Debe")</th><th class="num col-monto">@L("Haber")</th><th class="num col-monto">@L("Deudor")</th><th class="num col-monto">@L("Acreedor")</th></tr>
             </thead>
             <tbody>
                 @foreach (var f in Filas)
@@ -32,7 +32,7 @@ else
             <tfoot>
                 @* Sumas de las cuentas de primer nivel: deudor = acreedor si la contabilidad cuadra. *@
                 <tr class="fila-total">
-                    <td colspan="2">Sumas iguales</td>
+                    <td colspan="2">@L("Sumas iguales")</td>
                     <td class="num">@raiz.Sum(f => f.InicialDeudor).ToString("N2")</td>
                     <td class="num">@raiz.Sum(f => f.InicialAcreedor).ToString("N2")</td>
                     <td class="num">@raiz.Sum(f => f.Debe).ToString("N2")</td>
@@ -45,7 +45,7 @@ else
     </div>
     @if (raiz.Sum(f => f.FinalDeudor) != raiz.Sum(f => f.FinalAcreedor) || raiz.Sum(f => f.Debe) != raiz.Sum(f => f.Haber))
     {
-        <p class="mensaje-error" role="alert">La balanza no cuadra: revise Contabilidad &gt; Revisión de integridad.</p>
+        <p class="mensaje-error" role="alert">@L("La balanza no cuadra: revise Contabilidad > Revisión de integridad.")</p>
     }
 }
 

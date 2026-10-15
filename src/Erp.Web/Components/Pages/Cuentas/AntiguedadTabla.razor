@@ -3,24 +3,24 @@
 
 @if (Grupos.Count == 0)
 {
-    <p class="estado-vacio">No hay saldos pendientes a la fecha de corte.</p>
+    <p class="estado-vacio">@L("No hay saldos pendientes a la fecha de corte.")</p>
 }
 else if (Vista == "tercero")
 {
     <table class="tabla-datos tabla-antiguedad">
         <thead>
             <tr>
-                <th class="col-codigo">Código</th>
+                <th class="col-codigo">@L("Código")</th>
                 <th>@Tercero</th>
-                <th class="num">Documentos</th>
+                <th class="num">@L("Documentos")</th>
                 @foreach (var r in RangosAntiguedad.Etiquetas)
                 {
                     <th class="num">@r</th>
                 }
-                <th class="num">Total</th>
+                <th class="num">@L("Total")</th>
                 @if (ConPago)
                 {
-                    <th class="col-acciones"><span class="sr-only">Pagar</span></th>
+                    <th class="col-acciones"><span class="sr-only">@L("Pagar")</span></th>
                 }
             </tr>
         </thead>
@@ -32,7 +32,7 @@ else if (Vista == "tercero")
                     <td>
                         @if (Enlaces)
                         {
-                            <a class="enlace-fila" href="@($"{(EsCliente ? "cxc" : "cxp")}/estado-cuenta?id={g.Id}")" title="Ver estado de cuenta">@g.Nombre</a>
+                            <a class="enlace-fila" href="@($"{(EsCliente ? "cxc" : "cxp")}/estado-cuenta?id={g.Id}")" title="@L("Ver estado de cuenta")">@g.Nombre</a>
                         }
                         else
                         {
@@ -47,7 +47,7 @@ else if (Vista == "tercero")
                     <td class="num"><strong>@g.Total.ToString("N2")</strong></td>
                     @if (ConPago)
                     {
-                        <td class="col-acciones">@EnlacePago($"prv={g.Id}&todo=1", $"Pagar el saldo de {g.Nombre} con cheque", "Pagar saldo con cheque")</td>
+                        <td class="col-acciones">@EnlacePago($"prv={g.Id}&todo=1", L("Pagar el saldo de {0} con cheque", g.Nombre), L("Pagar saldo con cheque"))</td>
                     }
                 </tr>
             }
@@ -63,17 +63,17 @@ else
         <thead>
             <tr>
                 <th>@Documento</th>
-                <th>Fecha</th>
-                <th>Vence</th>
-                <th class="num">Días</th>
+                <th>@L("Fecha")</th>
+                <th>@L("Vence")</th>
+                <th class="num">@L("Días")</th>
                 @foreach (var r in RangosAntiguedad.Etiquetas)
                 {
                     <th class="num">@r</th>
                 }
-                <th class="num">Total</th>
+                <th class="num">@L("Total")</th>
                 @if (ConPago)
                 {
-                    <th class="col-acciones"><span class="sr-only">Pagar</span></th>
+                    <th class="col-acciones"><span class="sr-only">@L("Pagar")</span></th>
                 }
             </tr>
         </thead>
@@ -86,7 +86,7 @@ else
                 @foreach (var d in g.Documentos)
                 {
                     <tr>
-                        <td>@d.Documento@(d.Cuotas > 1 ? $" ({d.Cuotas} cuotas)" : "")</td>
+                        <td>@d.Documento@(d.Cuotas > 1 ? L(" ({0} cuotas)", d.Cuotas) : "")</td>
                         <td>@d.FechaDocumento.ToString("dd/MM/yyyy")</td>
                         <td>@d.VencimientoMasAntiguo.ToString("dd/MM/yyyy")</td>
                         <td class="num @(d.DiasMaximos > 0 ? "antiguedad-vencido" : "")">@(d.DiasMaximos > 0 ? d.DiasMaximos : 0)</td>
@@ -97,12 +97,12 @@ else
                         <td class="num">@d.Total.ToString("N2")</td>
                         @if (ConPago)
                         {
-                            <td class="col-acciones">@EnlacePago($"prv={g.Id}&enc={d.EncId}", $"Pagar {d.Documento} con cheque", "Pagar esta compra con cheque")</td>
+                            <td class="col-acciones">@EnlacePago($"prv={g.Id}&enc={d.EncId}", L("Pagar {0} con cheque", d.Documento), L("Pagar esta compra con cheque"))</td>
                         }
                     </tr>
                 }
                 <tr class="antiguedad-subtotal">
-                    <td colspan="4">Total @g.Nombre</td>
+                    <td colspan="4">@L("Total {0}", g.Nombre)</td>
                     @for (var i = 0; i < 5; i++)
                     {
                         <td class="num">@Monto(g.Rangos[i])</td>
@@ -110,7 +110,7 @@ else
                     <td class="num"><strong>@g.Total.ToString("N2")</strong></td>
                     @if (ConPago)
                     {
-                        <td class="col-acciones">@EnlacePago($"prv={g.Id}&todo=1", $"Pagar el saldo de {g.Nombre} con cheque", "Pagar saldo con cheque")</td>
+                        <td class="col-acciones">@EnlacePago($"prv={g.Id}&todo=1", L("Pagar el saldo de {0} con cheque", g.Nombre), L("Pagar saldo con cheque"))</td>
                     }
                 </tr>
             }
@@ -131,7 +131,7 @@ else
     // En pantalla, las deudas con proveedores se pagan con cheque desde aquí.
     private bool ConPago => Enlaces && !EsCliente;
 
-    private string Tercero => EsCliente ? "Cliente" : "Proveedor";
+    private string Tercero => EsCliente ? L("Cliente") : L("Proveedor");
 
     private static RenderFragment EnlacePago(string consulta, string etiqueta, string tip) => __builder =>
     {
@@ -139,7 +139,7 @@ else
             <Icono Nombre="banknote" Tamano="16" /><span class="boton-icono-tip" role="tooltip">@tip</span>
         </a>
     };
-    private string Documento => EsCliente ? "Factura" : "Compra";
+    private string Documento => EsCliente ? L("Factura") : L("Compra");
 
     private static string Monto(decimal m) => m == 0 ? "—" : m.ToString("N2");
 

@@ -16,19 +16,19 @@
 @inject NavigationManager Navegacion
 @inject Erp.Web.Correo.DocumentosCorreo DocumentosCorreo
 
-<PageTitle>Cotizaciones</PageTitle>
+<PageTitle>@L("Cotizaciones")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Cotizaciones</h1>
-    <p>Ofertas de precio al cliente. Cada cotización vale @vigenciaDias días a partir de su fecha; mientras está vigente se convierte en factura con los precios cotizados.</p>
+    <h1>@L("Cotizaciones")</h1>
+    <p>@L("Ofertas de precio al cliente. Cada cotización vale {0} días a partir de su fecha; mientras está vigente se convierte en factura con los precios cotizados.", vigenciaDias)</p>
 </div>
 
-<BorradorDocumento TDatos="BorradorCotizacion" Clave="cotizaciones" Nombre="una cotización"
+<BorradorDocumento TDatos="BorradorCotizacion" Clave="cotizaciones" Nombre="@L("una cotización")"
                    Capturar="CapturarBorrador" Describir="DescribirBorrador" Restaurar="RestaurarBorradorAsync" />
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
 }
 
 <BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
@@ -36,52 +36,52 @@
 @if (pestanaActiva == "lista")
 {
     <div class="barra-herramientas">
-        <select @bind="filtroEstado" @bind:after="BuscarAsync" aria-label="Estado">
-            <option value="">Todas</option>
-            <option value="V">Vigentes</option>
-            <option value="X">Vencidas</option>
-            <option value="F">Facturadas</option>
-            <option value="A">Anuladas</option>
+        <select @bind="filtroEstado" @bind:after="BuscarAsync" aria-label="@L("Estado")">
+            <option value="">@L("Todas")</option>
+            <option value="V">@L("Vigentes")</option>
+            <option value="X">@L("Vencidas")</option>
+            <option value="F">@L("Facturadas")</option>
+            <option value="A">@L("Anuladas")</option>
         </select>
         <FiltroPeriodo @bind-Desde="filtroDesde" @bind-Hasta="filtroHasta" AlCambiar="BuscarAsync" />
-        <input type="search" placeholder="Número, cliente o NIT" aria-label="Buscar por número, cliente o NIT" @bind="filtroTexto"
+        <input type="search" placeholder="@L("Número, cliente o NIT")" aria-label="@L("Buscar por número, cliente o NIT")" @bind="filtroTexto"
                @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
-        <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+        <BotonIcono Icono="search" Tooltip="@L("Buscar")" Etiqueta="@L("Buscar")" OnClick="BuscarAsync" />
         <span class="barra-herramientas-separador"></span>
         <AuthorizeView Policy="Permiso:VENTAS_COTIZACION" Context="permisoCotizar">
-            <BotonIcono Icono="plus" Tooltip="Nueva cotización" Etiqueta="Nueva cotización" Variante="primario" OnClick="() => IniciarNueva(null)" />
+            <BotonIcono Icono="plus" Tooltip="@L("Nueva cotización")" Etiqueta="@L("Nueva cotización")" Variante="primario" OnClick="() => IniciarNueva(null)" />
         </AuthorizeView>
     </div>
 
     <div class="tabla-desplazable" tabindex="0">
         <table class="tabla-datos">
             <thead>
-                <tr><th class="col-codigo">Número</th><th class="col-fecha">Fecha</th><th>Cliente</th><th>Vendedor</th><th class="num col-monto">Total</th><th>Vigencia</th><th class="col-acciones">Acciones</th></tr>
+                <tr><th class="col-codigo">@L("Número")</th><th class="col-fecha">@L("Fecha")</th><th>@L("Cliente")</th><th>@L("Vendedor")</th><th class="num col-monto">@L("Total")</th><th>@L("Vigencia")</th><th class="col-acciones">@L("Acciones")</th></tr>
             </thead>
             <tbody>
                 @if (!cotizaciones.Any())
                 {
-                    <tr><td colspan="7" class="doc-tabla-vacia">No hay cotizaciones con esos filtros.</td></tr>
+                    <tr><td colspan="7" class="doc-tabla-vacia">@L("No hay cotizaciones con esos filtros.")</td></tr>
                 }
                 @foreach (var c in cotizaciones)
                 {
                     <tr class="@(seleccionada?.CotId == c.CotId ? "fila-seleccionada" : "")">
                         <td class="col-codigo">@c.Numero</td>
                         <td class="col-fecha">@c.Fecha.ToString("dd/MM/yyyy")</td>
-                        <td>@c.Cliente@if (!string.IsNullOrWhiteSpace(c.Nit)) { <br /><span class="texto-tenue">NIT @c.Nit</span> }</td>
+                        <td>@c.Cliente@if (!string.IsNullOrWhiteSpace(c.Nit)) { <br /><span class="texto-tenue">@L("NIT {0}", c.Nit)</span> }</td>
                         <td>@(c.Vendedor ?? "—")</td>
                         <td class="num col-monto">@c.Simbolo @c.Total.ToString("N2")</td>
                         <td><span class="estado-badge @ClaseEstado(c.Estado)">@TextoEstado(c.Estado, c.DiasRestantes, c.Vence, c.Factura)</span></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
-                                <BotonIcono Icono="eye" Tooltip="Ver la cotización" OnClick="() => AbrirAsync(c.CotId)" />
-                                <a class="boton-icono boton-icono-neutral" href="@($"ventas/cotizaciones/{c.CotId}/imprimir")" target="_blank" aria-label="Imprimir la cotización">
-                                    <Icono Nombre="printer" Tamano="17" /><span class="boton-icono-tip" aria-hidden="true">Imprimir</span>
+                                <BotonIcono Icono="eye" Tooltip="@L("Ver la cotización")" OnClick="() => AbrirAsync(c.CotId)" />
+                                <a class="boton-icono boton-icono-neutral" href="@($"ventas/cotizaciones/{c.CotId}/imprimir")" target="_blank" aria-label="@L("Imprimir la cotización")">
+                                    <Icono Nombre="printer" Tamano="17" /><span class="boton-icono-tip" aria-hidden="true">@L("Imprimir")</span>
                                 </a>
                                 @if (c.Estado == "V")
                                 {
                                     <AuthorizeView Policy="Permiso:VENTAS_FACTURA_CREAR" Context="permisoFacturar">
-                                        <BotonIcono Icono="receipt" Tooltip="Convertir en factura" Variante="primario" OnClick="() => ConvertirEnFactura(c.CotId)" />
+                                        <BotonIcono Icono="receipt" Tooltip="@L("Convertir en factura")" Variante="primario" OnClick="() => ConvertirEnFactura(c.CotId)" />
                                     </AuthorizeView>
                                 }
                             </div>
@@ -95,29 +95,29 @@
 else if (pestanaActiva == "nueva")
 {
     <section class="tarjeta" aria-labelledby="titulo-nueva">
-        <h2 id="titulo-nueva">Nueva cotización</h2>
-        <p class="texto-ayuda">Vale @vigenciaDias días: hasta el <strong>@nueva.Fecha.AddDays(vigenciaDias).ToString("dd/MM/yyyy")</strong>. Los precios incluyen IVA.</p>
+        <h2 id="titulo-nueva">@L("Nueva cotización")</h2>
+        <p class="texto-ayuda">@L("Vale {0} días: hasta el {1}. Los precios incluyen IVA.", vigenciaDias, nueva.Fecha.AddDays(vigenciaDias).ToString("dd/MM/yyyy"))</p>
 
-        <h3>Cliente</h3>
+        <h3>@L("Cliente")</h3>
         @if (clienteSeleccionado is not null)
         {
             <div class="doc-nota" role="status">
                 <Icono Nombre="user" Tamano="15" />
-                <span><strong>@clienteSeleccionado.CliCodigo · @clienteSeleccionado.NombreCompleto</strong> @(string.IsNullOrWhiteSpace(clienteSeleccionado.CliNit) ? "" : $"· NIT {clienteSeleccionado.CliNit}")</span>
-                <BotonIcono Icono="x" Tooltip="Quitar el cliente" OnClick="QuitarCliente" />
+                <span><strong>@clienteSeleccionado.CliCodigo · @clienteSeleccionado.NombreCompleto</strong> @(string.IsNullOrWhiteSpace(clienteSeleccionado.CliNit) ? "" : L("· NIT {0}", clienteSeleccionado.CliNit))</span>
+                <BotonIcono Icono="x" Tooltip="@L("Quitar el cliente")" OnClick="QuitarCliente" />
             </div>
         }
         else
         {
             <div class="barra-herramientas">
-                <input type="search" placeholder="Buscar cliente por código, nombre o NIT" aria-label="Buscar cliente por código, nombre o NIT" @bind="textoCliente"
+                <input type="search" placeholder="@L("Buscar cliente por código, nombre o NIT")" aria-label="@L("Buscar cliente por código, nombre o NIT")" @bind="textoCliente"
                        @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarClientesAsync(); })" />
-                <BotonIcono Icono="search" Tooltip="Buscar cliente" Etiqueta="Buscar" OnClick="BuscarClientesAsync" />
+                <BotonIcono Icono="search" Tooltip="@L("Buscar cliente")" Etiqueta="@L("Buscar")" OnClick="BuscarClientesAsync" />
             </div>
             @if (clientesEncontrados.Count > 0)
             {
                 <table class="tabla-datos tabla-compacta">
-                    <thead><tr><th class="col-codigo">Código</th><th>Cliente</th><th>NIT</th><th class="col-acciones"><span class="sr-only">Elegir</span></th></tr></thead>
+                    <thead><tr><th class="col-codigo">@L("Código")</th><th>@L("Cliente")</th><th>@L("NIT")</th><th class="col-acciones"><span class="sr-only">@L("Elegir")</span></th></tr></thead>
                     <tbody>
                         @foreach (var c in clientesEncontrados.Take(10))
                         {
@@ -125,43 +125,43 @@ else if (pestanaActiva == "nueva")
                                 <td class="col-codigo">@c.CliCodigo</td>
                                 <td>@c.NombreCompleto</td>
                                 <td>@c.CliNit</td>
-                                <td class="col-acciones"><BotonIcono Icono="check-circle" Tooltip="Elegir el cliente" OnClick="() => ElegirCliente(c)" /></td>
+                                <td class="col-acciones"><BotonIcono Icono="check-circle" Tooltip="@L("Elegir el cliente")" OnClick="() => ElegirCliente(c)" /></td>
                             </tr>
                         }
                     </tbody>
                 </table>
             }
-            <p class="texto-ayuda">¿Es un prospecto? Escriba su nombre y NIT; al facturar se registra como cliente con el NIT.</p>
+            <p class="texto-ayuda">@L("¿Es un prospecto? Escriba su nombre y NIT; al facturar se registra como cliente con el NIT.")</p>
         }
         <div class="fel-formulario">
             <div class="campo">
-                <label for="cot-nombre">Nombre</label>
+                <label for="cot-nombre">@L("Nombre")</label>
                 <input id="cot-nombre" maxlength="256" @bind="nueva.Nombre" />
             </div>
             <div class="campo">
-                <label for="cot-nit">NIT</label>
+                <label for="cot-nit">@L("NIT")</label>
                 <input id="cot-nit" maxlength="16" placeholder="C/F" @bind="nueva.Nit" />
             </div>
             <div class="campo">
-                <label for="cot-telefono">Teléfono</label>
+                <label for="cot-telefono">@L("Teléfono")</label>
                 <input id="cot-telefono" maxlength="64" @bind="nueva.Telefono" />
             </div>
             <div class="campo">
-                <label for="cot-correo">Correo</label>
+                <label for="cot-correo">@L("Correo")</label>
                 <input id="cot-correo" type="email" maxlength="128" @bind="nueva.Correo" />
             </div>
             <div class="campo campo-ancho">
-                <label for="cot-direccion">Dirección</label>
+                <label for="cot-direccion">@L("Dirección")</label>
                 <input id="cot-direccion" maxlength="256" @bind="nueva.Direccion" />
             </div>
         </div>
 
-        <h3>Condiciones</h3>
+        <h3>@L("Condiciones")</h3>
         <div class="fel-formulario">
             <div class="campo">
-                <label for="cot-bodega">Bodega</label>
+                <label for="cot-bodega">@L("Bodega")</label>
                 <select id="cot-bodega" @bind="nueva.BodId">
-                    <option value="0">Seleccione…</option>
+                    <option value="0">@L("Seleccione…")</option>
                     @foreach (var b in bodegas)
                     {
                         <option value="@b.BodId">@b.SucDescripcion · @b.BodDescripcion</option>
@@ -169,9 +169,9 @@ else if (pestanaActiva == "nueva")
                 </select>
             </div>
             <div class="campo">
-                <label for="cot-vendedor">Vendedor</label>
+                <label for="cot-vendedor">@L("Vendedor")</label>
                 <select id="cot-vendedor" @bind="nueva.PveId">
-                    <option value="">(Sin vendedor)</option>
+                    <option value="">@L("(Sin vendedor)")</option>
                     @foreach (var v in vendedores)
                     {
                         <option value="@v.PveId">@v.PveNombres @v.PveApellidos</option>
@@ -179,29 +179,29 @@ else if (pestanaActiva == "nueva")
                 </select>
             </div>
             <div class="campo campo-ancho">
-                <label for="cot-obs">Observaciones (tiempo de entrega, forma de pago, garantía…)</label>
+                <label for="cot-obs">@L("Observaciones (tiempo de entrega, forma de pago, garantía…)")</label>
                 <input id="cot-obs" maxlength="500" @bind="nueva.Observaciones" />
             </div>
         </div>
 
-        <h3>Productos y servicios</h3>
+        <h3>@L("Productos y servicios")</h3>
         <div class="barra-herramientas">
-            <input type="search" placeholder="Escanee o busque producto por código o descripción" aria-label="Buscar producto por código o descripción" @bind="textoProducto"
+            <input type="search" placeholder="@L("Escanee o busque producto por código o descripción")" aria-label="@L("Buscar producto por código o descripción")" @bind="textoProducto"
                    @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
-            <BotonIcono Icono="search" Tooltip="Buscar producto" Etiqueta="Buscar" OnClick="BuscarProductosAsync" />
-            <BotonIcono Icono="plus" Tooltip="Agregar un servicio" Etiqueta="Servicio" OnClick="AgregarServicio" />
+            <BotonIcono Icono="search" Tooltip="@L("Buscar producto")" Etiqueta="@L("Buscar")" OnClick="BuscarProductosAsync" />
+            <BotonIcono Icono="plus" Tooltip="@L("Agregar un servicio")" Etiqueta="@L("Servicio")" OnClick="AgregarServicio" />
         </div>
         @if (productosEncontrados.Count > 0)
         {
             <table class="tabla-datos tabla-compacta">
-                <thead><tr><th class="col-codigo">Código</th><th>Producto</th><th class="col-acciones"><span class="sr-only">Agregar</span></th></tr></thead>
+                <thead><tr><th class="col-codigo">@L("Código")</th><th>@L("Producto")</th><th class="col-acciones"><span class="sr-only">@L("Agregar")</span></th></tr></thead>
                 <tbody>
                     @foreach (var p in productosEncontrados.Take(15))
                     {
                         <tr>
                             <td class="col-codigo">@p.ProCodigo</td>
                             <td>@p.ProDescripcion</td>
-                            <td class="col-acciones"><BotonIcono Icono="plus" Tooltip="Agregar a la cotización" OnClick="() => AgregarProductoAsync(p)" /></td>
+                            <td class="col-acciones"><BotonIcono Icono="plus" Tooltip="@L("Agregar a la cotización")" OnClick="() => AgregarProductoAsync(p)" /></td>
                         </tr>
                     }
                 </tbody>
@@ -211,12 +211,12 @@ else if (pestanaActiva == "nueva")
         <div class="tabla-desplazable" tabindex="0">
             <table class="tabla-datos">
                 <thead>
-                    <tr><th class="col-tipo">B/S</th><th>Descripción</th><th class="num col-monto">Cantidad</th><th class="num col-monto">Precio con IVA</th><th class="num col-monto">Descuento</th><th class="num col-monto">Total</th><th class="col-acciones"><span class="sr-only">Quitar</span></th></tr>
+                    <tr><th class="col-tipo">B/S</th><th>@L("Descripción")</th><th class="num col-monto">@L("Cantidad")</th><th class="num col-monto">@L("Precio con IVA")</th><th class="num col-monto">@L("Descuento")</th><th class="num col-monto">@L("Total")</th><th class="col-acciones"><span class="sr-only">@L("Quitar")</span></th></tr>
                 </thead>
                 <tbody>
                     @if (lineas.Count == 0)
                     {
-                        <tr><td colspan="7" class="doc-tabla-vacia">Agregue productos o servicios.</td></tr>
+                        <tr><td colspan="7" class="doc-tabla-vacia">@L("Agregue productos o servicios.")</td></tr>
                     }
                     @foreach (var l in lineas)
                     {
@@ -225,32 +225,32 @@ else if (pestanaActiva == "nueva")
                             <td>
                                 @if (l.ProId is null)
                                 {
-                                    <input maxlength="256" placeholder="Describa el servicio" aria-label="Descripción del servicio" @bind="l.Descripcion" />
+                                    <input maxlength="256" placeholder="@L("Describa el servicio")" aria-label="@L("Descripción del servicio")" @bind="l.Descripcion" />
                                 }
                                 else
                                 {
                                     @l.Descripcion<br /><span class="texto-tenue">@l.Codigo</span>
                                 }
                             </td>
-                            <td class="num col-monto"><input class="entrada-numero" type="number" min="0" step="@(l.ManejaExistencia ? "1" : "0.01")" aria-label="Cantidad" @bind="l.Cantidad" @bind:event="oninput" /></td>
-                            <td class="num col-monto"><input class="entrada-numero" type="number" min="0" step="0.01" aria-label="Precio con IVA" @bind="l.PrecioUnitario" @bind:event="oninput" /></td>
-                            <td class="num col-monto"><input class="entrada-numero" type="number" min="0" step="0.01" aria-label="Descuento" @bind="l.Descuento" @bind:event="oninput" /></td>
+                            <td class="num col-monto"><input class="entrada-numero" type="number" min="0" step="@(l.ManejaExistencia ? "1" : "0.01")" aria-label="@L("Cantidad")" @bind="l.Cantidad" @bind:event="oninput" /></td>
+                            <td class="num col-monto"><input class="entrada-numero" type="number" min="0" step="0.01" aria-label="@L("Precio con IVA")" @bind="l.PrecioUnitario" @bind:event="oninput" /></td>
+                            <td class="num col-monto"><input class="entrada-numero" type="number" min="0" step="0.01" aria-label="@L("Descuento")" @bind="l.Descuento" @bind:event="oninput" /></td>
                             <td class="num col-monto">@l.Total.ToString("N2")</td>
-                            <td class="col-acciones"><BotonIcono Icono="trash-2" Tooltip="Quitar" Variante="peligro" OnClick="() => lineas.Remove(l)" /></td>
+                            <td class="col-acciones"><BotonIcono Icono="trash-2" Tooltip="@L("Quitar")" Variante="peligro" OnClick="() => lineas.Remove(l)" /></td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
         <div class="resumen-totales">
-            @if (lineas.Sum(l => l.Descuento) > 0) { <span>Descuentos: <strong>Q @lineas.Sum(l => l.Descuento).ToString("N2")</strong></span> }
-            <span>IVA incluido: <strong>Q @Math.Round(TotalNueva * porcentajeIva / (100 + porcentajeIva), 2).ToString("N2")</strong></span>
-            <span>Total: <strong>Q @TotalNueva.ToString("N2")</strong></span>
+            @if (lineas.Sum(l => l.Descuento) > 0) { <span>@L("Descuentos:") <strong>Q @lineas.Sum(l => l.Descuento).ToString("N2")</strong></span> }
+            <span>@L("IVA incluido:") <strong>Q @Math.Round(TotalNueva * porcentajeIva / (100 + porcentajeIva), 2).ToString("N2")</strong></span>
+            <span>@L("Total:") <strong>Q @TotalNueva.ToString("N2")</strong></span>
         </div>
 
         <div class="acciones-fila">
-            <BotonIcono Icono="save" Tooltip="Grabar la cotización" Etiqueta="Grabar cotización" Variante="primario" Deshabilitado="lineas.Count == 0" OnClick="GrabarAsync" />
-            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="VolverALista" />
+            <BotonIcono Icono="save" Tooltip="@L("Grabar la cotización")" Etiqueta="@L("Grabar cotización")" Variante="primario" Deshabilitado="lineas.Count == 0" OnClick="GrabarAsync" />
+            <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="VolverALista" />
         </div>
     </section>
 }
@@ -259,9 +259,9 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
     var c = seleccionada;
     <section class="tarjeta" aria-labelledby="titulo-cotizacion">
         <div class="maestro-detalle-encabezado">
-            <h2 id="titulo-cotizacion">Cotización @c.Numero</h2>
+            <h2 id="titulo-cotizacion">@L("Cotización {0}", c.Numero)</h2>
             <span class="estado-badge @ClaseEstado(c.Estado)">@TextoEstado(c.Estado, c.DiasRestantes, c.Vence, c.Factura)</span>
-            <BotonIcono Icono="mail" Tooltip="Enviar la cotización al correo del cliente" Etiqueta="Enviar por correo" OnClick="AbrirCorreoAsync" />
+            <BotonIcono Icono="mail" Tooltip="@L("Enviar la cotización al correo del cliente")" Etiqueta="@L("Enviar por correo")" OnClick="AbrirCorreoAsync" />
         </div>
         @if (correoCotizacion is not null)
         {
@@ -269,31 +269,31 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         }
         @if (c.Estado == "V")
         {
-            <p class="doc-nota" role="status"><Icono Nombre="clock" Tamano="15" /><span>Válida hasta el <strong>@c.Vence.ToString("dd/MM/yyyy")</strong> (@c.VigenciaDias días desde el @c.Fecha.ToString("dd/MM/yyyy")). Puede convertirse en factura con los precios cotizados hasta esa fecha.</span></p>
+            <p class="doc-nota" role="status"><Icono Nombre="clock" Tamano="15" /><span>@L("Válida hasta el") <strong>@c.Vence.ToString("dd/MM/yyyy")</strong> @L("({0} días desde el {1}). Puede convertirse en factura con los precios cotizados hasta esa fecha.", c.VigenciaDias, c.Fecha.ToString("dd/MM/yyyy"))</span></p>
         }
         else if (c.Estado == "X")
         {
-            <p class="doc-nota doc-nota-aviso" role="status"><Icono Nombre="alert-triangle" Tamano="15" /><span>Venció el @c.Vence.ToString("dd/MM/yyyy"): ya no se puede facturar. Duplíquela para cotizar de nuevo con los precios de hoy.</span></p>
+            <p class="doc-nota doc-nota-aviso" role="status"><Icono Nombre="alert-triangle" Tamano="15" /><span>@L("Venció el {0}: ya no se puede facturar. Duplíquela para cotizar de nuevo con los precios de hoy.", c.Vence.ToString("dd/MM/yyyy"))</span></p>
         }
         else if (c.Estado == "F")
         {
-            <p class="doc-nota" role="status"><Icono Nombre="check-circle" Tamano="15" /><span>Facturada en <strong>@c.Factura</strong>.</span></p>
+            <p class="doc-nota" role="status"><Icono Nombre="check-circle" Tamano="15" /><span>@L("Facturada en") <strong>@c.Factura</strong>.</span></p>
         }
         else if (c.Estado == "A")
         {
-            <p class="doc-nota doc-nota-aviso" role="status"><Icono Nombre="ban" Tamano="15" /><span>Anulada: @c.MotivoAnulacion</span></p>
+            <p class="doc-nota doc-nota-aviso" role="status"><Icono Nombre="ban" Tamano="15" /><span>@L("Anulada: {0}", c.MotivoAnulacion)</span></p>
         }
 
         <div class="resumen-totales">
-            <span>Cliente: <strong>@c.Cliente</strong>@(string.IsNullOrWhiteSpace(c.Nit) ? "" : $" · NIT {c.Nit}")</span>
-            <span>Fecha: <strong>@c.Fecha.ToString("dd/MM/yyyy")</strong></span>
-            <span>Bodega: <strong>@c.Bodega</strong></span>
-            @if (c.Vendedor is not null) { <span>Vendedor: <strong>@c.Vendedor</strong></span> }
+            <span>@L("Cliente:") <strong>@c.Cliente</strong>@(string.IsNullOrWhiteSpace(c.Nit) ? "" : L(" · NIT {0}", c.Nit))</span>
+            <span>@L("Fecha:") <strong>@c.Fecha.ToString("dd/MM/yyyy")</strong></span>
+            <span>@L("Bodega:") <strong>@c.Bodega</strong></span>
+            @if (c.Vendedor is not null) { <span>@L("Vendedor:") <strong>@c.Vendedor</strong></span> }
         </div>
 
         <div class="tabla-desplazable" tabindex="0">
             <table class="tabla-datos">
-                <thead><tr><th class="num">#</th><th>Descripción</th><th class="num col-monto">Cantidad</th><th class="num col-monto">Precio con IVA</th><th class="num col-monto">Descuento</th><th class="num col-monto">Total</th><th class="num col-monto">Existencia hoy</th></tr></thead>
+                <thead><tr><th class="num">#</th><th>@L("Descripción")</th><th class="num col-monto">@L("Cantidad")</th><th class="num col-monto">@L("Precio con IVA")</th><th class="num col-monto">@L("Descuento")</th><th class="num col-monto">@L("Total")</th><th class="num col-monto">@L("Existencia hoy")</th></tr></thead>
                 <tbody>
                     @foreach (var l in lineasDetalle)
                     {
@@ -305,31 +305,31 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
                             <td class="num col-monto">@l.PrecioUnitario.ToString("N2")</td>
                             <td class="num col-monto">@(l.Descuento > 0 ? l.Descuento.ToString("N2") : "")</td>
                             <td class="num col-monto">@l.Total.ToString("N2")</td>
-                            <td class="num col-monto">@(l.ManejaExistencia ? (l.Existencia ?? 0).ToString("#,##0.##") : "—")@if (falta) { <br /><span class="texto-error">No alcanza</span> }</td>
+                            <td class="num col-monto">@(l.ManejaExistencia ? (l.Existencia ?? 0).ToString("#,##0.##") : "—")@if (falta) { <br /><span class="texto-error">@L("No alcanza")</span> }</td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
         <div class="resumen-totales">
-            @if (c.Descuento > 0) { <span>Descuentos: <strong>@c.Simbolo @c.Descuento.ToString("N2")</strong></span> }
-            <span>IVA incluido: <strong>@c.Simbolo @c.IvaIncluido.ToString("N2")</strong></span>
-            <span>Total: <strong>@c.Simbolo @c.Total.ToString("N2")</strong></span>
+            @if (c.Descuento > 0) { <span>@L("Descuentos:") <strong>@c.Simbolo @c.Descuento.ToString("N2")</strong></span> }
+            <span>@L("IVA incluido:") <strong>@c.Simbolo @c.IvaIncluido.ToString("N2")</strong></span>
+            <span>@L("Total:") <strong>@c.Simbolo @c.Total.ToString("N2")</strong></span>
         </div>
-        @if (!string.IsNullOrWhiteSpace(c.Observaciones)) { <p class="texto-ayuda">Observaciones: @c.Observaciones</p> }
+        @if (!string.IsNullOrWhiteSpace(c.Observaciones)) { <p class="texto-ayuda">@L("Observaciones: {0}", c.Observaciones)</p> }
 
         <div class="acciones-fila">
             <a class="boton-icono boton-icono-neutral boton-icono-con-etiqueta" href="@($"ventas/cotizaciones/{c.CotId}/imprimir")" target="_blank">
-                <Icono Nombre="printer" Tamano="17" /><span class="boton-icono-etiqueta">Imprimir</span>
+                <Icono Nombre="printer" Tamano="17" /><span class="boton-icono-etiqueta">@L("Imprimir")</span>
             </a>
             @if (c.Estado == "V")
             {
                 <AuthorizeView Policy="Permiso:VENTAS_FACTURA_CREAR" Context="permisoFacturar">
-                    <BotonIcono Icono="receipt" Tooltip="Abrir una factura con esta cotización" Etiqueta="Convertir en factura" Variante="primario" OnClick="() => ConvertirEnFactura(c.CotId)" />
+                    <BotonIcono Icono="receipt" Tooltip="@L("Abrir una factura con esta cotización")" Etiqueta="@L("Convertir en factura")" Variante="primario" OnClick="() => ConvertirEnFactura(c.CotId)" />
                 </AuthorizeView>
             }
             <AuthorizeView Policy="Permiso:VENTAS_COTIZACION" Context="permisoCotizar">
-                <BotonIcono Icono="copy" Tooltip="Nueva cotización con estas líneas y los precios de hoy" Etiqueta="Duplicar" OnClick="DuplicarAsync" />
+                <BotonIcono Icono="copy" Tooltip="@L("Nueva cotización con estas líneas y los precios de hoy")" Etiqueta="@L("Duplicar")" OnClick="DuplicarAsync" />
             </AuthorizeView>
         </div>
 
@@ -337,10 +337,10 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         {
             <AuthorizeView Policy="Permiso:VENTAS_COTIZACION" Context="permisoAnular">
                 <div class="fila-edicion">
-                    <label for="cot-motivo">Anular la cotización</label>
-                    <input id="cot-motivo" maxlength="256" placeholder="Motivo" @bind="motivoAnulacion" @bind:event="oninput" />
-                    <BotonIcono Icono="ban" Tooltip="Anular la cotización" Etiqueta="Anular" Variante="peligro" Deshabilitado="motivoAnulacion.Trim().Length < 3"
-                                Confirmacion="¿Anular la cotización?" OnClick="AnularAsync" />
+                    <label for="cot-motivo">@L("Anular la cotización")</label>
+                    <input id="cot-motivo" maxlength="256" placeholder="@L("Motivo")" @bind="motivoAnulacion" @bind:event="oninput" />
+                    <BotonIcono Icono="ban" Tooltip="@L("Anular la cotización")" Etiqueta="@L("Anular")" Variante="peligro" Deshabilitado="motivoAnulacion.Trim().Length < 3"
+                                Confirmacion="@L("¿Anular la cotización?")" OnClick="AnularAsync" />
                 </div>
             </AuthorizeView>
         }
@@ -402,8 +402,8 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
     {
         get
         {
-            var lista = new List<PestanaItem> { new("lista", "Cotizaciones") };
-            if (pestanaActiva == "nueva") lista.Add(new("nueva", "Nueva cotización"));
+            var lista = new List<PestanaItem> { new("lista", L("Cotizaciones")) };
+            if (pestanaActiva == "nueva") lista.Add(new("nueva", L("Nueva cotización")));
             if (seleccionada is not null) lista.Add(new("detalle", seleccionada.Numero));
             return lista;
         }
@@ -419,10 +419,10 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
 
     private static string TextoEstado(string estado, int? dias, DateTime vence, string? factura) => estado switch
     {
-        "V" => dias switch { 0 => "Vigente · vence hoy", 1 => "Vigente · vence mañana", _ => $"Vigente · {dias} días (al {vence:dd/MM})" },
-        "X" => $"Vencida el {vence:dd/MM/yyyy}",
-        "F" => $"Facturada · {factura}",
-        _ => "Anulada"
+        "V" => dias switch { 0 => L("Vigente · vence hoy"), 1 => L("Vigente · vence mañana"), _ => L("Vigente · {0} días (al {1:dd/MM})", dias, vence) },
+        "X" => L("Vencida el {0:dd/MM/yyyy}", vence),
+        "F" => L("Facturada · {0}", factura),
+        _ => L("Anulada")
     };
 
     protected override async Task OnInitializedAsync()
@@ -500,7 +500,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
     {
         if (string.IsNullOrWhiteSpace(textoCliente)) return;
         clientesEncontrados = await ClienteRepository.ConsultarAsync(textoCliente.Trim(), "A");
-        if (clientesEncontrados.Count == 0) MostrarError("No se encontró el cliente. Escriba su nombre y NIT para cotizarle como prospecto.");
+        if (clientesEncontrados.Count == 0) MostrarError(L("No se encontró el cliente. Escriba su nombre y NIT para cotizarle como prospecto."));
         else mensaje = null;
     }
 
@@ -531,7 +531,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         productosEncontrados = porCodigo.Concat(porDescripcion).DistinctBy(p => p.ProId).Take(20).ToList();
         var exacto = productosEncontrados.FirstOrDefault(p => p.ProCodigo.Equals(texto, StringComparison.OrdinalIgnoreCase));
         if (exacto is not null) await AgregarProductoAsync(exacto);
-        else if (productosEncontrados.Count == 0) MostrarError("No se encontraron productos con ese texto.");
+        else if (productosEncontrados.Count == 0) MostrarError(L("No se encontraron productos con ese texto."));
     }
 
     // Precio vigente hoy en la bodega y moneda de la cotización (con IVA).
@@ -544,13 +544,13 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
 
     private async Task AgregarProductoAsync(Producto producto)
     {
-        if (nueva.BodId == 0) { MostrarError("Elija la bodega antes de agregar productos."); return; }
+        if (nueva.BodId == 0) { MostrarError(L("Elija la bodega antes de agregar productos.")); return; }
         var precio = await PrecioVigenteAsync(producto.ProId);
         productosEncontrados = Array.Empty<Producto>();
         textoProducto = "";
         if (precio is null)
         {
-            MostrarError($"El producto '{producto.ProDescripcion}' no tiene precio vigente en la bodega elegida.");
+            MostrarError(L("El producto '{0}' no tiene precio vigente en la bodega elegida.", producto.ProDescripcion));
             return;
         }
         var existente = lineas.FirstOrDefault(l => l.ProId == producto.ProId && l.PprId == precio.PprId);
@@ -578,17 +578,17 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
 
     private async Task GrabarAsync()
     {
-        if (string.IsNullOrWhiteSpace(nueva.Nombre)) { MostrarError("Indique el cliente o el nombre a quien va dirigida la cotización."); return; }
-        if (nueva.BodId == 0) { MostrarError("Elija la bodega."); return; }
-        if (lineas.Any(l => string.IsNullOrWhiteSpace(l.Descripcion))) { MostrarError("Describa cada servicio."); return; }
+        if (string.IsNullOrWhiteSpace(nueva.Nombre)) { MostrarError(L("Indique el cliente o el nombre a quien va dirigida la cotización.")); return; }
+        if (nueva.BodId == 0) { MostrarError(L("Elija la bodega.")); return; }
+        if (lineas.Any(l => string.IsNullOrWhiteSpace(l.Descripcion))) { MostrarError(L("Describa cada servicio.")); return; }
         if (lineas.Any(l => l.Cantidad <= 0 || l.PrecioUnitario < 0 || l.Descuento < 0 || l.Total < 0))
         {
-            MostrarError("Revise las líneas: cantidad mayor a cero, precio no negativo y descuento no mayor que el valor de la línea.");
+            MostrarError(L("Revise las líneas: cantidad mayor a cero, precio no negativo y descuento no mayor que el valor de la línea."));
             return;
         }
         if (lineas.Any(l => l.ManejaExistencia && l.Cantidad != Math.Round(l.Cantidad, 0)))
         {
-            MostrarError("Los productos con existencia se cotizan en cantidades enteras.");
+            MostrarError(L("Los productos con existencia se cotizan en cantidades enteras."));
             return;
         }
         try
@@ -607,7 +607,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             lineas.Clear();
             await BuscarAsync();
             await AbrirAsync(cotId);
-            mensaje = $"Cotización {numero} grabada. Vale hasta el {seleccionada?.Vence:dd/MM/yyyy}.";
+            mensaje = L("Cotización {0} grabada. Vale hasta el {1:dd/MM/yyyy}.", numero, seleccionada?.Vence);
             esMensajeError = false;
         }
         catch (Exception ex) { MostrarError(ex); }
@@ -637,7 +637,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             if (nueva.CliId is int cliId) clienteSeleccionado = await ClienteRepository.ConsultarPorIdAsync(cliId);
         }
         catch (Exception ex) { MostrarError(ex); return; }
-        mensaje = "Se recuperó la cotización sin terminar. Revise los precios antes de grabar.";
+        mensaje = L("Se recuperó la cotización sin terminar. Revise los precios antes de grabar.");
         esMensajeError = false;
     }
 
@@ -706,8 +706,8 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         }
         lineas.AddRange(copia);
         mensaje = sinPrecio > 0
-            ? $"Copia de {origen.Numero}: {sinPrecio} {(sinPrecio == 1 ? "producto no tiene" : "productos no tienen")} precio vigente hoy y {(sinPrecio == 1 ? "conserva" : "conservan")} el precio anterior; revíselos."
-            : $"Copia de {origen.Numero} con los precios vigentes hoy. Revise y grabe.";
+            ? L("Copia de {0}: {1} {2} precio vigente hoy y {3} el precio anterior; revíselos.", origen.Numero, sinPrecio, (sinPrecio == 1 ? L("producto no tiene") : L("productos no tienen")), (sinPrecio == 1 ? L("conserva") : L("conservan")))
+            : L("Copia de {0} con los precios vigentes hoy. Revise y grabe.", origen.Numero);
         esMensajeError = sinPrecio > 0;
     }
 
@@ -720,7 +720,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             var id = seleccionada.CotId;
             await BuscarAsync();
             await AbrirAsync(id);
-            mensaje = "Cotización anulada.";
+            mensaje = L("Cotización anulada.");
             esMensajeError = false;
         }
         catch (Exception ex) { MostrarError(ex); }

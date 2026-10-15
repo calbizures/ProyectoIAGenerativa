@@ -6,21 +6,21 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IRrhhRepository RrhhRepository
 
-<PageTitle>Catálogos de RRHH</PageTitle>
+<PageTitle>@L("Catálogos de RRHH")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Catálogos de RRHH</h1>
-    <p>Listas simples que usan los empleados, candidatos y puestos.</p>
+    <h1>@L("Catálogos de RRHH")</h1>
+    <p>@L("Listas simples que usan los empleados, candidatos y puestos.")</p>
 </div>
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
 }
 
 <div class="barra-herramientas">
     <label class="filtro-campo">
-        Catálogo
+        @L("Catálogo")
         <select @bind="catalogo" @bind:after="CargarAsync">
             @foreach (var c in ListaCatalogos)
             {
@@ -28,28 +28,28 @@
             }
         </select>
     </label>
-    <label class="filtro-campo"><input type="checkbox" @bind="soloActivos" @bind:after="CargarAsync" /> Solo activos</label>
+    <label class="filtro-campo"><input type="checkbox" @bind="soloActivos" @bind:after="CargarAsync" /> @L("Solo activos")</label>
     <span class="barra-herramientas-separador"></span>
-    <BotonIcono Icono="plus" Tooltip="Nuevo registro" Etiqueta="Nuevo" Variante="primario" OnClick="Nuevo" />
+    <BotonIcono Icono="plus" Tooltip="@L("Nuevo registro")" Etiqueta="@L("Nuevo")" Variante="primario" OnClick="Nuevo" />
 </div>
 
 @if (editandoId == 0)
 {
     <div class="fila-edicion tarjeta tarjeta-compacta">
-        <input @bind="descripcion" placeholder="Descripción" aria-label="Descripción" />
-        <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarAsync" />
-        <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => editandoId = null" />
+        <input @bind="descripcion" placeholder="@L("Descripción")" aria-label="@L("Descripción")" />
+        <BotonIcono Icono="save" Tooltip="@L("Guardar")" Etiqueta="@L("Guardar")" Variante="primario" OnClick="GuardarAsync" />
+        <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => editandoId = null" />
     </div>
 }
 
 @if (registros.Count == 0)
 {
-    <p class="estado-vacio">No hay registros en este catálogo.</p>
+    <p class="estado-vacio">@L("No hay registros en este catálogo.")</p>
 }
 else
 {
     <table class="tabla-datos">
-        <thead><tr><th class="col-codigo">Id</th><th>Descripción</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+        <thead><tr><th class="col-codigo">@L("Id")</th><th>@L("Descripción")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr></thead>
         <tbody>
             @foreach (var r in registros)
             {
@@ -57,29 +57,29 @@ else
                     <td class="col-codigo">@r.Id</td>
                     @if (editandoId == r.Id)
                     {
-                        <td><input @bind="descripcion" aria-label="Descripción" /></td>
+                        <td><input @bind="descripcion" aria-label="@L("Descripción")" /></td>
                         <td class="col-estado"></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
-                                <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="GuardarAsync" />
-                                <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => editandoId = null" />
+                                <BotonIcono Icono="save" Tooltip="@L("Guardar")" Variante="primario" OnClick="GuardarAsync" />
+                                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" OnClick="() => editandoId = null" />
                             </div>
                         </td>
                     }
                     else
                     {
                         <td>@r.Descripcion</td>
-                        <td class="col-estado"><span class="estado-badge @(r.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(r.Estado == "A" ? "Activo" : "Inactivo")</span></td>
+                        <td class="col-estado"><span class="estado-badge @(r.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(r.Estado == "A" ? L("Activo") : L("Inactivo"))</span></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
-                                <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => Editar(r)" />
+                                <BotonIcono Icono="pencil" Tooltip="@L("Editar")" OnClick="() => Editar(r)" />
                                 @if (r.Estado == "A")
                                 {
-                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar" Confirmacion="¿Desactivar el registro?" Variante="peligro" OnClick="@(() => CambiarEstadoAsync(r, "I"))" />
+                                    <BotonIcono Icono="trash-2" Tooltip="@L("Desactivar")" Confirmacion="@L("¿Desactivar el registro?")" Variante="peligro" OnClick="@(() => CambiarEstadoAsync(r, "I"))" />
                                 }
                                 else
                                 {
-                                    <BotonIcono Icono="refresh-cw" Tooltip="Reactivar" OnClick="@(() => CambiarEstadoAsync(r, "A"))" />
+                                    <BotonIcono Icono="refresh-cw" Tooltip="@L("Reactivar")" OnClick="@(() => CambiarEstadoAsync(r, "A"))" />
                                 }
                             </div>
                         </td>
@@ -153,7 +153,7 @@ else
         try
         {
             await RrhhRepository.GuardarCatalogoAsync(catalogo, editandoId == 0 ? null : editandoId, descripcion.Trim(), await ObtenerUsuIdActualAsync());
-            mensaje = editandoId == 0 ? "Registro creado." : "Registro actualizado.";
+            mensaje = editandoId == 0 ? L("Registro creado.") : L("Registro actualizado.");
             esMensajeError = false;
             await CargarAsync();
         }
@@ -169,7 +169,7 @@ else
         try
         {
             await RrhhRepository.CambiarEstadoCatalogoAsync(catalogo, registro.Id, estado, await ObtenerUsuIdActualAsync());
-            mensaje = estado == "A" ? "Registro reactivado." : "Registro desactivado.";
+            mensaje = estado == "A" ? L("Registro reactivado.") : L("Registro desactivado.");
             esMensajeError = false;
             await CargarAsync();
         }

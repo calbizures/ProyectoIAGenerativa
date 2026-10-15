@@ -10,46 +10,46 @@
 @inject IProveedorRepository ProveedorRepository
 @inject IProductoRepository ProductoRepository
 
-<PageTitle>Productos por proveedor</PageTitle>
+<PageTitle>@L("Productos por proveedor")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Productos por proveedor</h1>
-    <p>Los productos que vende cada proveedor, cuál es su proveedor preferido, el código en el catálogo del proveedor y el último costo de compra. En Compras se proponen los productos del proveedor con ese costo.</p>
+    <h1>@L("Productos por proveedor")</h1>
+    <p>@L("Los productos que vende cada proveedor, cuál es su proveedor preferido, el código en el catálogo del proveedor y el último costo de compra. En Compras se proponen los productos del proveedor con ese costo.")</p>
 </div>
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
 }
 
 <div class="barra-herramientas">
     <label class="filtro-campo">
-        Proveedor
+        @L("Proveedor")
         <select @bind="prvId" @bind:after="CargarAsync">
-            <option value="0">Seleccione...</option>
+            <option value="0">@L("Seleccione...")</option>
             @foreach (var p in proveedores)
             {
                 <option value="@p.PrvId">@p.PrvNombreComercial (@p.PrvCodigo)</option>
             }
         </select>
     </label>
-    <input type="search" placeholder="Filtrar por código o producto" aria-label="Filtrar por código o producto" @bind="textoFiltro" @bind:event="oninput" />
+    <input type="search" placeholder="@L("Filtrar por código o producto")" aria-label="@L("Filtrar por código o producto")" @bind="textoFiltro" @bind:event="oninput" />
     <span class="barra-herramientas-separador"></span>
-    <BotonIcono Icono="plus" Tooltip="Relacionar un producto con el proveedor" Etiqueta="Agregar producto" Variante="primario"
+    <BotonIcono Icono="plus" Tooltip="@L("Relacionar un producto con el proveedor")" Etiqueta="@L("Agregar producto")" Variante="primario"
                 Deshabilitado="prvId == 0" OnClick="MostrarAgregar" />
 </div>
 
 @if (prvId != 0 && agregando)
 {
     <div class="panel-formulario">
-        <h3>Agregar producto al proveedor</h3>
+        <h3>@L("Agregar producto al proveedor")</h3>
         @if (productoNuevo is null)
         {
             <div class="doc-buscador">
                 <div class="doc-buscador-fila">
-                    <input placeholder="Buscar producto por código o descripción" aria-label="Buscar producto por código o descripción"
+                    <input placeholder="@L("Buscar producto por código o descripción")" aria-label="@L("Buscar producto por código o descripción")"
                            @bind="textoProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
-                    <BotonIcono Icono="search" Tooltip="Buscar producto" OnClick="BuscarProductosAsync" />
+                    <BotonIcono Icono="search" Tooltip="@L("Buscar producto")" OnClick="BuscarProductosAsync" />
                 </div>
                 @if (productosEncontrados.Count > 0)
                 {
@@ -61,7 +61,7 @@
                                 <span class="doc-avatar doc-avatar-icono"><Icono Nombre="package" Tamano="15" /></span>
                                 <span class="doc-resultado-texto">
                                     <strong>@p.ProDescripcion</strong>
-                                    <span>@p.ProCodigo@(yaRelacionado ? " · ya es de este proveedor" : "")</span>
+                                    <span>@p.ProCodigo@(yaRelacionado ? L(" · ya es de este proveedor") : "")</span>
                                 </span>
                             </div>
                         }
@@ -74,34 +74,34 @@
             <div class="doc-chip">
                 <span class="doc-avatar doc-avatar-icono"><Icono Nombre="package" Tamano="15" /></span>
                 <span class="doc-chip-texto"><strong>@productoNuevo.ProDescripcion</strong><span>@productoNuevo.ProCodigo</span></span>
-                <BotonIcono Icono="x" Tooltip="Cambiar producto" Variante="fantasma" OnClick="() => productoNuevo = null" />
+                <BotonIcono Icono="x" Tooltip="@L("Cambiar producto")" Variante="fantasma" OnClick="() => productoNuevo = null" />
             </div>
-            <div class="campo"><label for="pp-codigo">Código del producto en el catálogo del proveedor</label><input id="pp-codigo" maxlength="64" @bind="codigoNuevo" /></div>
-            <label class="casilla"><input type="checkbox" @bind="preferidoNuevo" /> Proveedor preferido de este producto</label>
+            <div class="campo"><label for="pp-codigo">@L("Código del producto en el catálogo del proveedor")</label><input id="pp-codigo" maxlength="64" @bind="codigoNuevo" /></div>
+            <label class="casilla"><input type="checkbox" @bind="preferidoNuevo" /> @L("Proveedor preferido de este producto")</label>
         }
         <div class="acciones-fila">
-            <BotonIcono Icono="save" Tooltip="Guardar la relación" Etiqueta="Guardar" Variante="primario" Deshabilitado="productoNuevo is null" OnClick="AgregarAsync" />
-            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => agregando = false" />
+            <BotonIcono Icono="save" Tooltip="@L("Guardar la relación")" Etiqueta="@L("Guardar")" Variante="primario" Deshabilitado="productoNuevo is null" OnClick="AgregarAsync" />
+            <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => agregando = false" />
         </div>
     </div>
 }
 
 @if (prvId == 0)
 {
-    <p class="estado-vacio">Seleccione un proveedor para ver y mantener sus productos.</p>
+    <p class="estado-vacio">@L("Seleccione un proveedor para ver y mantener sus productos.")</p>
 }
 else if (relacionesFiltradas.Count == 0)
 {
-    <p class="estado-vacio">@(relaciones.Count == 0 ? "Este proveedor todavía no tiene productos relacionados." : "Ningún producto coincide con el filtro.")</p>
+    <p class="estado-vacio">@(relaciones.Count == 0 ? L("Este proveedor todavía no tiene productos relacionados.") : L("Ningún producto coincide con el filtro."))</p>
 }
 else
 {
     <table class="tabla-datos">
         <thead>
             <tr>
-                <th class="col-codigo">Código</th><th>Producto</th><th>Código del proveedor</th>
-                <th class="num col-monto">Último costo (sin IVA)</th><th class="col-fecha">Última compra</th><th class="num">Días de entrega</th>
-                <th class="col-estado">Preferido</th><th class="col-acciones">Acciones</th>
+                <th class="col-codigo">@L("Código")</th><th>@L("Producto")</th><th>@L("Código del proveedor")</th>
+                <th class="num col-monto">@L("Último costo (sin IVA)")</th><th class="col-fecha">@L("Última compra")</th><th class="num">@L("Días de entrega")</th>
+                <th class="col-estado">@L("Preferido")</th><th class="col-acciones">@L("Acciones")</th>
             </tr>
         </thead>
         <tbody>
@@ -112,15 +112,15 @@ else
                     <tr class="fila-edicion-tabla">
                         <td class="col-codigo">@r.ProCodigo</td>
                         <td>@r.ProDescripcion</td>
-                        <td><input maxlength="64" aria-label="Código del proveedor" @bind="codigoEdicion" /></td>
+                        <td><input maxlength="64" aria-label="@L("Código del proveedor")" @bind="codigoEdicion" /></td>
                         <td class="num col-monto">@(r.UltimoCosto?.ToString("N2") ?? "—")</td>
                         <td class="col-fecha">@(r.FechaUltimaCompra?.ToString("dd/MM/yyyy") ?? "—")</td>
-                        <td class="num"><input class="entrada-numero" type="number" min="0" max="365" placeholder="Compañía" aria-label="Días de entrega" @bind="diasEntregaEdicion" /></td>
-                        <td class="col-estado"><input type="checkbox" aria-label="Preferido" @bind="preferidoEdicion" /></td>
+                        <td class="num"><input class="entrada-numero" type="number" min="0" max="365" placeholder="@L("Compañía")" aria-label="@L("Días de entrega")" @bind="diasEntregaEdicion" /></td>
+                        <td class="col-estado"><input type="checkbox" aria-label="@L("Preferido")" @bind="preferidoEdicion" /></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
-                                <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="() => GuardarEdicionAsync(r)" />
-                                <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => editandoId = null" />
+                                <BotonIcono Icono="save" Tooltip="@L("Guardar")" Variante="primario" OnClick="() => GuardarEdicionAsync(r)" />
+                                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" OnClick="() => editandoId = null" />
                             </div>
                         </td>
                     </tr>
@@ -129,7 +129,7 @@ else
                 {
                     <tr>
                         <td class="col-codigo">@r.ProCodigo</td>
-                        <td>@r.ProDescripcion@(r.UmeCodigo is null ? "" : $" ({r.UmeCodigo})")@(r.ProEstado == "A" ? "" : " · inactivo")</td>
+                        <td>@r.ProDescripcion@(r.UmeCodigo is null ? "" : $" ({r.UmeCodigo})")@(r.ProEstado == "A" ? "" : L(" · inactivo"))</td>
                         <td>@(r.CodigoProveedor ?? "—")</td>
                         <td class="num col-monto">@(r.UltimoCosto?.ToString("N2") ?? "—")</td>
                         <td class="col-fecha">@(r.FechaUltimaCompra?.ToString("dd/MM/yyyy") ?? "—")</td>
@@ -137,18 +137,18 @@ else
                         <td class="col-estado">
                             @if (r.Preferido)
                             {
-                                <span class="estado-badge estado-badge-activo">Preferido</span>
+                                <span class="estado-badge estado-badge-activo">@L("Preferido")</span>
                             }
                             else
                             {
-                                <span class="texto-tenue">Alterno</span>
+                                <span class="texto-tenue">@L("Alterno")</span>
                             }
                         </td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
-                                <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => IniciarEdicion(r)" />
-                                <BotonIcono Icono="trash-2" Tooltip="Quitar el producto del proveedor" Variante="peligro"
-                                            Confirmacion="@($"¿Quitar {r.ProDescripcion} de los productos de este proveedor?")" OnClick="() => EliminarAsync(r)" />
+                                <BotonIcono Icono="pencil" Tooltip="@L("Editar")" OnClick="() => IniciarEdicion(r)" />
+                                <BotonIcono Icono="trash-2" Tooltip="@L("Quitar el producto del proveedor")" Variante="peligro"
+                                            Confirmacion="@(L("¿Quitar {0} de los productos de este proveedor?", r.ProDescripcion))" OnClick="() => EliminarAsync(r)" />
                             </div>
                         </td>
                     </tr>
@@ -260,7 +260,7 @@ else
         try
         {
             await ProductoProveedorRepository.GuardarAsync(null, prvId, productoNuevo.ProId, preferidoNuevo, codigoNuevo, await ObtenerUsuIdActualAsync());
-            mensaje = $"{productoNuevo.ProDescripcion} quedó relacionado con el proveedor.";
+            mensaje = L("{0} quedó relacionado con el proveedor.", productoNuevo.ProDescripcion);
             esMensajeError = false;
             await CargarAsync();
         }
@@ -284,7 +284,7 @@ else
             await ProductoProveedorRepository.GuardarAsync(relacion.PppId, relacion.PrvId, relacion.ProId, preferidoEdicion, codigoEdicion, usuId);
             if (diasEntregaEdicion != relacion.DiasEntrega)
                 await ReordenRepository.GuardarDiasEntregaAsync(relacion.PppId, diasEntregaEdicion, usuId);
-            mensaje = "Cambios guardados.";
+            mensaje = L("Cambios guardados.");
             esMensajeError = false;
             await CargarAsync();
         }
@@ -296,7 +296,7 @@ else
         try
         {
             await ProductoProveedorRepository.EliminarAsync(relacion.PppId, await ObtenerUsuIdActualAsync());
-            mensaje = $"{relacion.ProDescripcion} ya no es producto de este proveedor.";
+            mensaje = L("{0} ya no es producto de este proveedor.", relacion.ProDescripcion);
             esMensajeError = false;
             await CargarAsync();
         }

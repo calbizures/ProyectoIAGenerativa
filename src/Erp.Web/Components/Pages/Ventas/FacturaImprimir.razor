@@ -14,7 +14,7 @@
 
 @if (datos is null)
 {
-    <p class="mensaje-error" role="alert">@(error ?? $"No existe el documento {EncId}.")</p>
+    <p class="mensaje-error" role="alert">@(error ?? L("No existe el documento {0}.", EncId))</p>
 }
 else
 {
@@ -35,17 +35,17 @@ else
 
     <div class="reporte-acciones fac-acciones">
         <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
-            <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+            <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">@L("Imprimir")</span>
         </button>
         <a class="boton-icono boton-icono-con-etiqueta" data-enhance-nav="false" href="@($"facturas/{EncId}/imprimir?formato={(EsTermica ? "C" : "T")}")">
-            <Icono Nombre="file-text" Tamano="16" /><span class="boton-icono-etiqueta">@(EsTermica ? "Ver en carta" : "Ver en ticket")</span>
+            <Icono Nombre="file-text" Tamano="16" /><span class="boton-icono-etiqueta">@(EsTermica ? L("Ver en carta") : L("Ver en ticket"))</span>
         </a>
-        <span class="texto-tenue">Formato: @(EsTermica ? $"térmica {Enc.AnchoTermica} mm" : "carta") · se configura en General › Compañías.</span>
+        <span class="texto-tenue">@L("Formato: {0} · se configura en General › Compañías.", EsTermica ? L("térmica {0} mm", Enc.AnchoTermica) : L("carta"))</span>
     </div>
 
     @if (EsTermica)
     {
-        <article class="fac-ticket @(Enc.AnchoTermica == 58 ? "fac-ticket-58" : "")">
+        <article lang="es" class="fac-ticket @(Enc.AnchoTermica == 58 ? "fac-ticket-58" : "")">
             @if (Enc.TieneLogo)
             {
                 <img class="fac-ticket-logo" src="@LogoUrl" alt="" />
@@ -131,7 +131,7 @@ else
     }
     else
     {
-        <article class="fac-carta">
+        <article lang="es" class="fac-carta">
             @if (Anulada || (!Certificada && Enc.TipoDte is not null)) { <div class="fac-marca">@(Anulada ? "ANULADA" : "SIN VALIDEZ FISCAL")</div> }
             <header class="fac-cab">
                 <div class="fac-emisor">

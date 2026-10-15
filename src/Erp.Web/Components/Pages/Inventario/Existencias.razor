@@ -15,7 +15,7 @@
 
 @if (mensaje is not null)
 {
-    <p class="mensaje-error" role="alert">@mensaje</p>
+    <p class="mensaje-error" role="alert">@Textos.Mensaje(mensaje)</p>
 }
 
 <div class="barra-filtros">
@@ -142,7 +142,7 @@ else if (kardex is not null)
                 @foreach (var m in kardex.Movimientos)
                 {
                     <tr class="@(m.EsReversa ? "kardex-reversa" : "")">
-                        <td class="col-fecha" title="Registrado @m.Registrado.ToString("dd/MM/yyyy HH:mm")">@m.Fecha.ToString("dd/MM/yyyy")</td>
+                        <td class="col-fecha" title="@L("Registrado {0}", m.Registrado.ToString("dd/MM/yyyy HH:mm"))">@m.Fecha.ToString("dd/MM/yyyy")</td>
                         <td>
                             <strong>@(m.EsReversa ? L("Anulación · ") : "")@m.Tipo @m.Documento</strong>
                             <small class="texto-tenue kardex-detalle">@m.TipoNombre@(string.IsNullOrWhiteSpace(m.Tercero) ? "" : $" · {m.Tercero}")</small>

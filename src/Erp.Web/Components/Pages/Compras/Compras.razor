@@ -17,37 +17,37 @@
 @inject Erp.Data.Rrhh.IRrhhRepository RrhhRepository
 @inject IOrdenCompraRepository OrdenCompraRepository
 
-<PageTitle>Compras</PageTitle>
+<PageTitle>@L("Compras")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Compras</h1>
-    <p>Compras a proveedores.</p>
+    <h1>@L("Compras")</h1>
+    <p>@L("Compras a proveedores.")</p>
 </div>
 
-<BorradorDocumento TDatos="BorradorCompra" Clave="compras" Nombre="una compra"
+<BorradorDocumento TDatos="BorradorCompra" Clave="compras" Nombre="@L("una compra")"
                    Capturar="CapturarBorrador" Describir="DescribirBorrador" Restaurar="RestaurarBorradorAsync" />
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
 }
 
 <div class="barra-herramientas">
     <FiltroPeriodo @bind-Desde="filtroFechaDesde" @bind-Hasta="filtroFechaHasta" AlCambiar="BuscarAsync" />
-    <select @bind="filtroEstado" aria-label="Estado">
-        <option value="">Todas</option>
-        <option value="G">Grabadas</option>
-        <option value="A">Anuladas</option>
+    <select @bind="filtroEstado" aria-label="@L("Estado")">
+        <option value="">@L("Todas")</option>
+        <option value="G">@L("Grabadas")</option>
+        <option value="A">@L("Anuladas")</option>
     </select>
-    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
-    <input type="search" placeholder="Filtrar por número o proveedor" aria-label="Filtrar por número o proveedor" @bind="textoFiltro" @bind:event="oninput" @bind:after="() => pagina = 1" />
+    <BotonIcono Icono="search" Tooltip="@L("Buscar")" Etiqueta="@L("Buscar")" OnClick="BuscarAsync" />
+    <input type="search" placeholder="@L("Filtrar por número o proveedor")" aria-label="@L("Filtrar por número o proveedor")" @bind="textoFiltro" @bind:event="oninput" @bind:after="() => pagina = 1" />
 
     <span class="barra-herramientas-separador"></span>
 
     <AuthorizeView Policy="Permiso:COMPRAS_ORDEN_RECIBIR" Context="permisoRecibirOrden">
-        <BotonIcono Icono="truck" Tooltip="Grabar la compra de una orden de compra aprobada (ingreso a bodega)" Etiqueta="Desde orden de compra" OnClick="MostrarDesdeOrdenAsync" />
+        <BotonIcono Icono="truck" Tooltip="@L("Grabar la compra de una orden de compra aprobada (ingreso a bodega)")" Etiqueta="@L("Desde orden de compra")" OnClick="MostrarDesdeOrdenAsync" />
     </AuthorizeView>
-    <BotonIcono Icono="plus" Tooltip="Nueva compra" Etiqueta="Nueva compra" Variante="primario" OnClick="MostrarNuevaCompraAsync" />
+    <BotonIcono Icono="plus" Tooltip="@L("Nueva compra")" Etiqueta="@L("Nueva compra")" Variante="primario" OnClick="MostrarNuevaCompraAsync" />
 </div>
 
 @if (mostrarDesdeOrden)
@@ -55,38 +55,38 @@
     <div class="doc-card">
         <div class="doc-card-header">
             <div>
-                <h2>Compra desde orden de compra</h2>
-                <p>Elija una orden aprobada con las dos firmas (jefe de bodega y contador general): se cargan el proveedor, la bodega y lo que falta por recibir con sus costos. Complete la factura del proveedor y grabe la compra con su ingreso a bodega.</p>
+                <h2>@L("Compra desde orden de compra")</h2>
+                <p>@L("Elija una orden aprobada con las dos firmas (jefe de bodega y contador general): se cargan el proveedor, la bodega y lo que falta por recibir con sus costos. Complete la factura del proveedor y grabe la compra con su ingreso a bodega.")</p>
             </div>
             <Icono Nombre="truck" Tamano="30" />
         </div>
         <div class="doc-card-body">
             @if (ordenesPorRecibir.Count == 0)
             {
-                <p class="estado-vacio">No hay órdenes de compra aprobadas pendientes de recibir.</p>
+                <p class="estado-vacio">@L("No hay órdenes de compra aprobadas pendientes de recibir.")</p>
             }
             else
             {
                 <div class="campo">
-                    <label for="compras-desde-orden">Orden de compra</label>
+                    <label for="compras-desde-orden">@L("Orden de compra")</label>
                     <select id="compras-desde-orden" value="@(ordenElegida?.OcpId ?? 0)" @onchange="ElegirOrdenAsync">
-                        <option value="0">Seleccione la orden...</option>
+                        <option value="0">@L("Seleccione la orden...")</option>
                         @foreach (var o in ordenesPorRecibir)
                         {
-                            <option value="@o.OcpId">@o.Numero · @o.Proveedor · @o.Bodega · Q@(o.Total.ToString("N2"))@(o.Estado == "P" ? " (recibida en parte)" : "")</option>
+                            <option value="@o.OcpId">@o.Numero · @o.Proveedor · @o.Bodega · Q@(o.Total.ToString("N2"))@(o.Estado == "P" ? L(" (recibida en parte)") : "")</option>
                         }
                     </select>
                 </div>
             }
             @if (ordenElegida is not null)
             {
-                <RecibirOrdenCompra Orden="ordenElegida" Lineas="lineasOrdenElegida" Titulo="@($"Factura del proveedor para la orden {ordenElegida.Numero}")"
+                <RecibirOrdenCompra Orden="ordenElegida" Lineas="lineasOrdenElegida" Titulo="@(L("Factura del proveedor para la orden {0}", ordenElegida.Numero))"
                                     EtiquetaGrabar="Grabar compra" OnGrabada="CompraDesdeOrdenGrabadaAsync" OnCancelar="CerrarDesdeOrden" />
             }
             else
             {
                 <div class="acciones-fila">
-                    <BotonIcono Icono="x" Tooltip="Cerrar" Etiqueta="Cerrar" OnClick="CerrarDesdeOrden" />
+                    <BotonIcono Icono="x" Tooltip="@L("Cerrar")" Etiqueta="@L("Cerrar")" OnClick="CerrarDesdeOrden" />
                 </div>
             }
         </div>
@@ -98,21 +98,21 @@
     <div class="doc-card">
         <div class="doc-card-header">
             <div>
-                <h2>Nueva compra</h2>
-                <p>Complete los datos generales, seleccione el proveedor y agregue los productos.</p>
+                <h2>@L("Nueva compra")</h2>
+                <p>@L("Complete los datos generales, seleccione el proveedor y agregue los productos.")</p>
             </div>
             <Icono Nombre="shopping-cart" Tamano="30" />
         </div>
 
         <div class="doc-card-body">
             <div class="doc-seccion">
-                <p class="doc-seccion-titulo"><Icono Nombre="file-text" Tamano="15" /> Datos generales</p>
+                <p class="doc-seccion-titulo"><Icono Nombre="file-text" Tamano="15" /> @L("Datos generales")</p>
                 <div class="doc-grid">
-                    <div class="campo"><label for="compras-compra-fecha">Fecha</label><input id="compras-compra-fecha" type="date" @bind="nuevaCompra.Fecha" /></div>
-                    <div class="campo"><label for="compras-compra-seriedocumento">Serie</label><input id="compras-compra-seriedocumento" @bind="nuevaCompra.SerieDocumento" /></div>
-                    <div class="campo"><label for="compras-compra-numerodocumento">Número</label><input id="compras-compra-numerodocumento" @bind="nuevaCompra.NumeroDocumento" /></div>
+                    <div class="campo"><label for="compras-compra-fecha">@L("Fecha")</label><input id="compras-compra-fecha" type="date" @bind="nuevaCompra.Fecha" /></div>
+                    <div class="campo"><label for="compras-compra-seriedocumento">@L("Serie")</label><input id="compras-compra-seriedocumento" @bind="nuevaCompra.SerieDocumento" /></div>
+                    <div class="campo"><label for="compras-compra-numerodocumento">@L("Número")</label><input id="compras-compra-numerodocumento" @bind="nuevaCompra.NumeroDocumento" /></div>
                     <div class="campo">
-                        <label for="compras-compra-tdoid">Tipo de documento</label>
+                        <label for="compras-compra-tdoid">@L("Tipo de documento")</label>
                         <select id="compras-compra-tdoid" @bind="nuevaCompra.TdoId">
                             @foreach (var t in tiposDocumento)
                             {
@@ -121,9 +121,9 @@
                         </select>
                     </div>
                     <div class="campo">
-                        <label for="compras-compra-bodid">Bodega</label>
+                        <label for="compras-compra-bodid">@L("Bodega")</label>
                         <select id="compras-compra-bodid" @bind="nuevaCompra.BodId">
-                            <option value="0">Seleccione...</option>
+                            <option value="0">@L("Seleccione...")</option>
                             @foreach (var b in BodegasSucursal)
                             {
                                 <option value="@b.BodId">@b.BodDescripcion</option>
@@ -131,7 +131,7 @@
                         </select>
                     </div>
                     <div class="campo">
-                        <label for="compras-compra-monid">Moneda</label>
+                        <label for="compras-compra-monid">@L("Moneda")</label>
                         <select id="compras-compra-monid" @bind="nuevaCompra.MonId">
                             @foreach (var m in monedas)
                             {
@@ -143,15 +143,15 @@
             </div>
 
             <div class="doc-seccion">
-                <p class="doc-seccion-titulo"><Icono Nombre="user" Tamano="15" /> Proveedor</p>
+                <p class="doc-seccion-titulo"><Icono Nombre="user" Tamano="15" /> @L("Proveedor")</p>
 
                 @if (nuevaCompra.PrvId is null)
                 {
                     <div class="doc-buscador">
                         <div class="doc-buscador-fila">
-                            <input placeholder="Buscar proveedor por código, nombre o NIT" aria-label="Buscar proveedor por código, nombre o NIT" @bind="textoBusquedaProveedor" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProveedoresAsync(); })" />
-                            <BotonIcono Icono="search" Tooltip="Buscar proveedor" OnClick="BuscarProveedoresAsync" />
-                            <BotonIcono Icono="plus" Tooltip="Proveedor nuevo" OnClick="() => mostrarNuevoProveedor = !mostrarNuevoProveedor" />
+                            <input placeholder="@L("Buscar proveedor por código, nombre o NIT")" aria-label="@L("Buscar proveedor por código, nombre o NIT")" @bind="textoBusquedaProveedor" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProveedoresAsync(); })" />
+                            <BotonIcono Icono="search" Tooltip="@L("Buscar proveedor")" OnClick="BuscarProveedoresAsync" />
+                            <BotonIcono Icono="plus" Tooltip="@L("Proveedor nuevo")" OnClick="() => mostrarNuevoProveedor = !mostrarNuevoProveedor" />
                         </div>
                         @if (proveedoresEncontrados.Count > 0)
                         {
@@ -162,7 +162,7 @@
                                         <span class="doc-avatar">@Iniciales(p.PrvNombreComercial)</span>
                                         <span class="doc-resultado-texto">
                                             <strong>@p.PrvNombreComercial</strong>
-                                            <span>@p.PrvCodigo · NIT @(p.PrvNit ?? "—")</span>
+                                            <span>@L("{0} · NIT {1}", p.PrvCodigo, p.PrvNit ?? "—")</span>
                                         </span>
                                     </div>
                                 }
@@ -171,16 +171,16 @@
                         @if (mostrarNuevoProveedor)
                         {
                             <div class="doc-alta-rapida">
-                                <p class="doc-alta-rapida-titulo">Proveedor nuevo</p>
+                                <p class="doc-alta-rapida-titulo">@L("Proveedor nuevo")</p>
                                 <div class="doc-grid">
-                                    <div class="campo"><label for="compras-proveedorrapido-codigo">Código</label><input id="compras-proveedorrapido-codigo" @bind="nuevoProveedorRapido.Codigo" /></div>
-                                    <div class="campo"><label for="compras-proveedorrapido-nombrecomercial">Nombre comercial</label><input id="compras-proveedorrapido-nombrecomercial" @bind="nuevoProveedorRapido.NombreComercial" /></div>
-                                    <div class="campo"><label for="compras-proveedorrapido-nit">NIT</label><input id="compras-proveedorrapido-nit" @bind="nuevoProveedorRapido.Nit" /></div>
-                                    <div class="campo"><label for="compras-proveedorrapido-telefono">Teléfono</label><input id="compras-proveedorrapido-telefono" @bind="nuevoProveedorRapido.Telefono" /></div>
+                                    <div class="campo"><label for="compras-proveedorrapido-codigo">@L("Código")</label><input id="compras-proveedorrapido-codigo" @bind="nuevoProveedorRapido.Codigo" /></div>
+                                    <div class="campo"><label for="compras-proveedorrapido-nombrecomercial">@L("Nombre comercial")</label><input id="compras-proveedorrapido-nombrecomercial" @bind="nuevoProveedorRapido.NombreComercial" /></div>
+                                    <div class="campo"><label for="compras-proveedorrapido-nit">@L("NIT")</label><input id="compras-proveedorrapido-nit" @bind="nuevoProveedorRapido.Nit" /></div>
+                                    <div class="campo"><label for="compras-proveedorrapido-telefono">@L("Teléfono")</label><input id="compras-proveedorrapido-telefono" @bind="nuevoProveedorRapido.Telefono" /></div>
                                 </div>
                                 <div class="acciones-fila">
-                                    <BotonIcono Icono="save" Tooltip="Guardar proveedor" Etiqueta="Guardar proveedor" Variante="primario" OnClick="CrearProveedorRapidoAsync" />
-                                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevoProveedor = false" />
+                                    <BotonIcono Icono="save" Tooltip="@L("Guardar proveedor")" Etiqueta="@L("Guardar proveedor")" Variante="primario" OnClick="CrearProveedorRapidoAsync" />
+                                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => mostrarNuevoProveedor = false" />
                                 </div>
                             </div>
                         }
@@ -192,26 +192,26 @@
                         <span class="doc-avatar">@Iniciales(nuevaCompra.NombreProveedor)</span>
                         <span class="doc-chip-texto">
                             <strong>@nuevaCompra.NombreProveedor</strong>
-                            <span>NIT: @(nuevaCompra.Nit ?? "—")</span>
+                            <span>@L("NIT: {0}", nuevaCompra.Nit ?? "—")</span>
                         </span>
-                        <BotonIcono Icono="x" Tooltip="Cambiar proveedor" Variante="fantasma" OnClick="CambiarProveedor" />
+                        <BotonIcono Icono="x" Tooltip="@L("Cambiar proveedor")" Variante="fantasma" OnClick="CambiarProveedor" />
                     </div>
                 }
             </div>
 
             <div class="doc-seccion">
-                <p class="doc-seccion-titulo"><Icono Nombre="package" Tamano="15" /> Detalle de productos</p>
+                <p class="doc-seccion-titulo"><Icono Nombre="package" Tamano="15" /> @L("Detalle de productos")</p>
 
                 <div class="doc-buscador">
                     <div class="doc-buscador-fila">
-                        <input placeholder="@(soloDelProveedor ? "Buscar entre los productos del proveedor (vacío = todos)" : "Buscar producto por código o descripción")" aria-label="Buscar producto por código o descripción" @bind="textoBusquedaProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
-                        <BotonIcono Icono="search" Tooltip="Buscar producto" OnClick="BuscarProductosAsync" />
+                        <input placeholder="@(soloDelProveedor ? L("Buscar entre los productos del proveedor (vacío = todos)") : L("Buscar producto por código o descripción"))" aria-label="@L("Buscar producto por código o descripción")" @bind="textoBusquedaProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
+                        <BotonIcono Icono="search" Tooltip="@L("Buscar producto")" OnClick="BuscarProductosAsync" />
                     </div>
                     @if (nuevaCompra.PrvId is not null)
                     {
                         <label class="casilla">
                             <input type="checkbox" @bind="soloDelProveedor" @bind:after="BuscarProductosAsync" />
-                            Solo productos de este proveedor (@productosProveedor.Count)
+                            @L("Solo productos de este proveedor ({0})", productosProveedor.Count)
                         </label>
                     }
                     @if (productosEncontrados.Count > 0)
@@ -225,10 +225,10 @@
                                     <span class="doc-resultado-texto">
                                         <strong>@p.ProDescripcion</strong>
                                         <span>
-                                            @p.ProCodigo@(relacion?.CodigoProveedor is { } codigoProveedor ? $" · código del proveedor {codigoProveedor}" : "")
+                                            @p.ProCodigo@(relacion?.CodigoProveedor is { } codigoProveedor ? L(" · código del proveedor {0}", codigoProveedor) : "")
                                             @if (nuevaCompra.PrvId is not null && relacion is null)
                                             {
-                                                <span class="etiqueta-aviso"> · no es producto de este proveedor</span>
+                                                <span class="etiqueta-aviso"> @L("· no es producto de este proveedor")</span>
                                             }
                                         </span>
                                     </span>
@@ -239,30 +239,30 @@
                     }
                     else if (busquedaSinResultados)
                     {
-                        <p class="texto-ayuda">@(soloDelProveedor ? "Ningún producto del proveedor coincide; quite la marca para buscar en todo el catálogo." : "Ningún producto coincide con la búsqueda.")</p>
+                        <p class="texto-ayuda">@(soloDelProveedor ? L("Ningún producto del proveedor coincide; quite la marca para buscar en todo el catálogo.") : L("Ningún producto coincide con la búsqueda."))</p>
                     }
                 </div>
 
                 @if (categoriasActivo.Count > 0)
                 {
                     <div class="acciones-fila">
-                        <BotonIcono Icono="plus" Tooltip="Agregar un bien de activo fijo (mobiliario, equipo, vehículo...): va a la cuenta de activo, no al inventario" Etiqueta="Agregar activo fijo" OnClick="AgregarActivoFijo" />
+                        <BotonIcono Icono="plus" Tooltip="@L("Agregar un bien de activo fijo (mobiliario, equipo, vehículo...): va a la cuenta de activo, no al inventario")" Etiqueta="@L("Agregar activo fijo")" OnClick="AgregarActivoFijo" />
                     </div>
                 }
 
                 <div class="doc-nota">
                     <Icono Nombre="check-circle" Tamano="15" />
-                    <span>El costo unitario ya incluye IVA (@PorcentajeIvaTexto%), como lo factura el proveedor — no se suma aparte.</span>
+                    <span>@L("El costo unitario ya incluye IVA ({0}%), como lo factura el proveedor — no se suma aparte.", PorcentajeIvaTexto)</span>
                 </div>
 
                 <table class="doc-tabla">
                     <thead>
                         <tr>
-                            <th>Producto</th>
-                            <th class="num">Cantidad</th>
-                            <th class="num">Costo unit. (IVA incl.)</th>
-                            <th class="num">Descuento</th>
-                            <th class="num">Subtotal</th>
+                            <th>@L("Producto")</th>
+                            <th class="num">@L("Cantidad")</th>
+                            <th class="num">@L("Costo unit. (IVA incl.)")</th>
+                            <th class="num">@L("Descuento")</th>
+                            <th class="num">@L("Subtotal")</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -273,7 +273,7 @@
                                 <td colspan="6">
                                     <div class="doc-tabla-vacia">
                                         <Icono Nombre="package" Tamano="26" />
-                                        Usa el buscador de arriba para agregar productos a la compra.
+                                        @L("Usa el buscador de arriba para agregar productos a la compra.")
                                     </div>
                                 </td>
                             </tr>
@@ -285,16 +285,16 @@
                                     @if (linea.AfcId is not null)
                                     {
                                         <div class="compra-activo">
-                                            <span class="etiqueta-aviso"><Icono Nombre="building" Tamano="13" /> Activo fijo</span>
-                                            <input aria-label="Descripción del activo fijo" maxlength="200" placeholder="Descripción del bien" @bind="linea.Descripcion" />
-                                            <select aria-label="Categoría del activo fijo" @bind="linea.AfcId">
+                                            <span class="etiqueta-aviso"><Icono Nombre="building" Tamano="13" /> @L("Activo fijo")</span>
+                                            <input aria-label="@L("Descripción del activo fijo")" maxlength="200" placeholder="@L("Descripción del bien")" @bind="linea.Descripcion" />
+                                            <select aria-label="@L("Categoría del activo fijo")" @bind="linea.AfcId">
                                                 @foreach (var c in categoriasActivo)
                                                 {
                                                     <option value="@c.AfcId">@c.Nombre (@c.Porcentaje.ToString("0.##") %)</option>
                                                 }
                                             </select>
-                                            <select aria-label="Centro de costo del activo fijo" @bind="linea.IdDepartamento">
-                                                <option value="">Sin centro de costo</option>
+                                            <select aria-label="@L("Centro de costo del activo fijo")" @bind="linea.IdDepartamento">
+                                                <option value="">@L("Sin centro de costo")</option>
                                                 @foreach (var d in departamentos)
                                                 {
                                                     <option value="@d.IdDepartamento">@d.Descripcion</option>
@@ -309,15 +309,15 @@
                                     @if (nuevaCompra.PrvId is not null && !linea.Relacionado)
                                     {
                                         <br />
-                                        <span class="etiqueta-aviso"><Icono Nombre="info" Tamano="13" /> No es producto de este proveedor</span>
-                                        <button type="button" class="boton-mini" @onclick="() => RelacionarLineaAsync(linea)">Relacionar ahora</button>
+                                        <span class="etiqueta-aviso"><Icono Nombre="info" Tamano="13" /> @L("No es producto de este proveedor")</span>
+                                        <button type="button" class="boton-mini" @onclick="() => RelacionarLineaAsync(linea)">@L("Relacionar ahora")</button>
                                     }
                                 </td>
                                 <td class="num"><input type="number" min="1" @bind="linea.Cantidad" /></td>
                                 <td class="num"><input type="number" step="0.01" @bind="linea.PrecioUnitario" /></td>
                                 <td class="num"><input type="number" step="0.01" @bind="linea.ValorDescuento" /></td>
                                 <td class="num">@MonedaSimbolo @linea.SubTotal.ToString("N2")</td>
-                                <td><BotonIcono Icono="trash-2" Tooltip="Quitar línea" Variante="peligro" OnClick="() => lineas.Remove(linea)" /></td>
+                                <td><BotonIcono Icono="trash-2" Tooltip="@L("Quitar línea")" Variante="peligro" OnClick="() => lineas.Remove(linea)" /></td>
                             </tr>
                         }
                     </tbody>
@@ -326,39 +326,39 @@
 
             <div class="doc-seccion doc-totales-envoltorio">
                 <div class="doc-totales">
-                    <div class="doc-totales-fila"><span>Subtotal</span><span>@MonedaSimbolo @Subtotal.ToString("N2")</span></div>
-                    <div class="doc-totales-fila"><span>Descuento</span><span>@MonedaSimbolo @TotalDescuento.ToString("N2")</span></div>
+                    <div class="doc-totales-fila"><span>@L("Subtotal")</span><span>@MonedaSimbolo @Subtotal.ToString("N2")</span></div>
+                    <div class="doc-totales-fila"><span>@L("Descuento")</span><span>@MonedaSimbolo @TotalDescuento.ToString("N2")</span></div>
                     @if (AjusteRedondeo != 0)
                     {
-                        <div class="doc-totales-fila"><span>Redondeo del IVA</span><span>@MonedaSimbolo @AjusteRedondeo.ToString("N2")</span></div>
+                        <div class="doc-totales-fila"><span>@L("Redondeo del IVA")</span><span>@MonedaSimbolo @AjusteRedondeo.ToString("N2")</span></div>
                     }
-                    <div class="doc-totales-total"><span>Total</span><span>@MonedaSimbolo @Total.ToString("N2")</span></div>
-                    <div class="doc-totales-nota">IVA incluido (@PorcentajeIvaTexto%): @MonedaSimbolo @IvaIncluido.ToString("N2")</div>
+                    <div class="doc-totales-total"><span>@L("Total")</span><span>@MonedaSimbolo @Total.ToString("N2")</span></div>
+                    <div class="doc-totales-nota">@L("IVA incluido ({0}%): {1} {2}", PorcentajeIvaTexto, MonedaSimbolo, IvaIncluido.ToString("N2"))</div>
                 </div>
             </div>
 
             <div class="doc-seccion">
-                <p class="doc-seccion-titulo"><Icono Nombre="credit-card" Tamano="15" /> Forma de pago</p>
+                <p class="doc-seccion-titulo"><Icono Nombre="credit-card" Tamano="15" /> @L("Forma de pago")</p>
                 <div class="doc-grid">
                     <div class="campo">
-                        <label for="compras-condicionpagocompra">Condición</label>
+                        <label for="compras-condicionpagocompra">@L("Condición")</label>
                         <select id="compras-condicionpagocompra" @bind="condicionPagoCompra">
-                            <option value="contado">Contado</option>
-                            <option value="credito">Crédito del proveedor</option>
+                            <option value="contado">@L("Contado")</option>
+                            <option value="credito">@L("Crédito del proveedor")</option>
                         </select>
                     </div>
                     @if (condicionPagoCompra == "credito")
                     {
-                        <div class="campo"><label for="compras-compra-montoenganche">Enganche</label><input id="compras-compra-montoenganche" type="number" step="0.01" min="0" @bind="nuevaCompra.MontoEnganche" /></div>
-                        <div class="campo"><label for="compras-compra-numerocuotas">Número de cuotas</label><input id="compras-compra-numerocuotas" type="number" min="1" @bind="nuevaCompra.NumeroCuotas" /></div>
-                        <div class="campo"><label for="compras-compra-fechaprimerpago">Fecha del primer pago</label><input id="compras-compra-fechaprimerpago" type="date" @bind="nuevaCompra.FechaPrimerPago" /></div>
+                        <div class="campo"><label for="compras-compra-montoenganche">@L("Enganche")</label><input id="compras-compra-montoenganche" type="number" step="0.01" min="0" @bind="nuevaCompra.MontoEnganche" /></div>
+                        <div class="campo"><label for="compras-compra-numerocuotas">@L("Número de cuotas")</label><input id="compras-compra-numerocuotas" type="number" min="1" @bind="nuevaCompra.NumeroCuotas" /></div>
+                        <div class="campo"><label for="compras-compra-fechaprimerpago">@L("Fecha del primer pago")</label><input id="compras-compra-fechaprimerpago" type="date" @bind="nuevaCompra.FechaPrimerPago" /></div>
                     }
                 </div>
                 @if (condicionPagoCompra == "credito")
                 {
                     <div class="doc-nota">
                         <Icono Nombre="info" Tamano="15" />
-                        <span>Plan de pagos al proveedor: @nuevaCompra.NumeroCuotas cuota(s) de @MonedaSimbolo @ValorCuotaCompra.ToString("N2"), a partir del enganche de @MonedaSimbolo @nuevaCompra.MontoEnganche.ToString("N2").</span>
+                        <span>@L("Plan de pagos al proveedor: {0} cuota(s) de {1} {2}, a partir del enganche de {3} {4}.", nuevaCompra.NumeroCuotas, MonedaSimbolo, ValorCuotaCompra.ToString("N2"), MonedaSimbolo, nuevaCompra.MontoEnganche.ToString("N2"))</span>
                     </div>
                 }
             </div>
@@ -369,25 +369,25 @@
             {
                 <label class="casilla">
                     <input type="checkbox" @bind="relacionarAlGrabar" />
-                    Relacionar con el proveedor los productos que aún no lo están (@lineas.Count(l => !l.Relacionado))
+                    @L("Relacionar con el proveedor los productos que aún no lo están ({0})", lineas.Count(l => !l.Relacionado))
                 </label>
             }
-            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevaCompra = false" />
-            <BotonIcono Icono="save" Tooltip="Grabar compra" Etiqueta="Grabar compra" Variante="primario" OnClick="GrabarCompraAsync" />
+            <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => mostrarNuevaCompra = false" />
+            <BotonIcono Icono="save" Tooltip="@L("Grabar compra")" Etiqueta="@L("Grabar compra")" Variante="primario" OnClick="GrabarCompraAsync" />
         </div>
     </div>
 }
 
 <div class="tarjeta">
-    <h2>Historial</h2>
+    <h2>@L("Historial")</h2>
     <table class="tabla-datos">
         <thead>
-            <tr><th class="col-fecha">Fecha</th><th class="col-serie">Serie/Número</th><th class="col-tipo">Tipo</th><th>Proveedor</th><th class="num col-monto">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+            <tr><th class="col-fecha">@L("Fecha")</th><th class="col-serie">@L("Serie/Número")</th><th class="col-tipo">@L("Tipo")</th><th>@L("Proveedor")</th><th class="num col-monto">@L("Total")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr>
         </thead>
         <tbody>
             @if (comprasFiltradas.Count == 0)
             {
-                <tr><td colspan="7" class="doc-tabla-vacia">No hay compras para los filtros seleccionados.</td></tr>
+                <tr><td colspan="7" class="doc-tabla-vacia">@L("No hay compras para los filtros seleccionados.")</td></tr>
             }
             @foreach (var c in Paginador.Recortar(comprasFiltradas, pagina))
             {
@@ -400,28 +400,28 @@
                     <td class="col-estado">
                         @if (c.EncEstado == "G")
                         {
-                            <span class="estado-badge estado-badge-grabada">Grabada</span>
+                            <span class="estado-badge estado-badge-grabada">@L("Grabada")</span>
                         }
                         else
                         {
-                            <span class="estado-badge estado-badge-anulada">Anulada</span>
+                            <span class="estado-badge estado-badge-anulada">@L("Anulada")</span>
                         }
                     </td>
                     <td class="col-acciones">
                         <div class="acciones-fila">
-                            <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarCompraAsync(c)" />
+                            <BotonIcono Icono="eye" Tooltip="@L("Ver detalle")" OnClick="() => SeleccionarCompraAsync(c)" />
                             @if (c.EncEstado == "G" && c.PrvId is not null && saldos.TryGetValue(c.EncId, out var saldo))
                             {
                                 <AuthorizeView Policy="Permiso:CXP_ADMIN" Context="permisoCxp">
-                                    <a class="boton-icono" href="@($"cxp/pagos?prv={c.PrvId}&enc={c.EncId}")" aria-label="@($"Pagar la compra con cheque, saldo Q{saldo:N2}")">
-                                        <Icono Nombre="banknote" Tamano="16" /><span class="boton-icono-tip" role="tooltip">Pagar con cheque (saldo Q@(saldo.ToString("N2")))</span>
+                                    <a class="boton-icono" href="@($"cxp/pagos?prv={c.PrvId}&enc={c.EncId}")" aria-label="@(L("Pagar la compra con cheque, saldo Q{0:N2}", saldo))">
+                                        <Icono Nombre="banknote" Tamano="16" /><span class="boton-icono-tip" role="tooltip">@L("Pagar con cheque (saldo Q{0})", saldo.ToString("N2"))</span>
                                     </a>
                                 </AuthorizeView>
                             }
                             @if (c.EncEstado == "G")
                             {
                                 <AuthorizeView Policy="Permiso:COMPRAS_DOCUMENTO_ANULAR" Context="permisoAnular">
-                                    <BotonIcono Icono="ban" Tooltip="Anular compra" Variante="peligro" OnClick="() => { anulandoId = c.EncId; mensaje = null; }" />
+                                    <BotonIcono Icono="ban" Tooltip="@L("Anular compra")" Variante="peligro" OnClick="() => { anulandoId = c.EncId; mensaje = null; }" />
                                 </AuthorizeView>
                             }
                         </div>
@@ -433,9 +433,9 @@
                         <td colspan="7">
                             <div class="anulacion-form">
                                 <label>¿Anular la compra @(string.IsNullOrWhiteSpace(c.EncSerieDocto) ? c.EncNumeroDocto : $"{c.EncSerieDocto}-{c.EncNumeroDocto}") de @c.PrvNombreComercial por @c.EncMontoTotal.ToString("N2")?</label>
-                                <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Sí, anular compra" Variante="peligro" OnClick="() => AnularAsync(c)" />
-                                <BotonIcono Icono="x" Tooltip="No anular" Etiqueta="Cancelar" OnClick="() => anulandoId = null" />
-                                <small class="texto-ayuda">Se reversa la entrada al inventario y se anula la póliza. Si tiene cheques emitidos o notas, primero hay que anularlos.</small>
+                                <BotonIcono Icono="ban" Tooltip="@L("Confirmar anulación")" Etiqueta="@L("Sí, anular compra")" Variante="peligro" OnClick="() => AnularAsync(c)" />
+                                <BotonIcono Icono="x" Tooltip="@L("No anular")" Etiqueta="@L("Cancelar")" OnClick="() => anulandoId = null" />
+                                <small class="texto-ayuda">@L("Se reversa la entrada al inventario y se anula la póliza. Si tiene cheques emitidos o notas, primero hay que anularlos.")</small>
                             </div>
                         </td>
                     </tr>
@@ -452,26 +452,26 @@
         <div class="doc-card-header">
             <div>
                 <h2>@(string.IsNullOrWhiteSpace(encabezadoSeleccionado.EncSerieDocto) ? $"{encabezadoSeleccionado.EncNumeroDocto}" : $"{encabezadoSeleccionado.EncSerieDocto}-{encabezadoSeleccionado.EncNumeroDocto}")</h2>
-                <p>@encabezadoSeleccionado.PrvEncNombresProveedor · NIT: @(encabezadoSeleccionado.PrvNit ?? "—")</p>
+                <p>@L("{0} · NIT: {1}", encabezadoSeleccionado.PrvEncNombresProveedor, encabezadoSeleccionado.PrvNit ?? "—")</p>
             </div>
             @if (encabezadoSeleccionado.EncEstado == "G")
             {
-                <span class="estado-badge estado-badge-grabada">Grabada</span>
+                <span class="estado-badge estado-badge-grabada">@L("Grabada")</span>
             }
             else
             {
-                <span class="estado-badge estado-badge-anulada">Anulada</span>
+                <span class="estado-badge estado-badge-anulada">@L("Anulada")</span>
             }
         </div>
         <div class="doc-card-body">
             <table class="doc-tabla">
                 <thead>
                     <tr>
-                        <th>Descripción</th>
-                        <th class="num">Cantidad</th>
-                        <th class="num">Costo unit. (IVA incl.)</th>
-                        <th class="num">Descuento</th>
-                        <th class="num">Subtotal</th>
+                        <th>@L("Descripción")</th>
+                        <th class="num">@L("Cantidad")</th>
+                        <th class="num">@L("Costo unit. (IVA incl.)")</th>
+                        <th class="num">@L("Descuento")</th>
+                        <th class="num">@L("Subtotal")</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -620,7 +620,7 @@
         try
         {
             var (encabezado, lineas, _) = await OrdenCompraRepository.ConsultarPorIdAsync(ocpId);
-            if (encabezado is null || !encabezado.PorRecibir) { mensaje = "La orden ya no está pendiente de recibir."; esMensajeError = true; return; }
+            if (encabezado is null || !encabezado.PorRecibir) { mensaje = L("La orden ya no está pendiente de recibir."); esMensajeError = true; return; }
             lineasOrdenElegida = lineas;
             ordenElegida = encabezado;
         }
@@ -742,7 +742,7 @@
             await ProductoProveedorRepository.GuardarAsync(null, nuevaCompra.PrvId.Value, linea.ProId,
                 preferido: false, codigoProveedor: null, await ObtenerUsuIdActualAsync());
             await CargarProductosProveedorAsync();
-            mensaje = $"{linea.Descripcion} quedó relacionado con {nuevaCompra.NombreProveedor}.";
+            mensaje = L("{0} quedó relacionado con {1}.", linea.Descripcion, nuevaCompra.NombreProveedor);
             esMensajeError = false;
         }
         catch (Exception ex)
@@ -756,7 +756,7 @@
     {
         if (string.IsNullOrWhiteSpace(nuevoProveedorRapido.Codigo) || string.IsNullOrWhiteSpace(nuevoProveedorRapido.NombreComercial))
         {
-            mensaje = "Código y nombre comercial son obligatorios para crear el proveedor.";
+            mensaje = L("Código y nombre comercial son obligatorios para crear el proveedor.");
             esMensajeError = true;
             return;
         }
@@ -860,35 +860,35 @@
     {
         if (nuevaCompra.PrvId is null)
         {
-            mensaje = "Debe seleccionar un proveedor.";
+            mensaje = L("Debe seleccionar un proveedor.");
             esMensajeError = true;
             return;
         }
 
         if (lineas.Count == 0)
         {
-            mensaje = "Debe agregar al menos un producto.";
+            mensaje = L("Debe agregar al menos un producto.");
             esMensajeError = true;
             return;
         }
 
         if (lineas.Any(l => l.AfcId is not null && (string.IsNullOrWhiteSpace(l.Descripcion) || l.PrecioUnitario <= 0)))
         {
-            mensaje = "Escriba la descripción y el costo de cada activo fijo.";
+            mensaje = L("Escriba la descripción y el costo de cada activo fijo.");
             esMensajeError = true;
             return;
         }
 
         if (nuevaCompra.BodId == 0)
         {
-            mensaje = "Debe seleccionar una bodega.";
+            mensaje = L("Debe seleccionar una bodega.");
             esMensajeError = true;
             return;
         }
 
         if (condicionPagoCompra == "credito" && (nuevaCompra.FechaPrimerPago is null || nuevaCompra.NumeroCuotas < 1))
         {
-            mensaje = "Para crédito del proveedor debe indicar el número de cuotas y la fecha del primer pago.";
+            mensaje = L("Para crédito del proveedor debe indicar el número de cuotas y la fecha del primer pago.");
             esMensajeError = true;
             return;
         }
@@ -935,7 +935,7 @@
 
             var encId = await CompraRepository.CrearAsync(encabezado, detalle, usuId);
             mostrarNuevaCompra = false;
-            mensaje = "Compra grabada correctamente.";
+            mensaje = L("Compra grabada correctamente.");
             esMensajeError = false;
 
             // Último costo por proveedor y, si se pidió, relación de los productos nuevos.
@@ -943,11 +943,11 @@
             {
                 var relacionados = await ProductoProveedorRepository.RegistrarCompraAsync(encId, relacionarAlGrabar, usuId);
                 if (relacionados > 0)
-                    mensaje += $" {relacionados} producto(s) quedaron relacionados con el proveedor.";
+                    mensaje += L(" {0} producto(s) quedaron relacionados con el proveedor.", relacionados);
             }
             catch (Exception ex)
             {
-                mensaje += $" No se actualizaron los productos del proveedor: {MensajesError.Traducir(ex)}";
+                mensaje += L(" No se actualizaron los productos del proveedor: {0}", MensajesError.Traducir(ex));
             }
             await BuscarAsync();
         }
@@ -973,7 +973,7 @@
             var usuId = await ObtenerUsuIdActualAsync();
             await CompraRepository.AnularAsync(compra.EncId, usuId);
             anulandoId = null;
-            mensaje = "Compra anulada.";
+            mensaje = L("Compra anulada.");
             esMensajeError = false;
             if (encabezadoSeleccionado?.EncId == compra.EncId) encabezadoSeleccionado = null;
             await BuscarAsync();
@@ -1012,7 +1012,7 @@
         var simbolo = monedas.FirstOrDefault(m => m.MonId == b.Encabezado.MonId)?.MonSimbolo ?? "Q";
         var e = b.Encabezado;
         var documento = string.IsNullOrWhiteSpace(e.NumeroDocumento) ? ""
-            : string.IsNullOrWhiteSpace(e.SerieDocumento) ? $", doc. {e.NumeroDocumento}" : $", doc. {e.SerieDocumento}-{e.NumeroDocumento}";
+            : string.IsNullOrWhiteSpace(e.SerieDocumento) ? L(", doc. {0}", e.NumeroDocumento) : L(", doc. {0}-{1}", e.SerieDocumento, e.NumeroDocumento);
         return $"{(string.IsNullOrWhiteSpace(e.NombreProveedor) ? "sin proveedor" : e.NombreProveedor)}{documento}, "
             + $"{b.Lineas.Count} {(b.Lineas.Count == 1 ? "línea" : "líneas")}, {simbolo} {b.Lineas.Sum(l => l.SubTotal - l.ValorDescuento):N2}";
     }
@@ -1038,7 +1038,7 @@
         lineas.AddRange(b.Lineas);
         try { await CargarProductosProveedorAsync(); }
         catch (Exception ex) { mensaje = MensajesError.Traducir(ex); esMensajeError = true; return; }
-        mensaje = "Se recuperó la compra sin terminar. Revise los datos antes de grabar.";
+        mensaje = L("Se recuperó la compra sin terminar. Revise los datos antes de grabar.");
         esMensajeError = false;
     }
 

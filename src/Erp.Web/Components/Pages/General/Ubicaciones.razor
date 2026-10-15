@@ -9,32 +9,32 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IGeneralRepository GeneralRepository
 
-<PageTitle>Ubicación geográfica</PageTitle>
+<PageTitle>@L("Ubicación geográfica")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Ubicación geográfica</h1>
-    <p>Países, departamentos y municipios que se eligen en cascada en la dirección de la compañía, los empleados y demás registros. En Guatemala se usa el catálogo del INE (22 departamentos y 340 municipios).</p>
+    <h1>@L("Ubicación geográfica")</h1>
+    <p>@L("Países, departamentos y municipios que se eligen en cascada en la dirección de la compañía, los empleados y demás registros. En Guatemala se usa el catálogo del INE (22 departamentos y 340 municipios).")</p>
 </div>
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
 }
 
 <div class="maestro-detalle nomenclatura">
     <section class="tarjeta maestro-detalle-maestro" aria-labelledby="titulo-ubicaciones">
         <div class="maestro-detalle-encabezado">
-            <h2 id="titulo-ubicaciones">Países</h2>
-            <BotonIcono Icono="plus" Tooltip="Nuevo país" Etiqueta="Nuevo país" OnClick="IniciarNuevoPais" />
+            <h2 id="titulo-ubicaciones">@L("Países")</h2>
+            <BotonIcono Icono="plus" Tooltip="@L("Nuevo país")" Etiqueta="@L("Nuevo país")" OnClick="IniciarNuevoPais" />
         </div>
         <div class="arbol-acciones">
-            <label class="filtro-campo"><span class="sr-only">Buscar</span>
-                <input type="search" placeholder="Buscar departamento o municipio" @bind="filtro" @bind:event="oninput" aria-label="Buscar departamento o municipio" />
+            <label class="filtro-campo"><span class="sr-only">@L("Buscar")</span>
+                <input type="search" placeholder="@L("Buscar departamento o municipio")" @bind="filtro" @bind:event="oninput" aria-label="@L("Buscar departamento o municipio")" />
             </label>
-            <button type="button" class="boton-texto" @onclick="ContraerTodo">Contraer</button>
-            <span class="arbol-conteo">@catalogo.Paises.Count países · @catalogo.Departamentos.Count departamentos · @catalogo.Municipios.Count municipios</span>
+            <button type="button" class="boton-texto" @onclick="ContraerTodo">@L("Contraer")</button>
+            <span class="arbol-conteo">@L("{0} países · {1} departamentos · {2} municipios", catalogo.Paises.Count, catalogo.Departamentos.Count, catalogo.Municipios.Count)</span>
         </div>
-        <div class="arbol-lista" role="tree" aria-label="Ubicación geográfica">
+        <div class="arbol-lista" role="tree" aria-label="@L("Ubicación geográfica")">
             @foreach (var n in NodosVisibles())
             {
                 var esSel = seleccionado is not null && seleccionado.Clave == n.Clave;
@@ -44,7 +44,7 @@
                      style="padding-left: @((n.Nivel - 1) * 18 + 6)px">
                     @if (n.TieneHijos)
                     {
-                        <button type="button" class="arbol-toggle" aria-label="@(Expandido(n) ? "Contraer" : "Expandir") @n.Nombre" @onclick="() => Alternar(n)">@(Expandido(n) ? "▾" : "▸")</button>
+                        <button type="button" class="arbol-toggle" aria-label="@(Expandido(n) ? L("Contraer") : L("Expandir")) @n.Nombre" @onclick="() => Alternar(n)">@(Expandido(n) ? "▾" : "▸")</button>
                     }
                     else
                     {
@@ -66,28 +66,28 @@
             <div class="panel-formulario panel-ancho nodo-formulario">
                 @if (formTipo == 'P')
                 {
-                    <div class="campo"><label for="ubi-nombre">Nombre</label><input id="ubi-nombre" @bind="formNombre" maxlength="128" /></div>
-                    <div class="campo"><label for="ubi-alfa2">Código ISO de 2 letras</label><input id="ubi-alfa2" @bind="formCodigo" maxlength="2" placeholder="GT" /></div>
-                    <div class="campo"><label for="ubi-alfa3">Código ISO de 3 letras</label><input id="ubi-alfa3" @bind="formAlfa3" maxlength="3" placeholder="GTM" /></div>
-                    <div class="campo"><label for="ubi-numero">Código numérico</label><input id="ubi-numero" @bind="formNumero" maxlength="3" placeholder="320" /></div>
-                    <div class="campo"><label for="ubi-nacionalidad">Nacionalidad</label><input id="ubi-nacionalidad" @bind="formNacionalidad" maxlength="64" placeholder="Guatemalteca" /></div>
+                    <div class="campo"><label for="ubi-nombre">@L("Nombre")</label><input id="ubi-nombre" @bind="formNombre" maxlength="128" /></div>
+                    <div class="campo"><label for="ubi-alfa2">@L("Código ISO de 2 letras")</label><input id="ubi-alfa2" @bind="formCodigo" maxlength="2" placeholder="@L("GT")" /></div>
+                    <div class="campo"><label for="ubi-alfa3">@L("Código ISO de 3 letras")</label><input id="ubi-alfa3" @bind="formAlfa3" maxlength="3" placeholder="@L("GTM")" /></div>
+                    <div class="campo"><label for="ubi-numero">@L("Código numérico")</label><input id="ubi-numero" @bind="formNumero" maxlength="3" placeholder="320" /></div>
+                    <div class="campo"><label for="ubi-nacionalidad">@L("Nacionalidad")</label><input id="ubi-nacionalidad" @bind="formNacionalidad" maxlength="64" placeholder="@L("Guatemalteca")" /></div>
                 }
                 else
                 {
-                    <div class="campo"><label for="ubi-codigo">Código</label><input id="ubi-codigo" @bind="formCodigo" maxlength="2" placeholder="01" /></div>
-                    <div class="campo"><label for="ubi-nombre">Nombre</label><input id="ubi-nombre" @bind="formNombre" maxlength="128" /></div>
-                    <p class="texto-ayuda">@(formTipo == 'D' ? "En Guatemala, el código del INE del departamento (01 a 22)." : "En Guatemala, el código del INE del municipio dentro de su departamento (01, 02...).")</p>
+                    <div class="campo"><label for="ubi-codigo">@L("Código")</label><input id="ubi-codigo" @bind="formCodigo" maxlength="2" placeholder="01" /></div>
+                    <div class="campo"><label for="ubi-nombre">@L("Nombre")</label><input id="ubi-nombre" @bind="formNombre" maxlength="128" /></div>
+                    <p class="texto-ayuda">@(formTipo == 'D' ? L("En Guatemala, el código del INE del departamento (01 a 22).") : L("En Guatemala, el código del INE del municipio dentro de su departamento (01, 02...)."))</p>
                 }
                 <div class="acciones-fila">
-                    <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarAsync" />
-                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => modo = Modo.Ver" />
+                    <BotonIcono Icono="save" Tooltip="@L("Guardar")" Etiqueta="@L("Guardar")" Variante="primario" OnClick="GuardarAsync" />
+                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => modo = Modo.Ver" />
                 </div>
             </div>
         }
         else if (seleccionado is null)
         {
-            <h2 id="titulo-nodo">Ubicación seleccionada</h2>
-            <p class="estado-vacio">Seleccione un país, departamento o municipio en el árbol para ver su detalle, editarlo, agregarle departamentos o municipios, o inactivarlo.</p>
+            <h2 id="titulo-nodo">@L("Ubicación seleccionada")</h2>
+            <p class="estado-vacio">@L("Seleccione un país, departamento o municipio en el árbol para ver su detalle, editarlo, agregarle departamentos o municipios, o inactivarlo.")</p>
         }
         else
         {
@@ -97,40 +97,40 @@
                 <p class="nodo-ruta">@Ruta(seleccionado)</p>
             </div>
             <dl class="nodo-datos">
-                <dt>Estado</dt><dd><span class="estado-badge @(seleccionado.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(seleccionado.Estado == "A" ? "Activo" : "Inactivo")</span></dd>
+                <dt>@L("Estado")</dt><dd><span class="estado-badge @(seleccionado.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(seleccionado.Estado == "A" ? L("Activo") : L("Inactivo"))</span></dd>
                 @if (seleccionado.Tipo == 'P' && catalogo.BuscarPais(seleccionado.Id) is { } pais)
                 {
-                    <dt>Códigos ISO</dt><dd>@pais.CodigoAlfa2 · @pais.CodigoAlfa3 @(pais.CodigoNumero is null ? "" : $"· {pais.CodigoNumero}")</dd>
-                    <dt>Nacionalidad</dt><dd>@(pais.Nacionalidad ?? "—")</dd>
-                    <dt>Departamentos</dt><dd>@catalogo.Departamentos.Count(d => d.PaiId == pais.PaiId)</dd>
+                    <dt>@L("Códigos ISO")</dt><dd>@pais.CodigoAlfa2 · @pais.CodigoAlfa3 @(pais.CodigoNumero is null ? "" : $"· {pais.CodigoNumero}")</dd>
+                    <dt>@L("Nacionalidad")</dt><dd>@(pais.Nacionalidad ?? "—")</dd>
+                    <dt>@L("Departamentos")</dt><dd>@catalogo.Departamentos.Count(d => d.PaiId == pais.PaiId)</dd>
                 }
                 else if (seleccionado.Tipo == 'D')
                 {
-                    <dt>Municipios</dt><dd>@catalogo.Municipios.Count(m => m.EstId == seleccionado.Id)</dd>
+                    <dt>@L("Municipios")</dt><dd>@catalogo.Municipios.Count(m => m.EstId == seleccionado.Id)</dd>
                 }
                 else if (seleccionado.Tipo == 'M' && catalogo.BuscarMunicipio(seleccionado.Id) is { } muni)
                 {
-                    <dt>Código completo</dt><dd>@(catalogo.BuscarDepartamento(muni.EstId)?.Codigo)@muni.Codigo</dd>
+                    <dt>@L("Código completo")</dt><dd>@(catalogo.BuscarDepartamento(muni.EstId)?.Codigo)@muni.Codigo</dd>
                 }
             </dl>
             @if (seleccionado.Estado != "A")
             {
-                <p class="texto-ayuda">Inactivo: ya no se ofrece al capturar una dirección; los registros que lo usan lo conservan.</p>
+                <p class="texto-ayuda">@L("Inactivo: ya no se ofrece al capturar una dirección; los registros que lo usan lo conservan.")</p>
             }
             <div class="acciones-fila">
-                <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+                <BotonIcono Icono="pencil" Tooltip="@L("Editar")" Etiqueta="@L("Editar")" OnClick="IniciarEdicion" />
                 @if (seleccionado.Tipo != 'M' && seleccionado.Estado == "A")
                 {
-                    <BotonIcono Icono="plus" Tooltip="@(seleccionado.Tipo == 'P' ? "Agregar departamento" : "Agregar municipio")"
-                                Etiqueta="@(seleccionado.Tipo == 'P' ? "Agregar departamento" : "Agregar municipio")" Variante="primario" OnClick="IniciarAgregarHijo" />
+                    <BotonIcono Icono="plus" Tooltip="@(seleccionado.Tipo == 'P' ? L("Agregar departamento") : L("Agregar municipio"))"
+                                Etiqueta="@(seleccionado.Tipo == 'P' ? L("Agregar departamento") : L("Agregar municipio"))" Variante="primario" OnClick="IniciarAgregarHijo" />
                 }
                 @if (seleccionado.Estado == "A")
                 {
-                    <BotonIcono Icono="ban" Tooltip="Inactivar" Etiqueta="Inactivar" Variante="peligro" Confirmacion="@($"¿Inactivar {seleccionado.Nombre}?")" OnClick='() => CambiarEstadoAsync("I")' />
+                    <BotonIcono Icono="ban" Tooltip="@L("Inactivar")" Etiqueta="@L("Inactivar")" Variante="peligro" Confirmacion="@(L("¿Inactivar {0}?", seleccionado.Nombre))" OnClick='() => CambiarEstadoAsync("I")' />
                 }
                 else
                 {
-                    <BotonIcono Icono="check-circle" Tooltip="Activar" Etiqueta="Activar" OnClick='() => CambiarEstadoAsync("A")' />
+                    <BotonIcono Icono="check-circle" Tooltip="@L("Activar")" Etiqueta="@L("Activar")" OnClick='() => CambiarEstadoAsync("A")' />
                 }
             </div>
         }
@@ -249,11 +249,11 @@
         mensaje = null;
     }
 
-    private static string NombreTipo(char tipo) => tipo switch { 'P' => "País", 'D' => "Departamento", _ => "Municipio" };
+    private static string NombreTipo(char tipo) => tipo switch { 'P' => L("País"), 'D' => L("Departamento"), _ => L("Municipio") };
 
     private string Ruta(Nodo n)
     {
-        if (n.Tipo == 'P') return "País";
+        if (n.Tipo == 'P') return L("País");
         if (n.Tipo == 'D') return catalogo.BuscarPais(n.PadreId)?.Nombre ?? "";
         var d = catalogo.BuscarDepartamento(n.PadreId);
         return $"{catalogo.BuscarPais(d?.PaiId)?.Nombre} › {d?.Nombre}";
@@ -261,10 +261,10 @@
 
     private string TituloFormulario() => (formTipo, formId) switch
     {
-        ('P', 0) => "Nuevo país",
-        ('D', 0) => $"Nuevo departamento de {catalogo.BuscarPais(formPadre)?.Nombre}",
-        ('M', 0) => $"Nuevo municipio de {catalogo.BuscarDepartamento(formPadre)?.Nombre}",
-        _ => $"Editar {formNombre}"
+        ('P', 0) => L("Nuevo país"),
+        ('D', 0) => L("Nuevo departamento de {0}", catalogo.BuscarPais(formPadre)?.Nombre),
+        ('M', 0) => L("Nuevo municipio de {0}", catalogo.BuscarDepartamento(formPadre)?.Nombre),
+        _ => L("Editar {0}", formNombre)
     };
 
     private void LimpiarFormulario(char tipo, int id, int? padre)
@@ -324,7 +324,7 @@
             seleccionado = new Nodo(formTipo, id, formPadre, "", "", "A", 1, false);
             await CargarAsync();
             modo = Modo.Ver;
-            mensaje = nuevo ? $"{NombreTipo(formTipo)} creado." : "Cambios guardados.";
+            mensaje = nuevo ? L("{0} creado.", NombreTipo(formTipo)) : L("Cambios guardados.");
             esMensajeError = false;
         }
         catch (Exception ex)
@@ -343,7 +343,7 @@
             modo = Modo.Ver;
             await GuardarRegistroAsync(seleccionado.Tipo, seleccionado.Id, seleccionado.PadreId, seleccionado.Codigo, seleccionado.Nombre, estado, await ObtenerUsuIdActualAsync());
             await CargarAsync();
-            mensaje = estado == "A" ? "Activado." : "Inactivado: ya no se ofrece al capturar una dirección.";
+            mensaje = estado == "A" ? L("Activado.") : L("Inactivado: ya no se ofrece al capturar una dirección.");
             esMensajeError = false;
         }
         catch (Exception ex)

@@ -17,12 +17,12 @@ public sealed class FelService(IFelRepository repositorio, IEnumerable<IFelCerti
 {
 	public static string EstadoTexto(string? estado) => estado switch
 	{
-		"C" => "Certificado",
-		"P" => "Pendiente",
-		"R" => "Rechazado",
-		"A" => "Anulado en SAT",
-		"X" => "Anulación pendiente",
-		_ => "No enviado"
+		"C" => L("Certificado"),
+		"P" => L("Pendiente"),
+		"R" => L("Rechazado"),
+		"A" => L("Anulado en SAT"),
+		"X" => L("Anulación pendiente"),
+		_ => L("No enviado")
 	};
 
 	private IFelCertificador? Certificador(string? nombre) =>

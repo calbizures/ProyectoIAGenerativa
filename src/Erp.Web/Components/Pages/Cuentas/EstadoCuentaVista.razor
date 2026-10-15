@@ -8,8 +8,8 @@
 @using Microsoft.AspNetCore.Components.Authorization
 
 <div class="pagina-encabezado">
-    <h1>Estado de cuenta de @(EsCliente ? "clientes" : "proveedores")</h1>
-    <p>Documentos con saldo y movimientos (@(EsCliente ? "facturas, pagos y notas" : "compras, cheques y notas")) con saldo corrido.</p>
+    <h1>@L("Estado de cuenta de {0}", EsCliente ? L("clientes") : "proveedores")</h1>
+    <p>@L("Documentos con saldo y movimientos ({0}) con saldo corrido.", EsCliente ? L("facturas, pagos y notas") : L("compras, cheques y notas"))</p>
 </div>
 
 @if (mensaje is not null)
@@ -22,27 +22,27 @@
         <SelectorTercero EsCliente="EsCliente" Seleccionado="tercero" SeleccionadoChanged="CambiarTerceroAsync" />
     </div>
     <FiltroPeriodo @bind-Desde="desde" @bind-Hasta="hasta" AlCambiar="ConsultarAsync" />
-    <BotonIcono Icono="search" Tooltip="Consultar" Etiqueta="Consultar" Variante="primario" Deshabilitado="tercero is null" OnClick="ConsultarAsync" />
+    <BotonIcono Icono="search" Tooltip="@L("Consultar")" Etiqueta="@L("Consultar")" Variante="primario" Deshabilitado="tercero is null" OnClick="ConsultarAsync" />
     @if (tercero is not null)
     {
         <span class="barra-herramientas-separador"></span>
-        <a class="boton-icono boton-icono-con-etiqueta" href="@UrlExcel" download title="Exportar a Excel">
-            <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Excel</span>
+        <a class="boton-icono boton-icono-con-etiqueta" href="@UrlExcel" download title="@L("Exportar a Excel")">
+            <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">@L("Excel")</span>
         </a>
-        <a class="boton-icono boton-icono-con-etiqueta" href="@UrlImprimir" target="_blank" rel="noopener" title="Abrir el estado de cuenta para imprimir">
-            <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+        <a class="boton-icono boton-icono-con-etiqueta" href="@UrlImprimir" target="_blank" rel="noopener" title="@L("Abrir el estado de cuenta para imprimir")">
+            <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">@L("Imprimir")</span>
         </a>
         @if (EsCliente)
         {
-            <a class="boton-icono boton-icono-con-etiqueta" href="@($"reportes/cxc/estado-cuenta.pdf?{Filtros}")" download title="Descargar el estado de cuenta en PDF (el mismo que se envía por correo)">
-                <Icono Nombre="file-text" Tamano="16" /><span class="boton-icono-etiqueta">PDF</span>
+            <a class="boton-icono boton-icono-con-etiqueta" href="@($"reportes/cxc/estado-cuenta.pdf?{Filtros}")" download title="@L("Descargar el estado de cuenta en PDF (el mismo que se envía por correo)")">
+                <Icono Nombre="file-text" Tamano="16" /><span class="boton-icono-etiqueta">@L("PDF")</span>
             </a>
-            <BotonIcono Icono="mail" Tooltip="Enviar el estado de cuenta al correo del cliente" Etiqueta="Enviar por correo" Variante="primario" OnClick="AbrirCorreoAsync" />
+            <BotonIcono Icono="mail" Tooltip="@L("Enviar el estado de cuenta al correo del cliente")" Etiqueta="@L("Enviar por correo")" Variante="primario" OnClick="AbrirCorreoAsync" />
         }
         @if (!EsCliente && consultado && documentos.Sum(d => d.Saldo) > 0)
         {
-            <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@($"cxp/pagos?prv={tercero.Id}&todo=1")" title="Pagar todo el saldo del proveedor con un cheque">
-                <Icono Nombre="banknote" Tamano="16" /><span class="boton-icono-etiqueta">Pagar saldo con cheque</span>
+            <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@($"cxp/pagos?prv={tercero.Id}&todo=1")" title="@L("Pagar todo el saldo del proveedor con un cheque")">
+                <Icono Nombre="banknote" Tamano="16" /><span class="boton-icono-etiqueta">@L("Pagar saldo con cheque")</span>
             </a>
         }
     }
@@ -52,19 +52,19 @@
 {
     @if (cartera.Count == 0)
     {
-        <p class="estado-vacio">No hay @(EsCliente ? "clientes" : "proveedores") con saldo pendiente. Busque uno arriba para ver su historial.</p>
+        <p class="estado-vacio">@L("No hay {0} con saldo pendiente. Busque uno arriba para ver su historial.", EsCliente ? L("clientes") : "proveedores")</p>
     }
     else
     {
         <section class="tarjeta" aria-labelledby="titulo-cartera">
             <div class="maestro-detalle-encabezado">
-                <h2 id="titulo-cartera">@(EsCliente ? "Clientes" : "Proveedores") con saldo</h2>
-                <span class="texto-tenue">@cartera.Count · saldo Q@(cartera.Sum(g => g.Total).ToString("N2")) · vencido Q@(cartera.Sum(g => g.Total - g.Rangos[0]).ToString("N2"))</span>
+                <h2 id="titulo-cartera">@L("{0} con saldo", EsCliente ? L("Clientes") : L("Proveedores"))</h2>
+                <span class="texto-tenue">@L("{0} · saldo Q{1} · vencido Q{2}", cartera.Count, cartera.Sum(g => g.Total).ToString("N2"), cartera.Sum(g => g.Total - g.Rangos[0]).ToString("N2"))</span>
             </div>
-            <p class="texto-tenue">Elija uno para ver su estado de cuenta, o búsquelo arriba.</p>
+            <p class="texto-tenue">@L("Elija uno para ver su estado de cuenta, o búsquelo arriba.")</p>
             <table class="tabla-datos cartera-lista">
                 <thead>
-                    <tr><th class="col-codigo">Código</th><th>@(EsCliente ? "Cliente" : "Proveedor")</th><th class="num">Documentos</th><th class="num">Vencido</th><th class="num">Saldo</th><th class="col-acciones"><span class="sr-only">Acción</span></th></tr>
+                    <tr><th class="col-codigo">@L("Código")</th><th>@(EsCliente ? L("Cliente") : L("Proveedor"))</th><th class="num">@L("Documentos")</th><th class="num">@L("Vencido")</th><th class="num">@L("Saldo")</th><th class="col-acciones"><span class="sr-only">@L("Acción")</span></th></tr>
                 </thead>
                 <tbody>
                     @foreach (var g in cartera.OrderByDescending(g => g.Total - g.Rangos[0]).ThenByDescending(g => g.Total))
@@ -78,11 +78,11 @@
                             <td class="num"><strong>@g.Total.ToString("N2")</strong></td>
                             <td class="col-acciones">
                                 <div class="acciones-fila">
-                                    <BotonIcono Icono="eye" Tooltip="Ver estado de cuenta" OnClick="() => CambiarTerceroAsync(new TerceroSeleccion(g.Id, g.Codigo, g.Nombre))" />
+                                    <BotonIcono Icono="eye" Tooltip="@L("Ver estado de cuenta")" OnClick="() => CambiarTerceroAsync(new TerceroSeleccion(g.Id, g.Codigo, g.Nombre))" />
                                     @if (!EsCliente)
                                     {
-                                        <a class="boton-icono" href="@($"cxp/pagos?prv={g.Id}&todo=1")" aria-label="@($"Pagar el saldo de {g.Nombre} con cheque")">
-                                            <Icono Nombre="banknote" Tamano="16" /><span class="boton-icono-tip" role="tooltip">Pagar saldo con cheque</span>
+                                        <a class="boton-icono" href="@($"cxp/pagos?prv={g.Id}&todo=1")" aria-label="@(L("Pagar el saldo de {0} con cheque", g.Nombre))">
+                                            <Icono Nombre="banknote" Tamano="16" /><span class="boton-icono-tip" role="tooltip">@L("Pagar saldo con cheque")</span>
                                         </a>
                                     }
                                 </div>
@@ -103,47 +103,47 @@ else if (consultado)
     @if (correo is not null)
     {
         <section class="tarjeta" aria-labelledby="titulo-correo">
-            <h2 id="titulo-correo">Enviar el estado de cuenta por correo</h2>
+            <h2 id="titulo-correo">@L("Enviar el estado de cuenta por correo")</h2>
             <p class="texto-tenue">
                 Saldo Q@(correo.Datos.Cliente.Saldo.ToString("N2")) · vencido Q@(correo.Datos.Cliente.Vencido.ToString("N2"))
-                · límite @(correo.Datos.Cliente.Limite > 0 ? $"Q{correo.Datos.Cliente.Limite:N2}" : "sin límite")
+                · límite @(correo.Datos.Cliente.Limite > 0 ? $"Q{correo.Datos.Cliente.Limite:N2}" : L("sin límite"))
                 · disponible @(correo.Datos.Cliente.Disponible is decimal disp ? $"Q{disp:N2}" : "—").
-                Se adjunta <a href="@($"reportes/cxc/estado-cuenta.pdf?{Filtros}")" download>@correo.NombreArchivo</a> con el detalle.
+                @L("Se adjunta") <a href="@($"reportes/cxc/estado-cuenta.pdf?{Filtros}")" download>@correo.NombreArchivo</a> @L("con el detalle.")
             </p>
             <div class="panel-formulario panel-ancho">
                 <div class="campo campo-ancho">
-                    <label for="ec-para">Para</label>
+                    <label for="ec-para">@L("Para")</label>
                     <input id="ec-para" type="email" multiple maxlength="300" @bind="correoPara" placeholder="correo@cliente.com" />
                     @if (string.IsNullOrWhiteSpace(correo.Datos.Cliente.Correo))
                     {
-                        <small class="texto-ayuda" role="alert">El cliente no tiene correo registrado: escríbalo aquí o regístrelo en Ventas › Clientes.</small>
+                        <small class="texto-ayuda" role="alert">@L("El cliente no tiene correo registrado: escríbalo aquí o regístrelo en Ventas › Clientes.")</small>
                     }
                 </div>
-                <div class="campo campo-ancho"><label for="ec-copia">Copia</label><input id="ec-copia" maxlength="300" @bind="correoCopia" placeholder="Opcional; varios separados por coma" /></div>
-                <div class="campo campo-ancho"><label for="ec-asunto">Asunto</label><input id="ec-asunto" maxlength="200" @bind="correoAsunto" /></div>
+                <div class="campo campo-ancho"><label for="ec-copia">@L("Copia")</label><input id="ec-copia" maxlength="300" @bind="correoCopia" placeholder="@L("Opcional; varios separados por coma")" /></div>
+                <div class="campo campo-ancho"><label for="ec-asunto">@L("Asunto")</label><input id="ec-asunto" maxlength="200" @bind="correoAsunto" /></div>
                 <div class="campo campo-ancho">
-                    <label for="ec-mensaje">Mensaje adicional</label>
-                    <textarea id="ec-mensaje" rows="3" maxlength="1000" @bind="correoMensaje" placeholder="Opcional: se agrega al texto del correo"></textarea>
+                    <label for="ec-mensaje">@L("Mensaje adicional")</label>
+                    <textarea id="ec-mensaje" rows="3" maxlength="1000" @bind="correoMensaje" placeholder="@L("Opcional: se agrega al texto del correo")"></textarea>
                 </div>
             </div>
             <div class="acciones-fila">
-                <BotonIcono Icono="send" Tooltip="Enviar el correo con el PDF adjunto" Etiqueta="Enviar" Variante="primario"
+                <BotonIcono Icono="send" Tooltip="@L("Enviar el correo con el PDF adjunto")" Etiqueta="@L("Enviar")" Variante="primario"
                             Deshabilitado="enviando || string.IsNullOrWhiteSpace(correoPara)" OnClick="EnviarCorreoAsync" />
-                <BotonIcono Icono="x" Tooltip="Cerrar" Etiqueta="Cerrar" OnClick="() => correo = null" />
+                <BotonIcono Icono="x" Tooltip="@L("Cerrar")" Etiqueta="@L("Cerrar")" OnClick="() => correo = null" />
             </div>
             @if (envios.Count > 0)
             {
-                <h3>Envíos anteriores a este cliente</h3>
+                <h3>@L("Envíos anteriores a este cliente")</h3>
                 <table class="tabla-datos">
-                    <thead><tr><th class="col-fecha">Fecha</th><th>Para</th><th>Usuario</th><th class="col-estado">Resultado</th></tr></thead>
+                    <thead><tr><th class="col-fecha">@L("Fecha")</th><th>@L("Para")</th><th>@L("Usuario")</th><th class="col-estado">@L("Resultado")</th></tr></thead>
                     <tbody>
                         @foreach (var e in envios)
                         {
                             <tr>
                                 <td class="col-fecha">@e.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
-                                <td>@e.Destinatario@(e.Copia is null ? "" : $" (copia: {e.Copia})")</td>
+                                <td>@e.Destinatario@(e.Copia is null ? "" : L(" (copia: {0})", e.Copia))</td>
                                 <td>@e.Usuario</td>
-                                <td class="col-estado"><span class="estado-badge @(e.Estado == "E" ? "estado-badge-activo" : "estado-badge-anulada")" title="@e.Error">@(e.Estado == "E" ? "Enviado" : "Falló")</span></td>
+                                <td class="col-estado"><span class="estado-badge @(e.Estado == "E" ? "estado-badge-activo" : "estado-badge-anulada")" title="@e.Error">@(e.Estado == "E" ? L("Enviado") : L("Falló"))</span></td>
                             </tr>
                         }
                     </tbody>
@@ -152,9 +152,9 @@ else if (consultado)
         </section>
     }
     <div class="kpi-fila">
-        <div class="kpi"><span class="kpi-etiqueta">Saldo pendiente</span><span class="kpi-valor">Q@(documentos.Sum(d => d.Saldo).ToString("N2"))</span></div>
-        <div class="kpi"><span class="kpi-etiqueta">Documentos con saldo</span><span class="kpi-valor">@documentos.Count</span></div>
-        <div class="kpi kpi-alerta"><span class="kpi-etiqueta">Con cuotas vencidas</span><span class="kpi-valor">@documentos.Count(d => d.ProximoVencimiento < DateTime.Today)</span></div>
+        <div class="kpi"><span class="kpi-etiqueta">@L("Saldo pendiente")</span><span class="kpi-valor">Q@(documentos.Sum(d => d.Saldo).ToString("N2"))</span></div>
+        <div class="kpi"><span class="kpi-etiqueta">@L("Documentos con saldo")</span><span class="kpi-valor">@documentos.Count</span></div>
+        <div class="kpi kpi-alerta"><span class="kpi-etiqueta">@L("Con cuotas vencidas")</span><span class="kpi-valor">@documentos.Count(d => d.ProximoVencimiento < DateTime.Today)</span></div>
     </div>
 
     <BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestana" />
@@ -166,7 +166,7 @@ else if (consultado)
         @if (documentoSeleccionado is not null)
         {
             <section class="tarjeta" aria-labelledby="titulo-cuotas">
-                <h2 id="titulo-cuotas">Cuotas de @documentoSeleccionado.Documento</h2>
+                <h2 id="titulo-cuotas">@L("Cuotas de {0}", documentoSeleccionado.Documento)</h2>
                 <CuotasTabla EsCliente="EsCliente" CuotasCliente="cuotasCliente" CuotasProveedor="cuotasProveedor" />
             </section>
         }

@@ -18,17 +18,17 @@
             @if (balance is not null)
             {
                 <TablaBalance Balance="balance" Comparar="reporte.Comparar" Etiqueta="@reporte.EtiquetaActual" EtiquetaComparativa="@reporte.EtiquetaComparativa" />
-                <div class="firmas-poliza"><div><span>Contador</span></div><div><span>Representante legal</span></div></div>
+                <div class="firmas-poliza"><div><span>@L("Contador")</span></div><div><span>@L("Representante legal")</span></div></div>
             }
             break;
         case "resultados":
             @if (resultados is not null)
             {
                 <TablaResultados Estado="resultados" Comparar="reporte.Comparar" Etiqueta="@reporte.EtiquetaActual" EtiquetaComparativa="@reporte.EtiquetaComparativa" />
-                <div class="firmas-poliza"><div><span>Contador</span></div><div><span>Representante legal</span></div></div>
+                <div class="firmas-poliza"><div><span>@L("Contador")</span></div><div><span>@L("Representante legal")</span></div></div>
             }
             break;
-        default:
+        @L("default:")
             <TablaDiario Lineas="diario" />
             break;
     }
@@ -69,12 +69,12 @@
                     break;
                 case "balance":
                     balance = await LibrosRepository.ConsultarBalanceGeneralAsync(reporte.Hasta, reporte.Nivel, reporte.Comparar ? reporte.HastaComparativo : null);
-                    detalle = "Cifras en quetzales";
+                    detalle = L("Cifras en quetzales");
                     break;
                 case "resultados":
                     resultados = await LibrosRepository.ConsultarEstadoResultadosAsync(reporte.Desde, reporte.Hasta, reporte.Nivel,
                         reporte.Comparar ? reporte.DesdeComparativo : null, reporte.Comparar ? reporte.HastaComparativo : null);
-                    detalle = "Cifras en quetzales";
+                    detalle = L("Cifras en quetzales");
                     break;
                 default:
                     diario = await LibrosRepository.ConsultarLibroDiarioAsync(reporte.Desde, reporte.Hasta);

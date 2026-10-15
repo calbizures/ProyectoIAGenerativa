@@ -41,7 +41,7 @@ else
     private RenderFragment Contenido(BarraFila f, double ancho) => __builder =>
     {
         <span class="ranking-etiqueta">@f.Etiqueta</span>
-        <span class="ranking-pista"><span class="ranking-barra" style=L("width:@(ancho.ToString(")0.##L(", System.Globalization.CultureInfo.InvariantCulture))%;background:@PaletaGraficos.Color(Slot)")></span></span>
+        <span class="ranking-pista"><span class="ranking-barra" style="width:@(ancho.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))%;background:@PaletaGraficos.Color(Slot)"></span></span>
         <span class="ranking-valor">@PaletaGraficos.MonedaCompacta(f.Valor)@if (f.Detalle is not null) {<small>@f.Detalle</small>}</span>
     };
 }

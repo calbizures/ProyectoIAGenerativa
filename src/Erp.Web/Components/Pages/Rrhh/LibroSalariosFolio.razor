@@ -6,67 +6,67 @@
 <section class="libro-folio">
     <div class="libro-folio-encabezado">
         <div>
-            <strong>@Patrono.NombreComercial</strong> · NIT @Patrono.Nit
+            <strong>@Patrono.NombreComercial</strong> @L("· NIT {0}", Patrono.Nit)
             @if (!string.IsNullOrWhiteSpace(Patrono.IgssNumeroPatronal))
             {
-                <span> · No. patronal IGSS @Patrono.IgssNumeroPatronal</span>
+                <span> @L("· No. patronal IGSS {0}", Patrono.IgssNumeroPatronal)</span>
             }
             @if (!string.IsNullOrWhiteSpace(Patrono.LibroSalariosAutorizacion))
             {
-                <br /><span>Autorización del libro de salarios: @Patrono.LibroSalariosAutorizacion</span>
+                <br /><span>@L("Autorización del libro de salarios: {0}", Patrono.LibroSalariosAutorizacion)</span>
             }
         </div>
-        <div class="libro-folio-numero">Folio <strong>@Trabajador.Folio</strong> · Año @Patrono.Anio</div>
+        <div class="libro-folio-numero">@L("Folio") <strong>@Trabajador.Folio</strong> @L("· Año {0}", Patrono.Anio)</div>
     </div>
 
     <dl class="libro-trabajador">
-        <div><dt>Nombre del trabajador</dt><dd>@Trabajador.NombreCompleto</dd></div>
-        <div><dt>Edad</dt><dd>@(Trabajador.Edad?.ToString() ?? "—")</dd></div>
-        <div><dt>Sexo</dt><dd>@(Trabajador.Genero switch { "M" => "Masculino", "F" => "Femenino", _ => "—" })</dd></div>
-        <div><dt>Nacionalidad</dt><dd>@Trabajador.Nacionalidad</dd></div>
-        <div><dt>@(Trabajador.TipoDocumento ?? "Documento")</dt><dd>@(Trabajador.NumeroDocumento ?? "—")</dd></div>
-        <div><dt>Afiliación IGSS</dt><dd>@(Trabajador.NumeroAfiliacionIGSS ?? "—")</dd></div>
-        <div><dt>Ocupación</dt><dd>@(Trabajador.Puesto ?? "—")</dd></div>
-        <div><dt>Jornada</dt><dd>@Trabajador.NombreJornada@(Trabajador.TiempoContrato == "TP" ? ", tiempo parcial" : "")</dd></div>
-        <div><dt>Fecha de ingreso</dt><dd>@Trabajador.FechaIngreso.ToString("dd/MM/yyyy")</dd></div>
-        <div><dt>Fecha de retiro</dt><dd>@(Trabajador.FechaBaja?.ToString("dd/MM/yyyy") ?? "—")</dd></div>
+        <div><dt>@L("Nombre del trabajador")</dt><dd>@Trabajador.NombreCompleto</dd></div>
+        <div><dt>@L("Edad")</dt><dd>@(Trabajador.Edad?.ToString() ?? "—")</dd></div>
+        <div><dt>@L("Sexo")</dt><dd>@(Trabajador.Genero switch { "M" => L("Masculino"), "F" => L("Femenino"), _ => "—" })</dd></div>
+        <div><dt>@L("Nacionalidad")</dt><dd>@Trabajador.Nacionalidad</dd></div>
+        <div><dt>@(Trabajador.TipoDocumento ?? L("Documento"))</dt><dd>@(Trabajador.NumeroDocumento ?? "—")</dd></div>
+        <div><dt>@L("Afiliación IGSS")</dt><dd>@(Trabajador.NumeroAfiliacionIGSS ?? "—")</dd></div>
+        <div><dt>@L("Ocupación")</dt><dd>@(Trabajador.Puesto ?? "—")</dd></div>
+        <div><dt>@L("Jornada")</dt><dd>@Trabajador.NombreJornada@(Trabajador.TiempoContrato == "TP" ? L(", tiempo parcial") : "")</dd></div>
+        <div><dt>@L("Fecha de ingreso")</dt><dd>@Trabajador.FechaIngreso.ToString("dd/MM/yyyy")</dd></div>
+        <div><dt>@L("Fecha de retiro")</dt><dd>@(Trabajador.FechaBaja?.ToString("dd/MM/yyyy") ?? "—")</dd></div>
     </dl>
 
     <div class="tabla-desplazable" tabindex="0">
         <table class="libro-tabla">
             <thead>
                 <tr>
-                    <th rowspan="2">No.</th>
-                    <th rowspan="2">Período de trabajo</th>
-                    <th rowspan="2" class="num">Salario (base)</th>
-                    <th rowspan="2" class="num">Días trab.</th>
-                    <th colspan="2">Horas trabajadas</th>
-                    <th colspan="6">Salario devengado</th>
-                    <th colspan="3">Deducciones</th>
-                    <th colspan="5">Bonificaciones y prestaciones</th>
-                    <th rowspan="2" class="num">Líquido a recibir</th>
+                    <th rowspan="2">@L("No.")</th>
+                    <th rowspan="2">@L("Período de trabajo")</th>
+                    <th rowspan="2" class="num">@L("Salario (base)")</th>
+                    <th rowspan="2" class="num">@L("Días trab.")</th>
+                    <th colspan="2">@L("Horas trabajadas")</th>
+                    <th colspan="6">@L("Salario devengado")</th>
+                    <th colspan="3">@L("Deducciones")</th>
+                    <th colspan="5">@L("Bonificaciones y prestaciones")</th>
+                    <th rowspan="2" class="num">@L("Líquido a recibir")</th>
                     @if (ConFirma)
                     {
-                        <th rowspan="2" class="libro-firma">Firma</th>
+                        <th rowspan="2" class="libro-firma">@L("Firma")</th>
                     }
                 </tr>
                 <tr>
-                    <th class="num">Ordin.</th>
-                    <th class="num">Extra</th>
-                    <th class="num">Ordinario</th>
-                    <th class="num">Extraordinario</th>
-                    <th class="num">Otros salarios</th>
-                    <th class="num">Séptimos y asuetos</th>
-                    <th class="num">Vacaciones</th>
-                    <th class="num">Total</th>
-                    <th class="num">IGSS</th>
-                    <th class="num">Otras</th>
-                    <th class="num">Total</th>
-                    <th class="num">Bono 14</th>
-                    <th class="num">Aguinaldo</th>
-                    <th class="num">Bonif. incentivo</th>
-                    <th class="num">Otras</th>
-                    <th class="num">Indemniz.</th>
+                    <th class="num">@L("Ordin.")</th>
+                    <th class="num">@L("Extra")</th>
+                    <th class="num">@L("Ordinario")</th>
+                    <th class="num">@L("Extraordinario")</th>
+                    <th class="num">@L("Otros salarios")</th>
+                    <th class="num">@L("Séptimos y asuetos")</th>
+                    <th class="num">@L("Vacaciones")</th>
+                    <th class="num">@L("Total")</th>
+                    <th class="num">@L("IGSS")</th>
+                    <th class="num">@L("Otras")</th>
+                    <th class="num">@L("Total")</th>
+                    <th class="num">@L("Bono 14")</th>
+                    <th class="num">@L("Aguinaldo")</th>
+                    <th class="num">@L("Bonif. incentivo")</th>
+                    <th class="num">@L("Otras")</th>
+                    <th class="num">@L("Indemniz.")</th>
                 </tr>
             </thead>
             <tbody>
@@ -105,7 +105,7 @@
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="3">Totales del año</td>
+                    <td colspan="3">@L("Totales del año")</td>
                     <td class="num">@Renglones.Sum(r => r.DiasLaborados).ToString("0.##")</td>
                     <td class="num">@Renglones.Sum(r => r.HorasOrdinarias)</td>
                     <td class="num">@Renglones.Sum(r => r.HorasExtra).ToString("0.##")</td>

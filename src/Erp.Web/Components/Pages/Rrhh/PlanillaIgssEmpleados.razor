@@ -5,16 +5,16 @@
     <table class="tabla-datos">
         <thead>
             <tr>
-                <th>Afiliación</th><th>Trabajador</th><th>DPI</th><th>Centro</th><th class="col-estado">Contrato</th><th>Novedad</th>
-                <th class="num col-estado">Días</th><th class="num col-monto">Salario afecto</th><th class="num col-monto">Cuota laboral</th>
-                <th class="num col-monto">IGSS patronal</th><th class="num col-monto">IRTRA</th><th class="num col-monto">INTECAP</th><th class="num col-monto">Total</th>
+                <th>@L("Afiliación")</th><th>@L("Trabajador")</th><th>@L("DPI")</th><th>@L("Centro")</th><th class="col-estado">@L("Contrato")</th><th>@L("Novedad")</th>
+                <th class="num col-estado">@L("Días")</th><th class="num col-monto">@L("Salario afecto")</th><th class="num col-monto">@L("Cuota laboral")</th>
+                <th class="num col-monto">@L("IGSS patronal")</th><th class="num col-monto">@L("IRTRA")</th><th class="num col-monto">@L("INTECAP")</th><th class="num col-monto">@L("Total")</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var e in Empleados)
             {
                 <tr>
-                    <td>@(e.NumeroAfiliacionIGSS ?? "Falta")</td>
+                    <td>@(e.NumeroAfiliacionIGSS ?? L("Falta"))</td>
                     <td>@e.CodigoEmpleado — @e.Nombre<br /><span class="texto-tenue">@e.Puesto</span></td>
                     <td>@e.Dpi</td>
                     <td>@(e.CentroTrabajo ?? e.Sucursal)</td>
@@ -22,11 +22,11 @@
                     <td>
                         @if (e.FechaAlta is DateTime alta)
                         {
-                            <span>Alta @alta.ToString("dd/MM/yyyy")</span>
+                            <span>@L("Alta {0}", alta.ToString("dd/MM/yyyy"))</span>
                         }
                         @if (e.FechaBaja is DateTime baja)
                         {
-                            <span>Baja @baja.ToString("dd/MM/yyyy")</span>
+                            <span>@L("Baja {0}", baja.ToString("dd/MM/yyyy"))</span>
                         }
                     </td>
                     <td class="num col-estado">@e.Dias.ToString("0.##")</td>
@@ -41,7 +41,7 @@
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="7">Total</td>
+                <td colspan="7">@L("Total")</td>
                 <td class="num col-monto">@Empleados.Sum(e => e.SalarioAfecto).ToString("N2")</td>
                 <td class="num col-monto">@Empleados.Sum(e => e.CuotaLaboral).ToString("N2")</td>
                 <td class="num col-monto">@Empleados.Sum(e => e.CuotaPatronal).ToString("N2")</td>

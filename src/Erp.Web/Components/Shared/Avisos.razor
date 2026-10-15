@@ -8,7 +8,7 @@
     {
         <div class="aviso @(a.EsError ? "aviso-error" : "aviso-ok")" role="@(a.EsError ? "alert" : "status")" @key="a.Id">
             <Icono Nombre="@(a.EsError ? "alert-triangle" : "check-circle")" Tamano="18" />
-            <span class="aviso-texto">@a.Texto</span>
+            <span class="aviso-texto">@Textos.Mensaje(a.Texto)</span>
             <button type="button" class="aviso-cerrar" aria-label="@L("Cerrar aviso")" @onclick="() => Quitar(a.Id)">✕</button>
         </div>
     }

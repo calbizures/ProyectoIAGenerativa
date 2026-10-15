@@ -9,50 +9,50 @@
 @inject IBancosRepository BancosRepository
 @inject IGeneralRepository GeneralRepository
 
-<PageTitle>Cuentas bancarias</PageTitle>
+<PageTitle>@L("Cuentas bancarias")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Cuentas bancarias y chequeras</h1>
-    <p>Cuentas de la empresa (maestro) y las chequeras de cada una (detalle). Cada cuenta lleva dos cuentas contables: la de cargos, que reciben los depósitos, y la de abonos, que afectan los cheques y transferencias.</p>
+    <h1>@L("Cuentas bancarias y chequeras")</h1>
+    <p>@L("Cuentas de la empresa (maestro) y las chequeras de cada una (detalle). Cada cuenta lleva dos cuentas contables: la de cargos, que reciben los depósitos, y la de abonos, que afectan los cheques y transferencias.")</p>
 </div>
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
 }
 
 <div class="maestro-detalle">
     <section class="tarjeta maestro-detalle-maestro" aria-labelledby="titulo-cuentas">
         <div class="maestro-detalle-encabezado">
-            <h2 id="titulo-cuentas">Cuentas</h2>
-            <BotonIcono Icono="plus" Tooltip="Nueva cuenta bancaria" Etiqueta="Nueva cuenta" Variante="primario" OnClick="NuevaCuenta" />
+            <h2 id="titulo-cuentas">@L("Cuentas")</h2>
+            <BotonIcono Icono="plus" Tooltip="@L("Nueva cuenta bancaria")" Etiqueta="@L("Nueva cuenta")" Variante="primario" OnClick="NuevaCuenta" />
         </div>
         @if (cuentaEdicion is not null)
         {
             <div class="panel-formulario">
                 <div class="campo">
-                    <label for="cta-banco">Banco</label>
+                    <label for="cta-banco">@L("Banco")</label>
                     <select id="cta-banco" @bind="cuentaEdicion.GefId">
-                        <option value="0">Seleccione...</option>
+                        <option value="0">@L("Seleccione...")</option>
                         @foreach (var b in bancos)
                         {
                             <option value="@b.GefId">@b.GefDescripcion</option>
                         }
                     </select>
                 </div>
-                <div class="campo"><label for="cta-numero">Número de cuenta</label><input id="cta-numero" maxlength="16" @bind="cuentaEdicion.NumeroCuenta" /></div>
-                <div class="campo"><label for="cta-desc">Descripción</label><input id="cta-desc" maxlength="64" @bind="cuentaEdicion.Descripcion" /></div>
+                <div class="campo"><label for="cta-numero">@L("Número de cuenta")</label><input id="cta-numero" maxlength="16" @bind="cuentaEdicion.NumeroCuenta" /></div>
+                <div class="campo"><label for="cta-desc">@L("Descripción")</label><input id="cta-desc" maxlength="64" @bind="cuentaEdicion.Descripcion" /></div>
                 <div class="campo">
-                    <label for="cta-tipo">Tipo</label>
+                    <label for="cta-tipo">@L("Tipo")</label>
                     <select id="cta-tipo" @bind="cuentaEdicion.Tipo">
-                        <option value="M">Monetaria</option>
-                        <option value="A">Ahorro</option>
+                        <option value="M">@L("Monetaria")</option>
+                        <option value="A">@L("Ahorro")</option>
                     </select>
                 </div>
                 <div class="campo">
-                    <label for="cta-cargo">Cuenta contable de cargos (depósitos)</label>
+                    <label for="cta-cargo">@L("Cuenta contable de cargos (depósitos)")</label>
                     <select id="cta-cargo" @bind="cuentaEdicion.CtaIdCargo">
-                        <option value="">(La del concepto DEPOSITO_BANCOS)</option>
+                        <option value="">@L("(La del concepto DEPOSITO_BANCOS)")</option>
                         @foreach (var c in cuentasContables)
                         {
                             <option value="@c.CtaId">@c.CtaCodigo — @c.CtaNombre</option>
@@ -60,51 +60,51 @@
                     </select>
                 </div>
                 <div class="campo">
-                    <label for="cta-contable">Cuenta contable de abonos (cheques y pagos)</label>
+                    <label for="cta-contable">@L("Cuenta contable de abonos (cheques y pagos)")</label>
                     <select id="cta-contable" @bind="cuentaEdicion.CtaId">
-                        <option value="">(La del concepto PAGO_BANCOS)</option>
+                        <option value="">@L("(La del concepto PAGO_BANCOS)")</option>
                         @foreach (var c in cuentasContables)
                         {
                             <option value="@c.CtaId">@c.CtaCodigo — @c.CtaNombre</option>
                         }
                     </select>
                 </div>
-                <p class="texto-ayuda">Un depósito a esta cuenta se carga (Debe) a la cuenta de cargos; un cheque o pago se abona (Haber) a la cuenta de abonos. Pueden ser la misma cuenta contable.</p>
+                <p class="texto-ayuda">@L("Un depósito a esta cuenta se carga (Debe) a la cuenta de cargos; un cheque o pago se abona (Haber) a la cuenta de abonos. Pueden ser la misma cuenta contable.")</p>
                 <div class="campo">
-                    <label for="cta-estado">Estado</label>
+                    <label for="cta-estado">@L("Estado")</label>
                     <select id="cta-estado" @bind="cuentaEdicion.Estado">
-                        <option value="A">Activa</option>
-                        <option value="I">Inactiva</option>
+                        <option value="A">@L("Activa")</option>
+                        <option value="I">@L("Inactiva")</option>
                     </select>
                 </div>
                 <div class="acciones-fila">
-                    <BotonIcono Icono="save" Tooltip="Guardar cuenta" Etiqueta="Guardar" Variante="primario" OnClick="GuardarCuentaAsync" />
-                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => cuentaEdicion = null" />
+                    <BotonIcono Icono="save" Tooltip="@L("Guardar cuenta")" Etiqueta="@L("Guardar")" Variante="primario" OnClick="GuardarCuentaAsync" />
+                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => cuentaEdicion = null" />
                 </div>
             </div>
         }
         @if (cuentas.Count == 0)
         {
-            <p class="estado-vacio">No hay cuentas bancarias registradas.</p>
+            <p class="estado-vacio">@L("No hay cuentas bancarias registradas.")</p>
         }
         else
         {
             <table class="tabla-datos">
-                <thead><tr><th>Cuenta</th><th class="col-estado">Tipo</th><th>Cuentas contables</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+                <thead><tr><th>@L("Cuenta")</th><th class="col-estado">@L("Tipo")</th><th>@L("Cuentas contables")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr></thead>
                 <tbody>
                     @foreach (var c in cuentas)
                     {
                         <tr class="fila-seleccionable @(seleccionada?.BcbId == c.BcbId ? "fila-seleccionada" : "")" @onclick="() => SeleccionarAsync(c)">
                             <td><strong>@c.Banco</strong> @c.NumeroCuenta<br /><span class="texto-tenue">@c.Descripcion</span></td>
-                            <td class="col-estado">@(c.Tipo == "A" ? "Ahorro" : "Monetaria")</td>
+                            <td class="col-estado">@(c.Tipo == "A" ? L("Ahorro") : L("Monetaria"))</td>
                             <td>
-                                <span title="@c.CuentaCargoNombre"><span class="texto-tenue">Cargos:</span> @(c.CuentaCargoCodigo ?? "—")</span><br />
-                                <span title="@c.CuentaNombre"><span class="texto-tenue">Abonos:</span> @(c.CuentaCodigo ?? "—")</span>
+                                <span title="@c.CuentaCargoNombre"><span class="texto-tenue">@L("Cargos:")</span> @(c.CuentaCargoCodigo ?? "—")</span><br />
+                                <span title="@c.CuentaNombre"><span class="texto-tenue">@L("Abonos:")</span> @(c.CuentaCodigo ?? "—")</span>
                             </td>
-                            <td class="col-estado"><span class="estado-badge @(c.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.Estado == "A" ? "Activa" : "Inactiva")</span></td>
+                            <td class="col-estado"><span class="estado-badge @(c.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.Estado == "A" ? L("Activa") : L("Inactiva"))</span></td>
                             <td class="col-acciones" @onclick:stopPropagation="true">
                                 <div class="acciones-fila">
-                                    <BotonIcono Icono="pencil" Tooltip="Editar cuenta" OnClick="() => EditarCuenta(c)" />
+                                    <BotonIcono Icono="pencil" Tooltip="@L("Editar cuenta")" OnClick="() => EditarCuenta(c)" />
                                 </div>
                             </td>
                         </tr>
@@ -116,45 +116,45 @@
 
     <section class="tarjeta maestro-detalle-detalle" aria-labelledby="titulo-chequeras">
         <div class="maestro-detalle-encabezado">
-            <h2 id="titulo-chequeras">@(seleccionada is null ? "Chequeras" : $"Chequeras: {seleccionada.Nombre}")</h2>
+            <h2 id="titulo-chequeras">@(seleccionada is null ? L("Chequeras") : L("Chequeras: {0}", seleccionada.Nombre))</h2>
             @if (seleccionada is not null)
             {
-                <BotonIcono Icono="plus" Tooltip="Nueva chequera" Etiqueta="Nueva chequera" Variante="primario" OnClick="NuevaChequera" />
+                <BotonIcono Icono="plus" Tooltip="@L("Nueva chequera")" Etiqueta="@L("Nueva chequera")" Variante="primario" OnClick="NuevaChequera" />
             }
         </div>
         @if (seleccionada is null)
         {
-            <p class="estado-vacio">Seleccione una cuenta para ver y mantener sus chequeras.</p>
+            <p class="estado-vacio">@L("Seleccione una cuenta para ver y mantener sus chequeras.")</p>
         }
         else
         {
             @if (chequeraEdicion is not null)
             {
                 <div class="panel-formulario">
-                    <div class="campo"><label for="chq-del">Del cheque</label><input id="chq-del" type="number" min="1" @bind="chequeraEdicion.ChequeDel" /></div>
-                    <div class="campo"><label for="chq-al">Al cheque</label><input id="chq-al" type="number" min="1" @bind="chequeraEdicion.ChequeAl" /></div>
-                    <div class="campo"><label for="chq-recepcion">Fecha de recepción</label><input id="chq-recepcion" type="date" @bind="chequeraEdicion.FechaRecepcion" /></div>
+                    <div class="campo"><label for="chq-del">@L("Del cheque")</label><input id="chq-del" type="number" min="1" @bind="chequeraEdicion.ChequeDel" /></div>
+                    <div class="campo"><label for="chq-al">@L("Al cheque")</label><input id="chq-al" type="number" min="1" @bind="chequeraEdicion.ChequeAl" /></div>
+                    <div class="campo"><label for="chq-recepcion">@L("Fecha de recepción")</label><input id="chq-recepcion" type="date" @bind="chequeraEdicion.FechaRecepcion" /></div>
                     <div class="campo">
-                        <label for="chq-estado">Estado</label>
+                        <label for="chq-estado">@L("Estado")</label>
                         <select id="chq-estado" @bind="chequeraEdicion.Estado">
-                            <option value="A">Activa</option>
-                            <option value="I">Inactiva</option>
+                            <option value="A">@L("Activa")</option>
+                            <option value="I">@L("Inactiva")</option>
                         </select>
                     </div>
                     <div class="acciones-fila">
-                        <BotonIcono Icono="save" Tooltip="Guardar chequera" Etiqueta="Guardar" Variante="primario" OnClick="GuardarChequeraAsync" />
-                        <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => chequeraEdicion = null" />
+                        <BotonIcono Icono="save" Tooltip="@L("Guardar chequera")" Etiqueta="@L("Guardar")" Variante="primario" OnClick="GuardarChequeraAsync" />
+                        <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => chequeraEdicion = null" />
                     </div>
                 </div>
             }
             @if (chequeras.Count == 0)
             {
-                <p class="estado-vacio">Esta cuenta todavía no tiene chequeras.</p>
+                <p class="estado-vacio">@L("Esta cuenta todavía no tiene chequeras.")</p>
             }
             else
             {
                 <table class="tabla-datos">
-                    <thead><tr><th>Rango</th><th class="col-fecha">Recepción</th><th class="num col-estado">Emitidos</th><th class="num col-estado">Siguiente</th><th class="num col-estado">Disponibles</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+                    <thead><tr><th>@L("Rango")</th><th class="col-fecha">@L("Recepción")</th><th class="num col-estado">@L("Emitidos")</th><th class="num col-estado">@L("Siguiente")</th><th class="num col-estado">@L("Disponibles")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr></thead>
                     <tbody>
                         @foreach (var q in chequeras)
                         {
@@ -162,12 +162,12 @@
                                 <td>@q.ChequeDel – @q.ChequeAl</td>
                                 <td class="col-fecha">@(q.FechaRecepcion?.ToString("dd/MM/yyyy") ?? "—")</td>
                                 <td class="num col-estado">@q.Emitidos</td>
-                                <td class="num col-estado">@(q.Siguiente?.ToString() ?? "Agotada")</td>
+                                <td class="num col-estado">@(q.Siguiente?.ToString() ?? L("Agotada"))</td>
                                 <td class="num col-estado">@q.Disponibles</td>
-                                <td class="col-estado"><span class="estado-badge @(q.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(q.Estado == "A" ? "Activa" : "Inactiva")</span></td>
+                                <td class="col-estado"><span class="estado-badge @(q.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(q.Estado == "A" ? L("Activa") : L("Inactiva"))</span></td>
                                 <td class="col-acciones">
                                     <div class="acciones-fila">
-                                        <BotonIcono Icono="pencil" Tooltip="Editar chequera" OnClick="() => EditarChequera(q)" />
+                                        <BotonIcono Icono="pencil" Tooltip="@L("Editar chequera")" OnClick="() => EditarChequera(q)" />
                                     </div>
                                 </td>
                             </tr>
@@ -258,7 +258,7 @@
         if (cuentaEdicion is null) return;
         if (cuentaEdicion.GefId == 0 || string.IsNullOrWhiteSpace(cuentaEdicion.NumeroCuenta))
         {
-            mensaje = "Seleccione el banco e ingrese el número de cuenta.";
+            mensaje = L("Seleccione el banco e ingrese el número de cuenta.");
             esMensajeError = true;
             return;
         }
@@ -270,7 +270,7 @@
             await CargarCuentasAsync();
             var cuenta = cuentas.FirstOrDefault(c => c.BcbId == id);
             if (cuenta is not null) await SeleccionarAsync(cuenta);
-            MostrarOk(nueva ? "Cuenta bancaria creada. Registre su chequera." : "Cuenta bancaria actualizada.");
+            MostrarOk(nueva ? L("Cuenta bancaria creada. Registre su chequera.") : L("Cuenta bancaria actualizada."));
         }
         catch (Exception ex) { MostrarError(ex); }
     }
@@ -303,7 +303,7 @@
             chequeraEdicion = null;
             await CargarCuentasAsync();
             if (seleccionada is not null) await SeleccionarAsync(seleccionada);
-            MostrarOk(nueva ? "Chequera registrada." : "Chequera actualizada.");
+            MostrarOk(nueva ? L("Chequera registrada.") : L("Chequera actualizada."));
         }
         catch (Exception ex) { MostrarError(ex); }
     }

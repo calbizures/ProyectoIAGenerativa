@@ -6,33 +6,33 @@
 @inject IRrhhRepository RrhhRepository
 @inject IGeneralRepository GeneralRepository
 
-<PageTitle>Libro de salarios</PageTitle>
+<PageTitle>@L("Libro de salarios")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Libro de salarios</h1>
-    <p>Un folio por trabajador con lo que exige el Código de Trabajo (art. 102) y el Acuerdo Ministerial 124-2019: datos del trabajador y, por cada período pagado, días y horas trabajadas, salario ordinario, extraordinario y otros salarios, séptimos y asuetos, vacaciones, deducciones, bonificaciones, prestaciones y líquido. Sale de las nóminas aprobadas.</p>
+    <h1>@L("Libro de salarios")</h1>
+    <p>@L("Un folio por trabajador con lo que exige el Código de Trabajo (art. 102) y el Acuerdo Ministerial 124-2019: datos del trabajador y, por cada período pagado, días y horas trabajadas, salario ordinario, extraordinario y otros salarios, séptimos y asuetos, vacaciones, deducciones, bonificaciones, prestaciones y líquido. Sale de las nóminas aprobadas.")</p>
 </div>
 
 <div class="doc-nota" role="note">
     <Icono Nombre="info" Tamano="15" />
-    <span>Obligatorio para el patrono con 10 o más trabajadores permanentes. Se autoriza en línea, sin costo, en <a href="https://librosalarios.mintrabajo.gob.gt/" target="_blank" rel="noopener">librosalarios.mintrabajo.gob.gt</a>; anote el número de autorización en Planilla del IGSS › Patrono para que salga en cada folio. Se puede llevar impreso o electrónico, un folio por trabajador.</span>
+    <span>@L("Obligatorio para el patrono con 10 o más trabajadores permanentes. Se autoriza en línea, sin costo, en") <a href="https://librosalarios.mintrabajo.gob.gt/" target="_blank" rel="noopener">@L("librosalarios.mintrabajo.gob.gt")</a>@L("; anote el número de autorización en Planilla del IGSS › Patrono para que salga en cada folio. Se puede llevar impreso o electrónico, un folio por trabajador.")</span>
 </div>
 
 @if (mensaje is not null)
 {
-    <p class="mensaje-error" role="alert">@mensaje</p>
+    <p class="mensaje-error" role="alert">@Textos.Mensaje(mensaje)</p>
 }
 
 <div class="barra-herramientas">
-    <select @bind="ciaId" @bind:after="ConsultarAsync" aria-label="Compañía">
+    <select @bind="ciaId" @bind:after="ConsultarAsync" aria-label="@L("Compañía")">
         @foreach (var c in companias)
         {
             <option value="@c.CiaId">@c.CiaNombreComercial</option>
         }
     </select>
-    <label class="filtro-campo">Año <input type="number" min="2000" max="2100" @bind="anio" @bind:after="ConsultarAsync" /></label>
-    <select @bind="idEmpleado" @bind:after="ConsultarAsync" aria-label="Trabajador">
-        <option value="">Todos los trabajadores</option>
+    <label class="filtro-campo">@L("Año") <input type="number" min="2000" max="2100" @bind="anio" @bind:after="ConsultarAsync" /></label>
+    <select @bind="idEmpleado" @bind:after="ConsultarAsync" aria-label="@L("Trabajador")">
+        <option value="">@L("Todos los trabajadores")</option>
         @foreach (var e in empleados)
         {
             <option value="@e.IdEmpleado">@e.CodigoEmpleado — @e.NombreCompleto</option>
@@ -41,8 +41,8 @@
     <span class="barra-herramientas-separador"></span>
     @if (libro?.Trabajadores.Count > 0)
     {
-        <a class="boton-icono boton-icono-con-etiqueta" href="@UrlExcel" download title="Libro de salarios en Excel (una hoja por folio)"><Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Excel</span></a>
-        <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@UrlImprimir" target="_blank" title="Folios para imprimir en las hojas autorizadas o guardar en PDF"><Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span></a>
+        <a class="boton-icono boton-icono-con-etiqueta" href="@UrlExcel" download title="@L("Libro de salarios en Excel (una hoja por folio)")"><Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">@L("Excel")</span></a>
+        <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@UrlImprimir" target="_blank" title="@L("Folios para imprimir en las hojas autorizadas o guardar en PDF")"><Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">@L("Imprimir")</span></a>
     }
 </div>
 
@@ -51,22 +51,21 @@
     @if (string.IsNullOrWhiteSpace(patrono.IgssNumeroPatronal) || string.IsNullOrWhiteSpace(patrono.LibroSalariosAutorizacion))
     {
         <p class="aviso-pendiente" role="status">
-            Faltan datos del patrono: @(string.IsNullOrWhiteSpace(patrono.IgssNumeroPatronal) ? "número patronal del IGSS" : "")@(string.IsNullOrWhiteSpace(patrono.IgssNumeroPatronal) && string.IsNullOrWhiteSpace(patrono.LibroSalariosAutorizacion) ? " y " : "")@(string.IsNullOrWhiteSpace(patrono.LibroSalariosAutorizacion) ? "número de autorización del libro de salarios del Ministerio de Trabajo" : "").
-            Regístrelos en <a href="rrhh/planilla-igss?pestana=patrono">RRHH &gt; Planilla del IGSS &gt; Patrono y centros de trabajo</a>.
+            @L("Faltan datos del patrono: {0}{1}{2}. Regístrelos en", string.IsNullOrWhiteSpace(patrono.IgssNumeroPatronal) ? L("número patronal del IGSS") : "", string.IsNullOrWhiteSpace(patrono.IgssNumeroPatronal) && string.IsNullOrWhiteSpace(patrono.LibroSalariosAutorizacion) ? " y " : "", string.IsNullOrWhiteSpace(patrono.LibroSalariosAutorizacion) ? L("número de autorización del libro de salarios del Ministerio de Trabajo") : "") <a href="rrhh/planilla-igss?pestana=patrono">@L("RRHH > Planilla del IGSS > Patrono y centros de trabajo")</a>.
         </p>
     }
 
     @if (libro.Trabajadores.Count == 0)
     {
-        <p class="estado-vacio">No hay nóminas aprobadas en @anio para esta compañía.</p>
+        <p class="estado-vacio">@L("No hay nóminas aprobadas en {0} para esta compañía.", anio)</p>
     }
     else
     {
         <div class="resumen-totales">
-            <span>Trabajadores: <strong>@libro.Trabajadores.Count</strong></span>
-            <span>Salario devengado: <strong>Q @libro.Renglones.Sum(r => r.SalarioTotal).ToString("N2")</strong></span>
-            <span>Cuota laboral IGSS: <strong>Q @libro.Renglones.Sum(r => r.Igss).ToString("N2")</strong></span>
-            <span>Líquido pagado: <strong>Q @libro.Renglones.Sum(r => r.Liquido).ToString("N2")</strong></span>
+            <span>@L("Trabajadores:") <strong>@libro.Trabajadores.Count</strong></span>
+            <span>@L("Salario devengado:") <strong>Q @libro.Renglones.Sum(r => r.SalarioTotal).ToString("N2")</strong></span>
+            <span>@L("Cuota laboral IGSS:") <strong>Q @libro.Renglones.Sum(r => r.Igss).ToString("N2")</strong></span>
+            <span>@L("Líquido pagado:") <strong>Q @libro.Renglones.Sum(r => r.Liquido).ToString("N2")</strong></span>
         </div>
         @foreach (var t in libro.Trabajadores)
         {

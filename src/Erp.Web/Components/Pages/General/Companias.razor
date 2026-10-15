@@ -10,11 +10,11 @@
 @inject Erp.Data.Correo.ICorreoRepository CorreoRepository
 @inject Erp.Web.Correo.CorreoServicio CorreoServicio
 
-<PageTitle>Compañías</PageTitle>
+<PageTitle>@L("Compañías")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Compañías</h1>
-    <p>Datos de la empresa y parámetros de uso general (IVA, comisiones, cierre de caja y nómina).</p>
+    <h1>@L("Compañías")</h1>
+    <p>@L("Datos de la empresa y parámetros de uso general (IVA, comisiones, cierre de caja y nómina).")</p>
 </div>
 
 @if (mensaje is not null)
@@ -27,20 +27,20 @@
 @if (pestanaActiva == "lista")
 {
     <div class="barra-herramientas">
-        <label class="filtro-campo"><input type="checkbox" @bind="soloActivas" @bind:after="BuscarAsync" /> Solo activas</label>
+        <label class="filtro-campo"><input type="checkbox" @bind="soloActivas" @bind:after="BuscarAsync" /> @L("Solo activas")</label>
         <span class="barra-herramientas-separador"></span>
-        <BotonIcono Icono="plus" Tooltip="Nueva compañía" Etiqueta="Nueva compañía" Variante="primario" OnClick="IniciarNueva" />
+        <BotonIcono Icono="plus" Tooltip="@L("Nueva compañía")" Etiqueta="@L("Nueva compañía")" Variante="primario" OnClick="IniciarNueva" />
     </div>
 
     @if (companias.Count == 0)
     {
-        <p class="estado-vacio">No hay compañías registradas.</p>
+        <p class="estado-vacio">@L("No hay compañías registradas.")</p>
     }
     else
     {
         <table class="tabla-datos">
             <thead>
-                <tr><th>Nombre comercial</th><th class="col-codigo">NIT</th><th class="num col-estado">% IVA</th><th class="col-estado">Comisiones</th><th class="num col-monto">Tolerancia caja</th><th class="col-estado">Nómina</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+                <tr><th>@L("Nombre comercial")</th><th class="col-codigo">@L("NIT")</th><th class="num col-estado">@L("% IVA")</th><th class="col-estado">@L("Comisiones")</th><th class="num col-monto">@L("Tolerancia caja")</th><th class="col-estado">@L("Nómina")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr>
             </thead>
             <tbody>
                 @foreach (var c in companias)
@@ -49,21 +49,21 @@
                         <td>@c.CiaNombreComercial</td>
                         <td class="col-codigo">@c.CiaNit</td>
                         <td class="num col-estado">@c.CiaPorcIva.ToString("N2")</td>
-                        <td class="col-estado">@(c.CiaPagaComision ? "Sí" : "No")</td>
+                        <td class="col-estado">@(c.CiaPagaComision ? L("Sí") : L("No"))</td>
                         <td class="num col-monto">@c.CiaToleranciaCierreCaja.ToString("N2")</td>
-                        <td class="col-estado">@(c.CiaPeriodicidadNomina switch { "Q" => "Quincenal", "S" => "Semanal", _ => "Mensual" })</td>
-                        <td class="col-estado"><span class="estado-badge @(c.CiaEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.CiaEstado == "A" ? "Activa" : "Inactiva")</span></td>
+                        <td class="col-estado">@(c.CiaPeriodicidadNomina switch { "Q" => L("Quincenal"), "S" => L("Semanal"), _ => L("Mensual") })</td>
+                        <td class="col-estado"><span class="estado-badge @(c.CiaEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.CiaEstado == "A" ? L("Activa") : L("Inactiva"))</span></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
-                                <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => Seleccionar(c)" />
-                                <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="async () => { await Seleccionar(c); IniciarEdicion(); }" />
+                                <BotonIcono Icono="eye" Tooltip="@L("Ver detalle")" OnClick="() => Seleccionar(c)" />
+                                <BotonIcono Icono="pencil" Tooltip="@L("Editar")" OnClick="async () => { await Seleccionar(c); IniciarEdicion(); }" />
                                 @if (c.CiaEstado == "A")
                                 {
-                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar compañía" Confirmacion="¿Desactivar la compañía?" Variante="peligro" OnClick="@(() => CambiarEstadoAsync(c, "I"))" />
+                                    <BotonIcono Icono="trash-2" Tooltip="@L("Desactivar compañía")" Confirmacion="@L("¿Desactivar la compañía?")" Variante="peligro" OnClick="@(() => CambiarEstadoAsync(c, "I"))" />
                                 }
                                 else
                                 {
-                                    <BotonIcono Icono="refresh-cw" Tooltip="Reactivar compañía" OnClick="@(() => CambiarEstadoAsync(c, "A"))" />
+                                    <BotonIcono Icono="refresh-cw" Tooltip="@L("Reactivar compañía")" OnClick="@(() => CambiarEstadoAsync(c, "A"))" />
                                 }
                             </div>
                         </td>
@@ -76,118 +76,118 @@
 else if (pestanaActiva == "detalle" && seleccionada is not null)
 {
     <div class="panel-detalle">
-        <h2>Detalle: @seleccionada.CiaNombreComercial</h2>
-        <h3>Datos generales</h3>
-        <div class="campo"><label>Nombre comercial</label><span class="valor-detalle">@seleccionada.CiaNombreComercial</span></div>
-        <div class="campo"><label>NIT</label><span class="valor-detalle">@seleccionada.CiaNit</span></div>
-        <div class="campo campo-ancho"><label>Dirección</label><span class="valor-detalle">@(seleccionada.CiaDireccionCompleta ?? "—")</span></div>
-        <div class="campo"><label>Departamento</label><span class="valor-detalle">@(seleccionada.Departamento ?? "—")</span></div>
-        <div class="campo"><label>Municipio</label><span class="valor-detalle">@(seleccionada.Municipio ?? "—")</span></div>
-        <div class="campo"><label>Teléfono</label><span class="valor-detalle">@seleccionada.CiaTelefono</span></div>
-        <div class="campo"><label>Correo electrónico</label><span class="valor-detalle">@seleccionada.CiaEmail</span></div>
-        <div class="campo"><label>Representante legal</label><span class="valor-detalle">@seleccionada.CiaRepresentanteLegal</span></div>
-        <div class="campo"><label>DPI del representante</label><span class="valor-detalle">@seleccionada.CiaDpiRepresentanteLegal</span></div>
-        <div class="campo"><label>Fecha de nacimiento del representante</label><span class="valor-detalle">@(seleccionada.CiaFechaNacimientoRepresentanteLegal?.ToString("dd/MM/yyyy") ?? "—")</span></div>
-        <h3>Parámetros de uso general</h3>
-        <div class="campo"><label>% IVA</label><span class="valor-detalle">@seleccionada.CiaPorcIva.ToString("N2") %</span></div>
-        <div class="campo"><label>Paga comisiones a vendedores</label><span class="valor-detalle">@(seleccionada.CiaPagaComision ? "Sí" : "No")</span></div>
-        <div class="campo"><label>Tolerancia de cierre de caja</label><span class="valor-detalle">Q @seleccionada.CiaToleranciaCierreCaja.ToString("N2")</span></div>
-        <div class="campo"><label>Periodicidad de nómina</label><span class="valor-detalle">@(seleccionada.CiaPeriodicidadNomina switch { "Q" => "Quincenal", "S" => "Semanal", _ => "Mensual" })</span></div>
+        <h2>@L("Detalle: {0}", seleccionada.CiaNombreComercial)</h2>
+        <h3>@L("Datos generales")</h3>
+        <div class="campo"><label>@L("Nombre comercial")</label><span class="valor-detalle">@seleccionada.CiaNombreComercial</span></div>
+        <div class="campo"><label>@L("NIT")</label><span class="valor-detalle">@seleccionada.CiaNit</span></div>
+        <div class="campo campo-ancho"><label>@L("Dirección")</label><span class="valor-detalle">@(seleccionada.CiaDireccionCompleta ?? "—")</span></div>
+        <div class="campo"><label>@L("Departamento")</label><span class="valor-detalle">@(seleccionada.Departamento ?? "—")</span></div>
+        <div class="campo"><label>@L("Municipio")</label><span class="valor-detalle">@(seleccionada.Municipio ?? "—")</span></div>
+        <div class="campo"><label>@L("Teléfono")</label><span class="valor-detalle">@seleccionada.CiaTelefono</span></div>
+        <div class="campo"><label>@L("Correo electrónico")</label><span class="valor-detalle">@seleccionada.CiaEmail</span></div>
+        <div class="campo"><label>@L("Representante legal")</label><span class="valor-detalle">@seleccionada.CiaRepresentanteLegal</span></div>
+        <div class="campo"><label>@L("DPI del representante")</label><span class="valor-detalle">@seleccionada.CiaDpiRepresentanteLegal</span></div>
+        <div class="campo"><label>@L("Fecha de nacimiento del representante")</label><span class="valor-detalle">@(seleccionada.CiaFechaNacimientoRepresentanteLegal?.ToString("dd/MM/yyyy") ?? "—")</span></div>
+        <h3>@L("Parámetros de uso general")</h3>
+        <div class="campo"><label>@L("% IVA")</label><span class="valor-detalle">@seleccionada.CiaPorcIva.ToString("N2") %</span></div>
+        <div class="campo"><label>@L("Paga comisiones a vendedores")</label><span class="valor-detalle">@(seleccionada.CiaPagaComision ? L("Sí") : L("No"))</span></div>
+        <div class="campo"><label>@L("Tolerancia de cierre de caja")</label><span class="valor-detalle">Q @seleccionada.CiaToleranciaCierreCaja.ToString("N2")</span></div>
+        <div class="campo"><label>@L("Periodicidad de nómina")</label><span class="valor-detalle">@(seleccionada.CiaPeriodicidadNomina switch { "Q" => L("Quincenal"), "S" => L("Semanal"), _ => L("Mensual") })</span></div>
         <div class="acciones-fila">
-            <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+            <BotonIcono Icono="pencil" Tooltip="@L("Editar")" Etiqueta="@L("Editar")" OnClick="IniciarEdicion" />
         </div>
 
-        <h3>Logotipo</h3>
+        <h3>@L("Logotipo")</h3>
         <div class="logo-compania-vista">
             @if (seleccionada.CiaTieneLogo)
             {
-                <img src="@($"compania/logo?cia={seleccionada.CiaId}&v={seleccionada.CiaLogoActualizado?.Ticks ?? 0}")" alt="Logotipo de @seleccionada.CiaNombreComercial" />
+                <img src="@($"compania/logo?cia={seleccionada.CiaId}&v={seleccionada.CiaLogoActualizado?.Ticks ?? 0}")" alt="@L("Logotipo de {0}", seleccionada.CiaNombreComercial)" />
             }
             else
             {
-                <span class="texto-tenue">Sin logotipo: se usa el del sistema.</span>
+                <span class="texto-tenue">@L("Sin logotipo: se usa el del sistema.")</span>
             }
         </div>
         <div class="acciones-fila">
-            <label class="boton-icono boton-icono-con-etiqueta" title="PNG, JPG, GIF o WEBP de hasta 1 MB">
-                <Icono Nombre="upload" Tamano="16" /><span class="boton-icono-etiqueta">@(seleccionada.CiaTieneLogo ? "Cambiar logotipo" : "Subir logotipo")</span>
+            <label class="boton-icono boton-icono-con-etiqueta" title="@L("PNG, JPG, GIF o WEBP de hasta 1 MB")">
+                <Icono Nombre="upload" Tamano="16" /><span class="boton-icono-etiqueta">@(seleccionada.CiaTieneLogo ? L("Cambiar logotipo") : L("Subir logotipo"))</span>
                 <InputFile OnChange="SubirLogoAsync" accept="image/png,image/jpeg,image/gif,image/webp" class="oculto" />
             </label>
             @if (seleccionada.CiaTieneLogo)
             {
-                <BotonIcono Icono="trash-2" Tooltip="Quitar el logotipo" Etiqueta="Quitar logotipo" Variante="peligro"
-                            Confirmacion="¿Quitar el logotipo? Se usará el del sistema." OnClick="QuitarLogoAsync" />
+                <BotonIcono Icono="trash-2" Tooltip="@L("Quitar el logotipo")" Etiqueta="@L("Quitar logotipo")" Variante="peligro"
+                            Confirmacion="@L("¿Quitar el logotipo? Se usará el del sistema.")" OnClick="QuitarLogoAsync" />
             }
         </div>
         <p class="texto-ayuda">
-            PNG, JPG, GIF o WEBP de hasta 1 MB; mejor un PNG con fondo transparente de al menos 400 px de ancho.
-            Se muestra en el menú, el inicio de sesión, los documentos impresos y los libros de Excel (Excel no admite WEBP).
+            @L("PNG, JPG, GIF o WEBP de hasta 1 MB; mejor un PNG con fondo transparente de al menos 400 px de ancho.")
+            @L("Se muestra en el menú, el inicio de sesión, los documentos impresos y los libros de Excel (Excel no admite WEBP).")
         </p>
 
-        <h3>Facturas y cotizaciones</h3>
+        <h3>@L("Facturas y cotizaciones")</h3>
         @if (impresion is not null && impresion.CiaId == seleccionada.CiaId)
         {
             <div class="panel-formulario panel-ancho fel-formulario">
                 <div class="campo">
-                    <label for="cia-impresora">Impresora</label>
+                    <label for="cia-impresora">@L("Impresora")</label>
                     <select id="cia-impresora" @bind="impresion.Impresora">
-                        <option value="C">Carta (tinta o láser, p. ej. Epson L3250)</option>
-                        <option value="T">Térmica de rollo (punto de venta)</option>
+                        <option value="C">@L("Carta (tinta o láser, p. ej. Epson L3250)")</option>
+                        <option value="T">@L("Térmica de rollo (punto de venta)")</option>
                     </select>
                 </div>
                 @if (impresion.Impresora == "T")
                 {
                     <div class="campo">
-                        <label for="cia-ancho">Ancho del rollo</label>
+                        <label for="cia-ancho">@L("Ancho del rollo")</label>
                         <select id="cia-ancho" @bind="impresion.AnchoTermica">
-                            <option value="80">80 mm</option>
-                            <option value="58">58 mm</option>
+                            <option value="80">@L("80 mm")</option>
+                            <option value="58">@L("58 mm")</option>
                         </select>
                     </div>
                 }
                 <div class="campo">
-                    <label for="cia-vigencia">Vigencia de las cotizaciones (días)</label>
+                    <label for="cia-vigencia">@L("Vigencia de las cotizaciones (días)")</label>
                     <input id="cia-vigencia" type="number" min="1" max="365" @bind="impresion.VigenciaCotizacion" />
                 </div>
                 <div class="campo campo-ancho">
-                    <label for="cia-pie">Texto al pie de la factura</label>
-                    <input id="cia-pie" maxlength="256" placeholder="Ej.: ¡Gracias por su compra! Cambios dentro de 30 días con esta factura." @bind="impresion.Pie" />
+                    <label for="cia-pie">@L("Texto al pie de la factura")</label>
+                    <input id="cia-pie" maxlength="256" placeholder="@L("Ej.: ¡Gracias por su compra! Cambios dentro de 30 días con esta factura.")" @bind="impresion.Pie" />
                 </div>
             </div>
             <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Guardar la configuración de facturas y cotizaciones" Etiqueta="Guardar" Variante="primario" OnClick="GuardarImpresionAsync" />
+                <BotonIcono Icono="save" Tooltip="@L("Guardar la configuración de facturas y cotizaciones")" Etiqueta="@L("Guardar")" Variante="primario" OnClick="GuardarImpresionAsync" />
             </div>
-            <p class="texto-ayuda">En la impresora térmica, configure en el diálogo de impresión el papel del rollo y márgenes "Ninguno". En carta, papel tamaño carta y escala 100 %.</p>
+            <p class="texto-ayuda">@L("En la impresora térmica, configure en el diálogo de impresión el papel del rollo y márgenes \"Ninguno\". En carta, papel tamaño carta y escala 100 %.")</p>
         }
 
-        <h3>Pago a proveedores</h3>
+        <h3>@L("Pago a proveedores")</h3>
         <div class="panel-formulario panel-ancho">
             <div class="campo">
-                <label for="cia-dia-pago">Día de pago</label>
+                <label for="cia-dia-pago">@L("Día de pago")</label>
                 <select id="cia-dia-pago" value="@(diaPago?.ToString() ?? "")" @onchange="e => diaPago = int.TryParse(e.Value?.ToString(), out var d) ? d : null">
-                    <option value="">Cualquier día</option>
-                    <option value="1">Lunes</option>
-                    <option value="2">Martes</option>
-                    <option value="3">Miércoles</option>
-                    <option value="4">Jueves</option>
-                    <option value="5">Viernes</option>
-                    <option value="6">Sábado</option>
-                    <option value="7">Domingo</option>
+                    <option value="">@L("Cualquier día")</option>
+                    <option value="1">@L("Lunes")</option>
+                    <option value="2">@L("Martes")</option>
+                    <option value="3">@L("Miércoles")</option>
+                    <option value="4">@L("Jueves")</option>
+                    <option value="5">@L("Viernes")</option>
+                    <option value="6">@L("Sábado")</option>
+                    <option value="7">@L("Domingo")</option>
                 </select>
             </div>
         </div>
         <div class="acciones-fila">
-            <BotonIcono Icono="save" Tooltip="Guardar el día de pago" Etiqueta="Guardar" Variante="primario" OnClick="GuardarDiaPagoAsync" />
+            <BotonIcono Icono="save" Tooltip="@L("Guardar el día de pago")" Etiqueta="@L("Guardar")" Variante="primario" OnClick="GuardarDiaPagoAsync" />
         </div>
-        <p class="texto-ayuda">La contraseña de pago propone como fecha de pago el primer día de pago a partir del vencimiento más lejano de sus facturas.</p>
+        <p class="texto-ayuda">@L("La contraseña de pago propone como fecha de pago el primer día de pago a partir del vencimiento más lejano de sus facturas.")</p>
 
-        <h3>Correo saliente (SMTP)</h3>
+        <h3>@L("Correo saliente (SMTP)")</h3>
         @if (correo is not null && correo.CiaId == seleccionada.CiaId)
         {
-            <p class="texto-ayuda">Salida del correo con el que se envían los estados de cuenta a los clientes. Elija el proveedor: el servidor, el puerto y la conexión segura se llenan solos.</p>
+            <p class="texto-ayuda">@L("Salida del correo con el que se envían los estados de cuenta a los clientes. Elija el proveedor: el servidor, el puerto y la conexión segura se llenan solos.")</p>
             <div class="panel-formulario panel-ancho">
                 <div class="campo">
-                    <label for="cia-smtp-proveedor">Tipo de salida</label>
+                    <label for="cia-smtp-proveedor">@L("Tipo de salida")</label>
                     <select id="cia-smtp-proveedor" value="@correo.Proveedor" @onchange="CambiarProveedorCorreo">
                         @foreach (var p in Erp.Data.Correo.CorreoConfiguracion.Proveedores)
                         {
@@ -197,13 +197,13 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
                 </div>
                 @if (correo.EsCarpeta)
                 {
-                    <div class="campo campo-ancho"><label for="cia-smtp-servidor">Carpeta del servidor donde se guardan los correos (.eml)</label><input id="cia-smtp-servidor" maxlength="120" placeholder="/var/erp/correos" @bind="correo.Servidor" /></div>
+                    <div class="campo campo-ancho"><label for="cia-smtp-servidor">@L("Carpeta del servidor donde se guardan los correos (.eml)")</label><input id="cia-smtp-servidor" maxlength="120" placeholder="/var/erp/correos" @bind="correo.Servidor" /></div>
                 }
                 else
                 {
-                    <div class="campo"><label for="cia-smtp-servidor">Servidor</label><input id="cia-smtp-servidor" maxlength="120" placeholder="smtp.empresa.com" @bind="correo.Servidor" readonly="@(correo.Proveedor != "SMTP")" /></div>
-                    <div class="campo"><label for="cia-smtp-puerto">Puerto</label><input id="cia-smtp-puerto" type="number" min="1" max="65535" @bind="correo.Puerto" /></div>
-                    <div class="campo campo-checkbox"><label><input type="checkbox" @bind="correo.Ssl" /> Conexión segura (STARTTLS)</label></div>
+                    <div class="campo"><label for="cia-smtp-servidor">@L("Servidor")</label><input id="cia-smtp-servidor" maxlength="120" placeholder="@L("smtp.empresa.com")" @bind="correo.Servidor" readonly="@(correo.Proveedor != "SMTP")" /></div>
+                    <div class="campo"><label for="cia-smtp-puerto">@L("Puerto")</label><input id="cia-smtp-puerto" type="number" min="1" max="65535" @bind="correo.Puerto" /></div>
+                    <div class="campo campo-checkbox"><label><input type="checkbox" @bind="correo.Ssl" /> @L("Conexión segura (STARTTLS)")</label></div>
                 }
                 @if (AyudaProveedor(correo.Proveedor) is string ayuda)
                 {
@@ -211,27 +211,27 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
                 }
                 @if (!correo.EsCarpeta)
                 {
-                <div class="campo"><label for="cia-smtp-usuario">Usuario</label><input id="cia-smtp-usuario" maxlength="120" autocomplete="off" @bind="correo.Usuario" /></div>
+                <div class="campo"><label for="cia-smtp-usuario">@L("Usuario")</label><input id="cia-smtp-usuario" maxlength="120" autocomplete="off" @bind="correo.Usuario" /></div>
                 <div class="campo">
-                    <label for="cia-smtp-clave">@(correo.Proveedor is "GMAIL" or "YAHOO" ? "Contraseña de aplicación" : "Contraseña")</label>
+                    <label for="cia-smtp-clave">@(correo.Proveedor is "GMAIL" or "YAHOO" ? L("Contraseña de aplicación") : L("Contraseña"))</label>
                     <input id="cia-smtp-clave" type="password" maxlength="200" autocomplete="new-password"
-                           placeholder="@(string.IsNullOrEmpty(correo.ClaveCifrada) ? "" : "•••••• (guardada; escriba para cambiarla)")" @bind="claveNueva" />
+                           placeholder="@(string.IsNullOrEmpty(correo.ClaveCifrada) ? "" : L("•••••• (guardada; escriba para cambiarla)"))" @bind="claveNueva" />
                     @if (!string.IsNullOrEmpty(correo.ClaveCifrada))
                     {
-                        <label class="campo-checkbox"><input type="checkbox" @bind="borrarClave" /> Quitar la contraseña guardada</label>
+                        <label class="campo-checkbox"><input type="checkbox" @bind="borrarClave" /> @L("Quitar la contraseña guardada")</label>
                     }
                 </div>
                 }
-                <div class="campo"><label for="cia-smtp-remitente">Correo del remitente</label><input id="cia-smtp-remitente" type="email" maxlength="120" placeholder="cobros@empresa.com" @bind="correo.Remitente" /></div>
-                <div class="campo"><label for="cia-smtp-nombre">Nombre del remitente</label><input id="cia-smtp-nombre" maxlength="120" placeholder="@seleccionada.CiaNombreComercial" @bind="correo.RemitenteNombre" /></div>
-                <div class="campo campo-ancho"><label for="cia-smtp-copia">Enviar copia de cada correo a</label><input id="cia-smtp-copia" maxlength="250" placeholder="Opcional; varios separados por coma" @bind="correo.Copia" /></div>
+                <div class="campo"><label for="cia-smtp-remitente">@L("Correo del remitente")</label><input id="cia-smtp-remitente" type="email" maxlength="120" placeholder="cobros@empresa.com" @bind="correo.Remitente" /></div>
+                <div class="campo"><label for="cia-smtp-nombre">@L("Nombre del remitente")</label><input id="cia-smtp-nombre" maxlength="120" placeholder="@seleccionada.CiaNombreComercial" @bind="correo.RemitenteNombre" /></div>
+                <div class="campo campo-ancho"><label for="cia-smtp-copia">@L("Enviar copia de cada correo a")</label><input id="cia-smtp-copia" maxlength="250" placeholder="@L("Opcional; varios separados por coma")" @bind="correo.Copia" /></div>
             </div>
             <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Guardar el correo saliente" Etiqueta="Guardar" Variante="primario" OnClick="GuardarCorreoAsync" />
+                <BotonIcono Icono="save" Tooltip="@L("Guardar el correo saliente")" Etiqueta="@L("Guardar")" Variante="primario" OnClick="GuardarCorreoAsync" />
                 <span class="barra-herramientas-separador"></span>
-                <label for="cia-smtp-prueba" class="sr-only">Correo para la prueba</label>
-                <input id="cia-smtp-prueba" type="email" class="entrada-referencia" placeholder="Correo para la prueba" @bind="correoPrueba" />
-                <BotonIcono Icono="send" Tooltip="Enviar un correo de prueba con la configuración guardada" Etiqueta="Enviar prueba" Deshabilitado="enviandoPrueba" OnClick="EnviarPruebaAsync" />
+                <label for="cia-smtp-prueba" class="sr-only">@L("Correo para la prueba")</label>
+                <input id="cia-smtp-prueba" type="email" class="entrada-referencia" placeholder="@L("Correo para la prueba")" @bind="correoPrueba" />
+                <BotonIcono Icono="send" Tooltip="@L("Enviar un correo de prueba con la configuración guardada")" Etiqueta="@L("Enviar prueba")" Deshabilitado="enviandoPrueba" OnClick="EnviarPruebaAsync" />
             </div>
         }
     </div>
@@ -239,42 +239,42 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
 else if (pestanaActiva == "editar")
 {
     <div class="panel-formulario">
-        <h2>@(modelo.CiaId == 0 ? "Nueva compañía" : $"Editar: {modelo.CiaNombreComercial}")</h2>
+        <h2>@(modelo.CiaId == 0 ? L("Nueva compañía") : L("Editar: {0}", modelo.CiaNombreComercial))</h2>
         <EditForm Model="modelo" OnValidSubmit="GuardarAsync">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <h3>Datos generales</h3>
-            <div class="campo"><label for="companias-cianombrecomercial">Nombre comercial</label><InputText id="companias-cianombrecomercial" @bind-Value="modelo.CiaNombreComercial" /></div>
-            <div class="campo"><label for="companias-cianit">NIT</label><InputText id="companias-cianit" @bind-Value="modelo.CiaNit" /></div>
-            <div class="campo"><label for="companias-ciadireccion">Dirección</label><InputText id="companias-ciadireccion" @bind-Value="modelo.CiaDireccion" placeholder="Calle, número, zona o colonia" /></div>
+            <h3>@L("Datos generales")</h3>
+            <div class="campo"><label for="companias-cianombrecomercial">@L("Nombre comercial")</label><InputText id="companias-cianombrecomercial" @bind-Value="modelo.CiaNombreComercial" /></div>
+            <div class="campo"><label for="companias-cianit">@L("NIT")</label><InputText id="companias-cianit" @bind-Value="modelo.CiaNit" /></div>
+            <div class="campo"><label for="companias-ciadireccion">@L("Dirección")</label><InputText id="companias-ciadireccion" @bind-Value="modelo.CiaDireccion" placeholder="@L("Calle, número, zona o colonia")" /></div>
             <SelectorUbicacion @bind-ProvId="modelo.ProvId" IdPrefijo="companias" />
-            <div class="campo"><label for="companias-ciatelefono">Teléfono</label><InputText id="companias-ciatelefono" @bind-Value="modelo.CiaTelefono" /></div>
-            <div class="campo"><label for="companias-ciaemail">Correo electrónico</label><InputText id="companias-ciaemail" @bind-Value="modelo.CiaEmail" /></div>
-            <div class="campo"><label for="companias-ciarepresentantelegal">Representante legal</label><InputText id="companias-ciarepresentantelegal" @bind-Value="modelo.CiaRepresentanteLegal" /></div>
-            <div class="campo"><label for="companias-ciadpirepresentantelegal">DPI del representante</label><InputText id="companias-ciadpirepresentantelegal" @bind-Value="modelo.CiaDpiRepresentanteLegal" /></div>
-            <div class="campo"><label for="companias-ciafechanacimientorepresentantelegal">Fecha de nacimiento del representante</label><InputDate id="companias-ciafechanacimientorepresentantelegal" @bind-Value="modelo.CiaFechaNacimientoRepresentanteLegal" /></div>
+            <div class="campo"><label for="companias-ciatelefono">@L("Teléfono")</label><InputText id="companias-ciatelefono" @bind-Value="modelo.CiaTelefono" /></div>
+            <div class="campo"><label for="companias-ciaemail">@L("Correo electrónico")</label><InputText id="companias-ciaemail" @bind-Value="modelo.CiaEmail" /></div>
+            <div class="campo"><label for="companias-ciarepresentantelegal">@L("Representante legal")</label><InputText id="companias-ciarepresentantelegal" @bind-Value="modelo.CiaRepresentanteLegal" /></div>
+            <div class="campo"><label for="companias-ciadpirepresentantelegal">@L("DPI del representante")</label><InputText id="companias-ciadpirepresentantelegal" @bind-Value="modelo.CiaDpiRepresentanteLegal" /></div>
+            <div class="campo"><label for="companias-ciafechanacimientorepresentantelegal">@L("Fecha de nacimiento del representante")</label><InputDate id="companias-ciafechanacimientorepresentantelegal" @bind-Value="modelo.CiaFechaNacimientoRepresentanteLegal" /></div>
 
-            <h3>Parámetros de uso general</h3>
-            <div class="campo"><label for="companias-ciaporciva">% IVA</label><InputNumber id="companias-ciaporciva" @bind-Value="modelo.CiaPorcIva" step="0.01" /></div>
+            <h3>@L("Parámetros de uso general")</h3>
+            <div class="campo"><label for="companias-ciaporciva">@L("% IVA")</label><InputNumber id="companias-ciaporciva" @bind-Value="modelo.CiaPorcIva" step="0.01" /></div>
             <div class="campo campo-checkbox">
-                <label><InputCheckbox @bind-Value="modelo.CiaPagaComision" /> Paga comisiones a vendedores</label>
+                <label><InputCheckbox @bind-Value="modelo.CiaPagaComision" /> @L("Paga comisiones a vendedores")</label>
             </div>
-            <div class="campo"><label for="companias-ciatoleranciacierrecaja">Tolerancia de cierre de caja (Q)</label><InputNumber id="companias-ciatoleranciacierrecaja" @bind-Value="modelo.CiaToleranciaCierreCaja" step="0.01" /></div>
+            <div class="campo"><label for="companias-ciatoleranciacierrecaja">@L("Tolerancia de cierre de caja (Q)")</label><InputNumber id="companias-ciatoleranciacierrecaja" @bind-Value="modelo.CiaToleranciaCierreCaja" step="0.01" /></div>
             <div class="campo">
-                <label for="companias-ciaperiodicidadnomina">Periodicidad de nómina</label>
+                <label for="companias-ciaperiodicidadnomina">@L("Periodicidad de nómina")</label>
                 <InputSelect id="companias-ciaperiodicidadnomina" @bind-Value="modelo.CiaPeriodicidadNomina">
-                    <option value="M">Mensual</option>
-                    <option value="Q">Quincenal</option>
-                    <option value="S">Semanal</option>
+                    <option value="M">@L("Mensual")</option>
+                    <option value="Q">@L("Quincenal")</option>
+                    <option value="S">@L("Semanal")</option>
                 </InputSelect>
             </div>
             <p class="texto-ayuda">
-                El % IVA se usa al facturar y comprar; la tolerancia es la diferencia máxima (en quetzales) permitida
-                entre el teórico y lo contado para cerrar una caja (0.00 = debe cuadrar exacto).
+                @L("El % IVA se usa al facturar y comprar; la tolerancia es la diferencia máxima (en quetzales) permitida")
+                @L("entre el teórico y lo contado para cerrar una caja (0.00 = debe cuadrar exacto).")
             </p>
             <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
-                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicion" />
+                <BotonIcono Icono="save" Tooltip="@L("Guardar")" Etiqueta="@L("Guardar")" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="CancelarEdicion" />
             </div>
         </EditForm>
     </div>
@@ -296,9 +296,9 @@ else if (pestanaActiva == "editar")
     {
         get
         {
-            var lista = new List<PestanaItem> { new("lista", "Lista") };
-            if (seleccionada is not null) lista.Add(new("detalle", "Detalle"));
-            if (pestanaActiva == "editar") lista.Add(new("editar", modelo.CiaId == 0 ? "Nueva" : "Editar"));
+            var lista = new List<PestanaItem> { new("lista", L("Lista")) };
+            if (seleccionada is not null) lista.Add(new("detalle", L("Detalle")));
+            if (pestanaActiva == "editar") lista.Add(new("editar", modelo.CiaId == 0 ? L("Nueva") : L("Editar")));
             return lista;
         }
     }
@@ -352,7 +352,7 @@ else if (pestanaActiva == "editar")
         try
         {
             await GeneralRepository.GuardarImpresionAsync(impresion, await ObtenerUsuIdActualAsync());
-            mensaje = $"Configuración guardada: factura en {(impresion.Impresora == "T" ? $"térmica de {impresion.AnchoTermica} mm" : "carta")}, cotizaciones válidas por {impresion.VigenciaCotizacion} días.";
+            mensaje = L("Configuración guardada: factura en {0}, cotizaciones válidas por {1} días.", (impresion.Impresora == "T" ? L("térmica de {0} mm", impresion.AnchoTermica) : "carta"), impresion.VigenciaCotizacion);
             esMensajeError = false;
         }
         catch (Exception ex)
@@ -387,11 +387,11 @@ else if (pestanaActiva == "editar")
 
     private static string? AyudaProveedor(string proveedor) => proveedor switch
     {
-        "GMAIL" => "Gmail pide una contraseña de aplicación, no la contraseña normal: active la verificación en dos pasos en la cuenta de Google y cree la contraseña en myaccount.google.com › Seguridad › Contraseñas de aplicaciones. El correo del remitente debe ser la misma cuenta (o un alias verificado en Gmail).",
-        "OUTLOOK" => "Outlook.com y Hotmail: el usuario es la dirección completa. Si la cuenta tiene verificación en dos pasos, use una contraseña de aplicación.",
-        "OFFICE365" => "Microsoft 365: el administrador debe tener habilitado «SMTP autenticado» para el buzón que envía.",
-        "YAHOO" => "Yahoo pide una contraseña de aplicación (Seguridad de la cuenta › Generar contraseña de aplicación).",
-        "CARPETA" => "No se envía nada: cada correo queda como archivo .eml en esa carpeta del servidor de la aplicación (se abre con Outlook o Thunderbird). Útil para pruebas.",
+        "GMAIL" => L("Gmail pide una contraseña de aplicación, no la contraseña normal: active la verificación en dos pasos en la cuenta de Google y cree la contraseña en myaccount.google.com › Seguridad › Contraseñas de aplicaciones. El correo del remitente debe ser la misma cuenta (o un alias verificado en Gmail)."),
+        "OUTLOOK" => L("Outlook.com y Hotmail: el usuario es la dirección completa. Si la cuenta tiene verificación en dos pasos, use una contraseña de aplicación."),
+        "OFFICE365" => L("Microsoft 365: el administrador debe tener habilitado «SMTP autenticado» para el buzón que envía."),
+        "YAHOO" => L("Yahoo pide una contraseña de aplicación (Seguridad de la cuenta › Generar contraseña de aplicación)."),
+        "CARPETA" => L("No se envía nada: cada correo queda como archivo .eml en esa carpeta del servidor de la aplicación (se abre con Outlook o Thunderbird). Útil para pruebas."),
         _ => null
     };
 
@@ -403,7 +403,7 @@ else if (pestanaActiva == "editar")
             var cifrada = string.IsNullOrEmpty(claveNueva) ? null : CorreoServicio.Cifrar(claveNueva);
             await CorreoRepository.GuardarConfiguracionAsync(correo, cifrada, borrarClave && cifrada is null, await ObtenerUsuIdActualAsync());
             await CargarCorreoAsync(correo.CiaId);
-            mensaje = "Correo saliente guardado. Envíe una prueba para confirmar que el servidor lo acepta.";
+            mensaje = L("Correo saliente guardado. Envíe una prueba para confirmar que el servidor lo acepta.");
             esMensajeError = false;
         }
         catch (Exception ex)
@@ -420,8 +420,8 @@ else if (pestanaActiva == "editar")
         try
         {
             var nombre = seleccionada?.CiaNombreComercial ?? "";
-            var texto = $"Este es un correo de prueba de {nombre}. Si lo recibe, el correo saliente del sistema está bien configurado.";
-            var resultado = await CorreoServicio.EnviarAsync(correo.CiaId, "PRUEBA", null, correoPrueba, null, $"Prueba de correo - {nombre}",
+            var texto = L("Este es un correo de prueba de {0}. Si lo recibe, el correo saliente del sistema está bien configurado.", nombre);
+            var resultado = await CorreoServicio.EnviarAsync(correo.CiaId, "PRUEBA", null, correoPrueba, null, L("Prueba de correo - {0}", nombre),
                 $"<p style=\"font-family:Arial,sans-serif\">{System.Net.WebUtility.HtmlEncode(texto)}</p>", texto, null, await ObtenerUsuIdActualAsync());
             mensaje = resultado.Mensaje;
             esMensajeError = !resultado.Enviado;
@@ -440,7 +440,7 @@ else if (pestanaActiva == "editar")
         try
         {
             await PagosRepository.GuardarDiaPagoAsync(seleccionada.CiaId, diaPago, await ObtenerUsuIdActualAsync());
-            mensaje = diaPago is int d ? $"Día de pago a proveedores: {Dias[d]}." : "Los proveedores se pueden pagar cualquier día.";
+            mensaje = diaPago is int d ? L("Día de pago a proveedores: {0}.", Dias[d]) : L("Los proveedores se pueden pagar cualquier día.");
             esMensajeError = false;
         }
         catch (Exception ex)
@@ -480,7 +480,7 @@ else if (pestanaActiva == "editar")
             modelo.CiaNit = Erp.Data.General.NitValidador.Formatear(modelo.CiaNit);
             var compania = modelo.ACompania();
             var id = await GeneralRepository.GuardarCompaniaAsync(compania, await ObtenerUsuIdActualAsync());
-            mensaje = modelo.CiaId == 0 ? "Compañía creada correctamente." : "Cambios guardados.";
+            mensaje = modelo.CiaId == 0 ? L("Compañía creada correctamente.") : L("Cambios guardados.");
             esMensajeError = false;
             await BuscarAsync();
             seleccionada = companias.FirstOrDefault(c => c.CiaId == id);
@@ -504,13 +504,13 @@ else if (pestanaActiva == "editar")
         mensaje = null;
         if (!TiposLogo.Contains(e.File.ContentType))
         {
-            mensaje = "El logotipo debe ser una imagen PNG, JPG, GIF o WEBP.";
+            mensaje = L("El logotipo debe ser una imagen PNG, JPG, GIF o WEBP.");
             esMensajeError = true;
             return;
         }
         if (e.File.Size > TamanoMaximoLogo)
         {
-            mensaje = "El logotipo no puede pesar más de 1 MB.";
+            mensaje = L("El logotipo no puede pesar más de 1 MB.");
             esMensajeError = true;
             return;
         }
@@ -520,7 +520,7 @@ else if (pestanaActiva == "editar")
             await e.File.OpenReadStream(TamanoMaximoLogo).CopyToAsync(memoria);
             await GeneralRepository.GuardarLogoAsync(seleccionada.CiaId, memoria.ToArray(), e.File.ContentType, await ObtenerUsuIdActualAsync());
             await RecargarSeleccionadaAsync();
-            mensaje = "Logotipo guardado. El menú lo muestra al recargar la página.";
+            mensaje = L("Logotipo guardado. El menú lo muestra al recargar la página.");
             esMensajeError = false;
         }
         catch (Exception ex)
@@ -537,7 +537,7 @@ else if (pestanaActiva == "editar")
         {
             await GeneralRepository.GuardarLogoAsync(seleccionada.CiaId, null, null, await ObtenerUsuIdActualAsync());
             await RecargarSeleccionadaAsync();
-            mensaje = "Logotipo quitado; se usará el del sistema.";
+            mensaje = L("Logotipo quitado; se usará el del sistema.");
             esMensajeError = false;
         }
         catch (Exception ex)
@@ -559,7 +559,7 @@ else if (pestanaActiva == "editar")
         try
         {
             await GeneralRepository.CambiarEstadoCompaniaAsync(compania.CiaId, estado, await ObtenerUsuIdActualAsync());
-            mensaje = estado == "A" ? "Compañía reactivada." : "Compañía desactivada.";
+            mensaje = estado == "A" ? L("Compañía reactivada.") : L("Compañía desactivada.");
             esMensajeError = false;
             await BuscarAsync();
         }

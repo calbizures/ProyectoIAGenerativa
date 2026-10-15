@@ -8,7 +8,7 @@
 
 <div class="reporte-acciones">
     <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
-        <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir o guardar PDF</span>
+        <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">@L("Imprimir o guardar PDF")</span>
     </button>
 </div>
 
@@ -23,14 +23,14 @@
 
 @if (Error is not null)
 {
-    <p class="mensaje-error" role="alert">@Error</p>
+    <p class="mensaje-error" role="alert">@Textos.Mensaje(Error)</p>
 }
 else
 {
     @ChildContent
 }
 
-<p class="reporte-pie">Generado el @DateTime.Now.ToString("dd/MM/yyyy HH:mm") por @usuario. Cifras en quetzales.</p>
+<p class="reporte-pie">@L("Generado el {0} por {1}. Cifras en quetzales.", DateTime.Now.ToString("dd/MM/yyyy HH:mm"), usuario)</p>
 
 @code {
     [CascadingParameter]

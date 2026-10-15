@@ -7,52 +7,52 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject ICargasRepository CargasRepository
 
-<PageTitle>Saldos iniciales</PageTitle>
+<PageTitle>@L("Saldos iniciales")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Saldos iniciales</h1>
-    <p>Exporte la nomenclatura a Excel, ponga el saldo de cada cuenta de movimiento en Debe o Haber y súbala: se genera la partida de apertura. La partida debe cuadrar y la cuenta de inventario se compara con el inventario inicial cargado.</p>
+    <h1>@L("Saldos iniciales")</h1>
+    <p>@L("Exporte la nomenclatura a Excel, ponga el saldo de cada cuenta de movimiento en Debe o Haber y súbala: se genera la partida de apertura. La partida debe cuadrar y la cuenta de inventario se compara con el inventario inicial cargado.")</p>
 </div>
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
 }
 
 <div class="pasos-carga">
     <div class="panel-formulario">
-        <h3>1. Exporte la nomenclatura</h3>
-        <p class="texto-ayuda">Las cuentas de agrupación van en gris; si ya hay partida de apertura, trae sus saldos para corregirlos.</p>
+        <h3>@L("1. Exporte la nomenclatura")</h3>
+        <p class="texto-ayuda">@L("Las cuentas de agrupación van en gris; si ya hay partida de apertura, trae sus saldos para corregirlos.")</p>
         <a class="boton-icono boton-icono-con-etiqueta" href="reportes/contabilidad/saldos-iniciales.xlsx" download>
-            <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Nomenclatura en Excel</span>
+            <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">@L("Nomenclatura en Excel")</span>
         </a>
     </div>
     <div class="panel-formulario">
-        <h3>2. Suba los saldos</h3>
-        <div class="campo"><label for="saldo-fecha">Fecha de la partida de apertura</label><input id="saldo-fecha" type="date" @bind="fecha" @bind:after="RevalidarAsync" /></div>
-        <label class="casilla"><input type="checkbox" @bind="reemplazar" @bind:after="RevalidarAsync" /> Reemplazar la partida de apertura vigente</label>
+        <h3>@L("2. Suba los saldos")</h3>
+        <div class="campo"><label for="saldo-fecha">@L("Fecha de la partida de apertura")</label><input id="saldo-fecha" type="date" @bind="fecha" @bind:after="RevalidarAsync" /></div>
+        <label class="casilla"><input type="checkbox" @bind="reemplazar" @bind:after="RevalidarAsync" /> @L("Reemplazar la partida de apertura vigente")</label>
         <div class="campo">
-            <label for="saldo-archivo">Archivo (.xlsx)</label>
+            <label for="saldo-archivo">@L("Archivo (.xlsx)")</label>
             <InputFile id="saldo-archivo" OnChange="LeerArchivoAsync" accept=".xlsx" />
         </div>
     </div>
     <div class="panel-formulario">
-        <h3>3. Revise y genere la partida</h3>
+        <h3>@L("3. Revise y genere la partida")</h3>
         @if (resultado?.Resumen is { } r)
         {
             <div class="resumen-totales">
-                <span>Cuentas: <strong>@r.Cuentas</strong></span>
-                <span>Debe: <strong>Q @r.TotalDebe.ToString("N2")</strong></span>
-                <span>Haber: <strong>Q @r.TotalHaber.ToString("N2")</strong></span>
-                <span>Inventario en la partida: <strong>Q @r.InventarioPartida.ToString("N2")</strong></span>
-                <span>Inventario inicial cargado: <strong>Q @r.InventarioCargado.ToString("N2")</strong></span>
+                <span>@L("Cuentas:") <strong>@r.Cuentas</strong></span>
+                <span>@L("Debe:") <strong>Q @r.TotalDebe.ToString("N2")</strong></span>
+                <span>@L("Haber:") <strong>Q @r.TotalHaber.ToString("N2")</strong></span>
+                <span>@L("Inventario en la partida:") <strong>Q @r.InventarioPartida.ToString("N2")</strong></span>
+                <span>@L("Inventario inicial cargado:") <strong>Q @r.InventarioCargado.ToString("N2")</strong></span>
             </div>
         }
         else
         {
-            <p class="texto-ayuda">El archivo se valida completo antes de grabar.</p>
+            <p class="texto-ayuda">@L("El archivo se valida completo antes de grabar.")</p>
         }
-        <BotonIcono Icono="save" Tooltip="Generar la partida de apertura" Etiqueta="Generar partida de apertura" Variante="primario"
+        <BotonIcono Icono="save" Tooltip="@L("Generar la partida de apertura")" Etiqueta="@L("Generar partida de apertura")" Variante="primario"
                     Deshabilitado="!PuedeGrabar || guardando" OnClick="GrabarAsync" />
     </div>
 </div>
@@ -60,22 +60,22 @@
 @if (resultado is not null)
 {
     <section class="tarjeta">
-        <h2>Validación de @nombreArchivo</h2>
+        <h2>@L("Validación de {0}", nombreArchivo)</h2>
         <MensajesCargaVista Mensajes="resultado.Mensajes" />
     </section>
 }
 
 <section class="tarjeta" aria-labelledby="titulo-apertura">
-    <h2 id="titulo-apertura">Partida de apertura vigente</h2>
+    <h2 id="titulo-apertura">@L("Partida de apertura vigente")</h2>
     @if (apertura is null)
     {
-        <p class="estado-vacio">Todavía no hay partida de apertura.</p>
+        <p class="estado-vacio">@L("Todavía no hay partida de apertura.")</p>
     }
     else
     {
         <p><strong>#@apertura.AsiId · @apertura.Fecha.ToString("dd/MM/yyyy")</strong> · @apertura.Descripcion · Q @apertura.TotalDebe.ToString("N2") · @apertura.Usuario</p>
         <table class="tabla-datos">
-            <thead><tr><th class="col-codigo">Cuenta</th><th>Nombre</th><th class="num col-monto">Debe</th><th class="num col-monto">Haber</th></tr></thead>
+            <thead><tr><th class="col-codigo">@L("Cuenta")</th><th>@L("Nombre")</th><th class="num col-monto">@L("Debe")</th><th class="num col-monto">@L("Haber")</th></tr></thead>
             <tbody>
                 @foreach (var l in lineasApertura)
                 {
@@ -87,7 +87,7 @@
                     </tr>
                 }
                 <tr>
-                    <td colspan="2"><strong>Totales</strong></td>
+                    <td colspan="2"><strong>@L("Totales")</strong></td>
                     <td class="num col-monto"><strong>@lineasApertura.Sum(l => l.Debe).ToString("N2")</strong></td>
                     <td class="num col-monto"><strong>@lineasApertura.Sum(l => l.Haber).ToString("N2")</strong></td>
                 </tr>
@@ -148,9 +148,9 @@
             await e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(memoria);
             memoria.Position = 0;
             using var lector = LectorExcel.Leer(memoria, ReportesExcel.ColumnasSaldosIniciales);
-            var faltantes = lector.ColumnasFaltantes(new[] { "Código", "Debe", "Haber" }).ToList();
+            var faltantes = lector.ColumnasFaltantes(new[] { L("Código"), L("Debe"), L("Haber") }).ToList();
             if (lector.Errores.Count == 0 && faltantes.Count > 0)
-                lector.Errores.Add(new MensajeCarga { Mensaje = $"Faltan las columnas: {string.Join(", ", faltantes)}." });
+                lector.Errores.Add(new MensajeCarga { Mensaje = L("Faltan las columnas: {0}.", string.Join(", ", faltantes)) });
             if (lector.Errores.Count == 0)
                 foreach (var fila in lector.Filas)
                 {
@@ -172,7 +172,7 @@
         }
         catch (Exception ex) when (ex is not Microsoft.Data.SqlClient.SqlException)
         {
-            mensaje = "No se pudo leer el archivo. Verifique que sea un libro de Excel (.xlsx) válido y que no esté abierto en otro programa.";
+            mensaje = L("No se pudo leer el archivo. Verifique que sea un libro de Excel (.xlsx) válido y que no esté abierto en otro programa.");
             esMensajeError = true;
         }
         catch (Exception ex) { MostrarError(ex); }
@@ -202,7 +202,7 @@
             resultado = await CargasRepository.ProcesarSaldosInicialesAsync(fecha, filas, soloValidar: false, reemplazar, await ObtenerUsuIdActualAsync());
             if (resultado.Resumen?.Grabado == true)
             {
-                mensaje = $"Partida de apertura #{resultado.Resumen.AsiId} generada por Q {resultado.Resumen.TotalDebe:N2}.";
+                mensaje = L("Partida de apertura #{0} generada por Q {1:N2}.", resultado.Resumen.AsiId, resultado.Resumen.TotalDebe);
                 esMensajeError = false;
                 filas = new();
                 reemplazar = false;

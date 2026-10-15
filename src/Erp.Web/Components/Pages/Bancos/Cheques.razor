@@ -10,70 +10,70 @@
 @inject IGeneralRepository GeneralRepository
 @inject IRrhhRepository RrhhRepository
 
-<PageTitle>Cheques</PageTitle>
+<PageTitle>@L("Cheques")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Cheques</h1>
-    <p>Todos los cheques emitidos: a proveedores (se emiten en Cuentas por pagar), de nómina (en RRHH &gt; Nóminas) y libres, que se emiten aquí con su beneficiario, motivo y cuenta de gasto.</p>
+    <h1>@L("Cheques")</h1>
+    <p>@L("Todos los cheques emitidos: a proveedores (se emiten en Cuentas por pagar), de nómina (en RRHH > Nóminas) y libres, que se emiten aquí con su beneficiario, motivo y cuenta de gasto.")</p>
 </div>
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
 }
 
 <div class="barra-herramientas">
-    <select @bind="filtroBcbId" @bind:after="ConsultarAsync" aria-label="Cuenta bancaria">
-        <option value="">Todas las cuentas</option>
+    <select @bind="filtroBcbId" @bind:after="ConsultarAsync" aria-label="@L("Cuenta bancaria")">
+        <option value="">@L("Todas las cuentas")</option>
         @foreach (var c in cuentas)
         {
             <option value="@c.BcbId">@c.Nombre</option>
         }
     </select>
-    <select @bind="filtroTipo" @bind:after="ConsultarAsync" aria-label="Tipo de cheque">
-        <option value="">Todos los tipos</option>
-        <option value="L">Libres</option>
-        <option value="P">A proveedores</option>
-        <option value="N">De nómina</option>
+    <select @bind="filtroTipo" @bind:after="ConsultarAsync" aria-label="@L("Tipo de cheque")">
+        <option value="">@L("Todos los tipos")</option>
+        <option value="L">@L("Libres")</option>
+        <option value="P">@L("A proveedores")</option>
+        <option value="N">@L("De nómina")</option>
     </select>
-    <select @bind="filtroEstado" @bind:after="ConsultarAsync" aria-label="Estado">
-        <option value="">Todos los estados</option>
-        <option value="E">Emitidos</option>
-        <option value="C">Cobrados</option>
-        <option value="A">Anulados</option>
+    <select @bind="filtroEstado" @bind:after="ConsultarAsync" aria-label="@L("Estado")">
+        <option value="">@L("Todos los estados")</option>
+        <option value="E">@L("Emitidos")</option>
+        <option value="C">@L("Cobrados")</option>
+        <option value="A">@L("Anulados")</option>
     </select>
     <FiltroPeriodo @bind-Desde="filtroDesde" @bind-Hasta="filtroHasta" AlCambiar="ConsultarAsync" />
     <span class="barra-herramientas-separador"></span>
-    <BotonIcono Icono="plus" Tooltip="Emitir un cheque libre" Etiqueta="Nuevo cheque" Variante="primario" OnClick="NuevoCheque" />
+    <BotonIcono Icono="plus" Tooltip="@L("Emitir un cheque libre")" Etiqueta="@L("Nuevo cheque")" Variante="primario" OnClick="NuevoCheque" />
 </div>
 
 @if (nuevo is not null)
 {
     <section class="tarjeta" aria-labelledby="titulo-nuevo">
-        <h2 id="titulo-nuevo">Nuevo cheque</h2>
-        <p class="texto-ayuda">Genera su póliza: Debe a la cuenta elegida (con su centro de costo) y Haber a la cuenta contable del banco.</p>
+        <h2 id="titulo-nuevo">@L("Nuevo cheque")</h2>
+        <p class="texto-ayuda">@L("Genera su póliza: Debe a la cuenta elegida (con su centro de costo) y Haber a la cuenta contable del banco.")</p>
         <div class="panel-formulario panel-ancho">
             <div class="campo">
-                <label for="chq-chequera">Chequera</label>
+                <label for="chq-chequera">@L("Chequera")</label>
                 <select id="chq-chequera" value="@nuevo.CbcId" @onchange="CambiarChequera">
                     @foreach (var q in chequeras)
                     {
-                        <option value="@q.CbcId">@q.Nombre (@q.Disponibles disp.)</option>
+                        <option value="@q.CbcId">@L("{0} ({1} disp.)", q.Nombre, q.Disponibles)</option>
                     }
                 </select>
             </div>
             <div class="campo">
-                <label for="chq-numero">Número</label>
+                <label for="chq-numero">@L("Número")</label>
                 <input id="chq-numero" maxlength="16" inputmode="numeric" @bind="nuevo.Numero" />
-                <small class="texto-ayuda">Se propone el siguiente de la chequera.</small>
+                <small class="texto-ayuda">@L("Se propone el siguiente de la chequera.")</small>
             </div>
-            <div class="campo"><label for="chq-fecha">Fecha</label><input id="chq-fecha" type="date" @bind="nuevo.Fecha" /></div>
-            <div class="campo"><label for="chq-beneficiario">Páguese a la orden de</label><input id="chq-beneficiario" maxlength="150" @bind="nuevo.Beneficiario" /></div>
-            <div class="campo"><label for="chq-valor">Valor (Q)</label><input id="chq-valor" type="number" step="0.01" min="0" @bind="nuevo.Valor" /></div>
+            <div class="campo"><label for="chq-fecha">@L("Fecha")</label><input id="chq-fecha" type="date" @bind="nuevo.Fecha" /></div>
+            <div class="campo"><label for="chq-beneficiario">@L("Páguese a la orden de")</label><input id="chq-beneficiario" maxlength="150" @bind="nuevo.Beneficiario" /></div>
+            <div class="campo"><label for="chq-valor">@L("Valor (Q)")</label><input id="chq-valor" type="number" step="0.01" min="0" @bind="nuevo.Valor" /></div>
             <div class="campo">
-                <label for="chq-motivo">Motivo</label>
+                <label for="chq-motivo">@L("Motivo")</label>
                 <select id="chq-motivo" @bind="nuevo.BmpId">
-                    <option value="0">Seleccione...</option>
+                    <option value="0">@L("Seleccione...")</option>
                     @foreach (var m in motivos)
                     {
                         <option value="@m.BmpId">@m.Descripcion</option>
@@ -81,9 +81,9 @@
                 </select>
             </div>
             <div class="campo">
-                <label for="chq-cuenta">Cuenta contable (Debe)</label>
+                <label for="chq-cuenta">@L("Cuenta contable (Debe)")</label>
                 <select id="chq-cuenta" @bind="nuevo.CtaId">
-                    <option value="0">Seleccione...</option>
+                    <option value="0">@L("Seleccione...")</option>
                     @foreach (var c in cuentasContables)
                     {
                         <option value="@c.CtaId">@c.CtaCodigo — @c.CtaNombre</option>
@@ -91,23 +91,23 @@
                 </select>
             </div>
             <div class="campo">
-                <label for="chq-depto">Centro de costo</label>
+                <label for="chq-depto">@L("Centro de costo")</label>
                 <select id="chq-depto" @bind="nuevo.IdDepartamento">
-                    <option value="">(Sin centro de costo)</option>
+                    <option value="">@L("(Sin centro de costo)")</option>
                     @foreach (var d in departamentos)
                     {
                         <option value="@d.IdDepartamento">@d.Descripcion</option>
                     }
                 </select>
             </div>
-            <div class="campo"><label for="chq-obs">Observaciones</label><input id="chq-obs" maxlength="250" @bind="nuevo.Observaciones" /></div>
+            <div class="campo"><label for="chq-obs">@L("Observaciones")</label><input id="chq-obs" maxlength="250" @bind="nuevo.Observaciones" /></div>
             <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Emitir el cheque" Etiqueta="Emitir cheque" Variante="primario" Deshabilitado="chequeras.Count == 0 || guardando" OnClick="EmitirAsync" />
-                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => nuevo = null" />
+                <BotonIcono Icono="save" Tooltip="@L("Emitir el cheque")" Etiqueta="@L("Emitir cheque")" Variante="primario" Deshabilitado="chequeras.Count == 0 || guardando" OnClick="EmitirAsync" />
+                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => nuevo = null" />
             </div>
             @if (chequeras.Count == 0)
             {
-                <p class="mensaje-error" role="alert">No hay chequeras activas con cheques disponibles. Regístrelas en Bancos &gt; Cuentas bancarias.</p>
+                <p class="mensaje-error" role="alert">@L("No hay chequeras activas con cheques disponibles. Regístrelas en Bancos > Cuentas bancarias.")</p>
             }
         </div>
     </section>
@@ -115,18 +115,18 @@
 
 <section class="tarjeta" aria-labelledby="titulo-cheques">
     <div class="maestro-detalle-encabezado">
-        <h2 id="titulo-cheques">Cheques emitidos</h2>
-        <span class="texto-tenue">@cheques.Count(c => c.EstadoCheque != "A") vigente(s) · Q @cheques.Where(c => c.EstadoCheque != "A").Sum(c => c.Valor).ToString("N2")</span>
+        <h2 id="titulo-cheques">@L("Cheques emitidos")</h2>
+        <span class="texto-tenue">@L("{0} vigente(s) · Q {1}", cheques.Count(c => c.EstadoCheque != "A"), cheques.Where(c => c.EstadoCheque != "A").Sum(c => c.Valor).ToString("N2"))</span>
     </div>
     @if (cheques.Count == 0)
     {
-        <p class="estado-vacio">No hay cheques con esos filtros.</p>
+        <p class="estado-vacio">@L("No hay cheques con esos filtros.")</p>
     }
     else
     {
         <table class="tabla-datos">
             <thead>
-                <tr><th class="col-fecha">Fecha</th><th>Cheque</th><th class="col-estado">Tipo</th><th>Beneficiario</th><th>Motivo / cuenta</th><th class="num col-monto">Valor</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+                <tr><th class="col-fecha">@L("Fecha")</th><th>@L("Cheque")</th><th class="col-estado">@L("Tipo")</th><th>@L("Beneficiario")</th><th>@L("Motivo / cuenta")</th><th class="num col-monto">@L("Valor")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr>
             </thead>
             <tbody>
                 @foreach (var c in cheques)
@@ -154,8 +154,8 @@
                             {
                                 <AuthorizeView Policy="Permiso:BANCOS_ADMIN" Context="permisoBancos">
                                 <div class="acciones-fila">
-                                    <BotonIcono Icono="check-check" Tooltip="Marcar como cobrado" Confirmacion="¿El banco ya pagó este cheque?" OnClick="() => CobrarAsync(c)" />
-                                    <BotonIcono Icono="ban" Tooltip="Anular cheque" Variante="peligro" OnClick="() => IniciarAnulacion(c)" />
+                                    <BotonIcono Icono="check-check" Tooltip="@L("Marcar como cobrado")" Confirmacion="@L("¿El banco ya pagó este cheque?")" OnClick="() => CobrarAsync(c)" />
+                                    <BotonIcono Icono="ban" Tooltip="@L("Anular cheque")" Variante="peligro" OnClick="() => IniciarAnulacion(c)" />
                                 </div>
                                 </AuthorizeView>
                             }
@@ -166,11 +166,11 @@
                         <tr class="fila-subdetalle">
                             <td colspan="8">
                                 <div class="fila-edicion">
-                                    <label for="motivo-cheque">Motivo de la anulación del cheque @c.Numero</label>
-                                    <input id="motivo-cheque" maxlength="200" placeholder="Ej.: cheque impreso con error" @bind="motivoAnulacion" @bind:event="oninput" />
-                                    <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Anular cheque" Variante="peligro"
+                                    <label for="motivo-cheque">@L("Motivo de la anulación del cheque {0}", c.Numero)</label>
+                                    <input id="motivo-cheque" maxlength="200" placeholder="@L("Ej.: cheque impreso con error")" @bind="motivoAnulacion" @bind:event="oninput" />
+                                    <BotonIcono Icono="ban" Tooltip="@L("Confirmar anulación")" Etiqueta="@L("Anular cheque")" Variante="peligro"
                                                 Deshabilitado="motivoAnulacion.Trim().Length < 5 || guardando" OnClick="AnularAsync" />
-                                    <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => anulando = null" />
+                                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" OnClick="() => anulando = null" />
                                 </div>
                                 <small class="texto-ayuda">@TextoAnulacion(c)</small>
                             </td>
@@ -220,20 +220,20 @@
         catch (Exception ex) { MostrarError(ex); }
     }
 
-    private static string NombreTipo(string tipo) => tipo switch { "P" => "Proveedor", "N" => "Nómina", _ => "Libre" };
+    private static string NombreTipo(string tipo) => tipo switch { "P" => L("Proveedor"), "N" => L("Nómina"), _ => L("Libre") };
 
     private static string NombreEstado(Cheque c) => c.EstadoCheque switch
     {
-        "C" => c.FechaCobro is null ? "Cobrado" : $"Cobrado {c.FechaCobro:dd/MM}",
-        "A" => "Anulado",
-        _ => "Emitido"
+        "C" => c.FechaCobro is null ? L("Cobrado") : L("Cobrado {0:dd/MM}", c.FechaCobro),
+        "A" => L("Anulado"),
+        _ => L("Emitido")
     };
 
     private static string TextoAnulacion(Cheque c) => c.Tipo switch
     {
-        "P" => "Se anula su póliza y el saldo vuelve a la cuota del proveedor.",
-        "N" => "Se anula su póliza y el empleado vuelve a quedar pendiente de pago en la nómina.",
-        _ => "Se anula su póliza."
+        "P" => L("Se anula su póliza y el saldo vuelve a la cuota del proveedor."),
+        "N" => L("Se anula su póliza y el empleado vuelve a quedar pendiente de pago en la nómina."),
+        _ => L("Se anula su póliza.")
     };
 
     private async Task<int?> ObtenerUsuIdActualAsync() =>
@@ -290,7 +290,7 @@
         if (nuevo is null) return;
         if (nuevo.CbcId == 0 || nuevo.BmpId == 0 || nuevo.CtaId == 0 || nuevo.Valor <= 0 || string.IsNullOrWhiteSpace(nuevo.Beneficiario))
         {
-            mensaje = "Complete la chequera, el beneficiario, el valor, el motivo y la cuenta contable.";
+            mensaje = L("Complete la chequera, el beneficiario, el valor, el motivo y la cuenta contable.");
             esMensajeError = true;
             return;
         }
@@ -299,7 +299,7 @@
         {
             nuevo.Beneficiario = nuevo.Beneficiario.Trim();
             await BancosRepository.EmitirChequeLibreAsync(nuevo, await ObtenerUsuIdActualAsync());
-            MostrarOk($"Cheque emitido a {nuevo.Beneficiario} por Q {nuevo.Valor:N2}, con su póliza.");
+            MostrarOk(L("Cheque emitido a {0} por Q {1:N2}, con su póliza.", nuevo.Beneficiario, nuevo.Valor));
             nuevo = null;
             await ConsultarAsync();
         }
@@ -312,7 +312,7 @@
         try
         {
             await BancosRepository.CobrarChequeAsync(c.BceId, null, await ObtenerUsuIdActualAsync());
-            MostrarOk($"Cheque {c.Numero} marcado como cobrado; ya no se puede anular.");
+            MostrarOk(L("Cheque {0} marcado como cobrado; ya no se puede anular.", c.Numero));
             await ConsultarAsync();
         }
         catch (Exception ex) { MostrarError(ex); }
@@ -332,7 +332,7 @@
         try
         {
             await BancosRepository.AnularChequeAsync(anulando.BceId, motivoAnulacion.Trim(), await ObtenerUsuIdActualAsync());
-            MostrarOk($"Cheque {anulando.Numero} anulado junto con su póliza.");
+            MostrarOk(L("Cheque {0} anulado junto con su póliza.", anulando.Numero));
             anulando = null;
             await ConsultarAsync();
         }

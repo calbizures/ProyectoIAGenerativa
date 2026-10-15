@@ -10,20 +10,20 @@
 @inject Erp.Data.Bancos.IBancosRepository BancosRepository
 @inject NavigationManager NavigationManager
 
-<PageTitle>Caja</PageTitle>
+<PageTitle>@L("Caja")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Caja</h1>
-    <p>Apertura, corte, cierre y depósitos de las cajas receptoras por sucursal.</p>
+    <h1>@L("Caja")</h1>
+    <p>@L("Apertura, corte, cierre y depósitos de las cajas receptoras por sucursal.")</p>
 </div>
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
 }
 
 <div class="barra-filtros">
-    <label class="filtro-campo" for="caja-sucursal">Sucursal</label>
+    <label class="filtro-campo" for="caja-sucursal">@L("Sucursal")</label>
     <select id="caja-sucursal" @bind="sucIdSeleccionada" @bind:after="CambiarSucursalAsync">
         @foreach (var suc in sucursales)
         {
@@ -37,15 +37,15 @@
 @if (pestanaActiva == "apertura")
 {
     <div class="tarjeta doc-seccion">
-        <p class="doc-seccion-titulo"><Icono Nombre="wallet" Tamano="15" /> Cajas abiertas</p>
+        <p class="doc-seccion-titulo"><Icono Nombre="wallet" Tamano="15" /> @L("Cajas abiertas")</p>
         <table class="tabla-datos">
             <thead>
-                <tr><th>Caja receptora</th><th>Fecha apertura</th><th class="num">Monto inicial</th><th>Usuario</th><th class="col-acciones">Acciones</th></tr>
+                <tr><th>@L("Caja receptora")</th><th>@L("Fecha apertura")</th><th class="num">@L("Monto inicial")</th><th>@L("Usuario")</th><th class="col-acciones">@L("Acciones")</th></tr>
             </thead>
             <tbody>
                 @if (aperturasActivas.Count == 0)
                 {
-                    <tr><td colspan="5"><div class="doc-tabla-vacia">No hay cajas abiertas en esta sucursal.</div></td></tr>
+                    <tr><td colspan="5"><div class="doc-tabla-vacia">@L("No hay cajas abiertas en esta sucursal.")</div></td></tr>
                 }
                 @foreach (var a in aperturasActivas)
                 {
@@ -55,7 +55,7 @@
                         <td class="num">@a.PcaMontoInicial.ToString("N2")</td>
                         <td>@(a.UsuarioApertura ?? "—")</td>
                         <td class="col-acciones">
-                            <BotonIcono Icono="clipboard-list" Tooltip="Ir al corte de caja" Etiqueta="Corte" OnClick="() => IrACorteAsync(a.PcaId)" />
+                            <BotonIcono Icono="clipboard-list" Tooltip="@L("Ir al corte de caja")" Etiqueta="@L("Corte")" OnClick="() => IrACorteAsync(a.PcaId)" />
                         </td>
                     </tr>
                 }
@@ -64,21 +64,21 @@
     </div>
 
     <div class="tarjeta doc-seccion">
-        <p class="doc-seccion-titulo"><Icono Nombre="plus" Tamano="15" /> Abrir caja</p>
+        <p class="doc-seccion-titulo"><Icono Nombre="plus" Tamano="15" /> @L("Abrir caja")</p>
         @if (cajasDisponiblesParaAbrir.Count == 0)
         {
             <div class="doc-nota">
                 <Icono Nombre="info" Tamano="15" />
-                <span>Todas las cajas receptoras de esta sucursal ya tienen una apertura activa.</span>
+                <span>@L("Todas las cajas receptoras de esta sucursal ya tienen una apertura activa.")</span>
             </div>
         }
         else
         {
             <div class="doc-grid">
                 <div class="campo">
-                    <label for="caja-pcridparaabrir">Caja receptora</label>
+                    <label for="caja-pcridparaabrir">@L("Caja receptora")</label>
                     <select id="caja-pcridparaabrir" @bind="pcrIdParaAbrir">
-                        <option value="0">Seleccione...</option>
+                        <option value="0">@L("Seleccione...")</option>
                         @foreach (var c in cajasDisponiblesParaAbrir)
                         {
                             <option value="@c.PcrId">@c.PcrDescripcion</option>
@@ -86,12 +86,12 @@
                     </select>
                 </div>
                 <div class="campo">
-                    <label for="caja-montoinicialapertura">Monto inicial</label>
+                    <label for="caja-montoinicialapertura">@L("Monto inicial")</label>
                     <input id="caja-montoinicialapertura" type="number" step="0.01" min="0" @bind="montoInicialApertura" />
                 </div>
             </div>
             <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Abrir caja" Etiqueta="Abrir caja" Variante="primario" OnClick="AbrirCajaAsync" />
+                <BotonIcono Icono="save" Tooltip="@L("Abrir caja")" Etiqueta="@L("Abrir caja")" Variante="primario" OnClick="AbrirCajaAsync" />
             </div>
         }
     </div>
@@ -103,9 +103,9 @@ else if (pestanaActiva == "corte")
     <div class="tarjeta doc-seccion">
         <div class="doc-grid">
             <div class="campo">
-                <label for="caja-pcaidseleccionada">Caja abierta</label>
+                <label for="caja-pcaidseleccionada">@L("Caja abierta")</label>
                 <select id="caja-pcaidseleccionada" @bind="pcaIdSeleccionada" @bind:after="CargarCorteAsync">
-                    <option value="0">Seleccione...</option>
+                    <option value="0">@L("Seleccione...")</option>
                     @foreach (var a in aperturasActivas)
                     {
                         <option value="@a.PcaId">@a.PcrDescripcion — @a.PcaFechaApertura.ToString("dd/MM/yyyy HH:mm")</option>
@@ -120,41 +120,41 @@ else if (pestanaActiva == "corte")
     {
         <div class="estado-vacio">
             <Icono Nombre="wallet" Tamano="28" />
-            <p><strong>No hay cajas abiertas en esta sucursal.</strong></p>
-            <p>Abra una caja en la pestaña Apertura para poder hacer su corte y cierre.</p>
+            <p><strong>@L("No hay cajas abiertas en esta sucursal.")</strong></p>
+            <p>@L("Abra una caja en la pestaña Apertura para poder hacer su corte y cierre.")</p>
         </div>
     }
     else if (pcaIdSeleccionada == 0)
     {
         <div class="estado-vacio">
             <Icono Nombre="clipboard-list" Tamano="28" />
-            <p>Seleccione la caja abierta para ver el teórico y capturar el conteo físico.</p>
+            <p>@L("Seleccione la caja abierta para ver el teórico y capturar el conteo físico.")</p>
         </div>
     }
     else
     {
         <div class="tarjeta doc-seccion">
-            <p class="doc-seccion-titulo"><Icono Nombre="banknote" Tamano="15" /> Efectivo — conteo físico</p>
+            <p class="doc-seccion-titulo"><Icono Nombre="banknote" Tamano="15" /> @L("Efectivo — conteo físico")</p>
             <table class="doc-tabla">
-                <thead><tr><th>Denominación</th><th class="num">Cantidad</th><th class="num">Subtotal</th></tr></thead>
+                <thead><tr><th>@L("Denominación")</th><th class="num">@L("Cantidad")</th><th class="num">@L("Subtotal")</th></tr></thead>
                 <tbody>
                     @foreach (var d in desglose)
                     {
                         <tr>
-                            <td>@(d.TipoDenominacion == "B" ? "Billete" : "Moneda") de Q@(d.Denominacion.ToString("N2"))</td>
+                            <td>@L("{0} de Q{1}", d.TipoDenominacion == "B" ? L("Billete") : L("Moneda"), d.Denominacion.ToString("N2"))</td>
                             <td class="num"><input type="number" min="0" @bind="d.Cantidad" /></td>
                             <td class="num">Q@((d.Denominacion * d.Cantidad).ToString("N2"))</td>
                         </tr>
                     }
                 </tbody>
             </table>
-            <div class="doc-totales-nota">Total efectivo contado: Q@(TotalEfectivoFisico.ToString("N2"))</div>
+            <div class="doc-totales-nota">@L("Total efectivo contado: Q{0}", TotalEfectivoFisico.ToString("N2"))</div>
         </div>
 
         <div class="tarjeta doc-seccion">
-            <p class="doc-seccion-titulo"><Icono Nombre="credit-card" Tamano="15" /> Otras formas — teórico vs. físico</p>
+            <p class="doc-seccion-titulo"><Icono Nombre="credit-card" Tamano="15" /> @L("Otras formas — teórico vs. físico")</p>
             <table class="doc-tabla">
-                <thead><tr><th>Forma de pago</th><th class="num">Teórico</th><th class="num">Físico contado</th></tr></thead>
+                <thead><tr><th>@L("Forma de pago")</th><th class="num">@L("Teórico")</th><th class="num">@L("Físico contado")</th></tr></thead>
                 <tbody>
                     @foreach (var f in corteFormas.Where(f => f.Descripcion != "Efectivo"))
                     {
@@ -169,42 +169,41 @@ else if (pestanaActiva == "corte")
         </div>
 
         <div class="tarjeta doc-seccion">
-            <p class="doc-seccion-titulo"><Icono Nombre="calculator" Tamano="15" /> Cuadre de caja</p>
+            <p class="doc-seccion-titulo"><Icono Nombre="calculator" Tamano="15" /> @L("Cuadre de caja")</p>
             <div class="doc-totales-envoltorio">
             <div class="doc-totales">
                 @if (cuadre is not null)
                 {
-                    <div class="doc-totales-fila"><span>Monto inicial (fondo)</span><span>Q@(cuadre.MontoInicial.ToString("N2"))</span></div>
-                    <div class="doc-totales-fila"><span>+ Ventas y cobros en efectivo</span><span>Q@(cuadre.EfectivoCobrado.ToString("N2"))</span></div>
-                    <div class="doc-totales-fila"><span>− Depósitos al banco</span><span>Q@(cuadre.Depositos.ToString("N2"))</span></div>
-                    <div class="doc-totales-fila"><span>+ Cheques</span><span>Q@(cuadre.Cheques.ToString("N2"))</span></div>
-                    <div class="doc-totales-fila"><span>+ Tarjetas</span><span>Q@(cuadre.Tarjetas.ToString("N2"))</span></div>
+                    <div class="doc-totales-fila"><span>@L("Monto inicial (fondo)")</span><span>Q@(cuadre.MontoInicial.ToString("N2"))</span></div>
+                    <div class="doc-totales-fila"><span>@L("+ Ventas y cobros en efectivo")</span><span>Q@(cuadre.EfectivoCobrado.ToString("N2"))</span></div>
+                    <div class="doc-totales-fila"><span>@L("− Depósitos al banco")</span><span>Q@(cuadre.Depositos.ToString("N2"))</span></div>
+                    <div class="doc-totales-fila"><span>@L("+ Cheques")</span><span>Q@(cuadre.Cheques.ToString("N2"))</span></div>
+                    <div class="doc-totales-fila"><span>@L("+ Tarjetas")</span><span>Q@(cuadre.Tarjetas.ToString("N2"))</span></div>
                     @if (cuadre.OtrasFormas != 0)
                     {
-                        <div class="doc-totales-fila"><span>+ Otras formas (transferencias)</span><span>Q@(cuadre.OtrasFormas.ToString("N2"))</span></div>
+                        <div class="doc-totales-fila"><span>@L("+ Otras formas (transferencias)")</span><span>Q@(cuadre.OtrasFormas.ToString("N2"))</span></div>
                     }
                 }
-                <div class="doc-totales-fila"><span><strong>Teórico total</strong></span><span><strong>Q@(TeoricoTotal.ToString("N2"))</strong></span></div>
-                <div class="doc-totales-fila"><span>Físico total contado</span><span>Q@(FisicoTotal.ToString("N2"))</span></div>
-                <div class="doc-totales-total"><span>Diferencia</span><span>Q@(Diferencia.ToString("N2"))</span></div>
+                <div class="doc-totales-fila"><span><strong>@L("Teórico total")</strong></span><span><strong>Q@(TeoricoTotal.ToString("N2"))</strong></span></div>
+                <div class="doc-totales-fila"><span>@L("Físico total contado")</span><span>Q@(FisicoTotal.ToString("N2"))</span></div>
+                <div class="doc-totales-total"><span>@L("Diferencia")</span><span>Q@(Diferencia.ToString("N2"))</span></div>
             </div>
             </div>
             @if (Cuadra)
             {
-                <p class="mensaje-ok" role="status">La caja cuadra@(ToleranciaCierre > 0 ? $" (tolerancia permitida Q{ToleranciaCierre:N2})" : "").</p>
+                <p class="mensaje-ok" role="status">La caja cuadra@(ToleranciaCierre > 0 ? L(" (tolerancia permitida Q{0:N2})", ToleranciaCierre) : "").</p>
             }
             else
             {
                 <p class="mensaje-error" role="alert">
-                    La caja no cuadra: hay una diferencia de Q@(Diferencia.ToString("N2")) y la tolerancia permitida es Q@(ToleranciaCierre.ToString("N2")).
-                    Revise el conteo físico y los depósitos antes de cerrar.
+                    @L("La caja no cuadra: hay una diferencia de Q{0} y la tolerancia permitida es Q{1}. Revise el conteo físico y los depósitos antes de cerrar.", Diferencia.ToString("N2"), ToleranciaCierre.ToString("N2"))
                 </p>
             }
         </div>
 
         <div class="acciones-fila">
-            <BotonIcono Icono="save" Tooltip="Guardar conteo" Etiqueta="Guardar conteo" OnClick="GuardarConteoAsync" />
-            <BotonIcono Icono="check-check" Tooltip="Cerrar caja" Etiqueta="Cerrar caja" Variante="primario" Deshabilitado="!Cuadra" OnClick="CerrarCajaAsync" />
+            <BotonIcono Icono="save" Tooltip="@L("Guardar conteo")" Etiqueta="@L("Guardar conteo")" OnClick="GuardarConteoAsync" />
+            <BotonIcono Icono="check-check" Tooltip="@L("Cerrar caja")" Etiqueta="@L("Cerrar caja")" Variante="primario" Deshabilitado="!Cuadra" OnClick="CerrarCajaAsync" />
         </div>
     }
 }
@@ -213,12 +212,12 @@ else if (pestanaActiva == "depositos")
     <div class="tarjeta doc-seccion">
         <div class="doc-grid">
             <div class="campo">
-                <label for="caja-pcaidparadeposito">Apertura de caja</label>
+                <label for="caja-pcaidparadeposito">@L("Apertura de caja")</label>
                 <select id="caja-pcaidparadeposito" @bind="pcaIdParaDeposito" @bind:after="CargarDepositosAsync">
-                    <option value="0">Seleccione...</option>
+                    <option value="0">@L("Seleccione...")</option>
                     @foreach (var a in aperturasRecientes)
                     {
-                        <option value="@a.PcaId">@a.PcrDescripcion — @a.PcaFechaApertura.ToString("dd/MM/yyyy")@(a.PcaEstado == "C" ? " (cerrada)" : "")</option>
+                        <option value="@a.PcaId">@a.PcrDescripcion — @a.PcaFechaApertura.ToString("dd/MM/yyyy")@(a.PcaEstado == "C" ? L(" (cerrada)") : "")</option>
                     }
                 </select>
             </div>
@@ -231,48 +230,48 @@ else if (pestanaActiva == "depositos")
             <Icono Nombre="landmark" Tamano="28" />
             @if (aperturasRecientes.Count == 0)
             {
-                <p><strong>No hay aperturas de caja recientes en esta sucursal.</strong></p>
-                <p>Los depósitos se registran contra una apertura de caja.</p>
+                <p><strong>@L("No hay aperturas de caja recientes en esta sucursal.")</strong></p>
+                <p>@L("Los depósitos se registran contra una apertura de caja.")</p>
             }
             else
             {
-                <p>Seleccione una apertura de caja para registrar o consultar sus depósitos.</p>
+                <p>@L("Seleccione una apertura de caja para registrar o consultar sus depósitos.")</p>
             }
         </div>
     }
     else
     {
         <div class="tarjeta doc-seccion">
-            <p class="doc-seccion-titulo"><Icono Nombre="landmark" Tamano="15" /> Nuevo depósito</p>
+            <p class="doc-seccion-titulo"><Icono Nombre="landmark" Tamano="15" /> @L("Nuevo depósito")</p>
             <div class="doc-grid">
                 <div class="campo">
-                    <label for="caja-deposito-bcbid">Cuenta bancaria</label>
+                    <label for="caja-deposito-bcbid">@L("Cuenta bancaria")</label>
                     <select id="caja-deposito-bcbid" @bind="nuevoDeposito.BcbId">
-                        <option value="0">Seleccione...</option>
+                        <option value="0">@L("Seleccione...")</option>
                         @foreach (var c in cuentasBancarias)
                         {
                             <option value="@c.BcbId">@c.Banco — @c.NumeroCuenta@(string.IsNullOrWhiteSpace(c.Descripcion) ? "" : $" · {c.Descripcion}")</option>
                         }
                     </select>
                 </div>
-                <div class="campo"><label for="caja-deposito-fecha">Fecha</label><input id="caja-deposito-fecha" type="date" @bind="nuevoDeposito.Fecha" /></div>
-                <div class="campo"><label for="caja-deposito-valor">Valor</label><input id="caja-deposito-valor" type="number" step="0.01" min="0" @bind="nuevoDeposito.Valor" /></div>
-                <div class="campo"><label for="caja-deposito-numeroboleta">Número de boleta</label><input id="caja-deposito-numeroboleta" @bind="nuevoDeposito.NumeroBoleta" /></div>
-                <div class="campo"><label for="caja-deposito-observaciones">Observaciones</label><input id="caja-deposito-observaciones" @bind="nuevoDeposito.Observaciones" /></div>
+                <div class="campo"><label for="caja-deposito-fecha">@L("Fecha")</label><input id="caja-deposito-fecha" type="date" @bind="nuevoDeposito.Fecha" /></div>
+                <div class="campo"><label for="caja-deposito-valor">@L("Valor")</label><input id="caja-deposito-valor" type="number" step="0.01" min="0" @bind="nuevoDeposito.Valor" /></div>
+                <div class="campo"><label for="caja-deposito-numeroboleta">@L("Número de boleta")</label><input id="caja-deposito-numeroboleta" @bind="nuevoDeposito.NumeroBoleta" /></div>
+                <div class="campo"><label for="caja-deposito-observaciones">@L("Observaciones")</label><input id="caja-deposito-observaciones" @bind="nuevoDeposito.Observaciones" /></div>
             </div>
             <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Registrar depósito" Etiqueta="Registrar depósito" Variante="primario" OnClick="RegistrarDepositoAsync" />
+                <BotonIcono Icono="save" Tooltip="@L("Registrar depósito")" Etiqueta="@L("Registrar depósito")" Variante="primario" OnClick="RegistrarDepositoAsync" />
             </div>
         </div>
 
         <div class="tarjeta doc-seccion">
-            <p class="doc-seccion-titulo"><Icono Nombre="clipboard-list" Tamano="15" /> Depósitos registrados</p>
+            <p class="doc-seccion-titulo"><Icono Nombre="clipboard-list" Tamano="15" /> @L("Depósitos registrados")</p>
             <table class="tabla-datos">
-                <thead><tr><th>Fecha</th><th>Cuenta bancaria</th><th class="num">Valor</th><th>Boleta</th><th>Observaciones</th></tr></thead>
+                <thead><tr><th>@L("Fecha")</th><th>@L("Cuenta bancaria")</th><th class="num">@L("Valor")</th><th>@L("Boleta")</th><th>@L("Observaciones")</th></tr></thead>
                 <tbody>
                     @if (depositos.Count == 0)
                     {
-                        <tr><td colspan="5"><div class="doc-tabla-vacia">Sin depósitos registrados.</div></td></tr>
+                        <tr><td colspan="5"><div class="doc-tabla-vacia">@L("Sin depósitos registrados.")</div></td></tr>
                     }
                     @foreach (var d in depositos)
                     {
@@ -292,7 +291,7 @@ else if (pestanaActiva == "depositos")
 else if (pestanaActiva == "cajasreceptoras")
 {
     <div class="barra-herramientas">
-        <BotonIcono Icono="plus" Tooltip="Nueva caja receptora" Etiqueta="Nueva caja receptora" Variante="primario" OnClick="MostrarFormularioNuevaCaja" />
+        <BotonIcono Icono="plus" Tooltip="@L("Nueva caja receptora")" Etiqueta="@L("Nueva caja receptora")" Variante="primario" OnClick="MostrarFormularioNuevaCaja" />
     </div>
 
     @if (mostrarNuevaCaja)
@@ -300,9 +299,9 @@ else if (pestanaActiva == "cajasreceptoras")
         <EditForm Model="modeloCajaReceptora" OnValidSubmit="GuardarCajaReceptoraAsync" class="panel-formulario">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label for="caja-cajareceptora-descripcion">Descripción</label><InputText id="caja-cajareceptora-descripcion" @bind-Value="modeloCajaReceptora.Descripcion" /></div>
+            <div class="campo"><label for="caja-cajareceptora-descripcion">@L("Descripción")</label><InputText id="caja-cajareceptora-descripcion" @bind-Value="modeloCajaReceptora.Descripcion" /></div>
             <div class="campo">
-                <label for="caja-cajareceptora-sucid">Sucursal</label>
+                <label for="caja-cajareceptora-sucid">@L("Sucursal")</label>
                 <InputSelect id="caja-cajareceptora-sucid" @bind-Value="modeloCajaReceptora.SucId">
                     @foreach (var suc in sucursales)
                     {
@@ -311,14 +310,14 @@ else if (pestanaActiva == "cajasreceptoras")
                 </InputSelect>
             </div>
             <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
-                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevaCaja = false" />
+                <BotonIcono Icono="save" Tooltip="@L("Guardar")" Etiqueta="@L("Guardar")" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => mostrarNuevaCaja = false" />
             </div>
         </EditForm>
     }
 
     <table class="tabla-datos">
-        <thead><tr><th>Descripción</th><th>Sucursal</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+        <thead><tr><th>@L("Descripción")</th><th>@L("Sucursal")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr></thead>
         <tbody>
             @foreach (var c in todasLasCajasReceptoras)
             {
@@ -334,11 +333,11 @@ else if (pestanaActiva == "cajasreceptoras")
                                 }
                             </select>
                         </td>
-                        <td class="col-estado"><span class="estado-badge @(c.PcrEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.PcrEstado == "A" ? "Activa" : "Inactiva")</span></td>
+                        <td class="col-estado"><span class="estado-badge @(c.PcrEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.PcrEstado == "A" ? L("Activa") : L("Inactiva"))</span></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
-                                <BotonIcono Icono="save" Tooltip="Guardar cambios" Variante="primario" OnClick="GuardarEdicionCajaReceptoraAsync" />
-                                <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => edicionCajaReceptoraId = null" />
+                                <BotonIcono Icono="save" Tooltip="@L("Guardar cambios")" Variante="primario" OnClick="GuardarEdicionCajaReceptoraAsync" />
+                                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" OnClick="() => edicionCajaReceptoraId = null" />
                             </div>
                         </td>
                     </tr>
@@ -348,13 +347,13 @@ else if (pestanaActiva == "cajasreceptoras")
                     <tr>
                         <td>@c.PcrDescripcion</td>
                         <td>@c.SucDescripcion</td>
-                        <td class="col-estado"><span class="estado-badge @(c.PcrEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.PcrEstado == "A" ? "Activa" : "Inactiva")</span></td>
+                        <td class="col-estado"><span class="estado-badge @(c.PcrEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.PcrEstado == "A" ? L("Activa") : L("Inactiva"))</span></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
-                                <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => IniciarEdicionCajaReceptora(c)" />
+                                <BotonIcono Icono="pencil" Tooltip="@L("Editar")" OnClick="() => IniciarEdicionCajaReceptora(c)" />
                                 @if (c.PcrEstado == "A")
                                 {
-                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar caja" Confirmacion="¿Desactivar la caja receptora?" Variante="peligro" OnClick="() => DesactivarCajaReceptoraAsync(c)" />
+                                    <BotonIcono Icono="trash-2" Tooltip="@L("Desactivar caja")" Confirmacion="@L("¿Desactivar la caja receptora?")" Variante="peligro" OnClick="() => DesactivarCajaReceptoraAsync(c)" />
                                 }
                             </div>
                         </td>
@@ -474,7 +473,7 @@ else if (pestanaActiva == "cajasreceptoras")
     {
         if (pcrIdParaAbrir <= 0)
         {
-            mensaje = "Seleccione la caja receptora a abrir.";
+            mensaje = L("Seleccione la caja receptora a abrir.");
             esMensajeError = true;
             return;
         }
@@ -483,7 +482,7 @@ else if (pestanaActiva == "cajasreceptoras")
         {
             var usuId = await ObtenerUsuIdActualAsync();
             await CajaRepository.AbrirCajaAsync(pcrIdParaAbrir, montoInicialApertura, usuId);
-            mensaje = "Caja abierta correctamente.";
+            mensaje = L("Caja abierta correctamente.");
             esMensajeError = false;
             pcrIdParaAbrir = 0;
             montoInicialApertura = 0;
@@ -535,7 +534,7 @@ else if (pestanaActiva == "cajasreceptoras")
                 .Select(f => new CorteFormaFisico { PftId = f.PftId, MontoFisico = f.MontoFisico }).ToList();
             await CajaRepository.GuardarCorteFormaAsync(pcaIdSeleccionada, otrasFormas, usuId);
 
-            mensaje = "Conteo guardado.";
+            mensaje = L("Conteo guardado.");
             esMensajeError = false;
         }
         catch (Exception ex)
@@ -553,7 +552,7 @@ else if (pestanaActiva == "cajasreceptoras")
             await GuardarConteoAsync();
             var usuId = await ObtenerUsuIdActualAsync();
             await CajaRepository.CerrarCajaAsync(pcaIdSeleccionada, usuId);
-            mensaje = $"Caja cerrada. Diferencia: Q{Diferencia:N2}.";
+            mensaje = L("Caja cerrada. Diferencia: Q{0:N2}.", Diferencia);
             esMensajeError = false;
             pcaIdSeleccionada = 0;
             desglose.Clear();
@@ -584,7 +583,7 @@ else if (pestanaActiva == "cajasreceptoras")
         if (pcaIdParaDeposito <= 0) return;
         if (nuevoDeposito.BcbId <= 0 || nuevoDeposito.Valor <= 0)
         {
-            mensaje = "Seleccione la cuenta bancaria e indique un valor mayor a cero.";
+            mensaje = L("Seleccione la cuenta bancaria e indique un valor mayor a cero.");
             esMensajeError = true;
             return;
         }
@@ -595,7 +594,7 @@ else if (pestanaActiva == "cajasreceptoras")
             await CajaRepository.InsertarDepositoAsync(
                 pcaIdParaDeposito, nuevoDeposito.BcbId, nuevoDeposito.Fecha, nuevoDeposito.Valor,
                 nuevoDeposito.NumeroBoleta, nuevoDeposito.Observaciones, usuId);
-            mensaje = "Depósito registrado.";
+            mensaje = L("Depósito registrado.");
             esMensajeError = false;
             await CargarDepositosAsync();
         }
@@ -622,7 +621,7 @@ else if (pestanaActiva == "cajasreceptoras")
             var usuId = await ObtenerUsuIdActualAsync();
             await CajaRepository.InsertarCajaReceptoraAsync(modeloCajaReceptora.Descripcion, modeloCajaReceptora.SucId, usuId);
             mostrarNuevaCaja = false;
-            mensaje = "Caja receptora creada.";
+            mensaje = L("Caja receptora creada.");
             esMensajeError = false;
             await CargarCajasReceptorasAsync();
             await CargarSucursalAsync();
@@ -651,7 +650,7 @@ else if (pestanaActiva == "cajasreceptoras")
             var usuId = await ObtenerUsuIdActualAsync();
             await CajaRepository.ActualizarCajaReceptoraAsync(edicionCajaReceptoraId.Value, modeloCajaReceptora.Descripcion, modeloCajaReceptora.SucId, usuId);
             edicionCajaReceptoraId = null;
-            mensaje = "Cambios guardados.";
+            mensaje = L("Cambios guardados.");
             esMensajeError = false;
             await CargarCajasReceptorasAsync();
             await CargarSucursalAsync();
@@ -669,7 +668,7 @@ else if (pestanaActiva == "cajasreceptoras")
         {
             var usuId = await ObtenerUsuIdActualAsync();
             await CajaRepository.EliminarCajaReceptoraAsync(caja.PcrId, usuId);
-            mensaje = "Caja receptora desactivada.";
+            mensaje = L("Caja receptora desactivada.");
             esMensajeError = false;
             await CargarCajasReceptorasAsync();
             await CargarSucursalAsync();

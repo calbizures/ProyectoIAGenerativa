@@ -3,19 +3,19 @@
 
 @if (Cuentas.Count == 0)
 {
-    <p class="estado-vacio">No hay cuentas con saldo o movimientos en ese rango.</p>
+    <p class="estado-vacio">@L("No hay cuentas con saldo o movimientos en ese rango.")</p>
 }
 else
 {
     @foreach (var c in Cuentas)
     {
         <section class="mayor-cuenta">
-            <h3><span class="col-codigo">@c.Codigo</span> @c.Cuenta <small class="texto-tenue">(@(c.Naturaleza == "D" ? "deudora" : "acreedora"))</small></h3>
-            <div class="tabla-desplazable" tabindex="0" aria-label="Movimientos de @c.Cuenta">
+            <h3><span class="col-codigo">@c.Codigo</span> @c.Cuenta <small class="texto-tenue">(@(c.Naturaleza == "D" ? L("deudora") : L("acreedora")))</small></h3>
+            <div class="tabla-desplazable" tabindex="0" aria-label="@L("Movimientos de {0}", c.Cuenta)">
                 <table class="tabla-datos tabla-contable">
-                    <thead><tr><th class="col-fecha">Fecha</th><th class="col-estado">Póliza</th><th>Concepto</th><th class="num col-monto">Debe</th><th class="num col-monto">Haber</th><th class="num col-monto">Saldo</th></tr></thead>
+                    <thead><tr><th class="col-fecha">@L("Fecha")</th><th class="col-estado">@L("Póliza")</th><th>@L("Concepto")</th><th class="num col-monto">@L("Debe")</th><th class="num col-monto">@L("Haber")</th><th class="num col-monto">@L("Saldo")</th></tr></thead>
                     <tbody>
-                        <tr class="fila-grupo"><td colspan="5">Saldo inicial</td><td class="num">@c.SaldoInicial.ToString("N2")</td></tr>
+                        <tr class="fila-grupo"><td colspan="5">@L("Saldo inicial")</td><td class="num">@c.SaldoInicial.ToString("N2")</td></tr>
                         @foreach (var m in c.Movimientos)
                         {
                             <tr>
@@ -23,7 +23,7 @@ else
                                 <td class="col-estado">
                                     @if (AlVerPoliza.HasDelegate)
                                     {
-                                        <button type="button" class="boton-enlace" title="Ver la póliza" @onclick="() => AlVerPoliza.InvokeAsync(m.AsiId)">#@m.AsiId</button>
+                                        <button type="button" class="boton-enlace" title="@L("Ver la póliza")" @onclick="() => AlVerPoliza.InvokeAsync(m.AsiId)">#@m.AsiId</button>
                                     }
                                     else
                                     {
@@ -38,7 +38,7 @@ else
                         }
                     </tbody>
                     <tfoot>
-                        <tr class="fila-total"><td colspan="3">Movimiento del período y saldo final</td><td class="num">@c.Debe.ToString("N2")</td><td class="num">@c.Haber.ToString("N2")</td><td class="num">@c.SaldoFinal.ToString("N2")</td></tr>
+                        <tr class="fila-total"><td colspan="3">@L("Movimiento del período y saldo final")</td><td class="num">@c.Debe.ToString("N2")</td><td class="num">@c.Haber.ToString("N2")</td><td class="num">@c.SaldoFinal.ToString("N2")</td></tr>
                     </tfoot>
                 </table>
             </div>

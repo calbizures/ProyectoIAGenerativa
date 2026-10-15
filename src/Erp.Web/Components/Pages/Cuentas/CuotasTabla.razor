@@ -4,7 +4,7 @@
 
 <table class="tabla-datos">
     <thead>
-        <tr><th class="num">Cuota</th><th>Vencimiento</th><th class="num">Valor</th><th class="num">Saldo</th><th>Estado</th>
+        <tr><th class="num">@L("Cuota")</th><th>@L("Vencimiento")</th><th class="num">@L("Valor")</th><th class="num">@L("Saldo")</th><th>@L("Estado")</th>
             @if (OnElegir.HasDelegate) { <th class="col-acciones"></th> }
         </tr>
     </thead>
@@ -16,13 +16,13 @@
                 <td class="@(c.Saldo > 0 && c.Vencimiento < DateTime.Today ? "antiguedad-vencido" : "")">@c.Vencimiento.ToString("dd/MM/yyyy")</td>
                 <td class="num">@c.Valor.ToString("N2")</td>
                 <td class="num">@c.Saldo.ToString("N2")</td>
-                <td><span class="estado-badge @(c.Saldo > 0 ? "estado-badge-inactivo" : "estado-badge-activo")">@(c.Saldo > 0 ? (c.Vencimiento < DateTime.Today ? $"Vencida ({(DateTime.Today - c.Vencimiento).Days} días)" : "Pendiente") : "Pagada")</span></td>
+                <td><span class="estado-badge @(c.Saldo > 0 ? "estado-badge-inactivo" : "estado-badge-activo")">@(c.Saldo > 0 ? (c.Vencimiento < DateTime.Today ? L("Vencida ({0} días)", (DateTime.Today - c.Vencimiento).Days) : L("Pendiente")) : L("Pagada"))</span></td>
                 @if (OnElegir.HasDelegate)
                 {
                     <td class="col-acciones">
                         @if (c.Saldo > 0)
                         {
-                            <BotonIcono Icono="check-circle" Tooltip="@(EsCliente ? "Cobrar esta cuota" : "Pagar esta cuota")" Etiqueta="@(EsCliente ? "Cobrar" : "Pagar")" OnClick="() => OnElegir.InvokeAsync(c.Id)" />
+                            <BotonIcono Icono="check-circle" Tooltip="@(EsCliente ? L("Cobrar esta cuota") : L("Pagar esta cuota"))" Etiqueta="@(EsCliente ? L("Cobrar") : L("Pagar"))" OnClick="() => OnElegir.InvokeAsync(c.Id)" />
                         }
                     </td>
                 }

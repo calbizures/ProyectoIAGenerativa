@@ -12,14 +12,14 @@
 @inject ICajaRepository CajaRepository
 @inject Erp.Data.Pagos.IPagosRepository PagosRepository
 
-<PageTitle>Pagos a proveedores</PageTitle>
+<PageTitle>@L("Pagos a proveedores")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Pagos a proveedores</h1>
-    <p>Elija el proveedor y pague una factura completa, varias cuotas o todo su saldo: indique el monto y se aplica de la cuota más antigua a la más reciente (o marque las que paga). Pague con cheque o registre una transferencia ya hecha en el banco, con su número de autorización y el comprobante adjunto. Cada pago genera su póliza (Proveedores / Bancos) y se anula abajo, en Cheques emitidos o en Transferencias registradas.</p>
+    <h1>@L("Pagos a proveedores")</h1>
+    <p>@L("Elija el proveedor y pague una factura completa, varias cuotas o todo su saldo: indique el monto y se aplica de la cuota más antigua a la más reciente (o marque las que paga). Pague con cheque o registre una transferencia ya hecha en el banco, con su número de autorización y el comprobante adjunto. Cada pago genera su póliza (Proveedores / Bancos) y se anula abajo, en Cheques emitidos o en Transferencias registradas.")</p>
 </div>
 
-<BorradorDocumento TDatos="BorradorPago" Clave="cxp-pagos" Nombre="un pago a proveedor"
+<BorradorDocumento TDatos="BorradorPago" Clave="cxp-pagos" Nombre="@L("un pago a proveedor")"
                    Capturar="CapturarBorrador" Describir="DescribirBorrador" Restaurar="RestaurarBorradorAsync" />
 
 @if (mensaje is not null)
@@ -33,13 +33,13 @@
         <div class="exito-contenido">
             <Icono Nombre="check-circle" Tamano="22" />
             <div>
-                <h2>Cheque @chequeEmitido.Value.Numero emitido</h2>
+                <h2>@L("Cheque {0} emitido", chequeEmitido.Value.Numero)</h2>
                 <p>Q@(chequeEmitido.Value.Monto.ToString("N2")) a @chequeEmitido.Value.Proveedor · @chequeEmitido.Value.Concepto</p>
             </div>
         </div>
         <div class="acciones-fila">
-            <BotonIcono Icono="list" Tooltip="Ver las facturas y cuotas que pagó" Etiqueta="Ver detalle" OnClick="() => VerDetalleAsync(chequeEmitido.Value.BceId)" />
-            <BotonIcono Icono="plus" Tooltip="Registrar otro pago" Etiqueta="Otro pago" OnClick="() => chequeEmitido = null" />
+            <BotonIcono Icono="list" Tooltip="@L("Ver las facturas y cuotas que pagó")" Etiqueta="@L("Ver detalle")" OnClick="() => VerDetalleAsync(chequeEmitido.Value.BceId)" />
+            <BotonIcono Icono="plus" Tooltip="@L("Registrar otro pago")" Etiqueta="@L("Otro pago")" OnClick="() => chequeEmitido = null" />
         </div>
     </section>
 }
@@ -50,41 +50,41 @@
         <div class="exito-contenido">
             <Icono Nombre="check-circle" Tamano="22" />
             <div>
-                <h2>Transferencia @transferenciaRegistrada.Value.Numero registrada</h2>
-                <p>Q@(transferenciaRegistrada.Value.Monto.ToString("N2")) a @transferenciaRegistrada.Value.Proveedor · autorización @transferenciaRegistrada.Value.Autorizacion · @transferenciaRegistrada.Value.Concepto</p>
+                <h2>@L("Transferencia {0} registrada", transferenciaRegistrada.Value.Numero)</h2>
+                <p>@L("Q{0} a {1} · autorización {2} · {3}", transferenciaRegistrada.Value.Monto.ToString("N2"), transferenciaRegistrada.Value.Proveedor, transferenciaRegistrada.Value.Autorizacion, transferenciaRegistrada.Value.Concepto)</p>
             </div>
         </div>
         <div class="acciones-fila">
-            <BotonIcono Icono="list" Tooltip="Ver las facturas y cuotas que pagó" Etiqueta="Ver detalle" OnClick="() => VerDetalleTransferenciaAsync(transferenciaRegistrada.Value.BltId)" />
-            <a class="boton-icono boton-icono-con-etiqueta" href="@UrlComprobante(transferenciaRegistrada.Value.BltId)" target="_blank" rel="noopener" title="Ver el comprobante del banco"><Icono Nombre="file-text" Tamano="16" /><span class="boton-icono-etiqueta">Comprobante</span></a>
-            <BotonIcono Icono="plus" Tooltip="Registrar otro pago" Etiqueta="Otro pago" OnClick="() => transferenciaRegistrada = null" />
+            <BotonIcono Icono="list" Tooltip="@L("Ver las facturas y cuotas que pagó")" Etiqueta="@L("Ver detalle")" OnClick="() => VerDetalleTransferenciaAsync(transferenciaRegistrada.Value.BltId)" />
+            <a class="boton-icono boton-icono-con-etiqueta" href="@UrlComprobante(transferenciaRegistrada.Value.BltId)" target="_blank" rel="noopener" title="@L("Ver el comprobante del banco")"><Icono Nombre="file-text" Tamano="16" /><span class="boton-icono-etiqueta">@L("Comprobante")</span></a>
+            <BotonIcono Icono="plus" Tooltip="@L("Registrar otro pago")" Etiqueta="@L("Otro pago")" OnClick="() => transferenciaRegistrada = null" />
         </div>
     </section>
 }
 
 <section class="tarjeta" aria-labelledby="titulo-proveedor">
-    <h2 id="titulo-proveedor">1. Proveedor</h2>
+    <h2 id="titulo-proveedor">@L("1. Proveedor")</h2>
     <SelectorTercero EsCliente="false" SoloConSaldo="true" Seleccionado="proveedor" SeleccionadoChanged="CambiarProveedorAsync" />
 </section>
 
 @if (proveedor is not null)
 {
     <section class="tarjeta" aria-labelledby="titulo-cuotas">
-        <h2 id="titulo-cuotas">2. Cuotas a pagar</h2>
+        <h2 id="titulo-cuotas">@L("2. Cuotas a pagar")</h2>
         @if (cuotas.Count == 0)
         {
-            <p class="estado-vacio">El proveedor no tiene cuotas pendientes.</p>
+            <p class="estado-vacio">@L("El proveedor no tiene cuotas pendientes.")</p>
         }
         else
         {
             <div class="panel-formulario panel-ancho">
                 <div class="campo">
-                    <label for="pag-factura">Pagar</label>
+                    <label for="pag-factura">@L("Pagar")</label>
                     <select id="pag-factura" value="@(encFiltro?.ToString() ?? "")" @onchange="CambiarFiltro">
-                        <option value="">Todo el saldo del proveedor (@Facturas.Count factura@(Facturas.Count == 1 ? "" : "s"))</option>
+                        <option value="">@L("Todo el saldo del proveedor ({0} factura{1})", Facturas.Count, Facturas.Count == 1 ? "" : "s")</option>
                         @foreach (var f in Facturas)
                         {
-                            <option value="@f.EncId">Solo @f.Documento — saldo Q@(f.Saldo.ToString("N2"))</option>
+                            <option value="@f.EncId">@L("Solo {0} — saldo Q{1}", f.Documento, f.Saldo.ToString("N2"))</option>
                         }
                     </select>
                 </div>
@@ -92,52 +92,52 @@
 
             <div class="cobro-aplicacion">
                 <div class="campo">
-                    <label for="pag-monto">Monto a pagar</label>
+                    <label for="pag-monto">@L("Monto a pagar")</label>
                     <input id="pag-monto" type="number" step="0.01" min="0" @bind="montoCheque" />
                 </div>
-                <BotonIcono Icono="check-check" Tooltip="Aplicar el monto a las cuotas más antiguas" Etiqueta="Aplicar a las más antiguas" OnClick="AplicarAntiguas" />
-                <BotonIcono Icono="wallet" Tooltip="@(encFiltro is null ? "Pagar todo el saldo del proveedor" : "Pagar la factura completa")" Etiqueta="@(encFiltro is null ? "Todo el saldo" : "Factura completa")" OnClick="MarcarTodo" />
-                <BotonIcono Icono="alert-triangle" Tooltip="Marcar todo lo vencido" Etiqueta="Todo lo vencido" OnClick="MarcarVencidas" />
-                <button type="button" class="boton-texto" @onclick="Limpiar">Limpiar</button>
+                <BotonIcono Icono="check-check" Tooltip="@L("Aplicar el monto a las cuotas más antiguas")" Etiqueta="@L("Aplicar a las más antiguas")" OnClick="AplicarAntiguas" />
+                <BotonIcono Icono="wallet" Tooltip="@(encFiltro is null ? L("Pagar todo el saldo del proveedor") : L("Pagar la factura completa"))" Etiqueta="@(encFiltro is null ? L("Todo el saldo") : L("Factura completa"))" OnClick="MarcarTodo" />
+                <BotonIcono Icono="alert-triangle" Tooltip="@L("Marcar todo lo vencido")" Etiqueta="@L("Todo lo vencido")" OnClick="MarcarVencidas" />
+                <button type="button" class="boton-texto" @onclick="Limpiar">@L("Limpiar")</button>
                 <div class="cobro-resumen">
-                    <span>Vencido <strong>Q@(Visibles.Where(c => c.Dias > 0).Sum(c => c.Saldo).ToString("N2"))</strong></span>
-                    <span>Saldo @(encFiltro is null ? "total" : "de la factura") <strong>Q@(Visibles.Sum(c => c.Saldo).ToString("N2"))</strong></span>
+                    <span>@L("Vencido") <strong>Q@(Visibles.Where(c => c.Dias > 0).Sum(c => c.Saldo).ToString("N2"))</strong></span>
+                    <span>@L("Saldo {0}", encFiltro is null ? "total" : L("de la factura")) <strong>Q@(Visibles.Sum(c => c.Saldo).ToString("N2"))</strong></span>
                 </div>
             </div>
 
             <table class="tabla-datos tabla-cuotas-cobro">
                 <thead>
                     <tr>
-                        <th class="col-check"><span class="sr-only">Pagar</span></th>
-                        <th>Documento</th><th class="num">Cuota</th><th class="col-fecha">Vence</th><th>Situación</th>
-                        <th class="num">Valor cuota</th><th class="num">Saldo</th><th class="num col-aplicar">A pagar</th>
+                        <th class="col-check"><span class="sr-only">@L("Pagar")</span></th>
+                        <th>@L("Documento")</th><th class="num">@L("Cuota")</th><th class="col-fecha">@L("Vence")</th><th>@L("Situación")</th>
+                        <th class="num">@L("Valor cuota")</th><th class="num">@L("Saldo")</th><th class="num col-aplicar">@L("A pagar")</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (!Visibles.Any())
                     {
-                        <tr><td colspan="8" class="doc-tabla-vacia">Ningún proveedor con saldo coincide con el filtro.</td></tr>
+                        <tr><td colspan="8" class="doc-tabla-vacia">@L("Ningún proveedor con saldo coincide con el filtro.")</td></tr>
                     }
                     @foreach (var c in Visibles)
                     {
                         var marcada = aplicar.ContainsKey(c.PpgId);
                         <tr class="@(marcada ? "fila-seleccionada" : "")">
-                            <td class="col-check"><input type="checkbox" checked="@marcada" aria-label="@($"Pagar cuota {c.Cuota} de {c.Documento}")" @onchange="e => Alternar(c, (bool)(e.Value ?? false))" /></td>
+                            <td class="col-check"><input type="checkbox" checked="@marcada" aria-label="@(L("Pagar cuota {0} de {1}", c.Cuota, c.Documento))" @onchange="e => Alternar(c, (bool)(e.Value ?? false))" /></td>
                             <td>@c.Documento</td>
                             <td class="num">@c.Cuota</td>
                             <td class="col-fecha">@c.Vencimiento.ToString("dd/MM/yyyy")</td>
                             <td>
                                 @if (c.Dias > 0)
                                 {
-                                    <span class="estado-badge estado-badge-anulada">Vencida hace @c.Dias d</span>
+                                    <span class="estado-badge estado-badge-anulada">@L("Vencida hace {0} d", c.Dias)</span>
                                 }
                                 else if (c.Dias == 0)
                                 {
-                                    <span class="estado-badge estado-badge-pendiente">Vence hoy</span>
+                                    <span class="estado-badge estado-badge-pendiente">@L("Vence hoy")</span>
                                 }
                                 else
                                 {
-                                    <span class="texto-tenue">En @(-c.Dias) d</span>
+                                    <span class="texto-tenue">@L("En {0} d", -c.Dias)</span>
                                 }
                             </td>
                             <td class="num">@c.ValorCuota.ToString("N2")</td>
@@ -145,7 +145,7 @@
                             <td class="num col-aplicar">
                                 @if (marcada)
                                 {
-                                    <input type="number" step="0.01" min="0" max="@c.Saldo" aria-label="@($"Monto a pagar de la cuota {c.Cuota} de {c.Documento}")"
+                                    <input type="number" step="0.01" min="0" max="@c.Saldo" aria-label="@(L("Monto a pagar de la cuota {0} de {1}", c.Cuota, c.Documento))"
                                            value="@aplicar[c.PpgId]" @onchange="e => CambiarMonto(c, e.Value)" />
                                 }
                                 else
@@ -157,7 +157,7 @@
                     }
                 </tbody>
                 <tfoot>
-                    <tr><td colspan="7">Total a pagar (@aplicar.Count cuota@(aplicar.Count == 1 ? "" : "s") de @FacturasMarcadas.Count factura@(FacturasMarcadas.Count == 1 ? "" : "s"))</td><td class="num"><strong>Q@(TotalCheque.ToString("N2"))</strong></td></tr>
+                    <tr><td colspan="7">@L("Total a pagar ({0} cuota{1} de {2} factura{3})", aplicar.Count, aplicar.Count == 1 ? "" : "s", FacturasMarcadas.Count, FacturasMarcadas.Count == 1 ? "" : "s")</td><td class="num"><strong>Q@(TotalCheque.ToString("N2"))</strong></td></tr>
                 </tfoot>
             </table>
         }
@@ -166,21 +166,21 @@
     @if (aplicar.Count > 0)
     {
         <section class="tarjeta" aria-labelledby="titulo-forma-pago">
-            <h2 id="titulo-forma-pago">3. Forma de pago</h2>
+            <h2 id="titulo-forma-pago">@L("3. Forma de pago")</h2>
             <fieldset class="forma-pago-opciones">
-                <legend class="sr-only">Forma de pago</legend>
-                <label class="@(formaPago == "C" ? "activa" : "")"><input type="radio" name="forma-pago" value="C" checked="@(formaPago == "C")" @onchange="@(() => CambiarFormaPago("C"))" /> <Icono Nombre="banknote" Tamano="16" /> Cheque</label>
-                <label class="@(formaPago == "T" ? "activa" : "")"><input type="radio" name="forma-pago" value="T" checked="@(formaPago == "T")" @onchange="@(() => CambiarFormaPago("T"))" /> <Icono Nombre="landmark" Tamano="16" /> Transferencia</label>
+                <legend class="sr-only">@L("Forma de pago")</legend>
+                <label class="@(formaPago == "C" ? "activa" : "")"><input type="radio" name="forma-pago" value="C" checked="@(formaPago == "C")" @onchange="@(() => CambiarFormaPago("C"))" /> <Icono Nombre="banknote" Tamano="16" /> @L("Cheque")</label>
+                <label class="@(formaPago == "T" ? "activa" : "")"><input type="radio" name="forma-pago" value="T" checked="@(formaPago == "T")" @onchange="@(() => CambiarFormaPago("T"))" /> <Icono Nombre="landmark" Tamano="16" /> @L("Transferencia")</label>
             </fieldset>
             @if (formaPago == "C")
             {
                 @if (chequeras.Count == 0)
                 {
-                    <p class="mensaje-error" role="alert">No hay chequeras activas. Registre una chequera para la cuenta bancaria antes de pagar.</p>
+                    <p class="mensaje-error" role="alert">@L("No hay chequeras activas. Registre una chequera para la cuenta bancaria antes de pagar.")</p>
                 }
                 <div class="panel-formulario panel-ancho">
                     <div class="campo">
-                        <label for="pag-chequera">Chequera</label>
+                        <label for="pag-chequera">@L("Chequera")</label>
                         <select id="pag-chequera" value="@cbcId" @onchange="CambiarChequera">
                             @foreach (var c in chequeras)
                             {
@@ -189,14 +189,14 @@
                         </select>
                     </div>
                     <div class="campo">
-                        <label for="pag-cheque">Número de cheque</label>
+                        <label for="pag-cheque">@L("Número de cheque")</label>
                         <input id="pag-cheque" @bind="numeroCheque" maxlength="16" inputmode="numeric" />
-                        <small class="texto-ayuda">Vacío = el siguiente de la chequera.</small>
+                        <small class="texto-ayuda">@L("Vacío = el siguiente de la chequera.")</small>
                     </div>
                     <div class="campo">
-                        <label for="pag-motivo">Motivo</label>
+                        <label for="pag-motivo">@L("Motivo")</label>
                         <select id="pag-motivo" @bind="bmpId">
-                            <option value="0">(Sin motivo)</option>
+                            <option value="0">@L("(Sin motivo)")</option>
                             @foreach (var m in motivos)
                             {
                                 <option value="@m.BmpId">@m.BmpDescripcion</option>
@@ -206,25 +206,25 @@
                     @CampoConcepto
                 </div>
                 <p class="texto-tenue">
-                    A nombre de <strong>@proveedor.Nombre</strong> por <strong>Q@(TotalCheque.ToString("N2"))</strong>:
+                    @L("A nombre de") <strong>@proveedor.Nombre</strong> @L("por") <strong>Q@(TotalCheque.ToString("N2"))</strong>:
                     @string.Join("; ", FacturasMarcadas.Select(f => $"{f.Documento} Q{f.Monto:N2}")).
                 </p>
                 <div class="acciones-fila">
-                    <BotonIcono Icono="save" Tooltip="Emitir el cheque" Etiqueta="@($"Emitir cheque Q{TotalCheque:N2}")" Variante="primario"
+                    <BotonIcono Icono="save" Tooltip="@L("Emitir el cheque")" Etiqueta="@(L("Emitir cheque Q{0:N2}", TotalCheque))" Variante="primario"
                                 Deshabilitado="chequeras.Count == 0 || guardando" OnClick="EmitirAsync" />
-                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="Limpiar" />
+                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="Limpiar" />
                 </div>
             }
             else
             {
-                <p class="texto-ayuda">Registre una transferencia que ya hizo desde la banca electrónica: la cuenta de la empresa de la que salió, el número de autorización del banco y el comprobante (PDF o imagen).</p>
+                <p class="texto-ayuda">@L("Registre una transferencia que ya hizo desde la banca electrónica: la cuenta de la empresa de la que salió, el número de autorización del banco y el comprobante (PDF o imagen).")</p>
                 @if (cuentasBancarias.Count == 0)
                 {
-                    <p class="mensaje-error" role="alert">No hay cuentas bancarias activas. Regístrela en Bancos › Cuentas bancarias antes de pagar.</p>
+                    <p class="mensaje-error" role="alert">@L("No hay cuentas bancarias activas. Regístrela en Bancos › Cuentas bancarias antes de pagar.")</p>
                 }
                 <div class="fel-formulario formulario-transferencia">
                     <div class="campo">
-                        <label for="trf-cuenta">Cuenta de la empresa</label>
+                        <label for="trf-cuenta">@L("Cuenta de la empresa")</label>
                         <select id="trf-cuenta" @bind="transferencia.BcbId">
                             @foreach (var c in cuentasBancarias)
                             {
@@ -233,22 +233,22 @@
                         </select>
                     </div>
                     <div class="campo">
-                        <label for="trf-fecha">Fecha de la transferencia</label>
+                        <label for="trf-fecha">@L("Fecha de la transferencia")</label>
                         <input id="trf-fecha" type="date" max="@DateTime.Today.ToString("yyyy-MM-dd")" @bind="transferencia.Fecha" />
                     </div>
                     <div class="campo">
-                        <label for="trf-autorizacion">Número de autorización</label>
+                        <label for="trf-autorizacion">@L("Número de autorización")</label>
                         <input id="trf-autorizacion" maxlength="40" autocomplete="off" @bind="transferencia.Autorizacion" @bind:event="oninput" aria-describedby="trf-autorizacion-ayuda" />
-                        <small id="trf-autorizacion-ayuda" class="texto-ayuda">El que muestra el comprobante del banco.</small>
+                        <small id="trf-autorizacion-ayuda" class="texto-ayuda">@L("El que muestra el comprobante del banco.")</small>
                     </div>
                     <div class="campo">
-                        <label for="trf-referencia">Referencia (opcional)</label>
+                        <label for="trf-referencia">@L("Referencia (opcional)")</label>
                         <input id="trf-referencia" maxlength="60" @bind="transferencia.Referencia" />
                     </div>
                     <div class="campo">
-                        <label for="trf-banco">Banco del proveedor</label>
+                        <label for="trf-banco">@L("Banco del proveedor")</label>
                         <select id="trf-banco" @bind="transferencia.GefId">
-                            <option value="0">(Elija el banco)</option>
+                            <option value="0">@L("(Elija el banco)")</option>
                             @foreach (var b in bancos)
                             {
                                 <option value="@b.GefId">@b.GefDescripcion</option>
@@ -256,45 +256,45 @@
                         </select>
                     </div>
                     <div class="campo">
-                        <label for="trf-tipo">Tipo de cuenta</label>
+                        <label for="trf-tipo">@L("Tipo de cuenta")</label>
                         <select id="trf-tipo" @bind="transferencia.TipoCuenta">
-                            <option value="M">Monetaria</option>
-                            <option value="A">Ahorro</option>
+                            <option value="M">@L("Monetaria")</option>
+                            <option value="A">@L("Ahorro")</option>
                         </select>
                     </div>
                     <div class="campo">
-                        <label for="trf-cuenta-destino">Cuenta del proveedor</label>
+                        <label for="trf-cuenta-destino">@L("Cuenta del proveedor")</label>
                         <input id="trf-cuenta-destino" maxlength="30" inputmode="numeric" @bind="transferencia.Cuenta" aria-describedby="trf-destino-ayuda" />
-                        <small id="trf-destino-ayuda" class="texto-ayuda">@(destinoPropuesto ? "Tomada de Proveedores › Pago; cámbiela si transfirió a otra." : "El proveedor no tiene cuenta registrada; escriba a la que transfirió.")</small>
+                        <small id="trf-destino-ayuda" class="texto-ayuda">@(destinoPropuesto ? L("Tomada de Proveedores › Pago; cámbiela si transfirió a otra.") : L("El proveedor no tiene cuenta registrada; escriba a la que transfirió."))</small>
                     </div>
                     @CampoConcepto
                     <div class="campo campo-ancho">
-                        <span class="etiqueta-campo" id="trf-comprobante-etiqueta">Comprobante del banco</span>
+                        <span class="etiqueta-campo" id="trf-comprobante-etiqueta">@L("Comprobante del banco")</span>
                         <div class="comprobante-adjunto">
-                            <label class="boton-icono boton-icono-con-etiqueta" title="PDF o imagen de hasta 5 MB">
-                                <Icono Nombre="upload" Tamano="16" /><span class="boton-icono-etiqueta">@(comprobante is null ? "Adjuntar comprobante" : "Cambiar comprobante")</span>
+                            <label class="boton-icono boton-icono-con-etiqueta" title="@L("PDF o imagen de hasta 5 MB")">
+                                <Icono Nombre="upload" Tamano="16" /><span class="boton-icono-etiqueta">@(comprobante is null ? L("Adjuntar comprobante") : L("Cambiar comprobante"))</span>
                                 <InputFile id="trf-comprobante" OnChange="LeerComprobanteAsync" accept="application/pdf,image/png,image/jpeg,image/webp,image/gif" class="oculto" aria-labelledby="trf-comprobante-etiqueta" />
                             </label>
                             @if (comprobante is not null)
                             {
                                 <span class="comprobante-nombre"><Icono Nombre="file-text" Tamano="16" /> @comprobante.Value.Nombre <span class="texto-tenue">(@TamanoTexto(comprobante.Value.Contenido.Length))</span></span>
-                                <button type="button" class="boton-texto" @onclick="() => comprobante = null">Quitar</button>
+                                <button type="button" class="boton-texto" @onclick="() => comprobante = null">@L("Quitar")</button>
                             }
                             else
                             {
-                                <span class="texto-tenue">PDF o imagen (JPG, PNG, WEBP o GIF), hasta 5 MB.</span>
+                                <span class="texto-tenue">@L("PDF o imagen (JPG, PNG, WEBP o GIF), hasta 5 MB.")</span>
                             }
                         </div>
                     </div>
                 </div>
                 <p class="texto-tenue">
-                    A <strong>@proveedor.Nombre</strong> por <strong>Q@(TotalCheque.ToString("N2"))</strong>:
+                    A <strong>@proveedor.Nombre</strong> @L("por") <strong>Q@(TotalCheque.ToString("N2"))</strong>:
                     @string.Join("; ", FacturasMarcadas.Select(f => $"{f.Documento} Q{f.Monto:N2}")).
                 </p>
                 <div class="acciones-fila">
-                    <BotonIcono Icono="save" Tooltip="Registrar la transferencia y su póliza" Etiqueta="@($"Registrar transferencia Q{TotalCheque:N2}")" Variante="primario"
+                    <BotonIcono Icono="save" Tooltip="@L("Registrar la transferencia y su póliza")" Etiqueta="@(L("Registrar transferencia Q{0:N2}", TotalCheque))" Variante="primario"
                                 Deshabilitado="cuentasBancarias.Count == 0 || guardando" OnClick="RegistrarTransferenciaAsync" />
-                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="Limpiar" />
+                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="Limpiar" />
                 </div>
             }
         </section>
@@ -304,17 +304,17 @@
 <section class="tarjeta" aria-labelledby="titulo-cheques">
     <div class="maestro-detalle-encabezado">
         <h2 id="titulo-cheques">Cheques emitidos@(proveedor is null ? "" : $" a {proveedor.Nombre}")</h2>
-        <span class="texto-tenue">@cheques.Count(c => c.EstadoCheque != "A") vigente(s) · Q@(cheques.Where(c => c.EstadoCheque != "A").Sum(c => c.Valor).ToString("N2"))</span>
+        <span class="texto-tenue">@L("{0} vigente(s) · Q{1}", cheques.Count(c => c.EstadoCheque != "A"), cheques.Where(c => c.EstadoCheque != "A").Sum(c => c.Valor).ToString("N2"))</span>
     </div>
     @if (cheques.Count == 0)
     {
-        <p class="estado-vacio">No hay cheques emitidos@(proveedor is null ? "" : " a este proveedor").</p>
+        <p class="estado-vacio">@L("No hay cheques emitidos{0}.", proveedor is null ? "" : L(" a este proveedor"))</p>
     }
     else
     {
         <table class="tabla-datos">
             <thead>
-                <tr><th class="col-fecha">Fecha</th><th class="col-codigo">Cheque</th><th>Cuenta</th><th>Proveedor</th><th>Documentos</th><th class="num">Valor</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+                <tr><th class="col-fecha">@L("Fecha")</th><th class="col-codigo">@L("Cheque")</th><th>@L("Cuenta")</th><th>@L("Proveedor")</th><th>@L("Documentos")</th><th class="num">@L("Valor")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr>
             </thead>
             <tbody>
                 @foreach (var c in cheques)
@@ -337,10 +337,10 @@
                         </td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
-                                <BotonIcono Icono="list" Tooltip="@(detalleBceId == c.BceId ? "Ocultar detalle" : "Ver facturas y cuotas pagadas")" OnClick="() => VerDetalleAsync(c.BceId)" />
+                                <BotonIcono Icono="list" Tooltip="@(detalleBceId == c.BceId ? L("Ocultar detalle") : L("Ver facturas y cuotas pagadas"))" OnClick="() => VerDetalleAsync(c.BceId)" />
                                 @if (c.EstadoCheque == "E")
                                 {
-                                    <BotonIcono Icono="ban" Tooltip="Anular cheque" Variante="peligro" OnClick="() => IniciarAnulacion(c)" />
+                                    <BotonIcono Icono="ban" Tooltip="@L("Anular cheque")" Variante="peligro" OnClick="() => IniciarAnulacion(c)" />
                                 }
                             </div>
                         </td>
@@ -351,7 +351,7 @@
                             <td colspan="8">
                                 <table class="tabla-datos tabla-detalle-cheque">
                                     <thead>
-                                        <tr><th>Documento</th><th class="num">Cuota</th><th class="col-fecha">Vencía</th><th class="num">Valor cuota</th><th class="num">Pagado con el cheque</th><th>Aplicación</th></tr>
+                                        <tr><th>@L("Documento")</th><th class="num">@L("Cuota")</th><th class="col-fecha">@L("Vencía")</th><th class="num">@L("Valor cuota")</th><th class="num">@L("Pagado con el cheque")</th><th>@L("Aplicación")</th></tr>
                                     </thead>
                                     <tbody>
                                         @foreach (var d in detalle)
@@ -367,7 +367,7 @@
                                         }
                                     </tbody>
                                     <tfoot>
-                                        <tr><td colspan="4">Total</td><td class="num"><strong>@detalle.Sum(d => d.Monto).ToString("N2")</strong></td><td></td></tr>
+                                        <tr><td colspan="4">@L("Total")</td><td class="num"><strong>@detalle.Sum(d => d.Monto).ToString("N2")</strong></td><td></td></tr>
                                     </tfoot>
                                 </table>
                             </td>
@@ -378,12 +378,12 @@
                         <tr class="fila-edicion-tabla">
                             <td colspan="8">
                                 <div class="anulacion-form">
-                                    <label for="motivo-cheque">Motivo de la anulación del cheque @c.Numero</label>
-                                    <input id="motivo-cheque" maxlength="200" placeholder="Ej.: cheque impreso con error" @bind="motivoAnulacion" @bind:event="oninput" />
-                                    <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Anular cheque" Variante="peligro"
+                                    <label for="motivo-cheque">@L("Motivo de la anulación del cheque {0}", c.Numero)</label>
+                                    <input id="motivo-cheque" maxlength="200" placeholder="@L("Ej.: cheque impreso con error")" @bind="motivoAnulacion" @bind:event="oninput" />
+                                    <BotonIcono Icono="ban" Tooltip="@L("Confirmar anulación")" Etiqueta="@L("Anular cheque")" Variante="peligro"
                                                 Deshabilitado="motivoAnulacion.Trim().Length < 5 || guardando" OnClick="AnularAsync" />
-                                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => anulando = null" />
-                                    <small class="texto-ayuda">El saldo vuelve a cada cuota que pagó el cheque y la póliza del pago se anula. El número de cheque queda usado.</small>
+                                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => anulando = null" />
+                                    <small class="texto-ayuda">@L("El saldo vuelve a cada cuota que pagó el cheque y la póliza del pago se anula. El número de cheque queda usado.")</small>
                                 </div>
                             </td>
                         </tr>
@@ -397,18 +397,18 @@
 <section class="tarjeta" aria-labelledby="titulo-transferencias">
     <div class="maestro-detalle-encabezado">
         <h2 id="titulo-transferencias">Transferencias registradas@(proveedor is null ? "" : $" a {proveedor.Nombre}")</h2>
-        <span class="texto-tenue">@transferencias.Count(t => t.Estado == "A") vigente(s) · Q@(transferencias.Where(t => t.Estado == "A").Sum(t => t.Total).ToString("N2"))</span>
+        <span class="texto-tenue">@L("{0} vigente(s) · Q{1}", transferencias.Count(t => t.Estado == "A"), transferencias.Where(t => t.Estado == "A").Sum(t => t.Total).ToString("N2"))</span>
     </div>
     @if (transferencias.Count == 0)
     {
-        <p class="estado-vacio">No hay transferencias registradas@(proveedor is null ? " en los últimos 30 días" : " a este proveedor").</p>
+        <p class="estado-vacio">@L("No hay transferencias registradas{0}.", proveedor is null ? L(" en los últimos 30 días") : L(" a este proveedor"))</p>
     }
     else
     {
         <div class="tabla-desplazable" tabindex="0" role="region" aria-labelledby="titulo-transferencias">
             <table class="tabla-datos">
                 <thead>
-                    <tr><th class="col-fecha">Fecha</th><th>Transferencia</th><th>Proveedor y cuenta destino</th><th>Documentos</th><th class="num">Valor</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+                    <tr><th class="col-fecha">@L("Fecha")</th><th>@L("Transferencia")</th><th>@L("Proveedor y cuenta destino")</th><th>@L("Documentos")</th><th class="num">@L("Valor")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr>
                 </thead>
                 <tbody>
                     @foreach (var t in transferencias)
@@ -416,10 +416,10 @@
                         <tr class="@(t.Estado == "N" ? "fila-anulada" : "")">
                             <td class="col-fecha">@t.Fecha.ToString("dd/MM/yyyy")</td>
                             <td>
-                                @t.Numero<br /><small>Aut. @t.Autorizacion</small><br /><small class="texto-tenue">Desde @t.CuentaOrigen</small>
+                                @t.Numero<br /><small>@L("Aut. {0}", t.Autorizacion)</small><br /><small class="texto-tenue">@L("Desde {0}", t.CuentaOrigen)</small>
                                 @if (!string.IsNullOrWhiteSpace(t.Referencia))
                                 {
-                                    <br /><small class="texto-tenue">Ref. @t.Referencia</small>
+                                    <br /><small class="texto-tenue">@L("Ref. {0}", t.Referencia)</small>
                                 }
                             </td>
                             <td>@t.Proveedor<br /><small class="texto-tenue">@t.CuentaDestinoTexto</small></td>
@@ -430,14 +430,14 @@
                             </td>
                             <td class="col-acciones">
                                 <div class="acciones-fila">
-                                    <BotonIcono Icono="list" Tooltip="@(detalleBltId == t.BltId ? "Ocultar detalle" : "Ver facturas y cuotas pagadas")" OnClick="() => VerDetalleTransferenciaAsync(t.BltId)" />
+                                    <BotonIcono Icono="list" Tooltip="@(detalleBltId == t.BltId ? L("Ocultar detalle") : L("Ver facturas y cuotas pagadas"))" OnClick="() => VerDetalleTransferenciaAsync(t.BltId)" />
                                     @if (t.ComprobanteNombre is not null)
                                     {
-                                        <a class="boton-icono" href="@UrlComprobante(t.BltId)" target="_blank" rel="noopener" title="@($"Ver el comprobante del banco ({t.ComprobanteNombre})")" aria-label="@($"Ver el comprobante de la transferencia {t.Numero}")"><Icono Nombre="file-text" Tamano="16" /></a>
+                                        <a class="boton-icono" href="@UrlComprobante(t.BltId)" target="_blank" rel="noopener" title="@(L("Ver el comprobante del banco ({0})", t.ComprobanteNombre))" aria-label="@(L("Ver el comprobante de la transferencia {0}", t.Numero))"><Icono Nombre="file-text" Tamano="16" /></a>
                                     }
                                     @if (t.Estado == "A")
                                     {
-                                        <BotonIcono Icono="ban" Tooltip="Anular transferencia" Variante="peligro" OnClick="() => IniciarAnulacionTransferencia(t)" />
+                                        <BotonIcono Icono="ban" Tooltip="@L("Anular transferencia")" Variante="peligro" OnClick="() => IniciarAnulacionTransferencia(t)" />
                                     }
                                 </div>
                             </td>
@@ -448,7 +448,7 @@
                                 <td colspan="7">
                                     <table class="tabla-datos tabla-detalle-cheque">
                                         <thead>
-                                            <tr><th>Documento</th><th class="num">Cuota</th><th class="col-fecha">Vencía</th><th class="num">Valor cuota</th><th class="num">Pagado con la transferencia</th><th>Aplicación</th></tr>
+                                            <tr><th>@L("Documento")</th><th class="num">@L("Cuota")</th><th class="col-fecha">@L("Vencía")</th><th class="num">@L("Valor cuota")</th><th class="num">@L("Pagado con la transferencia")</th><th>@L("Aplicación")</th></tr>
                                         </thead>
                                         <tbody>
                                             @foreach (var d in detalleTransferencia)
@@ -464,7 +464,7 @@
                                             }
                                         </tbody>
                                         <tfoot>
-                                            <tr><td colspan="4">Total</td><td class="num"><strong>@detalleTransferencia.Sum(d => d.Monto).ToString("N2")</strong></td><td></td></tr>
+                                            <tr><td colspan="4">@L("Total")</td><td class="num"><strong>@detalleTransferencia.Sum(d => d.Monto).ToString("N2")</strong></td><td></td></tr>
                                         </tfoot>
                                     </table>
                                 </td>
@@ -475,12 +475,12 @@
                             <tr class="fila-edicion-tabla">
                                 <td colspan="7">
                                     <div class="anulacion-form">
-                                        <label for="motivo-transferencia">Motivo de la anulación de la transferencia @t.Numero</label>
-                                        <input id="motivo-transferencia" maxlength="200" placeholder="Ej.: registrada al proveedor equivocado" @bind="motivoAnulacionTransferencia" @bind:event="oninput" />
-                                        <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Anular transferencia" Variante="peligro"
+                                        <label for="motivo-transferencia">@L("Motivo de la anulación de la transferencia {0}", t.Numero)</label>
+                                        <input id="motivo-transferencia" maxlength="200" placeholder="@L("Ej.: registrada al proveedor equivocado")" @bind="motivoAnulacionTransferencia" @bind:event="oninput" />
+                                        <BotonIcono Icono="ban" Tooltip="@L("Confirmar anulación")" Etiqueta="@L("Anular transferencia")" Variante="peligro"
                                                     Deshabilitado="motivoAnulacionTransferencia.Trim().Length < 5 || guardando" OnClick="AnularTransferenciaAsync" />
-                                        <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => anulandoTransferencia = null" />
-                                        <small class="texto-ayuda">El saldo vuelve a cada cuota que pagó y la póliza se anula. Solo anula el registro: si el dinero ya salió del banco, la devolución se gestiona con el banco o el proveedor.</small>
+                                        <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => anulandoTransferencia = null" />
+                                        <small class="texto-ayuda">@L("El saldo vuelve a cada cuota que pagó y la póliza se anula. Solo anula el registro: si el dinero ya salió del banco, la devolución se gestiona con el banco o el proveedor.")</small>
                                     </div>
                                 </td>
                             </tr>
@@ -694,7 +694,7 @@
     private static string UrlComprobante(int bltId) => $"/cxp/transferencias/{bltId}/comprobante";
 
     private static string TamanoTexto(long bytes) =>
-        bytes < 1024 * 1024 ? $"{Math.Max(1, bytes / 1024)} KB" : $"{bytes / (1024d * 1024):N1} MB";
+        bytes < 1024 * 1024 ? L("{0} KB", Math.Max(1, bytes / 1024)) : L("{0:N1} MB", bytes / (1024d * 1024));
 
     // El tipo se toma del contenido del archivo, no de lo que dice el navegador.
     private static string? TipoComprobante(byte[] datos)
@@ -713,7 +713,7 @@
         mensaje = null;
         if (e.File.Size > TamanoMaximoComprobante)
         {
-            MostrarAviso($"El comprobante pesa {TamanoTexto(e.File.Size)}; el máximo es 5 MB.");
+            MostrarAviso(L("El comprobante pesa {0}; el máximo es 5 MB.", TamanoTexto(e.File.Size)));
             return;
         }
         try
@@ -724,7 +724,7 @@
             var tipo = TipoComprobante(datos);
             if (tipo is null)
             {
-                MostrarAviso("El comprobante debe ser un PDF o una imagen (JPG, PNG, WEBP o GIF).");
+                MostrarAviso(L("El comprobante debe ser un PDF o una imagen (JPG, PNG, WEBP o GIF)."));
                 return;
             }
             comprobante = (Path.GetFileName(e.File.Name), tipo, datos);
@@ -738,18 +738,18 @@
         var excedida = cuotas.FirstOrDefault(c => aplicar.TryGetValue(c.PpgId, out var m) && (m <= 0 || m > c.Saldo));
         if (excedida is not null)
         {
-            MostrarAviso($"El monto de la cuota {excedida.Cuota} de {excedida.Documento} debe ser mayor a cero y no pasar de su saldo (Q{excedida.Saldo:N2}).");
+            MostrarAviso(L("El monto de la cuota {0} de {1} debe ser mayor a cero y no pasar de su saldo (Q{2:N2}).", excedida.Cuota, excedida.Documento, excedida.Saldo));
             return;
         }
-        if (transferencia.BcbId == 0) { MostrarAviso("Elija la cuenta de la empresa de la que salió la transferencia."); return; }
-        if (transferencia.Fecha.Date > DateTime.Today) { MostrarAviso("La fecha de la transferencia no puede ser futura."); return; }
-        if (string.IsNullOrWhiteSpace(transferencia.Autorizacion)) { MostrarAviso("Escriba el número de autorización que dio el banco."); return; }
+        if (transferencia.BcbId == 0) { MostrarAviso(L("Elija la cuenta de la empresa de la que salió la transferencia.")); return; }
+        if (transferencia.Fecha.Date > DateTime.Today) { MostrarAviso(L("La fecha de la transferencia no puede ser futura.")); return; }
+        if (string.IsNullOrWhiteSpace(transferencia.Autorizacion)) { MostrarAviso(L("Escriba el número de autorización que dio el banco.")); return; }
         if (transferencia.GefId == 0 || string.IsNullOrWhiteSpace(transferencia.Cuenta))
         {
-            MostrarAviso("Indique el banco y la cuenta del proveedor que recibió la transferencia.");
+            MostrarAviso(L("Indique el banco y la cuenta del proveedor que recibió la transferencia."));
             return;
         }
-        if (comprobante is null) { MostrarAviso("Adjunte el comprobante del banco de la transferencia."); return; }
+        if (comprobante is null) { MostrarAviso(L("Adjunte el comprobante del banco de la transferencia.")); return; }
         guardando = true;
         try
         {
@@ -806,7 +806,7 @@
         {
             var numero = anulandoTransferencia.Numero;
             await CuentasRepository.AnularTransferenciaAsync(anulandoTransferencia.BltId, motivoAnulacionTransferencia.Trim(), await ObtenerUsuIdActualAsync());
-            mensaje = $"Transferencia {numero} anulada. El saldo volvió a las cuotas que pagó y la póliza quedó anulada.";
+            mensaje = L("Transferencia {0} anulada. El saldo volvió a las cuotas que pagó y la póliza quedó anulada.", numero);
             esMensajeError = false;
             anulandoTransferencia = null;
             detalleBltId = null;
@@ -866,7 +866,7 @@
     {
         var facturas = FacturasMarcadas;
         if (facturas.Count == 0) return "";
-        var texto = (facturas.Count == 1 ? "Pago factura " : "Pago facturas ") + string.Join(", ", facturas.Select(f => f.Numero));
+        var texto = (facturas.Count == 1 ? L("Pago factura ") : L("Pago facturas ")) + string.Join(", ", facturas.Select(f => f.Numero));
         return texto.Length <= 250 ? texto : texto[..247] + "...";
     }
 
@@ -881,13 +881,13 @@
     {
         if (montoCheque <= 0)
         {
-            MostrarAviso("Indique el monto a pagar.");
+            MostrarAviso(L("Indique el monto a pagar."));
             return;
         }
         var saldo = Visibles.Sum(c => c.Saldo);
         if (montoCheque > saldo)
         {
-            MostrarAviso($"El monto a pagar (Q{montoCheque:N2}) supera el saldo {(encFiltro is null ? "del proveedor" : "de la factura")} (Q{saldo:N2}).");
+            MostrarAviso(L("El monto a pagar (Q{0:N2}) supera el saldo {1} (Q{2:N2}).", montoCheque, (encFiltro is null ? L("del proveedor") : L("de la factura")), saldo));
             return;
         }
         aplicar.Clear();
@@ -914,7 +914,7 @@
         aplicar.Clear();
         foreach (var c in Visibles.Where(c => c.Dias > 0)) aplicar[c.PpgId] = c.Saldo;
         Actualizar();
-        if (aplicar.Count == 0) MostrarAviso(encFiltro is null ? "El proveedor no tiene cuotas vencidas." : "La factura no tiene cuotas vencidas.");
+        if (aplicar.Count == 0) MostrarAviso(encFiltro is null ? L("El proveedor no tiene cuotas vencidas.") : L("La factura no tiene cuotas vencidas."));
     }
 
     private void Alternar(CuotaPendienteProveedor c, bool marcada)
@@ -938,7 +938,7 @@
         var excedida = cuotas.FirstOrDefault(c => aplicar.TryGetValue(c.PpgId, out var m) && (m <= 0 || m > c.Saldo));
         if (excedida is not null)
         {
-            MostrarAviso($"El monto de la cuota {excedida.Cuota} de {excedida.Documento} debe ser mayor a cero y no pasar de su saldo (Q{excedida.Saldo:N2}).");
+            MostrarAviso(L("El monto de la cuota {0} de {1} debe ser mayor a cero y no pasar de su saldo (Q{2:N2}).", excedida.Cuota, excedida.Documento, excedida.Saldo));
             return;
         }
         guardando = true;
@@ -1004,9 +1004,9 @@
         if (t.GefId != 0) { transferencia.GefId = t.GefId; transferencia.TipoCuenta = t.TipoCuenta; transferencia.Cuenta = t.Cuenta; }
         var cambiaron = aplicar.Count != b.Aplicar.Count || TotalCheque != b.Aplicar.Values.Sum();
         mensaje = (cambiaron
-            ? "Se recuperó el pago sin terminar, pero algunas cuotas ya no tienen el mismo saldo: revise los montos."
-            : "Se recuperó el pago sin terminar. Revíselo antes de grabar.")
-            + (formaPago == "T" ? " Vuelva a adjuntar el comprobante de la transferencia." : "");
+            ? L("Se recuperó el pago sin terminar, pero algunas cuotas ya no tienen el mismo saldo: revise los montos.")
+            : L("Se recuperó el pago sin terminar. Revíselo antes de grabar."))
+            + (formaPago == "T" ? L(" Vuelva a adjuntar el comprobante de la transferencia.") : "");
         esMensajeError = cambiaron;
     }
 
@@ -1040,7 +1040,7 @@
         {
             var numero = anulando.Numero;
             await CuentasRepository.AnularChequeAsync(anulando.BceId, motivoAnulacion.Trim(), await ObtenerUsuIdActualAsync());
-            mensaje = $"Cheque {numero} anulado. El saldo volvió a las cuotas que pagó.";
+            mensaje = L("Cheque {0} anulado. El saldo volvió a las cuotas que pagó.", numero);
             esMensajeError = false;
             anulando = null;
             detalleBceId = null;

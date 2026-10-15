@@ -23,43 +23,43 @@
 @inject ICotizacionRepository CotizacionRepository
 @inject Erp.Web.Correo.DocumentosCorreo DocumentosCorreo
 
-<PageTitle>Facturas</PageTitle>
+<PageTitle>@L("Facturas")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Facturas</h1>
-    <p>Ventas y facturación a clientes.</p>
+    <h1>@L("Facturas")</h1>
+    <p>@L("Ventas y facturación a clientes.")</p>
 </div>
 
-<BorradorDocumento TDatos="BorradorFactura" Clave="facturas" Nombre="una factura"
+<BorradorDocumento TDatos="BorradorFactura" Clave="facturas" Nombre="@L("una factura")"
                    Capturar="CapturarBorrador" Describir="DescribirBorrador" Restaurar="RestaurarBorradorAsync" />
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
 }
 @if (avisoFel is not null)
 {
     <div class="doc-nota doc-nota-aviso" role="status">
         <Icono Nombre="alert-triangle" Tamano="15" />
-        <span>Factura electrónica: @avisoFel <a href="fel/documentos">Ver documentos electrónicos</a></span>
+        <span>@L("Factura electrónica: {0}", avisoFel) <a href="fel/documentos">@L("Ver documentos electrónicos")</a></span>
     </div>
 }
 
 <div class="barra-herramientas">
     <FiltroPeriodo @bind-Desde="filtroFechaDesde" @bind-Hasta="filtroFechaHasta" AlCambiar="BuscarAsync" />
-    <select @bind="filtroEstado" aria-label="Estado">
-        <option value="">Todas</option>
-        <option value="G">Grabadas</option>
-        <option value="A">Anuladas</option>
+    <select @bind="filtroEstado" aria-label="@L("Estado")">
+        <option value="">@L("Todas")</option>
+        <option value="G">@L("Grabadas")</option>
+        <option value="A">@L("Anuladas")</option>
     </select>
-    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
-    <input type="search" placeholder="Filtrar por número o cliente" aria-label="Filtrar por número o cliente" @bind="textoFiltro" @bind:event="oninput" @bind:after="() => pagina = 1" />
+    <BotonIcono Icono="search" Tooltip="@L("Buscar")" Etiqueta="@L("Buscar")" OnClick="BuscarAsync" />
+    <input type="search" placeholder="@L("Filtrar por número o cliente")" aria-label="@L("Filtrar por número o cliente")" @bind="textoFiltro" @bind:event="oninput" @bind:after="() => pagina = 1" />
 
     <span class="barra-herramientas-separador"></span>
 
     <AuthorizeView Policy="Permiso:VENTAS_FACTURA_CREAR">
         <Authorized>
-            <BotonIcono Icono="plus" Tooltip="Nueva factura" Etiqueta="Nueva factura" Variante="primario" OnClick="MostrarNuevaFacturaAsync" />
+            <BotonIcono Icono="plus" Tooltip="@L("Nueva factura")" Etiqueta="@L("Nueva factura")" Variante="primario" OnClick="MostrarNuevaFacturaAsync" />
         </Authorized>
     </AuthorizeView>
 </div>
@@ -69,8 +69,8 @@
     <div class="doc-card">
         <div class="doc-card-header">
             <div>
-                <h2>Nueva factura</h2>
-                <p>Escanee o busque los productos; después del primero se pide el NIT del cliente (si no existe, se consulta al certificador y se registra).</p>
+                <h2>@L("Nueva factura")</h2>
+                <p>@L("Escanee o busque los productos; después del primero se pide el NIT del cliente (si no existe, se consulta al certificador y se registra).")</p>
             </div>
             <Icono Nombre="receipt" Tamano="30" />
         </div>
@@ -80,20 +80,20 @@
             {
                 <div class="doc-nota" role="status">
                     <Icono Nombre="clipboard-list" Tamano="15" />
-                    <span>Desde la cotización <strong>@cotizacionOrigen.Numero</strong>, válida hasta el <strong>@cotizacionOrigen.Vence.ToString("dd/MM/yyyy")</strong>: se respetan los precios cotizados y la existencia se valida al grabar. Al grabar, la cotización queda facturada.</span>
-                    <BotonIcono Icono="x" Tooltip="Facturar sin relacionar la cotización" Variante="fantasma" OnClick="() => cotizacionOrigen = null" />
+                    <span>@L("Desde la cotización") <strong>@cotizacionOrigen.Numero</strong>@L(", válida hasta el") <strong>@cotizacionOrigen.Vence.ToString("dd/MM/yyyy")</strong>@L(": se respetan los precios cotizados y la existencia se valida al grabar. Al grabar, la cotización queda facturada.")</span>
+                    <BotonIcono Icono="x" Tooltip="@L("Facturar sin relacionar la cotización")" Variante="fantasma" OnClick="() => cotizacionOrigen = null" />
                 </div>
             }
             <div class="doc-seccion">
-                <p class="doc-seccion-titulo"><Icono Nombre="file-text" Tamano="15" /> Datos generales</p>
+                <p class="doc-seccion-titulo"><Icono Nombre="file-text" Tamano="15" /> @L("Datos generales")</p>
                 <div class="doc-grid">
-                    <div class="campo"><label for="facturas-factura-fecha">Fecha</label><input id="facturas-factura-fecha" type="date" @bind="nuevaFactura.Fecha" /></div>
-                    <div class="campo"><label for="facturas-factura-seriedocumento">Serie</label><input id="facturas-factura-seriedocumento" @bind="nuevaFactura.SerieDocumento" /></div>
-                    <div class="campo"><label for="facturas-factura-numerodocumento">Número</label><input id="facturas-factura-numerodocumento" @bind="nuevaFactura.NumeroDocumento" /></div>
+                    <div class="campo"><label for="facturas-factura-fecha">@L("Fecha")</label><input id="facturas-factura-fecha" type="date" @bind="nuevaFactura.Fecha" /></div>
+                    <div class="campo"><label for="facturas-factura-seriedocumento">@L("Serie")</label><input id="facturas-factura-seriedocumento" @bind="nuevaFactura.SerieDocumento" /></div>
+                    <div class="campo"><label for="facturas-factura-numerodocumento">@L("Número")</label><input id="facturas-factura-numerodocumento" @bind="nuevaFactura.NumeroDocumento" /></div>
                     <div class="campo">
-                        <label for="facturas-factura-pveid">Vendedor</label>
+                        <label for="facturas-factura-pveid">@L("Vendedor")</label>
                         <select id="facturas-factura-pveid" @bind="nuevaFactura.PveId">
-                            <option value="">(Sin asignar)</option>
+                            <option value="">@L("(Sin asignar)")</option>
                             @foreach (var v in vendedores)
                             {
                                 <option value="@v.PveId">@v.PveNombres @v.PveApellidos</option>
@@ -101,26 +101,26 @@
                         </select>
                         @if (pveIdUsuario is null)
                         {
-                            <small class="texto-ayuda">Su usuario no tiene vendedor: vincúlelo en RRHH › Empleados › Vínculos con el sistema.</small>
+                            <small class="texto-ayuda">@L("Su usuario no tiene vendedor: vincúlelo en RRHH › Empleados › Vínculos con el sistema.")</small>
                         }
                         else if (nuevaFactura.PveId == pveIdUsuario)
                         {
-                            <small class="texto-ayuda">El vendedor de su usuario.</small>
+                            <small class="texto-ayuda">@L("El vendedor de su usuario.")</small>
                         }
                     </div>
                     <div class="campo">
-                        <label for="facturas-factura-bodid">Bodega</label>
+                        <label for="facturas-factura-bodid">@L("Bodega")</label>
                         <select id="facturas-factura-bodid" @bind="nuevaFactura.BodId" @bind:after="AlCambiarBodegaEncabezado">
-                            <option value="0">Seleccione...</option>
+                            <option value="0">@L("Seleccione...")</option>
                             @foreach (var b in bodegas)
                             {
                                 <option value="@b.BodId">@b.BodDescripcion</option>
                             }
                         </select>
-                        <small class="texto-ayuda">Se propone en cada línea; una línea puede despachar de otra bodega de la sucursal.</small>
+                        <small class="texto-ayuda">@L("Se propone en cada línea; una línea puede despachar de otra bodega de la sucursal.")</small>
                     </div>
                     <div class="campo">
-                        <label for="facturas-factura-monid">Moneda</label>
+                        <label for="facturas-factura-monid">@L("Moneda")</label>
                         <select id="facturas-factura-monid" @bind="nuevaFactura.MonId">
                             @foreach (var m in monedas)
                             {
@@ -132,40 +132,40 @@
             </div>
 
             <div class="doc-seccion">
-                <p class="doc-seccion-titulo"><Icono Nombre="user" Tamano="15" /> Cliente</p>
+                <p class="doc-seccion-titulo"><Icono Nombre="user" Tamano="15" /> @L("Cliente")</p>
 
                 @if (nuevaFactura.CliId is null)
                 {
                     <div class="doc-nit">
                         <div class="doc-nit-fila">
-                            <label for="fac-nit">NIT</label>
-                            <input id="fac-nit" @ref="campoNit" placeholder="NIT, CUI o C/F y Enter" aria-describedby="fac-nit-ayuda" maxlength="20" autocomplete="off"
+                            <label for="fac-nit">@L("NIT")</label>
+                            <input id="fac-nit" @ref="campoNit" placeholder="@L("NIT, CUI o C/F y Enter")" aria-describedby="fac-nit-ayuda" maxlength="20" autocomplete="off"
                                    @bind="textoNit" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await ConsultarNitAsync(); })" />
-                            <BotonIcono Icono="search" Tooltip="Buscar el NIT (base de datos y certificador)" Etiqueta="Buscar NIT" Variante="primario" Deshabilitado="consultandoNit" OnClick="ConsultarNitAsync" />
-                            <BotonIcono Icono="user" Tooltip="Consumidor final" Etiqueta="C/F" OnClick="ConsumidorFinalAsync" />
+                            <BotonIcono Icono="search" Tooltip="@L("Buscar el NIT (base de datos y certificador)")" Etiqueta="@L("Buscar NIT")" Variante="primario" Deshabilitado="consultandoNit" OnClick="ConsultarNitAsync" />
+                            <BotonIcono Icono="user" Tooltip="@L("Consumidor final")" Etiqueta="C/F" OnClick="ConsumidorFinalAsync" />
                         </div>
                         <small id="fac-nit-ayuda" class="@(nitError ? "texto-error" : "texto-ayuda")">
-                            @(nitMensaje ?? "Si el cliente no existe se consulta su nombre al certificador FEL y se registra automáticamente.")
+                            @(nitMensaje ?? L("Si el cliente no existe se consulta su nombre al certificador FEL y se registra automáticamente."))
                         </small>
                         @if (nitSinNombre is not null)
                         {
                             <div class="doc-alta-rapida">
-                                <p class="doc-alta-rapida-titulo">Registrar el NIT @nitSinNombre</p>
+                                <p class="doc-alta-rapida-titulo">@L("Registrar el NIT {0}", nitSinNombre)</p>
                                 <div class="doc-grid">
-                                    <div class="campo campo-ancho"><label for="fac-nit-nombre">Nombre o razón social</label><input id="fac-nit-nombre" @bind="nombreNitManual" maxlength="128" /></div>
+                                    <div class="campo campo-ancho"><label for="fac-nit-nombre">@L("Nombre o razón social")</label><input id="fac-nit-nombre" @bind="nombreNitManual" maxlength="128" /></div>
                                 </div>
                                 <div class="acciones-fila">
-                                    <BotonIcono Icono="save" Tooltip="Registrar el cliente" Etiqueta="Registrar cliente" Variante="primario" OnClick="RegistrarNitManualAsync" />
-                                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => nitSinNombre = null" />
+                                    <BotonIcono Icono="save" Tooltip="@L("Registrar el cliente")" Etiqueta="@L("Registrar cliente")" Variante="primario" OnClick="RegistrarNitManualAsync" />
+                                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => nitSinNombre = null" />
                                 </div>
                             </div>
                         }
                     </div>
                     <div class="doc-buscador">
                         <div class="doc-buscador-fila">
-                            <input placeholder="O busque por código, nombre o NIT" aria-label="Buscar cliente por código, nombre o NIT" @bind="textoBusquedaCliente" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarClientesAsync(); })" />
-                            <BotonIcono Icono="search" Tooltip="Buscar cliente" OnClick="BuscarClientesAsync" />
-                            <BotonIcono Icono="plus" Tooltip="Cliente nuevo" OnClick="() => mostrarNuevoCliente = !mostrarNuevoCliente" />
+                            <input placeholder="@L("O busque por código, nombre o NIT")" aria-label="@L("Buscar cliente por código, nombre o NIT")" @bind="textoBusquedaCliente" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarClientesAsync(); })" />
+                            <BotonIcono Icono="search" Tooltip="@L("Buscar cliente")" OnClick="BuscarClientesAsync" />
+                            <BotonIcono Icono="plus" Tooltip="@L("Cliente nuevo")" OnClick="() => mostrarNuevoCliente = !mostrarNuevoCliente" />
                         </div>
                         @if (clientesEncontrados.Count > 0)
                         {
@@ -176,7 +176,7 @@
                                         <span class="doc-avatar">@Iniciales(c.NombreCompleto)</span>
                                         <span class="doc-resultado-texto">
                                             <strong>@c.NombreCompleto</strong>
-                                            <span>@c.CliCodigo · NIT @(c.CliNit ?? "C/F")</span>
+                                            <span>@L("{0} · NIT {1}", c.CliCodigo, c.CliNit ?? "C/F")</span>
                                         </span>
                                     </div>
                                 }
@@ -185,17 +185,17 @@
                         @if (mostrarNuevoCliente)
                         {
                             <div class="doc-alta-rapida">
-                                <p class="doc-alta-rapida-titulo">Cliente nuevo</p>
+                                <p class="doc-alta-rapida-titulo">@L("Cliente nuevo")</p>
                                 <div class="doc-grid">
-                                    <div class="campo"><label for="facturas-clienterapido-codigo">Código</label><input id="facturas-clienterapido-codigo" @bind="nuevoClienteRapido.Codigo" /></div>
-                                    <div class="campo"><label for="facturas-clienterapido-nombres">Nombres</label><input id="facturas-clienterapido-nombres" @bind="nuevoClienteRapido.Nombres" /></div>
-                                    <div class="campo"><label for="facturas-clienterapido-apellidos">Apellidos</label><input id="facturas-clienterapido-apellidos" @bind="nuevoClienteRapido.Apellidos" /></div>
-                                    <div class="campo"><label for="facturas-clienterapido-nit">NIT</label><input id="facturas-clienterapido-nit" @bind="nuevoClienteRapido.Nit" /></div>
-                                    <div class="campo"><label for="facturas-clienterapido-telefono">Teléfono</label><input id="facturas-clienterapido-telefono" @bind="nuevoClienteRapido.Telefono" /></div>
+                                    <div class="campo"><label for="facturas-clienterapido-codigo">@L("Código")</label><input id="facturas-clienterapido-codigo" @bind="nuevoClienteRapido.Codigo" /></div>
+                                    <div class="campo"><label for="facturas-clienterapido-nombres">@L("Nombres")</label><input id="facturas-clienterapido-nombres" @bind="nuevoClienteRapido.Nombres" /></div>
+                                    <div class="campo"><label for="facturas-clienterapido-apellidos">@L("Apellidos")</label><input id="facturas-clienterapido-apellidos" @bind="nuevoClienteRapido.Apellidos" /></div>
+                                    <div class="campo"><label for="facturas-clienterapido-nit">@L("NIT")</label><input id="facturas-clienterapido-nit" @bind="nuevoClienteRapido.Nit" /></div>
+                                    <div class="campo"><label for="facturas-clienterapido-telefono">@L("Teléfono")</label><input id="facturas-clienterapido-telefono" @bind="nuevoClienteRapido.Telefono" /></div>
                                 </div>
                                 <div class="acciones-fila">
-                                    <BotonIcono Icono="save" Tooltip="Guardar cliente" Etiqueta="Guardar cliente" Variante="primario" OnClick="CrearClienteRapidoAsync" />
-                                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevoCliente = false" />
+                                    <BotonIcono Icono="save" Tooltip="@L("Guardar cliente")" Etiqueta="@L("Guardar cliente")" Variante="primario" OnClick="CrearClienteRapidoAsync" />
+                                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => mostrarNuevoCliente = false" />
                                 </div>
                             </div>
                         }
@@ -207,21 +207,21 @@
                         <span class="doc-avatar">@Iniciales($"{nuevaFactura.NombresCliente} {nuevaFactura.ApellidosCliente}")</span>
                         <span class="doc-chip-texto">
                             <strong>@nuevaFactura.NombresCliente @nuevaFactura.ApellidosCliente</strong>
-                            <span>NIT: @(nuevaFactura.Nit ?? "C/F")</span>
+                            <span>@L("NIT: {0}", nuevaFactura.Nit ?? "C/F")</span>
                         </span>
-                        <BotonIcono Icono="x" Tooltip="Cambiar cliente" Variante="fantasma" OnClick="LimpiarClienteSeleccionado" />
+                        <BotonIcono Icono="x" Tooltip="@L("Cambiar cliente")" Variante="fantasma" OnClick="LimpiarClienteSeleccionado" />
                     </div>
                 }
             </div>
 
             <div class="doc-seccion">
-                <p class="doc-seccion-titulo"><Icono Nombre="package" Tamano="15" /> Detalle</p>
+                <p class="doc-seccion-titulo"><Icono Nombre="package" Tamano="15" /> @L("Detalle")</p>
 
                 <div class="doc-buscador">
                     <div class="doc-buscador-fila">
-                        <input @ref="campoProducto" placeholder="Escanee o busque el producto por código o descripción" aria-label="Buscar producto por código o descripción" @bind="textoBusquedaProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
-                        <BotonIcono Icono="search" Tooltip="Buscar producto" OnClick="BuscarProductosAsync" />
-                        <BotonIcono Icono="plus" Tooltip="Agregar un servicio (sin producto)" Etiqueta="Agregar servicio" OnClick="AgregarServicio" />
+                        <input @ref="campoProducto" placeholder="@L("Escanee o busque el producto por código o descripción")" aria-label="@L("Buscar producto por código o descripción")" @bind="textoBusquedaProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
+                        <BotonIcono Icono="search" Tooltip="@L("Buscar producto")" OnClick="BuscarProductosAsync" />
+                        <BotonIcono Icono="plus" Tooltip="@L("Agregar un servicio (sin producto)")" Etiqueta="@L("Agregar servicio")" OnClick="AgregarServicio" />
                     </div>
                     @if (productosEncontrados.Count > 0)
                     {
@@ -232,7 +232,7 @@
                                     <span class="doc-avatar doc-avatar-icono"><Icono Nombre="package" Tamano="15" /></span>
                                     <span class="doc-resultado-texto">
                                         <strong>@p.ProDescripcion</strong>
-                                        <span>@p.ProCodigo · @(p.ProTipoItem == "S" ? "Servicio" : "Bien")</span>
+                                        <span>@p.ProCodigo · @(p.ProTipoItem == "S" ? L("Servicio") : L("Bien"))</span>
                                     </span>
                                 </div>
                             }
@@ -242,20 +242,20 @@
 
                 <div class="doc-nota">
                     <Icono Nombre="check-circle" Tamano="15" />
-                    <span>B = bien (producto del inventario), S = servicio (se describe en la línea). El precio unitario ya incluye IVA (@PorcentajeIvaTexto%), como se factura en Guatemala — no se suma aparte.</span>
+                    <span>@L("B = bien (producto del inventario), S = servicio (se describe en la línea). El precio unitario ya incluye IVA ({0}%), como se factura en Guatemala — no se suma aparte.", PorcentajeIvaTexto)</span>
                 </div>
 
                 <table class="doc-tabla doc-tabla-detalle">
                     <thead>
                         <tr>
                             <th class="col-bs">B/S</th>
-                            <th>Descripción</th>
-                            <th class="num">Cantidad</th>
-                            <th>Unidad</th>
-                            <th>Bodega</th>
-                            <th class="num">Precio unit. (IVA incl.)</th>
-                            <th class="num">Descuento</th>
-                            <th class="num">Subtotal</th>
+                            <th>@L("Descripción")</th>
+                            <th class="num">@L("Cantidad")</th>
+                            <th>@L("Unidad")</th>
+                            <th>@L("Bodega")</th>
+                            <th class="num">@L("Precio unit. (IVA incl.)")</th>
+                            <th class="num">@L("Descuento")</th>
+                            <th class="num">@L("Subtotal")</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -266,7 +266,7 @@
                                 <td colspan="9">
                                     <div class="doc-tabla-vacia">
                                         <Icono Nombre="package" Tamano="26" />
-                                        Busque un producto arriba o use «Agregar servicio» para una línea de servicio.
+                                        @L("Busque un producto arriba o use «Agregar servicio» para una línea de servicio.")
                                     </div>
                                 </td>
                             </tr>
@@ -275,7 +275,7 @@
                         {
                             <tr>
                                 <td class="col-bs">
-                                    <select aria-label="Bien o servicio" value="@linea.BienOServicio" @onchange="e => CambiarTipoLinea(linea, e.Value?.ToString())">
+                                    <select aria-label="@L("Bien o servicio")" value="@linea.BienOServicio" @onchange="e => CambiarTipoLinea(linea, e.Value?.ToString())">
                                         <option value="B">B</option>
                                         <option value="S">S</option>
                                     </select>
@@ -283,7 +283,7 @@
                                 <td>
                                     @if (linea.BienOServicio == "S")
                                     {
-                                        <input class="doc-input-descripcion" placeholder="Describa el servicio" aria-label="Descripción del servicio" maxlength="256" @bind="linea.Descripcion" />
+                                        <input class="doc-input-descripcion" placeholder="@L("Describa el servicio")" aria-label="@L("Descripción del servicio")" maxlength="256" @bind="linea.Descripcion" />
                                     }
                                     else if (linea.ProId is not null)
                                     {
@@ -292,9 +292,9 @@
                                     else
                                     {
                                         <div class="doc-buscador-linea">
-                                            <input placeholder="Buscar producto" aria-label="Buscar producto para esta línea" @bind="linea.Busqueda" @bind:event="oninput"
+                                            <input placeholder="@L("Buscar producto")" aria-label="@L("Buscar producto para esta línea")" @bind="linea.Busqueda" @bind:event="oninput"
                                                    @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductoLineaAsync(linea); })" />
-                                            <BotonIcono Icono="search" Tooltip="Buscar producto" OnClick="() => BuscarProductoLineaAsync(linea)" />
+                                            <BotonIcono Icono="search" Tooltip="@L("Buscar producto")" OnClick="() => BuscarProductoLineaAsync(linea)" />
                                             @if (linea.Resultados.Count > 0)
                                             {
                                                 <div class="doc-buscador-resultados">
@@ -309,9 +309,9 @@
                                         </div>
                                     }
                                 </td>
-                                <td class="num"><input type="number" min="0" step="@(linea.ManejaExistencia ? "1" : "0.01")" aria-label="Cantidad" @bind="linea.Cantidad" /></td>
+                                <td class="num"><input type="number" min="0" step="@(linea.ManejaExistencia ? "1" : "0.01")" aria-label="@L("Cantidad")" @bind="linea.Cantidad" /></td>
                                 <td>
-                                    <select aria-label="Unidad de medida" @bind="linea.UmeId">
+                                    <select aria-label="@L("Unidad de medida")" @bind="linea.UmeId">
                                         <option value="0">—</option>
                                         @foreach (var u in unidadesMedida.Where(u => u.UmeEstado == "A" || u.UmeId == linea.UmeId))
                                         {
@@ -323,23 +323,23 @@
                                     @if (linea.BienOServicio == "B" && linea.ManejaExistencia && linea.ProId is int proIdLinea)
                                     {
                                         var existencia = Existencia(proIdLinea, linea.BodId);
-                                        <select aria-label="Bodega de despacho" value="@linea.BodId" @onchange="e => CambiarBodegaLinea(linea, e.Value?.ToString())">
+                                        <select aria-label="@L("Bodega de despacho")" value="@linea.BodId" @onchange="e => CambiarBodegaLinea(linea, e.Value?.ToString())">
                                             @foreach (var b in BodegasDespacho(linea.BodId))
                                             {
                                                 <option value="@b.BodId">@b.BodDescripcion</option>
                                             }
                                         </select>
-                                        <small class="@(existencia < linea.Cantidad ? "texto-error" : "texto-tenue")">Exist. @existencia.ToString("#,##0.##")</small>
+                                        <small class="@(existencia < linea.Cantidad ? "texto-error" : "texto-tenue")">@L("Exist. {0}", existencia.ToString("#,##0.##"))</small>
                                     }
                                     else
                                     {
                                         <span class="texto-tenue">—</span>
                                     }
                                 </td>
-                                <td class="num"><input type="number" step="0.01" min="0" aria-label="Precio unitario" @bind="linea.PrecioUnitario" /></td>
-                                <td class="num"><input type="number" step="0.01" min="0" aria-label="Descuento" @bind="linea.ValorDescuento" /></td>
+                                <td class="num"><input type="number" step="0.01" min="0" aria-label="@L("Precio unitario")" @bind="linea.PrecioUnitario" /></td>
+                                <td class="num"><input type="number" step="0.01" min="0" aria-label="@L("Descuento")" @bind="linea.ValorDescuento" /></td>
                                 <td class="num">@MonedaSimbolo @linea.SubTotal.ToString("N2")</td>
-                                <td><BotonIcono Icono="trash-2" Tooltip="Quitar línea" Variante="peligro" OnClick="() => lineas.Remove(linea)" /></td>
+                                <td><BotonIcono Icono="trash-2" Tooltip="@L("Quitar línea")" Variante="peligro" OnClick="() => lineas.Remove(linea)" /></td>
                             </tr>
                         }
                     </tbody>
@@ -348,32 +348,32 @@
 
             <div class="doc-seccion doc-totales-envoltorio">
                 <div class="doc-totales">
-                    <div class="doc-totales-fila"><span>Subtotal</span><span>@MonedaSimbolo @Subtotal.ToString("N2")</span></div>
-                    <div class="doc-totales-fila"><span>Descuento</span><span>@MonedaSimbolo @TotalDescuento.ToString("N2")</span></div>
+                    <div class="doc-totales-fila"><span>@L("Subtotal")</span><span>@MonedaSimbolo @Subtotal.ToString("N2")</span></div>
+                    <div class="doc-totales-fila"><span>@L("Descuento")</span><span>@MonedaSimbolo @TotalDescuento.ToString("N2")</span></div>
                     @if (AjusteRedondeo != 0)
                     {
-                        <div class="doc-totales-fila"><span>Redondeo del IVA</span><span>@MonedaSimbolo @AjusteRedondeo.ToString("N2")</span></div>
+                        <div class="doc-totales-fila"><span>@L("Redondeo del IVA")</span><span>@MonedaSimbolo @AjusteRedondeo.ToString("N2")</span></div>
                     }
-                    <div class="doc-totales-total"><span>Total</span><span>@MonedaSimbolo @Total.ToString("N2")</span></div>
-                    <div class="doc-totales-nota">IVA incluido (@PorcentajeIvaTexto%): @MonedaSimbolo @IvaIncluido.ToString("N2")</div>
+                    <div class="doc-totales-total"><span>@L("Total")</span><span>@MonedaSimbolo @Total.ToString("N2")</span></div>
+                    <div class="doc-totales-nota">@L("IVA incluido ({0}%): {1} {2}", PorcentajeIvaTexto, MonedaSimbolo, IvaIncluido.ToString("N2"))</div>
                 </div>
             </div>
 
             <div class="doc-seccion">
-                <p class="doc-seccion-titulo"><Icono Nombre="credit-card" Tamano="15" /> Forma de pago</p>
+                <p class="doc-seccion-titulo"><Icono Nombre="credit-card" Tamano="15" /> @L("Forma de pago")</p>
                 <div class="doc-grid">
                     <div class="campo">
-                        <label for="facturas-condicionpagofactura">Condición</label>
+                        <label for="facturas-condicionpagofactura">@L("Condición")</label>
                         <select id="facturas-condicionpagofactura" @bind="condicionPagoFactura">
-                            <option value="contado">Contado</option>
-                            <option value="credito">Crédito</option>
+                            <option value="contado">@L("Contado")</option>
+                            <option value="credito">@L("Crédito")</option>
                         </select>
                     </div>
                     @if (condicionPagoFactura == "credito")
                     {
-                        <div class="campo"><label for="facturas-factura-montoenganche">Enganche</label><input id="facturas-factura-montoenganche" type="number" step="0.01" min="0" @bind="nuevaFactura.MontoEnganche" /></div>
-                        <div class="campo"><label for="facturas-factura-numerocuotas">Número de cuotas</label><input id="facturas-factura-numerocuotas" type="number" min="1" @bind="nuevaFactura.NumeroCuotas" /></div>
-                        <div class="campo"><label for="facturas-factura-fechaprimerpago">Fecha del primer pago</label><input id="facturas-factura-fechaprimerpago" type="date" @bind="nuevaFactura.FechaPrimerPago" /></div>
+                        <div class="campo"><label for="facturas-factura-montoenganche">@L("Enganche")</label><input id="facturas-factura-montoenganche" type="number" step="0.01" min="0" @bind="nuevaFactura.MontoEnganche" /></div>
+                        <div class="campo"><label for="facturas-factura-numerocuotas">@L("Número de cuotas")</label><input id="facturas-factura-numerocuotas" type="number" min="1" @bind="nuevaFactura.NumeroCuotas" /></div>
+                        <div class="campo"><label for="facturas-factura-fechaprimerpago">@L("Fecha del primer pago")</label><input id="facturas-factura-fechaprimerpago" type="date" @bind="nuevaFactura.FechaPrimerPago" /></div>
                     }
                 </div>
                 @if (condicionPagoFactura == "credito" && creditoCliente is not null)
@@ -383,18 +383,18 @@
                     <div class="credito-resumen @(excede ? "credito-excedido" : "")" role="@(excede ? "alert" : null)">
                         @if (creditoCliente.Limite == 0)
                         {
-                            <span>Cliente sin límite de crédito</span>
+                            <span>@L("Cliente sin límite de crédito")</span>
                         }
                         else
                         {
-                            <span>Límite <strong>@MonedaSimbolo @creditoCliente.Limite.ToString("N2")</strong></span>
-                            <span>Saldo actual <strong>@MonedaSimbolo @creditoCliente.Saldo.ToString("N2")</strong></span>
-                            <span>Disponible <strong>@MonedaSimbolo @((creditoCliente.Disponible ?? 0).ToString("N2"))</strong></span>
+                            <span>@L("Límite") <strong>@MonedaSimbolo @creditoCliente.Limite.ToString("N2")</strong></span>
+                            <span>@L("Saldo actual") <strong>@MonedaSimbolo @creditoCliente.Saldo.ToString("N2")</strong></span>
+                            <span>@L("Disponible") <strong>@MonedaSimbolo @((creditoCliente.Disponible ?? 0).ToString("N2"))</strong></span>
                         }
-                        <span>A financiar <strong>@MonedaSimbolo @financiado.ToString("N2")</strong></span>
+                        <span>@L("A financiar") <strong>@MonedaSimbolo @financiado.ToString("N2")</strong></span>
                         @if (excede)
                         {
-                            <span>Excede el crédito disponible: aumente el enganche o cobre saldos pendientes.</span>
+                            <span>@L("Excede el crédito disponible: aumente el enganche o cobre saldos pendientes.")</span>
                         }
                     </div>
                 }
@@ -405,7 +405,7 @@
                     {
                         <div class="doc-nota">
                             <Icono Nombre="alert-triangle" Tamano="15" />
-                            <span>No hay una caja abierta en esta sucursal. Para grabar @(condicionPagoFactura == "credito" ? "una factura con enganche" : "una factura de contado") abra la caja en Bancos › Caja.</span>
+                            <span>@L("No hay una caja abierta en esta sucursal. Para grabar {0} abra la caja en Bancos › Caja.", condicionPagoFactura == "credito" ? L("una factura con enganche") : L("una factura de contado"))</span>
                         </div>
                     }
                     else
@@ -413,7 +413,7 @@
                         @if (cajasAbiertasSucursal.Count > 1)
                         {
                             <div class="campo">
-                                <label for="facturas-pcaidfactura">Caja receptora</label>
+                                <label for="facturas-pcaidfactura">@L("Caja receptora")</label>
                                 <select id="facturas-pcaidfactura" @bind="pcaIdFactura">
                                     @foreach (var c in cajasAbiertasSucursal)
                                     {
@@ -423,10 +423,10 @@
                             </div>
                         }
 
-                        <p>Monto a pagar ahora: @MonedaSimbolo @MontoAPagar.ToString("N2")</p>
+                        <p>@L("Monto a pagar ahora: {0} {1}", MonedaSimbolo, MontoAPagar.ToString("N2"))</p>
 
                         <table class="doc-tabla tabla-formas-pago">
-                            <thead><tr><th>Forma</th><th class="num">Monto</th><th>Entidad financiera</th><th>No. de cheque o referencia</th><th></th></tr></thead>
+                            <thead><tr><th>@L("Forma")</th><th class="num">@L("Monto")</th><th>@L("Entidad financiera")</th><th>@L("No. de cheque o referencia")</th><th></th></tr></thead>
                             <tbody>
                                 @foreach (var f in formasPagoCapturadas)
                                 {
@@ -438,28 +438,28 @@
                                             @(f.NumeroCheque ?? f.NumeroTarjetaUlt4 ?? "—")
                                             @if (f.ComprobanteNombre is not null)
                                             {
-                                                <span class="texto-tenue" title="Comprobante adjunto"> · <Icono Nombre="file-text" Tamano="13" /> @f.ComprobanteNombre</span>
+                                                <span class="texto-tenue" title="@L("Comprobante adjunto")"> · <Icono Nombre="file-text" Tamano="13" /> @f.ComprobanteNombre</span>
                                             }
                                         </td>
-                                        <td><BotonIcono Icono="trash-2" Tooltip="Quitar" Variante="peligro" OnClick="() => formasPagoCapturadas.Remove(f)" /></td>
+                                        <td><BotonIcono Icono="trash-2" Tooltip="@L("Quitar")" Variante="peligro" OnClick="() => formasPagoCapturadas.Remove(f)" /></td>
                                     </tr>
                                 }
                                 <tr>
                                     <td>
-                                        <select @bind="formaPagoNueva.PftId" @bind:after="AlCambiarFormaNueva" aria-label="Forma de pago">
-                                            <option value="0">Seleccione...</option>
+                                        <select @bind="formaPagoNueva.PftId" @bind:after="AlCambiarFormaNueva" aria-label="@L("Forma de pago")">
+                                            <option value="0">@L("Seleccione...")</option>
                                             @foreach (var t in formasPagoTipo)
                                             {
                                                 <option value="@t.PftId">@t.PftDescripcion</option>
                                             }
                                         </select>
                                     </td>
-                                    <td class="num"><input class="entrada-monto" type="number" step="0.01" min="0" @bind="formaPagoNueva.Monto" aria-label="Monto" /></td>
+                                    <td class="num"><input class="entrada-monto" type="number" step="0.01" min="0" @bind="formaPagoNueva.Monto" aria-label="@L("Monto")" /></td>
                                     <td>
                                         @if (RequiereEntidadFinanciera(formaPagoNueva.PftId) || EsTarjeta(formaPagoNueva.PftId))
                                         {
-                                            <select @bind="formaPagoNueva.GefId" aria-label="Entidad financiera">
-                                                <option value="0">Entidad...</option>
+                                            <select @bind="formaPagoNueva.GefId" aria-label="@L("Entidad financiera")">
+                                                <option value="0">@L("Entidad...")</option>
                                                 @foreach (var e in entidadesFinancieras)
                                                 {
                                                     <option value="@e.GefId">@e.GefDescripcion</option>
@@ -470,29 +470,28 @@
                                     <td>
                                         @if (EsCheque(formaPagoNueva.PftId))
                                         {
-                                            <input class="entrada-referencia" placeholder="No. de cheque" aria-label="No. de cheque" @bind="formaPagoNueva.NumeroCheque" />
+                                            <input class="entrada-referencia" placeholder="@L("No. de cheque")" aria-label="@L("No. de cheque")" @bind="formaPagoNueva.NumeroCheque" />
                                         }
                                         else if (EsTarjeta(formaPagoNueva.PftId))
                                         {
-                                            <input class="entrada-referencia" placeholder="Últimos 4 dígitos" aria-label="Últimos 4 dígitos" maxlength="4" @bind="formaPagoNueva.NumeroTarjetaUlt4" />
+                                            <input class="entrada-referencia" placeholder="@L("Últimos 4 dígitos")" aria-label="@L("Últimos 4 dígitos")" maxlength="4" @bind="formaPagoNueva.NumeroTarjetaUlt4" />
                                         }
                                         else if (EsTransferencia(formaPagoNueva.PftId))
                                         {
-                                            <input class="entrada-referencia" placeholder="No. de operación" aria-label="No. de operación de la transferencia" maxlength="16" @bind="formaPagoNueva.NumeroCheque" />
-                                            <AdjuntarArchivo Id="fac-comprobante" Etiqueta="Comprobante" Compacto="true" @bind-Archivo="comprobanteNuevo" AlError="MostrarErrorFormaPago" />
+                                            <input class="entrada-referencia" placeholder="@L("No. de operación")" aria-label="@L("No. de operación de la transferencia")" maxlength="16" @bind="formaPagoNueva.NumeroCheque" />
+                                            <AdjuntarArchivo Id="fac-comprobante" Etiqueta="@L("Comprobante")" Compacto="true" @bind-Archivo="comprobanteNuevo" AlError="MostrarErrorFormaPago" />
                                         }
                                     </td>
-                                    <td><BotonIcono Icono="plus" Tooltip="Agregar forma de pago" OnClick="AgregarFormaPago" /></td>
+                                    <td><BotonIcono Icono="plus" Tooltip="@L("Agregar forma de pago")" OnClick="AgregarFormaPago" /></td>
                                 </tr>
                             </tbody>
                         </table>
 
                         <div class="doc-totales-nota">
-                            Capturado: @MonedaSimbolo @formasPagoCapturadas.Sum(f => f.Monto).ToString("N2")
-                            de @MonedaSimbolo @MontoAPagar.ToString("N2")
+                            @L("Capturado: {0} {1} de {0} {2}", MonedaSimbolo, formasPagoCapturadas.Sum(f => f.Monto).ToString("N2"), MontoAPagar.ToString("N2"))
                             @if (formasPagoCapturadas.Count == 0 && formaPagoNueva.PftId > 0)
                             {
-                                <span> · si no agrega otra, todo se registra en @NombreFormaPago(formaPagoNueva.PftId)</span>
+                                <span> @L("· si no agrega otra, todo se registra en {0}", NombreFormaPago(formaPagoNueva.PftId))</span>
                             }
                         </div>
                     }
@@ -509,14 +508,14 @@
                         {
                             <div class="doc-nota">
                                 <Icono Nombre="info" Tamano="15" />
-                                <span>Este cliente no tiene compras registradas.</span>
+                                <span>@L("Este cliente no tiene compras registradas.")</span>
                             </div>
                         }
                         else
                         {
                             <table class="doc-tabla">
                                 <thead>
-                                    <tr><th>Fecha</th><th>Serie/Número</th><th class="num">Total</th><th>Estado</th><th></th></tr>
+                                    <tr><th>@L("Fecha")</th><th>@L("Serie/Número")</th><th class="num">@L("Total")</th><th>@L("Estado")</th><th></th></tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var h in historialCliente)
@@ -525,15 +524,15 @@
                                             <td>@h.EncFechaDocto.ToString("dd/MM/yyyy")</td>
                                             <td>@(string.IsNullOrWhiteSpace(h.EncSerieDocto) ? $"{h.EncNumeroDocto}" : $"{h.EncSerieDocto}-{h.EncNumeroDocto}")</td>
                                             <td class="num">@MonedaSimbolo @h.EncMontoTotal.ToString("N2")</td>
-                                            <td>@(h.EncEstado == "G" ? "Grabada" : "Anulada")</td>
-                                            <td><BotonIcono Icono="eye" Tooltip="Ver qué compró" OnClick="() => AlternarDetalleHistorialAsync(h)" /></td>
+                                            <td>@(h.EncEstado == "G" ? L("Grabada") : L("Anulada"))</td>
+                                            <td><BotonIcono Icono="eye" Tooltip="@L("Ver qué compró")" OnClick="() => AlternarDetalleHistorialAsync(h)" /></td>
                                         </tr>
                                         @if (historialClienteExpandidoId == h.EncId)
                                         {
                                             <tr>
                                                 <td colspan="5">
                                                     <table class="doc-tabla">
-                                                        <thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Precio unit.</th></tr></thead>
+                                                        <thead><tr><th>@L("Producto")</th><th class="num">@L("Cantidad")</th><th class="num">@L("Precio unit.")</th></tr></thead>
                                                         <tbody>
                                                             @foreach (var d in historialClienteDetalleExpandido)
                                                             {
@@ -560,14 +559,14 @@
                         {
                             <div class="doc-nota">
                                 <Icono Nombre="info" Tamano="15" />
-                                <span>Plan de pagos: @nuevaFactura.NumeroCuotas cuota(s) de @MonedaSimbolo @ValorCuotaFactura.ToString("N2"), a partir del enganche de @MonedaSimbolo @nuevaFactura.MontoEnganche.ToString("N2").</span>
+                                <span>@L("Plan de pagos: {0} cuota(s) de {1} {2}, a partir del enganche de {3} {4}.", nuevaFactura.NumeroCuotas, MonedaSimbolo, ValorCuotaFactura.ToString("N2"), MonedaSimbolo, nuevaFactura.MontoEnganche.ToString("N2"))</span>
                             </div>
                         }
                         else
                         {
                             <div class="doc-nota">
                                 <Icono Nombre="info" Tamano="15" />
-                                <span>Esta factura es de contado. Seleccione la condición "Crédito" en Forma de pago para ver el plan de cuotas.</span>
+                                <span>@L("Esta factura es de contado. Seleccione la condición \"Crédito\" en Forma de pago para ver el plan de cuotas.")</span>
                             </div>
                         }
                     }
@@ -576,8 +575,8 @@
         </div>
 
         <div class="doc-card-footer">
-            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevaFactura = false" />
-            <BotonIcono Icono="save" Tooltip="Grabar factura" Etiqueta="Grabar factura" Variante="primario" OnClick="GrabarFacturaAsync" />
+            <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => mostrarNuevaFactura = false" />
+            <BotonIcono Icono="save" Tooltip="@L("Grabar factura")" Etiqueta="@L("Grabar factura")" Variante="primario" OnClick="GrabarFacturaAsync" />
         </div>
     </div>
 }
@@ -585,15 +584,15 @@
 @if (!mostrarNuevaFactura)
 {
     <div class="tarjeta">
-        <h2>Historial</h2>
+        <h2>@L("Historial")</h2>
         <table class="tabla-datos">
             <thead>
-                <tr><th class="col-fecha-hora">Fecha y hora</th><th class="col-serie">Serie/Número</th><th class="col-tipo">Tipo</th><th>Cliente</th><th class="num col-monto">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+                <tr><th class="col-fecha-hora">@L("Fecha y hora")</th><th class="col-serie">@L("Serie/Número")</th><th class="col-tipo">@L("Tipo")</th><th>@L("Cliente")</th><th class="num col-monto">@L("Total")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr>
             </thead>
             <tbody>
                 @if (facturasFiltradas.Count == 0)
                 {
-                    <tr><td colspan="7" class="doc-tabla-vacia">No hay facturas para los filtros seleccionados.</td></tr>
+                    <tr><td colspan="7" class="doc-tabla-vacia">@L("No hay facturas para los filtros seleccionados.")</td></tr>
                 }
                 @foreach (var f in Paginador.Recortar(facturasFiltradas, pagina))
                 {
@@ -606,24 +605,24 @@
                         <td class="col-estado">
                             @if (f.EncEstado == "G")
                             {
-                                <span class="estado-badge estado-badge-grabada">Grabada</span>
+                                <span class="estado-badge estado-badge-grabada">@L("Grabada")</span>
                             }
                             else
                             {
-                                <span class="estado-badge estado-badge-anulada">Anulada</span>
+                                <span class="estado-badge estado-badge-anulada">@L("Anulada")</span>
                             }
                         </td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
-                                <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarFacturaAsync(f)" />
-                                <a class="boton-icono" href="@($"facturas/{f.EncId}/imprimir?auto=1")" target="_blank" rel="noopener" aria-label="Imprimir la factura">
-                                    <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-tip" role="tooltip">Imprimir</span>
+                                <BotonIcono Icono="eye" Tooltip="@L("Ver detalle")" OnClick="() => SeleccionarFacturaAsync(f)" />
+                                <a class="boton-icono" href="@($"facturas/{f.EncId}/imprimir?auto=1")" target="_blank" rel="noopener" aria-label="@L("Imprimir la factura")">
+                                    <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-tip" role="tooltip">@L("Imprimir")</span>
                                 </a>
                                 <AuthorizeView Policy="Permiso:VENTAS_FACTURA_ANULAR">
                                     <Authorized>
                                         @if (f.EncEstado == "G")
                                         {
-                                            <BotonIcono Icono="ban" Tooltip="Anular factura" Variante="peligro" OnClick="() => { anulandoId = f.EncId; motivoAnulacion = string.Empty; mensaje = null; }" />
+                                            <BotonIcono Icono="ban" Tooltip="@L("Anular factura")" Variante="peligro" OnClick="() => { anulandoId = f.EncId; motivoAnulacion = string.Empty; mensaje = null; }" />
                                         }
                                     </Authorized>
                                 </AuthorizeView>
@@ -635,12 +634,12 @@
                         <tr class="fila-edicion-tabla">
                             <td colspan="7">
                                 <div class="anulacion-form">
-                                    <label for="motivo-anular-factura">¿Anular la factura @(string.IsNullOrWhiteSpace(f.EncSerieDocto) ? f.EncNumeroDocto : $"{f.EncSerieDocto}-{f.EncNumeroDocto}") de @f.NombreCliente por @f.EncMontoTotal.ToString("N2")? Indique el motivo.</label>
-                                    <input id="motivo-anular-factura" maxlength="200" placeholder="Ej.: datos del cliente equivocados" @bind="motivoAnulacion" @bind:event="oninput" />
-                                    <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Sí, anular factura" Variante="peligro"
+                                    <label for="motivo-anular-factura">@L("¿Anular la factura {0} de {1} por {2}? Indique el motivo.", string.IsNullOrWhiteSpace(f.EncSerieDocto) ? f.EncNumeroDocto : $"{f.EncSerieDocto}-{f.EncNumeroDocto}", f.NombreCliente, f.EncMontoTotal.ToString("N2"))</label>
+                                    <input id="motivo-anular-factura" maxlength="200" placeholder="@L("Ej.: datos del cliente equivocados")" @bind="motivoAnulacion" @bind:event="oninput" />
+                                    <BotonIcono Icono="ban" Tooltip="@L("Confirmar anulación")" Etiqueta="@L("Sí, anular factura")" Variante="peligro"
                                                 Deshabilitado="motivoAnulacion.Trim().Length < 5" OnClick="() => AnularAsync(f)" />
-                                    <BotonIcono Icono="x" Tooltip="No anular" Etiqueta="Cancelar" OnClick="() => anulandoId = null" />
-                                    <small class="texto-ayuda">Se devuelve el inventario y se anula la póliza. Si se pagó de contado y la caja sigue abierta, el pago sale del cuadre. Si tiene cobros de cuotas o notas, primero hay que anularlos. Si está certificada, también se anula ante SAT con este motivo.</small>
+                                    <BotonIcono Icono="x" Tooltip="@L("No anular")" Etiqueta="@L("Cancelar")" OnClick="() => anulandoId = null" />
+                                    <small class="texto-ayuda">@L("Se devuelve el inventario y se anula la póliza. Si se pagó de contado y la caja sigue abierta, el pago sale del cuadre. Si tiene cobros de cuotas o notas, primero hay que anularlos. Si está certificada, también se anula ante SAT con este motivo.")</small>
                                 </div>
                             </td>
                         </tr>
@@ -658,40 +657,40 @@
         <div class="doc-card-header">
             <div>
                 <h2>@(string.IsNullOrWhiteSpace(encabezadoSeleccionado.EncSerieDocto) ? $"{encabezadoSeleccionado.EncNumeroUnico}" : $"{encabezadoSeleccionado.EncSerieDocto}-{encabezadoSeleccionado.EncNumeroUnico}")</h2>
-                <p>@encabezadoSeleccionado.EncNombresCliente @encabezadoSeleccionado.EncApellidosCliente · NIT: @(encabezadoSeleccionado.CliNit ?? "C/F")</p>
+                <p>@L("{0} {1} · NIT: {2}", encabezadoSeleccionado.EncNombresCliente, encabezadoSeleccionado.EncApellidosCliente, encabezadoSeleccionado.CliNit ?? "C/F")</p>
             </div>
             <div class="acciones-fila">
                 <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@($"facturas/{encabezadoSeleccionado.EncId}/imprimir?auto=1")" target="_blank" rel="noopener">
-                    <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+                    <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">@L("Imprimir")</span>
                 </a>
-                <BotonIcono Icono="mail" Tooltip="Enviar la factura al correo del cliente" Etiqueta="Enviar por correo" OnClick="AbrirCorreoFacturaAsync" />
+                <BotonIcono Icono="mail" Tooltip="@L("Enviar la factura al correo del cliente")" Etiqueta="@L("Enviar por correo")" OnClick="AbrirCorreoFacturaAsync" />
                 @if (encabezadoSeleccionado.EncEstado == "G")
                 {
-                    <span class="estado-badge estado-badge-grabada">Grabada</span>
+                    <span class="estado-badge estado-badge-grabada">@L("Grabada")</span>
                 }
                 else
                 {
-                    <span class="estado-badge estado-badge-anulada">Anulada</span>
+                    <span class="estado-badge estado-badge-anulada">@L("Anulada")</span>
                 }
             </div>
         </div>
         <div class="doc-card-body">
             <div class="fel-resumen fel-estado-@(felDetalle?.Estado ?? "N")">
-                <span class="fel-resumen-titulo">Factura electrónica</span>
+                <span class="fel-resumen-titulo">@L("Factura electrónica")</span>
                 <span class="estado-badge @Erp.Web.Fel.FelVista.Clase(felDetalle?.Estado)">@Erp.Web.Fel.FelService.EstadoTexto(felDetalle?.Estado)</span>
                 @if (felDetalle?.Uuid is not null)
                 {
-                    <span>Autorización <strong>@felDetalle.Uuid</strong> · Serie @felDetalle.Serie · Número @felDetalle.Numero</span>
+                    <span>@L("Autorización") <strong>@felDetalle.Uuid</strong> @L("· Serie {0} · Número {1}", felDetalle.Serie, felDetalle.Numero)</span>
                 }
                 else if (felDetalle?.Mensaje is not null)
                 {
-                    <span class="texto-tenue">@felDetalle.Mensaje</span>
+                    <span class="texto-tenue">@Textos.Mensaje(felDetalle.Mensaje)</span>
                 }
                 @if (encabezadoSeleccionado.EncEstado == "G" && felDetalle?.Estado is null or "P" or "R")
                 {
                     <AuthorizeView Policy="Permiso:FEL_ADMIN,VENTAS_FACTURA_CREAR" Context="felAuth">
                         <Authorized>
-                            <BotonIcono Icono="refresh-cw" Tooltip="Enviar al certificador" Etiqueta="@(felDetalle is null ? "Certificar" : "Reintentar")" OnClick="CertificarSeleccionadaAsync" />
+                            <BotonIcono Icono="refresh-cw" Tooltip="@L("Enviar al certificador")" Etiqueta="@(felDetalle is null ? L("Certificar") : L("Reintentar"))" OnClick="CertificarSeleccionadaAsync" />
                         </Authorized>
                     </AuthorizeView>
                 }
@@ -705,18 +704,18 @@
                 <div class="doc-nota">
                     <Icono Nombre="landmark" Tamano="15" />
                     <span>
-                        Transferencias recibidas:
+                        @L("Transferencias recibidas:")
                         @foreach (var t in transferenciasFactura)
                         {
                             <span class="transferencia-recibida">
                                 No. @t.Referencia@(t.Banco is null ? "" : $" · {t.Banco}") · @MonedaSimbolo @t.Monto.ToString("N2") ·
                                 @if (t.TieneComprobante)
                                 {
-                                    <a href="@($"pagos/formas/{t.PpfId}/comprobante")" target="_blank" rel="noopener">ver comprobante</a>
+                                    <a href="@($"pagos/formas/{t.PpfId}/comprobante")" target="_blank" rel="noopener">@L("ver comprobante")</a>
                                 }
                                 else
                                 {
-                                    <span class="texto-tenue">sin comprobante</span>
+                                    <span class="texto-tenue">@L("sin comprobante")</span>
                                 }
                             </span>
                         }
@@ -731,13 +730,13 @@
                     <thead>
                         <tr>
                             <th class="col-bs">B/S</th>
-                            <th>Descripción</th>
-                            <th class="num">Cantidad</th>
-                            <th>Unidad</th>
-                            <th>Bodega</th>
-                            <th class="num">Precio unit. (IVA incl.)</th>
-                            <th class="num">Descuento</th>
-                            <th class="num">Subtotal</th>
+                            <th>@L("Descripción")</th>
+                            <th class="num">@L("Cantidad")</th>
+                            <th>@L("Unidad")</th>
+                            <th>@L("Bodega")</th>
+                            <th class="num">@L("Precio unit. (IVA incl.)")</th>
+                            <th class="num">@L("Descuento")</th>
+                            <th class="num">@L("Subtotal")</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -766,14 +765,14 @@
                 {
                     <div class="doc-nota">
                         <Icono Nombre="info" Tamano="15" />
-                        <span>Esta factura no tiene plan de pagos (fue de contado).</span>
+                        <span>@L("Esta factura no tiene plan de pagos (fue de contado).")</span>
                     </div>
                 }
                 else
                 {
                     <table class="doc-tabla">
                         <thead>
-                            <tr><th class="num">Cuota</th><th>Fecha máxima de pago</th><th class="num">Valor</th><th>Estado</th></tr>
+                            <tr><th class="num">@L("Cuota")</th><th>@L("Fecha máxima de pago")</th><th class="num">@L("Valor")</th><th>@L("Estado")</th></tr>
                         </thead>
                         <tbody>
                             @foreach (var c in detallePlanPagos)
@@ -782,7 +781,7 @@
                                     <td class="num">@c.CppNroCuota</td>
                                     <td>@c.CppFechaMaximaPago.ToString("dd/MM/yyyy")</td>
                                     <td class="num">@c.CppValorCuota.ToString("N2")</td>
-                                    <td>@(c.CppEstado switch { "P" => "Pendiente", "A" => "Abonado", "V" => "Vencido", _ => c.CppEstado })</td>
+                                    <td>@(c.CppEstado switch { "P" => L("Pendiente"), "A" => L("Abonado"), "V" => L("Vencido"), _ => c.CppEstado })</td>
                                 </tr>
                             }
                         </tbody>
@@ -957,7 +956,7 @@
             var (cotizacion, lineasCotizacion) = await CotizacionRepository.ConsultarPorIdAsync(cotId);
             if (cotizacion is null)
             {
-                mensaje = $"No existe la cotización {cotId}.";
+                mensaje = L("No existe la cotización {0}.", cotId);
                 esMensajeError = true;
                 return;
             }
@@ -965,9 +964,9 @@
             {
                 mensaje = cotizacion.Estado switch
                 {
-                    "X" => $"La cotización {cotizacion.Numero} venció el {cotizacion.Vence:dd/MM/yyyy}: ya no se puede facturar. Duplíquela en Cotizaciones para cotizar con los precios de hoy.",
-                    "F" => $"La cotización {cotizacion.Numero} ya se facturó en {cotizacion.Factura}.",
-                    _ => $"La cotización {cotizacion.Numero} está anulada."
+                    "X" => L("La cotización {0} venció el {1:dd/MM/yyyy}: ya no se puede facturar. Duplíquela en Cotizaciones para cotizar con los precios de hoy.", cotizacion.Numero, cotizacion.Vence),
+                    "F" => L("La cotización {0} ya se facturó en {1}.", cotizacion.Numero, cotizacion.Factura),
+                    _ => L("La cotización {0} está anulada.", cotizacion.Numero)
                 };
                 esMensajeError = true;
                 return;
@@ -1016,7 +1015,7 @@
             var faltantes = lineasCotizacion.Count(l => l.ManejaExistencia && (l.Existencia ?? 0) < l.Cantidad);
             if (faltantes > 0)
             {
-                mensaje = $"{faltantes} {(faltantes == 1 ? "producto de la cotización no tiene" : "productos de la cotización no tienen")} existencia suficiente en la bodega; ajuste las cantidades antes de grabar.";
+                mensaje = L("{0} {1} existencia suficiente en la bodega; ajuste las cantidades antes de grabar.", faltantes, (faltantes == 1 ? L("producto de la cotización no tiene") : L("productos de la cotización no tienen")));
                 esMensajeError = true;
             }
         }
@@ -1041,7 +1040,7 @@
         try
         {
             correoFactura = await DocumentosCorreo.FacturaAsync(encabezadoSeleccionado.EncId);
-            if (correoFactura is null) { mensaje = "No se encontró la factura."; esMensajeError = true; }
+            if (correoFactura is null) { mensaje = L("No se encontró la factura."); esMensajeError = true; }
         }
         catch (Exception ex)
         {
@@ -1073,9 +1072,9 @@
     private string? ValidarTransferencia(FormaPagoCaptura forma, IEnumerable<FormaPagoCaptura> otras)
     {
         if (!EsTransferencia(forma.PftId)) return null;
-        if (string.IsNullOrWhiteSpace(forma.NumeroCheque)) return "Escriba el número de operación de la transferencia.";
+        if (string.IsNullOrWhiteSpace(forma.NumeroCheque)) return L("Escriba el número de operación de la transferencia.");
         if (otras.Any(o => EsTransferencia(o.PftId) && string.Equals(o.NumeroCheque?.Trim(), forma.NumeroCheque.Trim(), StringComparison.OrdinalIgnoreCase)))
-            return "Ya hay otra transferencia con ese número de operación en este pago.";
+            return L("Ya hay otra transferencia con ese número de operación en este pago.");
         return null;
     }
     private bool RequiereEntidadFinanciera(int pftId)
@@ -1088,7 +1087,7 @@
     {
         if (formaPagoNueva.PftId <= 0 || formaPagoNueva.Monto <= 0)
         {
-            mensaje = "Seleccione la forma de pago e indique un monto mayor a cero.";
+            mensaje = L("Seleccione la forma de pago e indique un monto mayor a cero.");
             esMensajeError = true;
             return;
         }
@@ -1242,7 +1241,7 @@
     {
         if (string.IsNullOrWhiteSpace(nuevoClienteRapido.Codigo) || string.IsNullOrWhiteSpace(nuevoClienteRapido.Nombres))
         {
-            mensaje = "Código y nombres son obligatorios para crear el cliente.";
+            mensaje = L("Código y nombres son obligatorios para crear el cliente.");
             esMensajeError = true;
             return;
         }
@@ -1394,7 +1393,7 @@
             linea.Resultados = porCodigo.Concat(porDescripcion).DistinctBy(p => p.ProId).Where(p => p.ProTipoItem == "B").Take(10).ToList();
             if (linea.Resultados.Count == 0)
             {
-                mensaje = "No se encontraron bienes con ese texto.";
+                mensaje = L("No se encontraron bienes con ese texto.");
                 esMensajeError = true;
             }
         }
@@ -1430,14 +1429,14 @@
     {
         if (nuevaFactura.BodId == 0)
         {
-            mensaje = "Debe seleccionar la bodega antes de agregar productos.";
+            mensaje = L("Debe seleccionar la bodega antes de agregar productos.");
             esMensajeError = true;
             return null;
         }
 
         if (nuevaFactura.MonId is null)
         {
-            mensaje = "Debe seleccionar la moneda antes de agregar productos.";
+            mensaje = L("Debe seleccionar la moneda antes de agregar productos.");
             esMensajeError = true;
             return null;
         }
@@ -1450,7 +1449,7 @@
 
         if (precioVigente is null)
         {
-            mensaje = $"El producto '{producto.ProDescripcion}' no tiene precio vigente en la lista de precios para la bodega y moneda seleccionadas en la fecha de la factura.";
+            mensaje = L("El producto '{0}' no tiene precio vigente en la lista de precios para la bodega y moneda seleccionadas en la fecha de la factura.", producto.ProDescripcion);
             esMensajeError = true;
         }
         return precioVigente;
@@ -1517,7 +1516,7 @@
     {
         nitSinNombre = null;
         var nit = textoNit.Trim();
-        if (nit.Length == 0) { nitMensaje = "Escriba el NIT, el CUI o C/F."; nitError = true; return; }
+        if (nit.Length == 0) { nitMensaje = L("Escriba el NIT, el CUI o C/F."); nitError = true; return; }
         if (!Erp.Data.General.NitValidador.EsValido(nit)) { nitMensaje = Erp.Data.General.NitValidador.MensajeInvalido(nit); nitError = true; return; }
         consultandoNit = true;
         try
@@ -1526,7 +1525,7 @@
             if (existente is not null)
             {
                 await SeleccionarClienteAsync(existente);
-                nitMensaje = $"Cliente {existente.CliCodigo}.";
+                nitMensaje = L("Cliente {0}.", existente.CliCodigo);
                 nitError = false;
                 enfocarProducto = true;
                 return;
@@ -1536,7 +1535,7 @@
             {
                 nitSinNombre = Erp.Data.General.NitValidador.Formatear(nit);
                 nombreNitManual = "";
-                nitMensaje = $"{consulta.Mensaje} Escriba el nombre para registrar el cliente.";
+                nitMensaje = L("{0} Escriba el nombre para registrar el cliente.", consulta.Mensaje);
                 nitError = true;
                 return;
             }
@@ -1558,10 +1557,10 @@
 
     private async Task RegistrarNitManualAsync()
     {
-        if (string.IsNullOrWhiteSpace(nombreNitManual)) { nitMensaje = "Escriba el nombre del cliente."; nitError = true; return; }
+        if (string.IsNullOrWhiteSpace(nombreNitManual)) { nitMensaje = L("Escriba el nombre del cliente."); nitError = true; return; }
         try
         {
-            await RegistrarClienteNitAsync(textoNit, nombreNitManual.Trim(), "Nombre escrito por el usuario.");
+            await RegistrarClienteNitAsync(textoNit, nombreNitManual.Trim(), L("Nombre escrito por el usuario."));
             nitSinNombre = null;
         }
         catch (Exception ex)
@@ -1578,7 +1577,7 @@
         var cliente = await ClienteRepository.ConsultarPorIdAsync(cliId);
         if (cliente is null) return;
         await SeleccionarClienteAsync(cliente);
-        nitMensaje = nuevo ? $"Cliente {cliente.CliCodigo} registrado: {cliente.NombreCompleto}. {origen}" : $"Cliente {cliente.CliCodigo}.";
+        nitMensaje = nuevo ? L("Cliente {0} registrado: {1}. {2}", cliente.CliCodigo, cliente.NombreCompleto, origen) : L("Cliente {0}.", cliente.CliCodigo);
         nitError = false;
         enfocarProducto = true;
     }
@@ -1589,14 +1588,14 @@
         string numeroGrabada;
         if (nuevaFactura.CliId is null)
         {
-            mensaje = "Debe seleccionar un cliente.";
+            mensaje = L("Debe seleccionar un cliente.");
             esMensajeError = true;
             return;
         }
 
         if (lineas.Count == 0)
         {
-            mensaje = "Debe agregar al menos una línea (producto o servicio).";
+            mensaje = L("Debe agregar al menos una línea (producto o servicio).");
             esMensajeError = true;
             return;
         }
@@ -1604,39 +1603,39 @@
         var lineaInvalida = lineas.FirstOrDefault(l => l.BienOServicio == "B" && l.ProId is null);
         if (lineaInvalida is not null)
         {
-            mensaje = "Hay una línea de bien sin producto: búsquelo en la línea o cámbiela a servicio (S).";
+            mensaje = L("Hay una línea de bien sin producto: búsquelo en la línea o cámbiela a servicio (S).");
             esMensajeError = true;
             return;
         }
         if (lineas.Any(l => string.IsNullOrWhiteSpace(l.Descripcion)))
         {
-            mensaje = "Toda línea de servicio necesita la descripción del servicio prestado.";
+            mensaje = L("Toda línea de servicio necesita la descripción del servicio prestado.");
             esMensajeError = true;
             return;
         }
         if (lineas.Any(l => l.Cantidad <= 0 || l.PrecioUnitario < 0))
         {
-            mensaje = "La cantidad de cada línea debe ser mayor a cero y el precio no puede ser negativo.";
+            mensaje = L("La cantidad de cada línea debe ser mayor a cero y el precio no puede ser negativo.");
             esMensajeError = true;
             return;
         }
         if (lineas.Any(l => l.ManejaExistencia && l.Cantidad != Math.Round(l.Cantidad, 0)))
         {
-            mensaje = "Los productos con existencia se venden en cantidades enteras.";
+            mensaje = L("Los productos con existencia se venden en cantidades enteras.");
             esMensajeError = true;
             return;
         }
 
         if (nuevaFactura.BodId == 0)
         {
-            mensaje = "Debe seleccionar una bodega.";
+            mensaje = L("Debe seleccionar una bodega.");
             esMensajeError = true;
             return;
         }
 
         if (condicionPagoFactura == "credito" && (nuevaFactura.FechaPrimerPago is null || nuevaFactura.NumeroCuotas < 1))
         {
-            mensaje = "Para crédito debe indicar el número de cuotas y la fecha del primer pago.";
+            mensaje = L("Para crédito debe indicar el número de cuotas y la fecha del primer pago.");
             esMensajeError = true;
             return;
         }
@@ -1644,15 +1643,15 @@
         if (MontoAPagar > 0 && cajasAbiertasSucursal.Count == 0)
         {
             mensaje = condicionPagoFactura == "credito"
-                ? "No hay una caja abierta para recibir el enganche. Abra la caja en Bancos › Caja o deje el enganche en cero."
-                : "No hay una caja abierta para recibir el pago de contado. Abra la caja en Bancos › Caja.";
+                ? L("No hay una caja abierta para recibir el enganche. Abra la caja en Bancos › Caja o deje el enganche en cero.")
+                : L("No hay una caja abierta para recibir el pago de contado. Abra la caja en Bancos › Caja.");
             esMensajeError = true;
             return;
         }
 
         if (condicionPagoFactura == "credito" && creditoCliente?.Disponible is decimal disponible && Total - nuevaFactura.MontoEnganche > disponible)
         {
-            mensaje = $"La factura excede el crédito disponible del cliente ({MonedaSimbolo} {disponible:N2}). Aumente el enganche o cobre saldos pendientes.";
+            mensaje = L("La factura excede el crédito disponible del cliente ({0} {1:N2}). Aumente el enganche o cobre saldos pendientes.", MonedaSimbolo, disponible);
             esMensajeError = true;
             return;
         }
@@ -1681,7 +1680,7 @@
 
         if (MontoAPagar > 0 && Math.Abs(formasPagoCapturadas.Sum(f => f.Monto) - MontoAPagar) > 0.01m)
         {
-            mensaje = $"Las formas de pago capturadas ({formasPagoCapturadas.Sum(f => f.Monto):N2}) no coinciden con el monto a pagar ({MontoAPagar:N2}).";
+            mensaje = L("Las formas de pago capturadas ({0:N2}) no coinciden con el monto a pagar ({1:N2}).", formasPagoCapturadas.Sum(f => f.Monto), MontoAPagar);
             esMensajeError = true;
             return;
         }
@@ -1749,7 +1748,7 @@
         // Desde aquí la factura YA está grabada: un error posterior no debe
         // parecer que no se grabó (el cajero la volvería a grabar, duplicada).
         mostrarNuevaFactura = false;
-        var notaCotizacion = cotizacionOrigen is null ? "" : $" La cotización {cotizacionOrigen.Numero} quedó facturada.";
+        var notaCotizacion = cotizacionOrigen is null ? "" : L(" La cotización {0} quedó facturada.", cotizacionOrigen.Numero);
         cotizacionOrigen = null;
         try
         {
@@ -1757,8 +1756,8 @@
             // pendiente o rechazada para reintentarla.
             var fel = await FelService.CertificarAsync(encIdGrabada, await ObtenerUsuIdActualAsync());
             mensaje = fel.Aplica && fel.Exito
-                ? $"Factura {numeroGrabada} grabada y certificada (autorización {fel.Uuid})."
-                : $"Factura {numeroGrabada} grabada correctamente.";
+                ? L("Factura {0} grabada y certificada (autorización {1}).", numeroGrabada, fel.Uuid)
+                : L("Factura {0} grabada correctamente.", numeroGrabada);
             mensaje += notaCotizacion;
             avisoFel = fel.Aplica && !fel.Exito ? fel.Mensaje : null;
             esMensajeError = false;
@@ -1769,8 +1768,8 @@
         catch (Exception ex)
         {
             Log.LogError(ex, "La factura {EncId} se grabó pero falló un paso posterior", encIdGrabada);
-            mensaje = $"La factura {numeroGrabada} SÍ quedó grabada; no la vuelva a grabar. No se pudo mostrar o certificar: "
-                + MensajesError.Traducir(ex) + " Búsquela en el historial.";
+            mensaje = L("La factura {0} SÍ quedó grabada; no la vuelva a grabar. No se pudo mostrar o certificar: ", numeroGrabada)
+                + MensajesError.Traducir(ex) + L(" Búsquela en el historial.");
             esMensajeError = true;
         }
     }
@@ -1816,7 +1815,7 @@
             await FacturaRepository.AnularAsync(factura.EncId, usuId);
             anulandoId = null;
             var fel = await FelService.AnularAsync(factura.EncId, motivoAnulacion, usuId);
-            mensaje = fel.Aplica && fel.Exito ? "Factura anulada, también ante SAT." : "Factura anulada.";
+            mensaje = fel.Aplica && fel.Exito ? L("Factura anulada, también ante SAT.") : L("Factura anulada.");
             avisoFel = fel.Aplica && !fel.Exito ? fel.Mensaje : null;
             esMensajeError = false;
             if (encabezadoSeleccionado?.EncId == factura.EncId)
@@ -1874,7 +1873,7 @@
     private string DescribirBorrador(BorradorFactura b)
     {
         var cliente = $"{b.Nombres} {b.Apellidos}".Trim();
-        if (cliente.Length == 0) cliente = string.IsNullOrWhiteSpace(b.TextoNit) ? "sin cliente" : $"NIT {b.TextoNit}";
+        if (cliente.Length == 0) cliente = string.IsNullOrWhiteSpace(b.TextoNit) ? L("sin cliente") : L("NIT {0}", b.TextoNit);
         var simbolo = monedas.FirstOrDefault(m => m.MonId == b.MonId)?.MonSimbolo ?? "Q";
         var total = b.Lineas.Sum(l => Math.Round(l.Cantidad * l.PrecioUnitario, 2) - l.ValorDescuento);
         return $"{cliente}, {b.Lineas.Count} {(b.Lineas.Count == 1 ? "línea" : "líneas")}, {simbolo} {total:N2}";
@@ -1923,7 +1922,7 @@
         {
             Log.LogWarning(ex, "No se pudo releer el cliente o la cotización del borrador");
         }
-        mensaje = "Se recuperó la factura sin terminar. Revise precios y existencias antes de grabar.";
+        mensaje = L("Se recuperó la factura sin terminar. Revise precios y existencias antes de grabar.");
         esMensajeError = false;
         enfocarProducto = true;
     }

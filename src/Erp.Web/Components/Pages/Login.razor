@@ -33,7 +33,7 @@
 
             @if (mensajeError is not null)
             {
-                <p class="login-error" role="alert">@mensajeError</p>
+                <p class="login-error" role="alert">@Textos.Mensaje(mensajeError)</p>
             }
 
             <EditForm Model="modelo" FormName="login" OnValidSubmit="IniciarSesionAsync" method="post">

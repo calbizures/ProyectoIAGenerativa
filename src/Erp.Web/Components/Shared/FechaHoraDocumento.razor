@@ -2,7 +2,7 @@
    (fecha atrasada o adelantada), se muestra también ese día. *@
 @if (Grabado is DateTime g)
 {
-    <span title="Grabado el @g.ToString("dd/MM/yyyy") a las @g.ToString("HH:mm:ss")">
+    <span title="@L("Grabado el {0} a las {1}", g.ToString("dd/MM/yyyy"), g.ToString("HH:mm:ss"))">
         @Fecha.ToString("dd/MM/yyyy") <span class="texto-tenue">@(g.Date == Fecha.Date ? g.ToString("HH:mm") : g.ToString("dd/MM HH:mm"))</span>
     </span>
 }

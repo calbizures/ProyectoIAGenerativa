@@ -1,9 +1,9 @@
 @* Líneas de una póliza con sus totales. *@
 @using Erp.Data.Contabilidad
 
-<div class="tabla-desplazable" tabindex="0" aria-label="Líneas de la póliza #@Poliza.AsiId">
+<div class="tabla-desplazable" tabindex="0" aria-label="@L("Líneas de la póliza #{0}", Poliza.AsiId)">
     <table class="tabla-datos tabla-contable">
-        <thead><tr><th class="col-codigo">Cuenta</th><th>Nombre</th><th>Descripción</th><th>Centro de costo</th><th class="num col-monto">Debe</th><th class="num col-monto">Haber</th></tr></thead>
+        <thead><tr><th class="col-codigo">@L("Cuenta")</th><th>@L("Nombre")</th><th>@L("Descripción")</th><th>@L("Centro de costo")</th><th class="num col-monto">@L("Debe")</th><th class="num col-monto">@L("Haber")</th></tr></thead>
         <tbody>
             @foreach (var l in Poliza.Detalle.OrderBy(l => l.Debe > 0 ? 0 : 1).ThenBy(l => l.AsdId))
             {
@@ -18,7 +18,7 @@
             }
         </tbody>
         <tfoot>
-            <tr class="fila-total"><td colspan="4">Sumas iguales</td><td class="num">@Poliza.Detalle.Sum(l => l.Debe).ToString("N2")</td><td class="num">@Poliza.Detalle.Sum(l => l.Haber).ToString("N2")</td></tr>
+            <tr class="fila-total"><td colspan="4">@L("Sumas iguales")</td><td class="num">@Poliza.Detalle.Sum(l => l.Debe).ToString("N2")</td><td class="num">@Poliza.Detalle.Sum(l => l.Haber).ToString("N2")</td></tr>
         </tfoot>
     </table>
 </div>

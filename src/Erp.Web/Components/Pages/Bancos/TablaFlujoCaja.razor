@@ -2,21 +2,21 @@
 @using Erp.Data.FlujoCaja
 @using Erp.Web.Reportes
 
-<div class="tabla-desplazable" tabindex="0" aria-label="Flujo de caja por período">
+<div class="tabla-desplazable" tabindex="0" aria-label="@L("Flujo de caja por período")">
     <table class="tabla-datos tabla-contable tabla-flujo">
         <thead>
             <tr>
-                <th class="col-concepto">Concepto</th>
+                <th class="col-concepto">@L("Concepto")</th>
                 @foreach (var p in Pivote.Periodos)
                 {
                     <th class="num col-monto">@Pivote.Etiqueta(p)</th>
                 }
-                <th class="num col-monto">Total</th>
+                <th class="num col-monto">@L("Total")</th>
             </tr>
         </thead>
         <tbody>
             <tr class="fila-subtotal">
-                <td>Saldo inicial de efectivo</td>
+                <td>@L("Saldo inicial de efectivo")</td>
                 @foreach (var p in Pivote.Periodos)
                 {
                     <td class="num">@Pivote.SaldoInicialDe(p).ToString("N2")</td>
@@ -41,7 +41,7 @@
                     </tr>
                 }
                 <tr class="fila-subtotal">
-                    <td>Flujo neto de @nombre.Replace("Actividades de ", "")</td>
+                    <td>@L("Flujo neto de {0}", nombre.Replace("Actividades de ", ""))</td>
                     @foreach (var p in Pivote.Periodos)
                     {
                         <td class="num">@Pivote.Neto(p, actividad).ToString("N2")</td>
@@ -50,7 +50,7 @@
                 </tr>
             }
             <tr class="fila-subtotal">
-                <td>Flujo neto del período</td>
+                <td>@L("Flujo neto del período")</td>
                 @foreach (var p in Pivote.Periodos)
                 {
                     <td class="num">@Pivote.Neto(p).ToString("N2")</td>
@@ -60,7 +60,7 @@
         </tbody>
         <tfoot>
             <tr class="fila-total">
-                <td>Saldo final de efectivo</td>
+                <td>@L("Saldo final de efectivo")</td>
                 @foreach (var p in Pivote.Periodos)
                 {
                     var saldo = Pivote.SaldoFinalDe(p);

@@ -7,40 +7,40 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IGeneralRepository GeneralRepository
 
-<PageTitle>Entidades financieras</PageTitle>
+<PageTitle>@L("Entidades financieras")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Entidades financieras</h1>
-    <p>Tipos de entidad (maestro) y las entidades de cada tipo (detalle): bancos, emisores de tarjeta, financieras.</p>
+    <h1>@L("Entidades financieras")</h1>
+    <p>@L("Tipos de entidad (maestro) y las entidades de cada tipo (detalle): bancos, emisores de tarjeta, financieras.")</p>
 </div>
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
 }
 
 <div class="maestro-detalle">
     <section class="tarjeta maestro-detalle-maestro" aria-labelledby="titulo-tipos">
         <div class="maestro-detalle-encabezado">
-            <h2 id="titulo-tipos">Tipos</h2>
-            <BotonIcono Icono="plus" Tooltip="Nuevo tipo" Etiqueta="Nuevo tipo" Variante="primario" OnClick="NuevoTipo" />
+            <h2 id="titulo-tipos">@L("Tipos")</h2>
+            <BotonIcono Icono="plus" Tooltip="@L("Nuevo tipo")" Etiqueta="@L("Nuevo tipo")" Variante="primario" OnClick="NuevoTipo" />
         </div>
         @if (editandoTipoId is not null)
         {
             <div class="fila-edicion">
-                <input @bind="tipoDescripcion" placeholder="Descripción del tipo" aria-label="Descripción del tipo" />
-                <BotonIcono Icono="save" Tooltip="Guardar tipo" Variante="primario" OnClick="GuardarTipoAsync" />
-                <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => editandoTipoId = null" />
+                <input @bind="tipoDescripcion" placeholder="@L("Descripción del tipo")" aria-label="@L("Descripción del tipo")" />
+                <BotonIcono Icono="save" Tooltip="@L("Guardar tipo")" Variante="primario" OnClick="GuardarTipoAsync" />
+                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" OnClick="() => editandoTipoId = null" />
             </div>
         }
         @if (tipos.Count == 0)
         {
-            <p class="estado-vacio">No hay tipos registrados.</p>
+            <p class="estado-vacio">@L("No hay tipos registrados.")</p>
         }
         else
         {
             <table class="tabla-datos">
-                <thead><tr><th>Descripción</th><th class="num col-estado">Entidades</th><th class="col-acciones">Acciones</th></tr></thead>
+                <thead><tr><th>@L("Descripción")</th><th class="num col-estado">@L("Entidades")</th><th class="col-acciones">@L("Acciones")</th></tr></thead>
                 <tbody>
                     @foreach (var t in tipos)
                     {
@@ -49,8 +49,8 @@
                             <td class="num col-estado">@t.CantidadEntidades</td>
                             <td class="col-acciones" @onclick:stopPropagation="true">
                                 <div class="acciones-fila">
-                                    <BotonIcono Icono="pencil" Tooltip="Editar tipo" OnClick="() => EditarTipo(t)" />
-                                    <BotonIcono Icono="trash-2" Tooltip="Eliminar tipo" Confirmacion="¿Eliminar el tipo?" Variante="peligro" Deshabilitado="t.CantidadEntidades > 0" OnClick="() => EliminarTipoAsync(t)" />
+                                    <BotonIcono Icono="pencil" Tooltip="@L("Editar tipo")" OnClick="() => EditarTipo(t)" />
+                                    <BotonIcono Icono="trash-2" Tooltip="@L("Eliminar tipo")" Confirmacion="@L("¿Eliminar el tipo?")" Variante="peligro" Deshabilitado="t.CantidadEntidades > 0" OnClick="() => EliminarTipoAsync(t)" />
                                 </div>
                             </td>
                         </tr>
@@ -62,55 +62,55 @@
 
     <section class="tarjeta maestro-detalle-detalle" aria-labelledby="titulo-entidades">
         <div class="maestro-detalle-encabezado">
-            <h2 id="titulo-entidades">@(tipoSeleccionado is null ? "Entidades" : $"Entidades: {tipoSeleccionado.GeftDescripcion}")</h2>
+            <h2 id="titulo-entidades">@(tipoSeleccionado is null ? L("Entidades") : L("Entidades: {0}", tipoSeleccionado.GeftDescripcion))</h2>
             @if (tipoSeleccionado is not null)
             {
-                <BotonIcono Icono="plus" Tooltip="Nueva entidad" Etiqueta="Nueva entidad" Variante="primario" OnClick="NuevaEntidad" />
+                <BotonIcono Icono="plus" Tooltip="@L("Nueva entidad")" Etiqueta="@L("Nueva entidad")" Variante="primario" OnClick="NuevaEntidad" />
             }
         </div>
         @if (tipoSeleccionado is null)
         {
-            <p class="estado-vacio">Seleccione un tipo para ver y mantener sus entidades.</p>
+            <p class="estado-vacio">@L("Seleccione un tipo para ver y mantener sus entidades.")</p>
         }
         else
         {
             @if (editandoEntidadId is not null)
             {
                 <div class="panel-formulario">
-                    <div class="campo"><label for="ent-codigo">Código</label><input id="ent-codigo" @bind="entidadCodigo" /></div>
-                    <div class="campo"><label for="ent-desc">Descripción</label><input id="ent-desc" @bind="entidadDescripcion" /></div>
+                    <div class="campo"><label for="ent-codigo">@L("Código")</label><input id="ent-codigo" @bind="entidadCodigo" /></div>
+                    <div class="campo"><label for="ent-desc">@L("Descripción")</label><input id="ent-desc" @bind="entidadDescripcion" /></div>
                     <div class="campo">
-                        <label for="ent-estado">Estado</label>
+                        <label for="ent-estado">@L("Estado")</label>
                         <select id="ent-estado" @bind="entidadEstado">
-                            <option value="A">Activa</option>
-                            <option value="I">Inactiva</option>
+                            <option value="A">@L("Activa")</option>
+                            <option value="I">@L("Inactiva")</option>
                         </select>
                     </div>
                     <div class="acciones-fila">
-                        <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarEntidadAsync" />
-                        <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => editandoEntidadId = null" />
+                        <BotonIcono Icono="save" Tooltip="@L("Guardar")" Etiqueta="@L("Guardar")" Variante="primario" OnClick="GuardarEntidadAsync" />
+                        <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => editandoEntidadId = null" />
                     </div>
                 </div>
             }
             @if (entidades.Count == 0)
             {
-                <p class="estado-vacio">Este tipo todavía no tiene entidades.</p>
+                <p class="estado-vacio">@L("Este tipo todavía no tiene entidades.")</p>
             }
             else
             {
                 <table class="tabla-datos">
-                    <thead><tr><th class="col-codigo">Código</th><th>Descripción</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+                    <thead><tr><th class="col-codigo">@L("Código")</th><th>@L("Descripción")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr></thead>
                     <tbody>
                         @foreach (var e in entidades)
                         {
                             <tr>
                                 <td class="col-codigo">@e.GefCodigo</td>
                                 <td>@e.GefDescripcion</td>
-                                <td class="col-estado"><span class="estado-badge @(e.GefEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(e.GefEstado == "A" ? "Activa" : "Inactiva")</span></td>
+                                <td class="col-estado"><span class="estado-badge @(e.GefEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(e.GefEstado == "A" ? L("Activa") : L("Inactiva"))</span></td>
                                 <td class="col-acciones">
                                     <div class="acciones-fila">
-                                        <BotonIcono Icono="pencil" Tooltip="Editar entidad" OnClick="() => EditarEntidad(e)" />
-                                        <BotonIcono Icono="trash-2" Tooltip="Eliminar entidad" Confirmacion="¿Eliminar la entidad?" Variante="peligro" OnClick="() => EliminarEntidadAsync(e)" />
+                                        <BotonIcono Icono="pencil" Tooltip="@L("Editar entidad")" OnClick="() => EditarEntidad(e)" />
+                                        <BotonIcono Icono="trash-2" Tooltip="@L("Eliminar entidad")" Confirmacion="@L("¿Eliminar la entidad?")" Variante="peligro" OnClick="() => EliminarEntidadAsync(e)" />
                                     </div>
                                 </td>
                             </tr>
@@ -211,14 +211,14 @@
     {
         if (string.IsNullOrWhiteSpace(tipoDescripcion))
         {
-            mensaje = "Ingrese la descripción del tipo.";
+            mensaje = L("Ingrese la descripción del tipo.");
             esMensajeError = true;
             return;
         }
         try
         {
             var id = await GeneralRepository.GuardarTipoEntidadAsync(editandoTipoId == 0 ? null : editandoTipoId, tipoDescripcion.Trim(), await ObtenerUsuIdActualAsync());
-            MostrarOk(editandoTipoId == 0 ? "Tipo creado." : "Tipo actualizado.");
+            MostrarOk(editandoTipoId == 0 ? L("Tipo creado.") : L("Tipo actualizado."));
             editandoTipoId = null;
             await CargarTiposAsync();
             var tipo = tipos.FirstOrDefault(t => t.GeftId == id);
@@ -232,7 +232,7 @@
         try
         {
             await GeneralRepository.EliminarTipoEntidadAsync(tipo.GeftId);
-            MostrarOk("Tipo eliminado.");
+            MostrarOk(L("Tipo eliminado."));
             if (tipoSeleccionado?.GeftId == tipo.GeftId) tipoSeleccionado = null;
             await CargarTiposAsync();
             await CargarEntidadesAsync();
@@ -263,7 +263,7 @@
         if (tipoSeleccionado is null) return;
         if (string.IsNullOrWhiteSpace(entidadCodigo) || string.IsNullOrWhiteSpace(entidadDescripcion))
         {
-            mensaje = "Ingrese el código y la descripción de la entidad.";
+            mensaje = L("Ingrese el código y la descripción de la entidad.");
             esMensajeError = true;
             return;
         }
@@ -271,7 +271,7 @@
         {
             await GeneralRepository.GuardarEntidadAsync(editandoEntidadId == 0 ? null : editandoEntidadId, tipoSeleccionado.GeftId,
                 entidadCodigo.Trim(), entidadDescripcion.Trim(), entidadEstado, await ObtenerUsuIdActualAsync());
-            MostrarOk(editandoEntidadId == 0 ? "Entidad creada." : "Entidad actualizada.");
+            MostrarOk(editandoEntidadId == 0 ? L("Entidad creada.") : L("Entidad actualizada."));
             editandoEntidadId = null;
             await CargarTiposAsync();
             await CargarEntidadesAsync();
@@ -284,7 +284,7 @@
         try
         {
             await GeneralRepository.EliminarEntidadAsync(entidad.GefId);
-            MostrarOk("Entidad eliminada.");
+            MostrarOk(L("Entidad eliminada."));
             await CargarTiposAsync();
             await CargarEntidadesAsync();
         }

@@ -7,25 +7,25 @@
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
 }
 
 <div class="maestro-detalle nomenclatura">
     <section class="tarjeta maestro-detalle-maestro" aria-labelledby="titulo-unidades">
         <div class="maestro-detalle-encabezado">
-            <h2 id="titulo-unidades">Unidades organizativas</h2>
-            <BotonIcono Icono="plus" Tooltip="Nueva unidad raíz" Etiqueta="Nueva raíz" OnClick="IniciarNuevaRaiz" />
+            <h2 id="titulo-unidades">@L("Unidades organizativas")</h2>
+            <BotonIcono Icono="plus" Tooltip="@L("Nueva unidad raíz")" Etiqueta="@L("Nueva raíz")" OnClick="IniciarNuevaRaiz" />
         </div>
         <div class="arbol-acciones">
-            <button type="button" class="boton-texto" @onclick="() => { contraidos.Clear(); }">Expandir todo</button>
-            <button type="button" class="boton-texto" @onclick="ContraerTodo">Contraer</button>
-            <span class="arbol-conteo">@nodos.Count unidades · @nodos.Sum(n => n.CantidadDepartamentos) departamentos</span>
+            <button type="button" class="boton-texto" @onclick="() => { contraidos.Clear(); }">@L("Expandir todo")</button>
+            <button type="button" class="boton-texto" @onclick="ContraerTodo">@L("Contraer")</button>
+            <span class="arbol-conteo">@L("{0} unidades · {1} departamentos", nodos.Count, nodos.Sum(n => n.CantidadDepartamentos))</span>
         </div>
         @if (nodos.Count == 0)
         {
-            <p class="estado-vacio">Todavía no hay unidades. Cree la unidad raíz (por ejemplo, Junta Directiva).</p>
+            <p class="estado-vacio">@L("Todavía no hay unidades. Cree la unidad raíz (por ejemplo, Junta Directiva).")</p>
         }
-        <div class="arbol-lista" role="tree" aria-label="Unidades organizativas">
+        <div class="arbol-lista" role="tree" aria-label="@L("Unidades organizativas")">
             @foreach (var n in NodosVisibles())
             {
                 <div class="arbol-nodo arbol-nivel-@Math.Min(n.Nivel, 3) @(seleccionado?.IdUnidadOrganizativa == n.IdUnidadOrganizativa ? "seleccionado" : "") @(n.Estado != "A" ? "inactivo" : "")"
@@ -34,7 +34,7 @@
                      style="padding-left: @((n.Nivel - 1) * 18 + 6)px">
                     @if (n.CantidadHijos > 0)
                     {
-                        <button type="button" class="arbol-toggle" aria-label="@(contraidos.Contains(n.IdUnidadOrganizativa) ? "Expandir" : "Contraer") @n.Descripcion" @onclick="() => Alternar(n)">@(contraidos.Contains(n.IdUnidadOrganizativa) ? "▸" : "▾")</button>
+                        <button type="button" class="arbol-toggle" aria-label="@(contraidos.Contains(n.IdUnidadOrganizativa) ? L("Expandir") : L("Contraer")) @n.Descripcion" @onclick="() => Alternar(n)">@(contraidos.Contains(n.IdUnidadOrganizativa) ? "▸" : "▾")</button>
                     }
                     else
                     {
@@ -52,87 +52,87 @@
     <section class="tarjeta maestro-detalle-detalle" aria-labelledby="titulo-unidad">
         @if (modo is Modo.NuevaRaiz or Modo.AgregarHijo or Modo.Editar)
         {
-            <h2 id="titulo-unidad">@(modo switch { Modo.NuevaRaiz => "Nueva unidad raíz", Modo.AgregarHijo => $"Nueva unidad bajo {seleccionado!.Descripcion}", _ => $"Editar {seleccionado!.Descripcion}" })</h2>
+            <h2 id="titulo-unidad">@(modo switch { Modo.NuevaRaiz => L("Nueva unidad raíz"), Modo.AgregarHijo => L("Nueva unidad bajo {0}", seleccionado!.Descripcion), _ => L("Editar {0}", seleccionado!.Descripcion) })</h2>
             <div class="panel-formulario panel-ancho nodo-formulario">
-                <div class="campo"><label for="uni-desc">Descripción</label><input id="uni-desc" @bind="formDescripcion" maxlength="100" /></div>
+                <div class="campo"><label for="uni-desc">@L("Descripción")</label><input id="uni-desc" @bind="formDescripcion" maxlength="100" /></div>
                 <div class="campo">
-                    <label for="uni-orden">Orden entre sus hermanas</label>
+                    <label for="uni-orden">@L("Orden entre sus hermanas")</label>
                     <input id="uni-orden" type="number" min="0" max="999" @bind="formOrden" />
-                    <small class="texto-ayuda">Define la posición en el árbol y en el organigrama (menor primero).</small>
+                    <small class="texto-ayuda">@L("Define la posición en el árbol y en el organigrama (menor primero).")</small>
                 </div>
                 <div class="acciones-fila">
-                    <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarAsync" />
-                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => modo = Modo.Ver" />
+                    <BotonIcono Icono="save" Tooltip="@L("Guardar")" Etiqueta="@L("Guardar")" Variante="primario" OnClick="GuardarAsync" />
+                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => modo = Modo.Ver" />
                 </div>
             </div>
         }
         else if (seleccionado is null)
         {
-            <h2 id="titulo-unidad">Unidad seleccionada</h2>
-            <p class="estado-vacio">Seleccione una unidad en el árbol para ver su detalle, editarla, agregarle subunidades, moverla o inactivarla.</p>
+            <h2 id="titulo-unidad">@L("Unidad seleccionada")</h2>
+            <p class="estado-vacio">@L("Seleccione una unidad en el árbol para ver su detalle, editarla, agregarle subunidades, moverla o inactivarla.")</p>
         }
         else if (modo == Modo.Mover)
         {
-            <h2 id="titulo-unidad">Mover @seleccionado.Descripcion</h2>
+            <h2 id="titulo-unidad">@L("Mover {0}", seleccionado.Descripcion)</h2>
             <div class="panel-formulario panel-ancho nodo-formulario">
                 <div class="campo">
-                    <label for="uni-padre">Nueva unidad superior</label>
+                    <label for="uni-padre">@L("Nueva unidad superior")</label>
                     <select id="uni-padre" @bind="formPadreNuevo">
-                        <option value="-1">Seleccione...</option>
-                        <option value="0">(Raíz: sin unidad superior)</option>
+                        <option value="-1">@L("Seleccione...")</option>
+                        <option value="0">@L("(Raíz: sin unidad superior)")</option>
                         @foreach (var p in nodos.Where(p => p.Estado == "A" && !Rama(seleccionado).Contains(p.IdUnidadOrganizativa) && p.IdUnidadOrganizativa != seleccionado.IdUnidadPadre))
                         {
                             <option value="@p.IdUnidadOrganizativa">@(new string('·', (p.Nivel - 1) * 2)) @p.Descripcion</option>
                         }
                     </select>
                 </div>
-                <p class="texto-ayuda">La unidad se mueve con sus @(Rama(seleccionado).Count - 1) subunidades y sus departamentos. No puede quedar bajo sí misma ni bajo una de sus subunidades.</p>
+                <p class="texto-ayuda">@L("La unidad se mueve con sus {0} subunidades y sus departamentos. No puede quedar bajo sí misma ni bajo una de sus subunidades.", Rama(seleccionado).Count - 1)</p>
                 <div class="acciones-fila">
-                    <BotonIcono Icono="check-check" Tooltip="Mover" Etiqueta="Mover" Variante="primario" Deshabilitado="formPadreNuevo < 0" OnClick="MoverAsync" />
-                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => modo = Modo.Ver" />
+                    <BotonIcono Icono="check-check" Tooltip="@L("Mover")" Etiqueta="@L("Mover")" Variante="primario" Deshabilitado="formPadreNuevo < 0" OnClick="MoverAsync" />
+                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => modo = Modo.Ver" />
                 </div>
             </div>
         }
         else if (modo == Modo.ConfirmarEliminar)
         {
-            <h2 id="titulo-unidad">Eliminar @seleccionado.Descripcion</h2>
-            <p class="mensaje-error" role="alert">La unidad se eliminará. Esta acción no se puede deshacer.</p>
+            <h2 id="titulo-unidad">@L("Eliminar {0}", seleccionado.Descripcion)</h2>
+            <p class="mensaje-error" role="alert">@L("La unidad se eliminará. Esta acción no se puede deshacer.")</p>
             <div class="acciones-fila">
-                <BotonIcono Icono="trash-2" Tooltip="Eliminar" Etiqueta="Sí, eliminar" Variante="peligro" OnClick="EliminarAsync" />
-                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => modo = Modo.Ver" />
+                <BotonIcono Icono="trash-2" Tooltip="@L("Eliminar")" Etiqueta="@L("Sí, eliminar")" Variante="peligro" OnClick="EliminarAsync" />
+                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => modo = Modo.Ver" />
             </div>
         }
         else
         {
             <div class="nodo-encabezado">
-                <span class="nodo-tipo nodo-tipo-@Math.Min(seleccionado.Nivel, 4)">Nivel @seleccionado.Nivel · @Codigo(seleccionado)</span>
+                <span class="nodo-tipo nodo-tipo-@Math.Min(seleccionado.Nivel, 4)">@L("Nivel {0} · {1}", seleccionado.Nivel, Codigo(seleccionado))</span>
                 <h2 id="titulo-unidad">@seleccionado.Descripcion</h2>
                 <p class="nodo-ruta">@Ruta(seleccionado)</p>
             </div>
             <dl class="nodo-datos">
-                <dt>Estado</dt><dd><span class="estado-badge @(seleccionado.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(seleccionado.Estado == "A" ? "Activa" : "Inactiva")</span></dd>
-                <dt>Subunidades</dt><dd>@seleccionado.CantidadHijos</dd>
-                <dt>Departamentos</dt><dd>@(seleccionado.CantidadDepartamentos == 0 ? "—" : string.Join(", ", DepartamentosDe(seleccionado)))</dd>
-                <dt>Orden</dt><dd>@seleccionado.Orden</dd>
+                <dt>@L("Estado")</dt><dd><span class="estado-badge @(seleccionado.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(seleccionado.Estado == "A" ? L("Activa") : L("Inactiva"))</span></dd>
+                <dt>@L("Subunidades")</dt><dd>@seleccionado.CantidadHijos</dd>
+                <dt>@L("Departamentos")</dt><dd>@(seleccionado.CantidadDepartamentos == 0 ? "—" : string.Join(", ", DepartamentosDe(seleccionado)))</dd>
+                <dt>@L("Orden")</dt><dd>@seleccionado.Orden</dd>
             </dl>
-            <p class="texto-ayuda">Los departamentos se asignan a una unidad en la pestaña Departamentos.</p>
+            <p class="texto-ayuda">@L("Los departamentos se asignan a una unidad en la pestaña Departamentos.")</p>
             <div class="acciones-fila">
-                <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+                <BotonIcono Icono="pencil" Tooltip="@L("Editar")" Etiqueta="@L("Editar")" OnClick="IniciarEdicion" />
                 @if (seleccionado.Estado == "A")
                 {
-                    <BotonIcono Icono="plus" Tooltip="Agregar subunidad" Etiqueta="Agregar subunidad" Variante="primario" OnClick="IniciarAgregarHijo" />
+                    <BotonIcono Icono="plus" Tooltip="@L("Agregar subunidad")" Etiqueta="@L("Agregar subunidad")" Variante="primario" OnClick="IniciarAgregarHijo" />
                 }
-                <BotonIcono Icono="upload" Tooltip="Mover" Etiqueta="Mover" OnClick="IniciarMover" />
+                <BotonIcono Icono="upload" Tooltip="@L("Mover")" Etiqueta="@L("Mover")" OnClick="IniciarMover" />
                 @if (seleccionado.Estado == "A")
                 {
-                    <BotonIcono Icono="ban" Tooltip="Inactivar" Etiqueta="Inactivar" Variante="peligro" Confirmacion="¿Inactivar la unidad?" OnClick='() => CambiarEstadoAsync("I")' />
+                    <BotonIcono Icono="ban" Tooltip="@L("Inactivar")" Etiqueta="@L("Inactivar")" Variante="peligro" Confirmacion="@L("¿Inactivar la unidad?")" OnClick='() => CambiarEstadoAsync("I")' />
                 }
                 else
                 {
-                    <BotonIcono Icono="check-circle" Tooltip="Activar" Etiqueta="Activar" OnClick='() => CambiarEstadoAsync("A")' />
+                    <BotonIcono Icono="check-circle" Tooltip="@L("Activar")" Etiqueta="@L("Activar")" OnClick='() => CambiarEstadoAsync("A")' />
                 }
-                <BotonIcono Icono="trash-2" Tooltip="@(seleccionado.CantidadHijos + seleccionado.CantidadDepartamentos > 0 ? "Tiene subunidades o departamentos" : "Eliminar")"
-                            Etiqueta="Eliminar" Variante="peligro" Deshabilitado="seleccionado.CantidadHijos + seleccionado.CantidadDepartamentos > 0"
+                <BotonIcono Icono="trash-2" Tooltip="@(seleccionado.CantidadHijos + seleccionado.CantidadDepartamentos > 0 ? L("Tiene subunidades o departamentos") : L("Eliminar"))"
+                            Etiqueta="@L("Eliminar")" Variante="peligro" Deshabilitado="seleccionado.CantidadHijos + seleccionado.CantidadDepartamentos > 0"
                             OnClick="() => modo = Modo.ConfirmarEliminar" />
             </div>
         }
@@ -254,7 +254,7 @@
             if (actual is null) break;
             partes.Insert(0, actual.Descripcion);
         }
-        return partes.Count == 0 ? "Unidad raíz" : string.Join(" › ", partes);
+        return partes.Count == 0 ? L("Unidad raíz") : string.Join(" › ", partes);
     }
 
     private void IniciarNuevaRaiz()
@@ -294,7 +294,7 @@
     {
         if (string.IsNullOrWhiteSpace(formDescripcion))
         {
-            mensaje = "Ingrese la descripción de la unidad.";
+            mensaje = L("Ingrese la descripción de la unidad.");
             esMensajeError = true;
             return;
         }
@@ -308,7 +308,7 @@
                 _ => null
             };
             var id = await RrhhRepository.GuardarUnidadAsync(idUnidad, idPadre, formDescripcion.Trim(), formOrden, await ObtenerUsuIdActualAsync());
-            mensaje = modo == Modo.Editar ? "Unidad actualizada." : "Unidad creada.";
+            mensaje = modo == Modo.Editar ? L("Unidad actualizada.") : L("Unidad creada.");
             esMensajeError = false;
             if (idPadre is not null) contraidos.Remove(idPadre.Value);
             modo = Modo.Ver;
@@ -325,7 +325,7 @@
         try
         {
             await RrhhRepository.MoverUnidadAsync(seleccionado.IdUnidadOrganizativa, formPadreNuevo == 0 ? null : formPadreNuevo, await ObtenerUsuIdActualAsync());
-            mensaje = "Unidad movida.";
+            mensaje = L("Unidad movida.");
             esMensajeError = false;
             if (formPadreNuevo > 0) contraidos.Remove(formPadreNuevo);
             modo = Modo.Ver;
@@ -341,7 +341,7 @@
         try
         {
             await RrhhRepository.CambiarEstadoUnidadAsync(seleccionado.IdUnidadOrganizativa, estado, await ObtenerUsuIdActualAsync());
-            mensaje = estado == "A" ? "Unidad activada." : "Unidad inactivada.";
+            mensaje = estado == "A" ? L("Unidad activada.") : L("Unidad inactivada.");
             esMensajeError = false;
             await CargarAsync();
             await OnCambio.InvokeAsync();
@@ -355,7 +355,7 @@
         try
         {
             await RrhhRepository.EliminarUnidadAsync(seleccionado.IdUnidadOrganizativa);
-            mensaje = "Unidad eliminada.";
+            mensaje = L("Unidad eliminada.");
             esMensajeError = false;
             seleccionado = null;
             modo = Modo.Ver;

@@ -7,41 +7,41 @@
 @inject IGeneralRepository GeneralRepository
 @inject NavigationManager Navegacion
 
-<PageTitle>Tableros</PageTitle>
+<PageTitle>@L("Tableros")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Tableros</h1>
-    <p>Ventas, recuperación de cartera, compras y compromisos de pago. Pase el puntero sobre un gráfico para ver los montos; haga clic en un mes para verlo por día, o en un cliente o proveedor para abrir su estado de cuenta.</p>
+    <h1>@L("Tableros")</h1>
+    <p>@L("Ventas, recuperación de cartera, compras y compromisos de pago. Pase el puntero sobre un gráfico para ver los montos; haga clic en un mes para verlo por día, o en un cliente o proveedor para abrir su estado de cuenta.")</p>
 </div>
 
 @if (mensaje is not null)
 {
-    <p class="mensaje-error" role="alert">@mensaje</p>
+    <p class="mensaje-error" role="alert">@Textos.Mensaje(mensaje)</p>
 }
 
 <div class="barra-filtros tablero-filtros">
-    <label class="filtro-campo" for="tb-periodo">Período
+    <label class="filtro-campo" for="tb-periodo">@L("Período")
         <select id="tb-periodo" value="@preset" @onchange="CambiarPresetAsync">
-            <option value="mes">Este mes</option>
-            <option value="3m">Últimos 3 meses</option>
-            <option value="6m">Últimos 6 meses</option>
-            <option value="anio">Este año</option>
-            <option value="12m">Últimos 12 meses</option>
-            <option value="personalizado">Personalizado</option>
+            <option value="mes">@L("Este mes")</option>
+            <option value="3m">@L("Últimos 3 meses")</option>
+            <option value="6m">@L("Últimos 6 meses")</option>
+            <option value="anio">@L("Este año")</option>
+            <option value="12m">@L("Últimos 12 meses")</option>
+            <option value="personalizado">@L("Personalizado")</option>
         </select>
     </label>
     @if (preset == "personalizado")
     {
-        <label class="filtro-campo" for="tb-desde">Desde <input id="tb-desde" type="date" @bind="desde" @bind:after="CargarAsync" /></label>
-        <label class="filtro-campo" for="tb-hasta">Hasta <input id="tb-hasta" type="date" @bind="hasta" @bind:after="CargarAsync" /></label>
+        <label class="filtro-campo" for="tb-desde">@L("Desde") <input id="tb-desde" type="date" @bind="desde" @bind:after="CargarAsync" /></label>
+        <label class="filtro-campo" for="tb-hasta">@L("Hasta") <input id="tb-hasta" type="date" @bind="hasta" @bind:after="CargarAsync" /></label>
     }
     else
     {
         <span class="texto-tenue">@desde.ToString("dd/MM/yyyy") – @hasta.ToString("dd/MM/yyyy")</span>
     }
-    <label class="filtro-campo" for="tb-suc">Sucursal
+    <label class="filtro-campo" for="tb-suc">@L("Sucursal")
         <select id="tb-suc" value="@sucId" @onchange="CambiarSucursalAsync">
-            <option value="0">Todas</option>
+            <option value="0">@L("Todas")</option>
             @foreach (var s in sucursales)
             {
                 <option value="@s.SucId">@s.SucDescripcion</option>
@@ -50,7 +50,7 @@
     </label>
     @if (anteriores.Count > 0)
     {
-        <BotonIcono Icono="chevron-left" Tooltip="Volver al período anterior" Etiqueta="Volver" OnClick="VolverAsync" />
+        <BotonIcono Icono="chevron-left" Tooltip="@L("Volver al período anterior")" Etiqueta="@L("Volver")" OnClick="VolverAsync" />
     }
 </div>
 
@@ -61,37 +61,37 @@
     {
         var k = ventas.Kpi;
         <div class="kpi-grilla">
-            <KpiMosaico Etiqueta="Ventas netas (sin IVA)" Valor="@PaletaGraficos.MonedaCompacta(k.Ventas)" Variacion="Variacion(k.Ventas, k.VentasAnterior)"
-                        Nota="@($"{PaletaGraficos.Moneda(k.VentasConIva)} con IVA")" />
-            <KpiMosaico Etiqueta="Margen bruto" Valor="@PaletaGraficos.MonedaCompacta(k.Margen)" Variacion="Variacion(k.Margen, k.MargenAnterior)"
-                        Nota="@($"{PaletaGraficos.Porcentaje(k.Ventas == 0 ? 0 : k.Margen / k.Ventas * 100)} de las ventas")" />
-            <KpiMosaico Etiqueta="Facturas" Valor="@k.Facturas.ToString("N0")" Variacion="Variacion(k.Facturas, k.FacturasAnterior)"
-                        Nota="@($"Ticket promedio {PaletaGraficos.Moneda(k.Facturas == 0 ? 0 : k.Ventas / k.Facturas)} · {k.Clientes} clientes")" />
-            <KpiMosaico Etiqueta="Notas de crédito" Valor="@PaletaGraficos.MonedaCompacta(k.NotasCredito)" SubirEsBueno="false"
-                        Nota="Devoluciones y rebajas del período" />
+            <KpiMosaico Etiqueta="@L("Ventas netas (sin IVA)")" Valor="@PaletaGraficos.MonedaCompacta(k.Ventas)" Variacion="Variacion(k.Ventas, k.VentasAnterior)"
+                        Nota="@(L("{0} con IVA", PaletaGraficos.Moneda(k.VentasConIva)))" />
+            <KpiMosaico Etiqueta="@L("Margen bruto")" Valor="@PaletaGraficos.MonedaCompacta(k.Margen)" Variacion="Variacion(k.Margen, k.MargenAnterior)"
+                        Nota="@(L("{0} de las ventas", PaletaGraficos.Porcentaje(k.Ventas == 0 ? 0 : k.Margen / k.Ventas * 100)))" />
+            <KpiMosaico Etiqueta="@L("Facturas")" Valor="@k.Facturas.ToString("N0")" Variacion="Variacion(k.Facturas, k.FacturasAnterior)"
+                        Nota="@(L("Ticket promedio {0} · {1} clientes", PaletaGraficos.Moneda(k.Facturas == 0 ? 0 : k.Ventas / k.Facturas), k.Clientes))" />
+            <KpiMosaico Etiqueta="@L("Notas de crédito")" Valor="@PaletaGraficos.MonedaCompacta(k.NotasCredito)" SubirEsBueno="false"
+                        Nota="@L("Devoluciones y rebajas del período")" />
         </div>
         <div class="tablero-grilla">
-            <TarjetaGrafico Titulo="Ventas por período" Descripcion="Costo y margen bruto; la columna completa es la venta neta." Clase="tablero-ancho">
+            <TarjetaGrafico Titulo="@L("Ventas por período")" Descripcion="@L("Costo y margen bruto; la columna completa es la venta neta.")" Clase="tablero-ancho">
                 <ChildContent>
-                    <GraficoColumnas Titulo="Ventas por período" Categorias="etiquetasVentas" Series="seriesVentas" Apiladas="true"
-                                     OnSeleccionar="AcercarAsync" PistaSeleccion="@(agrupacion == "M" ? "Clic: ver este mes por día" : null)" />
+                    <GraficoColumnas Titulo="@L("Ventas por período")" Categorias="etiquetasVentas" Series="seriesVentas" Apiladas="true"
+                                     OnSeleccionar="AcercarAsync" PistaSeleccion="@(agrupacion == "M" ? L("Clic: ver este mes por día") : null)" />
                 </ChildContent>
                 <Tabla>
                     <TablaPeriodos Etiquetas="etiquetasVentas" Series="seriesVentas" />
                 </Tabla>
             </TarjetaGrafico>
-            <TarjetaGrafico Titulo="Mejores clientes" Descripcion="Venta neta del período; clic para ver su estado de cuenta.">
-                <GraficoBarrasH Titulo="Mejores clientes" Filas="@(ventas.Clientes.Select(c => new BarraFila(c.Id, c.Nombre, c.Ventas, $"{c.Facturas} fact.")).ToList())"
+            <TarjetaGrafico Titulo="@L("Mejores clientes")" Descripcion="@L("Venta neta del período; clic para ver su estado de cuenta.")">
+                <GraficoBarrasH Titulo="@L("Mejores clientes")" Filas="@(ventas.Clientes.Select(c => new BarraFila(c.Id, c.Nombre, c.Ventas, L("{0} fact.", c.Facturas))).ToList())"
                                 OnSeleccionar="@(id => Abrir($"cxc/estado-cuenta?id={id}"))" PistaSeleccion="Abrir su estado de cuenta" />
             </TarjetaGrafico>
-            <TarjetaGrafico Titulo="Productos y servicios más vendidos" Descripcion="Venta neta y margen del período.">
-                <GraficoBarrasH Titulo="Productos y servicios" Filas="@(ventas.Productos.Select(p => new BarraFila(p.Id, p.Nombre, p.Ventas, $"margen {PaletaGraficos.Porcentaje(p.Ventas == 0 ? 0 : (p.Ventas - p.Costo) / p.Ventas * 100)}")).ToList())" />
+            <TarjetaGrafico Titulo="@L("Productos y servicios más vendidos")" Descripcion="@L("Venta neta y margen del período.")">
+                <GraficoBarrasH Titulo="@L("Productos y servicios")" Filas="@(ventas.Productos.Select(p => new BarraFila(p.Id, p.Nombre, p.Ventas, L("margen {0}", PaletaGraficos.Porcentaje(p.Ventas == 0 ? 0 : (p.Ventas - p.Costo) / p.Ventas * 100)))).ToList())" />
             </TarjetaGrafico>
-            <TarjetaGrafico Titulo="Ventas por vendedor">
-                <GraficoBarrasH Titulo="Ventas por vendedor" Filas="@(ventas.Vendedores.Select(v => new BarraFila(v.Id, v.Nombre, v.Ventas, $"{v.Facturas} fact.")).ToList())" />
+            <TarjetaGrafico Titulo="@L("Ventas por vendedor")">
+                <GraficoBarrasH Titulo="@L("Ventas por vendedor")" Filas="@(ventas.Vendedores.Select(v => new BarraFila(v.Id, v.Nombre, v.Ventas, L("{0} fact.", v.Facturas))).ToList())" />
             </TarjetaGrafico>
-            <TarjetaGrafico Titulo="Contado y crédito" Descripcion="Venta neta según la condición de pago.">
-                <BarraPartes Partes="@(new[] { new ParteTotal("Contado", k.Ventas - k.VentasCredito, 1), new ParteTotal("Crédito", k.VentasCredito, 2) })" />
+            <TarjetaGrafico Titulo="@L("Contado y crédito")" Descripcion="@L("Venta neta según la condición de pago.")">
+                <BarraPartes Partes="@(new[] { new ParteTotal(L("Contado"), k.Ventas - k.VentasCredito, 1), new ParteTotal(L("Crédito"), k.VentasCredito, 2) })" />
             </TarjetaGrafico>
         </div>
     }
@@ -100,33 +100,33 @@
         var k = cartera.Kpi;
         var recuperacion = k.Vencia == 0 ? 0 : k.CobradoDeLoQueVencia / k.Vencia * 100;
         <div class="kpi-grilla">
-            <KpiMosaico Etiqueta="Cartera por cobrar" Valor="@PaletaGraficos.MonedaCompacta(k.Cartera)" Nota="Saldo pendiente a hoy" />
-            <KpiMosaico Etiqueta="Cartera vencida" Valor="@PaletaGraficos.MonedaCompacta(k.Vencida)"
-                        Nota="@($"{PaletaGraficos.Porcentaje(k.Cartera == 0 ? 0 : k.Vencida / k.Cartera * 100)} morosidad · {k.ClientesMorosos} clientes")" />
-            <KpiMosaico Etiqueta="Cobrado en el período" Valor="@PaletaGraficos.MonedaCompacta(k.Cobrado)" Nota="@($"{k.Recibos} recibos")" />
-            <KpiMosaico Etiqueta="Recuperación" Valor="@PaletaGraficos.Porcentaje(recuperacion)"
-                        Nota="@($"De {PaletaGraficos.Moneda(k.Vencia)} que vencía en el período, cobrado {PaletaGraficos.Moneda(k.CobradoDeLoQueVencia)}")" />
+            <KpiMosaico Etiqueta="@L("Cartera por cobrar")" Valor="@PaletaGraficos.MonedaCompacta(k.Cartera)" Nota="@L("Saldo pendiente a hoy")" />
+            <KpiMosaico Etiqueta="@L("Cartera vencida")" Valor="@PaletaGraficos.MonedaCompacta(k.Vencida)"
+                        Nota="@(L("{0} morosidad · {1} clientes", PaletaGraficos.Porcentaje(k.Cartera == 0 ? 0 : k.Vencida / k.Cartera * 100), k.ClientesMorosos))" />
+            <KpiMosaico Etiqueta="@L("Cobrado en el período")" Valor="@PaletaGraficos.MonedaCompacta(k.Cobrado)" Nota="@(L("{0} recibos", k.Recibos))" />
+            <KpiMosaico Etiqueta="@L("Recuperación")" Valor="@PaletaGraficos.Porcentaje(recuperacion)"
+                        Nota="@(L("De {0} que vencía en el período, cobrado {1}", PaletaGraficos.Moneda(k.Vencia), PaletaGraficos.Moneda(k.CobradoDeLoQueVencia)))" />
         </div>
         <div class="tablero-grilla">
-            <TarjetaGrafico Titulo="Vencimientos y cobros" Descripcion="Lo que vencía en cada período frente a lo cobrado en él." Clase="tablero-ancho">
+            <TarjetaGrafico Titulo="@L("Vencimientos y cobros")" Descripcion="@L("Lo que vencía en cada período frente a lo cobrado en él.")" Clase="tablero-ancho">
                 <ChildContent>
-                    <GraficoColumnas Titulo="Vencimientos y cobros" Categorias="etiquetasCartera" Series="seriesCartera"
-                                     OnSeleccionar="AcercarAsync" PistaSeleccion="@(agrupacion == "M" ? "Clic: ver este mes por día" : null)" />
+                    <GraficoColumnas Titulo="@L("Vencimientos y cobros")" Categorias="etiquetasCartera" Series="seriesCartera"
+                                     OnSeleccionar="AcercarAsync" PistaSeleccion="@(agrupacion == "M" ? L("Clic: ver este mes por día") : null)" />
                 </ChildContent>
                 <Tabla>
                     <TablaPeriodos Etiquetas="etiquetasCartera" Series="seriesCartera" />
                 </Tabla>
             </TarjetaGrafico>
-            <TarjetaGrafico Titulo="Antigüedad del saldo" Descripcion="Saldo a hoy por días de atraso.">
-                <GraficoBarrasH Titulo="Antigüedad del saldo" Filas="@(cartera.Antiguedad.Select(a => new BarraFila(a.Orden, a.Rango, a.Saldo, $"{a.Cuotas} cuotas")).ToList())"
+            <TarjetaGrafico Titulo="@L("Antigüedad del saldo")" Descripcion="@L("Saldo a hoy por días de atraso.")">
+                <GraficoBarrasH Titulo="@L("Antigüedad del saldo")" Filas="@(cartera.Antiguedad.Select(a => new BarraFila(a.Orden, a.Rango, a.Saldo, L("{0} cuotas", a.Cuotas))).ToList())"
                                 OnSeleccionar="@(_ => Abrir("cxc/antiguedad"))" PistaSeleccion="Abrir la antigüedad de saldos" />
             </TarjetaGrafico>
-            <TarjetaGrafico Titulo="Clientes con más saldo vencido" Descripcion="Clic para ver su estado de cuenta.">
-                <GraficoBarrasH Titulo="Clientes con saldo vencido" Filas="@(cartera.Deudores.Select(d => new BarraFila(d.Id, d.Nombre, d.Vencido, $"{d.DiasMaximo} días")).ToList())"
+            <TarjetaGrafico Titulo="@L("Clientes con más saldo vencido")" Descripcion="@L("Clic para ver su estado de cuenta.")">
+                <GraficoBarrasH Titulo="@L("Clientes con saldo vencido")" Filas="@(cartera.Deudores.Select(d => new BarraFila(d.Id, d.Nombre, d.Vencido, L("{0} días", d.DiasMaximo))).ToList())"
                                 OnSeleccionar="@(id => Abrir($"cxc/estado-cuenta?id={id}"))" PistaSeleccion="Abrir su estado de cuenta"
-                                TextoVacio="Ningún cliente tiene saldo vencido." />
+                                TextoVacio="@L("Ningún cliente tiene saldo vencido.")" />
             </TarjetaGrafico>
-            <TarjetaGrafico Titulo="Cobros por forma de pago">
+            <TarjetaGrafico Titulo="@L("Cobros por forma de pago")">
                 <BarraPartes Partes="@(cartera.Formas.Select((f, i) => new ParteTotal(f.Forma, f.Monto, SlotForma(f.Forma))).ToList())" />
             </TarjetaGrafico>
         </div>
@@ -135,44 +135,44 @@
     {
         var k = compras.Kpi;
         <div class="kpi-grilla">
-            <KpiMosaico Etiqueta="Compras (sin IVA)" Valor="@PaletaGraficos.MonedaCompacta(k.Compras)" Variacion="Variacion(k.Compras, k.ComprasAnterior)"
-                        SubirEsBueno="false" Nota="@($"{k.Documentos} documentos")" />
-            <KpiMosaico Etiqueta="Por pagar" Valor="@PaletaGraficos.MonedaCompacta(k.PorPagar)" Nota="Saldo con proveedores a hoy" />
-            <KpiMosaico Etiqueta="Vencido por pagar" Valor="@PaletaGraficos.MonedaCompacta(k.Vencido)"
-                        Nota="@($"Próximos 30 días: {PaletaGraficos.Moneda(k.Proximos30)}")" />
-            <KpiMosaico Etiqueta="Pagado en el período" Valor="@PaletaGraficos.MonedaCompacta(k.Pagado)" Nota="@($"{k.Cheques} cheques")" />
+            <KpiMosaico Etiqueta="@L("Compras (sin IVA)")" Valor="@PaletaGraficos.MonedaCompacta(k.Compras)" Variacion="Variacion(k.Compras, k.ComprasAnterior)"
+                        SubirEsBueno="false" Nota="@(L("{0} documentos", k.Documentos))" />
+            <KpiMosaico Etiqueta="@L("Por pagar")" Valor="@PaletaGraficos.MonedaCompacta(k.PorPagar)" Nota="@L("Saldo con proveedores a hoy")" />
+            <KpiMosaico Etiqueta="@L("Vencido por pagar")" Valor="@PaletaGraficos.MonedaCompacta(k.Vencido)"
+                        Nota="@(L("Próximos 30 días: {0}", PaletaGraficos.Moneda(k.Proximos30)))" />
+            <KpiMosaico Etiqueta="@L("Pagado en el período")" Valor="@PaletaGraficos.MonedaCompacta(k.Pagado)" Nota="@(L("{0} cheques", k.Cheques))" />
         </div>
         <div class="tablero-grilla">
-            <TarjetaGrafico Titulo="Compras y pagos por período" Clase="tablero-ancho">
+            <TarjetaGrafico Titulo="@L("Compras y pagos por período")" Clase="tablero-ancho">
                 <ChildContent>
-                    <GraficoColumnas Titulo="Compras y pagos" Categorias="etiquetasCompras" Series="seriesCompras"
-                                     OnSeleccionar="AcercarAsync" PistaSeleccion="@(agrupacion == "M" ? "Clic: ver este mes por día" : null)" />
+                    <GraficoColumnas Titulo="@L("Compras y pagos")" Categorias="etiquetasCompras" Series="seriesCompras"
+                                     OnSeleccionar="AcercarAsync" PistaSeleccion="@(agrupacion == "M" ? L("Clic: ver este mes por día") : null)" />
                 </ChildContent>
                 <Tabla>
                     <TablaPeriodos Etiquetas="etiquetasCompras" Series="seriesCompras" />
                 </Tabla>
             </TarjetaGrafico>
-            <TarjetaGrafico Titulo="Compromisos de pago" Descripcion="Saldo vencido y lo que vence en cada una de las próximas 12 semanas." Clase="tablero-ancho">
+            <TarjetaGrafico Titulo="@L("Compromisos de pago")" Descripcion="@L("Saldo vencido y lo que vence en cada una de las próximas 12 semanas.")" Clase="tablero-ancho">
                 <ChildContent>
-                    <GraficoColumnas Titulo="Compromisos de pago" Categorias="etiquetasCompromisos" Series="seriesCompromisos" Alto="220" />
+                    <GraficoColumnas Titulo="@L("Compromisos de pago")" Categorias="etiquetasCompromisos" Series="seriesCompromisos" Alto="220" />
                 </ChildContent>
                 <Tabla>
                     <TablaPeriodos Etiquetas="etiquetasCompromisos" Series="seriesCompromisos" />
                 </Tabla>
             </TarjetaGrafico>
-            <TarjetaGrafico Titulo="Principales proveedores" Descripcion="Compras del período; clic para ver su estado de cuenta." Clase="tablero-ancho">
-                <GraficoBarrasH Titulo="Principales proveedores" Filas="@(compras.Proveedores.Select(p => new BarraFila(p.Id, p.Nombre, p.Compras, p.Saldo > 0 ? $"saldo {PaletaGraficos.MonedaCompacta(p.Saldo)}" : null)).ToList())"
+            <TarjetaGrafico Titulo="@L("Principales proveedores")" Descripcion="@L("Compras del período; clic para ver su estado de cuenta.")" Clase="tablero-ancho">
+                <GraficoBarrasH Titulo="@L("Principales proveedores")" Filas="@(compras.Proveedores.Select(p => new BarraFila(p.Id, p.Nombre, p.Compras, p.Saldo > 0 ? L("saldo {0}", PaletaGraficos.MonedaCompacta(p.Saldo)) : null)).ToList())"
                                 OnSeleccionar="@(id => Abrir($"cxp/estado-cuenta?id={id}"))" PistaSeleccion="Abrir su estado de cuenta" />
             </TarjetaGrafico>
-            <TarjetaGrafico Titulo="Próximos pagos" Descripcion="Cuotas pendientes con proveedores, de la más antigua a la más reciente." Clase="tablero-ancho">
+            <TarjetaGrafico Titulo="@L("Próximos pagos")" Descripcion="@L("Cuotas pendientes con proveedores, de la más antigua a la más reciente.")" Clase="tablero-ancho">
                 @if (compras.Proximas.Count == 0)
                 {
-                    <p class="estado-vacio">No hay cuotas pendientes con proveedores.</p>
+                    <p class="estado-vacio">@L("No hay cuotas pendientes con proveedores.")</p>
                 }
                 else
                 {
                     <table class="tabla-datos">
-                        <thead><tr><th>Proveedor</th><th>Documento</th><th class="col-fecha">Vence</th><th class="num">Saldo</th><th class="col-acciones"><span class="sr-only">Pagar</span></th></tr></thead>
+                        <thead><tr><th>@L("Proveedor")</th><th>@L("Documento")</th><th class="col-fecha">@L("Vence")</th><th class="num">@L("Saldo")</th><th class="col-acciones"><span class="sr-only">@L("Pagar")</span></th></tr></thead>
                         <tbody>
                             @foreach (var c in compras.Proximas)
                             {
@@ -183,14 +183,14 @@
                                         @c.Vence.ToString("dd/MM/yyyy")
                                         @if (c.Dias < 0)
                                         {
-                                            <span class="estado-badge estado-badge-anulada">Vencida @(-c.Dias) d</span>
+                                            <span class="estado-badge estado-badge-anulada">@L("Vencida {0} d", -c.Dias)</span>
                                         }
                                     </td>
                                     <td class="num">@c.Saldo.ToString("N2")</td>
                                     <td class="col-acciones">
                                         <AuthorizeView Policy="Permiso:CXP_ADMIN" Context="permisoCxp">
-                                            <a class="boton-icono" href="@(c.EncId is null ? $"cxp/pagos?prv={c.PrvId}&todo=1" : $"cxp/pagos?prv={c.PrvId}&enc={c.EncId}")" aria-label="@($"Pagar {c.Documento} con cheque")">
-                                                <Icono Nombre="banknote" Tamano="16" /><span class="boton-icono-tip" role="tooltip">Pagar con cheque</span>
+                                            <a class="boton-icono" href="@(c.EncId is null ? $"cxp/pagos?prv={c.PrvId}&todo=1" : $"cxp/pagos?prv={c.PrvId}&enc={c.EncId}")" aria-label="@(L("Pagar {0} con cheque", c.Documento))">
+                                                <Icono Nombre="banknote" Tamano="16" /><span class="boton-icono-tip" role="tooltip">@L("Pagar con cheque")</span>
                                             </a>
                                         </AuthorizeView>
                                     </td>
@@ -315,7 +315,7 @@
 
     private async Task CargarAsync()
     {
-        if (hasta < desde) { mensaje = "La fecha final no puede ser anterior a la inicial."; return; }
+        if (hasta < desde) { mensaje = L("La fecha final no puede ser anterior a la inicial."); return; }
         cargando = true;
         mensaje = null;
         int? sucursal = sucId == 0 ? null : sucId;
@@ -328,8 +328,8 @@
                 etiquetasVentas = Etiquetas();
                 seriesVentas = new[]
                 {
-                    new SerieGrafico("Costo", Valores(ventas.Periodos, p => p.Periodo, p => p.Costo), 1),
-                    new SerieGrafico("Margen bruto", Valores(ventas.Periodos, p => p.Periodo, p => p.Margen), 2)
+                    new SerieGrafico(L("Costo"), Valores(ventas.Periodos, p => p.Periodo, p => p.Costo), 1),
+                    new SerieGrafico(L("Margen bruto"), Valores(ventas.Periodos, p => p.Periodo, p => p.Margen), 2)
                 };
             }
             else if (pestana == "cartera")
@@ -339,8 +339,8 @@
                 etiquetasCartera = Etiquetas();
                 seriesCartera = new[]
                 {
-                    new SerieGrafico("Vencía", Valores(cartera.Periodos, p => p.Periodo, p => p.Vencia), 1),
-                    new SerieGrafico("Cobrado", Valores(cartera.Periodos, p => p.Periodo, p => p.Cobrado), 2)
+                    new SerieGrafico(L("Vencía"), Valores(cartera.Periodos, p => p.Periodo, p => p.Vencia), 1),
+                    new SerieGrafico(L("Cobrado"), Valores(cartera.Periodos, p => p.Periodo, p => p.Cobrado), 2)
                 };
             }
             else
@@ -350,11 +350,11 @@
                 etiquetasCompras = Etiquetas();
                 seriesCompras = new[]
                 {
-                    new SerieGrafico("Compras", Valores(compras.Periodos, p => p.Periodo, p => p.Compras), 1),
-                    new SerieGrafico("Pagado", Valores(compras.Periodos, p => p.Periodo, p => p.Pagado), 2)
+                    new SerieGrafico(L("Compras"), Valores(compras.Periodos, p => p.Periodo, p => p.Compras), 1),
+                    new SerieGrafico(L("Pagado"), Valores(compras.Periodos, p => p.Periodo, p => p.Pagado), 2)
                 };
-                etiquetasCompromisos = compras.Compromisos.Select(c => c.Orden == 0 ? "Vencido" : PaletaGraficos.Dia(c.Desde!.Value)).ToList();
-                seriesCompromisos = new[] { new SerieGrafico("Por pagar", compras.Compromisos.Select(c => c.Monto).ToList(), 1) };
+                etiquetasCompromisos = compras.Compromisos.Select(c => c.Orden == 0 ? L("Vencido") : PaletaGraficos.Dia(c.Desde!.Value)).ToList();
+                seriesCompromisos = new[] { new SerieGrafico(L("Por pagar"), compras.Compromisos.Select(c => c.Monto).ToList(), 1) };
             }
         }
         catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }

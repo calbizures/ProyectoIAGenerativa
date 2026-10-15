@@ -4,20 +4,20 @@
 @using Erp.Data.Contabilidad
 @inject ILibrosRepository LibrosRepository
 
-<ReporteContableMarco Titulo="@($"Póliza #{AsiId}")" Subtitulo="@(poliza is null ? "" : poliza.Fecha.ToString("dd/MM/yyyy"))" Error="@error">
+<ReporteContableMarco Titulo="@(L("Póliza #{0}", AsiId))" Subtitulo="@(poliza is null ? "" : poliza.Fecha.ToString("dd/MM/yyyy"))" Error="@error">
     @if (poliza is not null)
     {
         <dl class="poliza-datos">
-            <div><dt>Concepto</dt><dd>@poliza.Descripcion</dd></div>
-            <div><dt>Origen</dt><dd>@OrigenesPoliza.Nombre(poliza.Origen)@(poliza.Documento is null ? "" : $" · {poliza.Documento}")</dd></div>
-            <div><dt>Estado</dt><dd>@(poliza.Estado == "A" ? "Vigente" : $"ANULADA: {poliza.MotivoAnulacion}")</dd></div>
-            <div><dt>Grabada por</dt><dd>@poliza.Usuario @poliza.Creada?.ToString("dd/MM/yyyy HH:mm")</dd></div>
+            <div><dt>@L("Concepto")</dt><dd>@poliza.Descripcion</dd></div>
+            <div><dt>@L("Origen")</dt><dd>@OrigenesPoliza.Nombre(poliza.Origen)@(poliza.Documento is null ? "" : $" · {poliza.Documento}")</dd></div>
+            <div><dt>@L("Estado")</dt><dd>@(poliza.Estado == "A" ? L("Vigente") : L("ANULADA: {0}", poliza.MotivoAnulacion))</dd></div>
+            <div><dt>@L("Grabada por")</dt><dd>@poliza.Usuario @poliza.Creada?.ToString("dd/MM/yyyy HH:mm")</dd></div>
         </dl>
         <PolizaDetalle Poliza="poliza" />
         <div class="firmas-poliza">
-            <div><span>Elaborado</span></div>
-            <div><span>Revisado</span></div>
-            <div><span>Autorizado</span></div>
+            <div><span>@L("Elaborado")</span></div>
+            <div><span>@L("Revisado")</span></div>
+            <div><span>@L("Autorizado")</span></div>
         </div>
     }
 </ReporteContableMarco>
@@ -33,7 +33,7 @@
         try
         {
             poliza = await LibrosRepository.ConsultarPolizaAsync(AsiId);
-            if (poliza is null) error = "La póliza no existe.";
+            if (poliza is null) error = L("La póliza no existe.");
         }
         catch (Exception ex) { error = MensajesError.Traducir(ex); }
     }

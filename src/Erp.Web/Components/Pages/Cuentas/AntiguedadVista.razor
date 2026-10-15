@@ -6,13 +6,13 @@
 @inject ICuentasRepository CuentasRepository
 
 <div class="pagina-encabezado">
-    <h1>Antigüedad de saldos de @(EsCliente ? "clientes" : "proveedores")</h1>
-    <p>Saldo pendiente de cada cuota según los días transcurridos desde su vencimiento a la fecha de corte.</p>
+    <h1>@L("Antigüedad de saldos de {0}", EsCliente ? L("clientes") : "proveedores")</h1>
+    <p>@L("Saldo pendiente de cada cuota según los días transcurridos desde su vencimiento a la fecha de corte.")</p>
 </div>
 
 @if (mensaje is not null)
 {
-    <p class="mensaje-error" role="alert">@mensaje</p>
+    <p class="mensaje-error" role="alert">@Textos.Mensaje(mensaje)</p>
 }
 
 @if (alcance is { VerTodos: false })
@@ -20,34 +20,34 @@
     <p class="doc-nota" role="status">
         <Icono Nombre="info" Tamano="15" />
         <span>@(alcance.PveId is null
-            ? "Su usuario no está asociado a un vendedor: no tiene clientes para consultar. Pida que lo asocien en RRHH › Empleados o que le den el permiso CXC_ANTIGUEDAD_TODOS."
-            : $"Cartera de {alcance.Vendedor}: {alcance.Clientes.Count} cliente{(alcance.Clientes.Count == 1 ? "" : "s")} a los que les ha vendido, con todo su saldo.")</span>
+            ? L("Su usuario no está asociado a un vendedor: no tiene clientes para consultar. Pida que lo asocien en RRHH › Empleados o que le den el permiso CXC_ANTIGUEDAD_TODOS.")
+            : L("Cartera de {0}: {1} cliente{2} a los que les ha vendido, con todo su saldo.", alcance.Vendedor, alcance.Clientes.Count, (alcance.Clientes.Count == 1 ? "" : "s")))</span>
     </p>
 }
 
 <div class="barra-filtros">
-    <label class="filtro-campo" for="ant-fecha">Fecha de corte <input id="ant-fecha" type="date" @bind="fechaCorte" /></label>
+    <label class="filtro-campo" for="ant-fecha">@L("Fecha de corte") <input id="ant-fecha" type="date" @bind="fechaCorte" /></label>
     <div class="filtro-tercero">
         <SelectorTercero EsCliente="EsCliente" Seleccionado="tercero" SeleccionadoChanged="CambiarTerceroAsync"
                          Permitidos="@(EsCliente && alcance is { VerTodos: false } ? alcance.Clientes : null)" />
     </div>
-    <BotonIcono Icono="search" Tooltip="Consultar" Etiqueta="Consultar" Variante="primario" OnClick="ConsultarAsync" />
+    <BotonIcono Icono="search" Tooltip="@L("Consultar")" Etiqueta="@L("Consultar")" Variante="primario" OnClick="ConsultarAsync" />
     <span class="barra-herramientas-separador"></span>
-    <a class="boton-icono boton-icono-con-etiqueta" href="@UrlExcel" download title="Exportar a Excel">
-        <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Excel</span>
+    <a class="boton-icono boton-icono-con-etiqueta" href="@UrlExcel" download title="@L("Exportar a Excel")">
+        <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">@L("Excel")</span>
     </a>
-    <a class="boton-icono boton-icono-con-etiqueta" href="@UrlImprimir" target="_blank" rel="noopener" title="Abrir el reporte para imprimir">
-        <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+    <a class="boton-icono boton-icono-con-etiqueta" href="@UrlImprimir" target="_blank" rel="noopener" title="@L("Abrir el reporte para imprimir")">
+        <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">@L("Imprimir")</span>
     </a>
 </div>
 
 @if (consultado)
 {
     <div class="kpi-fila">
-        <div class="kpi"><span class="kpi-etiqueta">Saldo total</span><span class="kpi-valor">Q@(totales.Sum().ToString("N2"))</span></div>
-        <div class="kpi"><span class="kpi-etiqueta">No vencido</span><span class="kpi-valor">Q@(totales[0].ToString("N2"))</span></div>
-        <div class="kpi kpi-alerta"><span class="kpi-etiqueta">Vencido</span><span class="kpi-valor">Q@(totales.Skip(1).Sum().ToString("N2"))</span></div>
-        <div class="kpi kpi-alerta"><span class="kpi-etiqueta">Más de 90 días</span><span class="kpi-valor">Q@(totales[4].ToString("N2"))</span></div>
+        <div class="kpi"><span class="kpi-etiqueta">@L("Saldo total")</span><span class="kpi-valor">Q@(totales.Sum().ToString("N2"))</span></div>
+        <div class="kpi"><span class="kpi-etiqueta">@L("No vencido")</span><span class="kpi-valor">Q@(totales[0].ToString("N2"))</span></div>
+        <div class="kpi kpi-alerta"><span class="kpi-etiqueta">@L("Vencido")</span><span class="kpi-valor">Q@(totales.Skip(1).Sum().ToString("N2"))</span></div>
+        <div class="kpi kpi-alerta"><span class="kpi-etiqueta">@L("Más de 90 días")</span><span class="kpi-valor">Q@(totales[4].ToString("N2"))</span></div>
     </div>
 
     <BarraPestanas Pestanas="Vistas" @bind-PestanaActiva="vista" />

@@ -11,39 +11,39 @@
 @inject IPagosRepository PagosRepository
 @inject IGeneralRepository GeneralRepository
 
-<PageTitle>Formatos de archivo</PageTitle>
+<PageTitle>@L("Formatos de archivo")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Formatos del archivo de transferencias</h1>
-    <p>Cada banco pide el archivo de transferencias con su propio formato. Configúrelo aquí con la especificación que entrega el banco: delimitado (CSV) o de ancho fijo, las columnas en orden, el formato de la fecha y del monto, los códigos del tipo de cuenta y el código de cada banco destino. Se usa para pagar a proveedores y la planilla.</p>
+    <h1>@L("Formatos del archivo de transferencias")</h1>
+    <p>@L("Cada banco pide el archivo de transferencias con su propio formato. Configúrelo aquí con la especificación que entrega el banco: delimitado (CSV) o de ancho fijo, las columnas en orden, el formato de la fecha y del monto, los códigos del tipo de cuenta y el código de cada banco destino. Se usa para pagar a proveedores y la planilla.")</p>
 </div>
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
 }
 
 <div class="maestro-detalle">
     <section class="tarjeta maestro-detalle-maestro" aria-labelledby="titulo-formatos">
         <div class="maestro-detalle-encabezado">
-            <h2 id="titulo-formatos">Formatos</h2>
-            <BotonIcono Icono="plus" Tooltip="Nuevo formato" Etiqueta="Nuevo formato" Variante="primario" OnClick="Nuevo" />
+            <h2 id="titulo-formatos">@L("Formatos")</h2>
+            <BotonIcono Icono="plus" Tooltip="@L("Nuevo formato")" Etiqueta="@L("Nuevo formato")" Variante="primario" OnClick="Nuevo" />
         </div>
         @if (formatos.Count == 0)
         {
-            <p class="estado-vacio">No hay formatos.</p>
+            <p class="estado-vacio">@L("No hay formatos.")</p>
         }
         else
         {
             <table class="tabla-datos">
-                <thead><tr><th>Formato</th><th>Uso</th><th class="col-estado">Estado</th></tr></thead>
+                <thead><tr><th>@L("Formato")</th><th>@L("Uso")</th><th class="col-estado">@L("Estado")</th></tr></thead>
                 <tbody>
                     @foreach (var f in formatos)
                     {
                         <tr class="fila-seleccionable @(edicion?.BfaId == f.BfaId && f.BfaId != 0 ? "fila-seleccionada" : "")" @onclick="() => Seleccionar(f)">
-                            <td><strong>@f.Nombre</strong><br /><span class="texto-tenue">@(f.Tipo == "F" ? "Ancho fijo" : "Delimitado") · .@f.Extension@(f.Banco is null ? "" : $" · {f.Banco}")</span></td>
+                            <td><strong>@f.Nombre</strong><br /><span class="texto-tenue">@(f.Tipo == "F" ? L("Ancho fijo") : L("Delimitado")) · .@f.Extension@(f.Banco is null ? "" : $" · {f.Banco}")</span></td>
                             <td>@UsoTexto(f.Uso)</td>
-                            <td class="col-estado"><span class="estado-badge @(f.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(f.Estado == "A" ? "Activo" : "Inactivo")</span></td>
+                            <td class="col-estado"><span class="estado-badge @(f.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(f.Estado == "A" ? L("Activo") : L("Inactivo"))</span></td>
                         </tr>
                     }
                 </tbody>
@@ -54,43 +54,43 @@
     <section class="tarjeta maestro-detalle-detalle tarjeta-encogible" aria-labelledby="titulo-formato">
         @if (edicion is null)
         {
-            <h2 id="titulo-formato">Formato</h2>
-            <p class="estado-vacio">Seleccione un formato o cree uno nuevo.</p>
+            <h2 id="titulo-formato">@L("Formato")</h2>
+            <p class="estado-vacio">@L("Seleccione un formato o cree uno nuevo.")</p>
         }
         else
         {
             <div class="maestro-detalle-encabezado">
-                <h2 id="titulo-formato">@(edicion.BfaId == 0 ? "Nuevo formato" : edicion.Nombre)</h2>
+                <h2 id="titulo-formato">@(edicion.BfaId == 0 ? L("Nuevo formato") : edicion.Nombre)</h2>
                 @if (!editando)
                 {
-                    <BotonIcono Icono="pencil" Tooltip="Editar el formato" Etiqueta="Editar" OnClick="() => editando = true" />
+                    <BotonIcono Icono="pencil" Tooltip="@L("Editar el formato")" Etiqueta="@L("Editar")" OnClick="() => editando = true" />
                 }
             </div>
             @if (!editando)
             {
                 <dl class="formato-resumen">
-                    <dt>Banco</dt><dd>@(edicion.Banco ?? "Cualquiera")</dd>
-                    <dt>Se usa para</dt><dd>@UsoTexto(edicion.Uso)</dd>
-                    <dt>Archivo</dt><dd>@(edicion.Tipo == "F" ? "Ancho fijo" : $"Delimitado por {SeparadorTexto(edicion.Separador)}{(edicion.Titulos ? ", con títulos" : "")}{(edicion.Comillas ? ", entre comillas" : "")}") · .@edicion.Extension · @edicion.Codificacion · @edicion.FinLinea</dd>
-                    <dt>Fecha</dt><dd>@edicion.FormatoFecha</dd>
-                    <dt>Monto</dt><dd>@edicion.Decimales decimales@(edicion.MontoSinPunto ? ", sin punto" : $", separador \"{edicion.SeparadorDecimal}\"")</dd>
-                    <dt>Tipo de cuenta</dt><dd>Monetaria = @edicion.CodigoMonetaria · Ahorro = @edicion.CodigoAhorro</dd>
-                    @if (edicion.Encabezado is not null) { <dt>Encabezado</dt><dd><code>@edicion.Encabezado</code></dd> }
-                    @if (edicion.Pie is not null) { <dt>Línea final</dt><dd><code>@edicion.Pie</code></dd> }
-                    <dt>Columnas</dt><dd>@string.Join(" · ", edicion.Columnas.Select(c => c.Campo == "FIJO" ? $"\"{c.Valor}\"" : c.Longitud is int l ? $"{c.Campo} ({l})" : c.Campo))</dd>
-                    <dt>Códigos de bancos</dt><dd>@(edicion.Bancos.Count == 0 ? "Los de cada entidad financiera" : string.Join(" · ", edicion.Bancos.Select(x => $"{bancos.FirstOrDefault(y => y.GefId == x.GefId)?.GefCodigo ?? x.Banco} = {x.Codigo}")))</dd>
+                    <dt>@L("Banco")</dt><dd>@(edicion.Banco ?? L("Cualquiera"))</dd>
+                    <dt>@L("Se usa para")</dt><dd>@UsoTexto(edicion.Uso)</dd>
+                    <dt>@L("Archivo")</dt><dd>@(edicion.Tipo == "F" ? L("Ancho fijo") : L("Delimitado por {0}{1}{2}", SeparadorTexto(edicion.Separador), (edicion.Titulos ? L(", con títulos") : ""), (edicion.Comillas ? L(", entre comillas") : ""))) · .@edicion.Extension · @edicion.Codificacion · @edicion.FinLinea</dd>
+                    <dt>@L("Fecha")</dt><dd>@edicion.FormatoFecha</dd>
+                    <dt>@L("Monto")</dt><dd>@edicion.Decimales decimales@(edicion.MontoSinPunto ? L(", sin punto") : L(", separador \"{0}\"", edicion.SeparadorDecimal))</dd>
+                    <dt>@L("Tipo de cuenta")</dt><dd>@L("Monetaria = {0} · Ahorro = {1}", edicion.CodigoMonetaria, edicion.CodigoAhorro)</dd>
+                    @if (edicion.Encabezado is not null) { <dt>@L("Encabezado")</dt><dd><code>@edicion.Encabezado</code></dd> }
+                    @if (edicion.Pie is not null) { <dt>@L("Línea final")</dt><dd><code>@edicion.Pie</code></dd> }
+                    <dt>@L("Columnas")</dt><dd>@string.Join(" · ", edicion.Columnas.Select(c => c.Campo == "FIJO" ? $"\"{c.Valor}\"" : c.Longitud is int l ? $"{c.Campo} ({l})" : c.Campo))</dd>
+                    <dt>@L("Códigos de bancos")</dt><dd>@(edicion.Bancos.Count == 0 ? L("Los de cada entidad financiera") : string.Join(" · ", edicion.Bancos.Select(x => $"{bancos.FirstOrDefault(y => y.GefId == x.GefId)?.GefCodigo ?? x.Banco} = {x.Codigo}")))</dd>
                 </dl>
             }
             else
             {
             <fieldset class="sin-borde">
-                <legend class="sr-only">Datos del formato</legend>
+                <legend class="sr-only">@L("Datos del formato")</legend>
                 <div class="panel-formulario panel-ancho">
-                    <div class="campo"><label for="fmt-nombre">Nombre</label><input id="fmt-nombre" maxlength="80" @bind="edicion.Nombre" /></div>
+                    <div class="campo"><label for="fmt-nombre">@L("Nombre")</label><input id="fmt-nombre" maxlength="80" @bind="edicion.Nombre" /></div>
                     <div class="campo">
-                        <label for="fmt-banco">Banco que lo recibe</label>
+                        <label for="fmt-banco">@L("Banco que lo recibe")</label>
                         <select id="fmt-banco" value="@(edicion.GefId?.ToString() ?? "")" @onchange="e => { edicion.GefId = int.TryParse(e.Value?.ToString(), out var g) ? g : null; Previsualizar(); }">
-                            <option value="">(Cualquiera)</option>
+                            <option value="">@L("(Cualquiera)")</option>
                             @foreach (var b in bancos)
                             {
                                 <option value="@b.GefId">@b.GefDescripcion</option>
@@ -98,51 +98,51 @@
                         </select>
                     </div>
                     <div class="campo">
-                        <label for="fmt-uso">Se usa para</label>
+                        <label for="fmt-uso">@L("Se usa para")</label>
                         <select id="fmt-uso" @bind="edicion.Uso">
-                            <option value="A">Proveedores y planilla</option>
-                            <option value="P">Solo proveedores</option>
-                            <option value="N">Solo planilla</option>
+                            <option value="A">@L("Proveedores y planilla")</option>
+                            <option value="P">@L("Solo proveedores")</option>
+                            <option value="N">@L("Solo planilla")</option>
                         </select>
                     </div>
                     <div class="campo">
-                        <label for="fmt-tipo">Tipo de archivo</label>
+                        <label for="fmt-tipo">@L("Tipo de archivo")</label>
                         <select id="fmt-tipo" @bind="edicion.Tipo" @bind:after="Previsualizar">
-                            <option value="D">Delimitado (CSV, punto y coma…)</option>
-                            <option value="F">Ancho fijo</option>
+                            <option value="D">@L("Delimitado (CSV, punto y coma…)")</option>
+                            <option value="F">@L("Ancho fijo")</option>
                         </select>
                     </div>
                     @if (edicion.Tipo == "D")
                     {
                         <div class="campo">
-                            <label for="fmt-separador">Separador</label>
+                            <label for="fmt-separador">@L("Separador")</label>
                             <select id="fmt-separador" @bind="edicion.Separador" @bind:after="Previsualizar">
-                                <option value=",">Coma ( , )</option>
-                                <option value=";">Punto y coma ( ; )</option>
-                                <option value="|">Barra ( | )</option>
-                                <option value="TAB">Tabulador</option>
+                                <option value=",">@L("Coma ( , )")</option>
+                                <option value=";">@L("Punto y coma ( ; )")</option>
+                                <option value="|">@L("Barra ( | )")</option>
+                                <option value="TAB">@L("Tabulador")</option>
                             </select>
                         </div>
-                        <div class="campo campo-checkbox"><label><input type="checkbox" @bind="edicion.Titulos" @bind:after="Previsualizar" /> Primera línea con títulos</label></div>
-                        <div class="campo campo-checkbox"><label><input type="checkbox" @bind="edicion.Comillas" @bind:after="Previsualizar" /> Valores entre comillas</label></div>
+                        <div class="campo campo-checkbox"><label><input type="checkbox" @bind="edicion.Titulos" @bind:after="Previsualizar" /> @L("Primera línea con títulos")</label></div>
+                        <div class="campo campo-checkbox"><label><input type="checkbox" @bind="edicion.Comillas" @bind:after="Previsualizar" /> @L("Valores entre comillas")</label></div>
                     }
-                    <div class="campo"><label for="fmt-extension">Extensión</label><input id="fmt-extension" maxlength="5" @bind="edicion.Extension" @bind:after="Previsualizar" /></div>
+                    <div class="campo"><label for="fmt-extension">@L("Extensión")</label><input id="fmt-extension" maxlength="5" @bind="edicion.Extension" @bind:after="Previsualizar" /></div>
                     <div class="campo">
-                        <label for="fmt-codificacion">Codificación</label>
+                        <label for="fmt-codificacion">@L("Codificación")</label>
                         <select id="fmt-codificacion" @bind="edicion.Codificacion">
-                            <option value="ANSI">ANSI (Windows)</option>
-                            <option value="UTF-8">UTF-8</option>
+                            <option value="ANSI">@L("ANSI (Windows)")</option>
+                            <option value="UTF-8">@L("UTF-8")</option>
                         </select>
                     </div>
                     <div class="campo">
-                        <label for="fmt-fin">Fin de línea</label>
+                        <label for="fmt-fin">@L("Fin de línea")</label>
                         <select id="fmt-fin" @bind="edicion.FinLinea">
-                            <option value="CRLF">Windows (CRLF)</option>
-                            <option value="LF">Unix (LF)</option>
+                            <option value="CRLF">@L("Windows (CRLF)")</option>
+                            <option value="LF">@L("Unix (LF)")</option>
                         </select>
                     </div>
                     <div class="campo">
-                        <label for="fmt-fecha">Formato de fecha</label>
+                        <label for="fmt-fecha">@L("Formato de fecha")</label>
                         <select id="fmt-fecha" @bind="edicion.FormatoFecha" @bind:after="Previsualizar">
                             @foreach (var f in FormatosFecha)
                             {
@@ -150,40 +150,40 @@
                             }
                         </select>
                     </div>
-                    <div class="campo"><label for="fmt-decimales">Decimales del monto</label><input id="fmt-decimales" type="number" min="0" max="4" @bind="edicion.Decimales" @bind:after="Previsualizar" /></div>
+                    <div class="campo"><label for="fmt-decimales">@L("Decimales del monto")</label><input id="fmt-decimales" type="number" min="0" max="4" @bind="edicion.Decimales" @bind:after="Previsualizar" /></div>
                     <div class="campo">
-                        <label for="fmt-sep-decimal">Separador decimal</label>
+                        <label for="fmt-sep-decimal">@L("Separador decimal")</label>
                         <select id="fmt-sep-decimal" @bind="edicion.SeparadorDecimal" @bind:after="Previsualizar">
-                            <option value=".">Punto (1250.50)</option>
-                            <option value=",">Coma (1250,50)</option>
+                            <option value=".">@L("Punto (1250.50)")</option>
+                            <option value=",">@L("Coma (1250,50)")</option>
                         </select>
                     </div>
-                    <div class="campo campo-checkbox"><label><input type="checkbox" @bind="edicion.MontoSinPunto" @bind:after="Previsualizar" /> Monto sin punto decimal (1250.50 → 125050)</label></div>
-                    <div class="campo"><label for="fmt-monetaria">Código de cuenta monetaria</label><input id="fmt-monetaria" maxlength="20" @bind="edicion.CodigoMonetaria" @bind:after="Previsualizar" /></div>
-                    <div class="campo"><label for="fmt-ahorro">Código de cuenta de ahorro</label><input id="fmt-ahorro" maxlength="20" @bind="edicion.CodigoAhorro" @bind:after="Previsualizar" /></div>
+                    <div class="campo campo-checkbox"><label><input type="checkbox" @bind="edicion.MontoSinPunto" @bind:after="Previsualizar" /> @L("Monto sin punto decimal (1250.50 → 125050)")</label></div>
+                    <div class="campo"><label for="fmt-monetaria">@L("Código de cuenta monetaria")</label><input id="fmt-monetaria" maxlength="20" @bind="edicion.CodigoMonetaria" @bind:after="Previsualizar" /></div>
+                    <div class="campo"><label for="fmt-ahorro">@L("Código de cuenta de ahorro")</label><input id="fmt-ahorro" maxlength="20" @bind="edicion.CodigoAhorro" @bind:after="Previsualizar" /></div>
                     <div class="campo campo-ancho">
-                        <label for="fmt-encabezado">Línea de encabezado (opcional)</label>
-                        <input id="fmt-encabezado" maxlength="500" @bind="edicion.Encabezado" @bind:after="Previsualizar" placeholder="Ej.: H{CUENTA_ORIGEN,20}{FECHA}{CANTIDAD,5}{TOTAL,15}" />
+                        <label for="fmt-encabezado">@L("Línea de encabezado (opcional)")</label>
+                        <input id="fmt-encabezado" maxlength="500" @bind="edicion.Encabezado" @bind:after="Previsualizar" placeholder="@L("Ej.: H{CUENTA_ORIGEN,20}{FECHA}{CANTIDAD,5}{TOTAL,15}")" />
                     </div>
                     <div class="campo campo-ancho">
-                        <label for="fmt-pie">Línea final (opcional)</label>
-                        <input id="fmt-pie" maxlength="500" @bind="edicion.Pie" @bind:after="Previsualizar" placeholder="Ej.: T{CANTIDAD,5}{TOTAL,15}" />
-                        <small class="texto-ayuda">Marcadores: {NUMERO} {FECHA} {REFERENCIA} {DESCRIPCION} {TOTAL} {CANTIDAD} {CUENTA_ORIGEN} {MONEDA}; con ",ancho" se rellenan (los números con ceros a la izquierda).</small>
+                        <label for="fmt-pie">@L("Línea final (opcional)")</label>
+                        <input id="fmt-pie" maxlength="500" @bind="edicion.Pie" @bind:after="Previsualizar" placeholder="@L("Ej.: T{CANTIDAD,5}{TOTAL,15}")" />
+                        <small class="texto-ayuda">Marcadores: {NUMERO} {FECHA} {REFERENCIA} {DESCRIPCION} {TOTAL} {CANTIDAD} {CUENTA_ORIGEN} {MONEDA}; con L(",ancho") se rellenan (los números con ceros a la izquierda).</small>
                     </div>
                     <div class="campo">
-                        <label for="fmt-estado">Estado</label>
+                        <label for="fmt-estado">@L("Estado")</label>
                         <select id="fmt-estado" @bind="edicion.Estado">
-                            <option value="A">Activo</option>
-                            <option value="I">Inactivo</option>
+                            <option value="A">@L("Activo")</option>
+                            <option value="I">@L("Inactivo")</option>
                         </select>
                     </div>
                 </div>
 
-                <h3>Columnas de cada transferencia</h3>
-                <div class="tabla-desplazable" tabindex="0" aria-label="Columnas del formato">
+                <h3>@L("Columnas de cada transferencia")</h3>
+                <div class="tabla-desplazable" tabindex="0" aria-label="@L("Columnas del formato")">
                 <table class="tabla-datos tabla-formato-columnas">
                     <thead>
-                        <tr><th class="num">#</th><th>Campo</th><th>Título</th><th class="num">Ancho</th><th>Relleno</th><th>Alineación</th><th>Texto fijo / moneda</th><th>MAYÚS.</th><th class="col-acciones"><span class="sr-only">Acciones</span></th></tr>
+                        <tr><th class="num">#</th><th>@L("Campo")</th><th>@L("Título")</th><th class="num">@L("Ancho")</th><th>@L("Relleno")</th><th>@L("Alineación")</th><th>@L("Texto fijo / moneda")</th><th>@L("MAYÚS.")</th><th class="col-acciones"><span class="sr-only">@L("Acciones")</span></th></tr>
                     </thead>
                     <tbody>
                         @for (var i = 0; i < edicion.Columnas.Count; i++)
@@ -193,34 +193,34 @@
                             <tr>
                                 <td class="num">@(i + 1)</td>
                                 <td>
-                                    <select aria-label="@($"Campo de la columna {i + 1}")" @bind="c.Campo" @bind:after="Previsualizar">
+                                    <select aria-label="@(L("Campo de la columna {0}", i + 1))" @bind="c.Campo" @bind:after="Previsualizar">
                                         @foreach (var campo in ArchivoBanco.Campos)
                                         {
                                             <option value="@campo.Key" title="@campo.Value">@campo.Key</option>
                                         }
                                     </select>
                                 </td>
-                                <td><input aria-label="@($"Título de la columna {i + 1}")" maxlength="60" @bind="c.Titulo" @bind:after="Previsualizar" /></td>
-                                <td class="num"><input class="entrada-monto" type="number" min="1" max="200" aria-label="@($"Ancho de la columna {i + 1}")" @bind="c.Longitud" @bind:after="Previsualizar" /></td>
+                                <td><input aria-label="@(L("Título de la columna {0}", i + 1))" maxlength="60" @bind="c.Titulo" @bind:after="Previsualizar" /></td>
+                                <td class="num"><input class="entrada-monto" type="number" min="1" max="200" aria-label="@(L("Ancho de la columna {0}", i + 1))" @bind="c.Longitud" @bind:after="Previsualizar" /></td>
                                 <td>
-                                    <select aria-label="@($"Relleno de la columna {i + 1}")" @bind="c.Relleno" @bind:after="Previsualizar">
-                                        <option value="">Espacios</option>
-                                        <option value="0">Ceros</option>
+                                    <select aria-label="@(L("Relleno de la columna {0}", i + 1))" @bind="c.Relleno" @bind:after="Previsualizar">
+                                        <option value="">@L("Espacios")</option>
+                                        <option value="0">@L("Ceros")</option>
                                     </select>
                                 </td>
                                 <td>
-                                    <select aria-label="@($"Alineación de la columna {i + 1}")" @bind="c.Alineacion" @bind:after="Previsualizar">
-                                        <option value="I">Izquierda</option>
-                                        <option value="D">Derecha</option>
+                                    <select aria-label="@(L("Alineación de la columna {0}", i + 1))" @bind="c.Alineacion" @bind:after="Previsualizar">
+                                        <option value="I">@L("Izquierda")</option>
+                                        <option value="D">@L("Derecha")</option>
                                     </select>
                                 </td>
-                                <td><input aria-label="@($"Texto fijo de la columna {i + 1}")" maxlength="100" disabled="@(c.Campo is not ("FIJO" or "MONEDA"))" @bind="c.Valor" @bind:after="Previsualizar" /></td>
-                                <td><input type="checkbox" aria-label="@($"Mayúsculas en la columna {i + 1}")" @bind="c.Mayusculas" @bind:after="Previsualizar" /></td>
+                                <td><input aria-label="@(L("Texto fijo de la columna {0}", i + 1))" maxlength="100" disabled="@(c.Campo is not ("FIJO" or "MONEDA"))" @bind="c.Valor" @bind:after="Previsualizar" /></td>
+                                <td><input type="checkbox" aria-label="@(L("Mayúsculas en la columna {0}", i + 1))" @bind="c.Mayusculas" @bind:after="Previsualizar" /></td>
                                 <td class="col-acciones">
                                     <div class="acciones-fila">
-                                        <BotonIcono Icono="chevron-left" Tooltip="Subir" Deshabilitado="indice == 0" OnClick="() => Mover(indice, -1)" />
-                                        <BotonIcono Icono="chevron-right" Tooltip="Bajar" Deshabilitado="indice == edicion.Columnas.Count - 1" OnClick="() => Mover(indice, 1)" />
-                                        <BotonIcono Icono="x" Tooltip="Quitar la columna" Variante="peligro" OnClick="() => Quitar(indice)" />
+                                        <BotonIcono Icono="chevron-left" Tooltip="@L("Subir")" Deshabilitado="indice == 0" OnClick="() => Mover(indice, -1)" />
+                                        <BotonIcono Icono="chevron-right" Tooltip="@L("Bajar")" Deshabilitado="indice == edicion.Columnas.Count - 1" OnClick="() => Mover(indice, 1)" />
+                                        <BotonIcono Icono="x" Tooltip="@L("Quitar la columna")" Variante="peligro" OnClick="() => Quitar(indice)" />
                                     </div>
                                 </td>
                             </tr>
@@ -229,19 +229,19 @@
                 </table>
                 </div>
                 <div class="acciones-fila">
-                    <BotonIcono Icono="plus" Tooltip="Agregar una columna" Etiqueta="Agregar columna" OnClick="Agregar" />
+                    <BotonIcono Icono="plus" Tooltip="@L("Agregar una columna")" Etiqueta="@L("Agregar columna")" OnClick="Agregar" />
                 </div>
 
-                <h3>Código de cada banco destino</h3>
-                <p class="texto-ayuda">El código con que este banco identifica a los demás bancos en el archivo. Vacío = el código de la entidad financiera.</p>
+                <h3>@L("Código de cada banco destino")</h3>
+                <p class="texto-ayuda">@L("El código con que este banco identifica a los demás bancos en el archivo. Vacío = el código de la entidad financiera.")</p>
                 <table class="tabla-datos">
-                    <thead><tr><th>Banco destino</th><th>Código en el archivo</th></tr></thead>
+                    <thead><tr><th>@L("Banco destino")</th><th>@L("Código en el archivo")</th></tr></thead>
                     <tbody>
                         @foreach (var b in bancos)
                         {
                             <tr>
                                 <td>@b.GefDescripcion <span class="texto-tenue">(@b.GefCodigo)</span></td>
-                                <td><input class="entrada-referencia" maxlength="10" aria-label="@($"Código de {b.GefDescripcion}")" value="@CodigoBanco(b.GefId)" @onchange="e => CambiarCodigo(b.GefId, e.Value?.ToString())" /></td>
+                                <td><input class="entrada-referencia" maxlength="10" aria-label="@(L("Código de {0}", b.GefDescripcion))" value="@CodigoBanco(b.GefId)" @onchange="e => CambiarCodigo(b.GefId, e.Value?.ToString())" /></td>
                             </tr>
                         }
                     </tbody>
@@ -249,22 +249,22 @@
             </fieldset>
             }
 
-            <h3>Vista previa con datos de ejemplo</h3>
+            <h3>@L("Vista previa con datos de ejemplo")</h3>
             @if (vista.Errores.Count > 0)
             {
                 @foreach (var e in vista.Errores) { <p class="mensaje-error" role="alert">@e</p> }
             }
             else
             {
-                <pre class="archivo-banco-vista-pre" tabindex="0" aria-label="Vista previa del archivo">@vistaTexto</pre>
+                <pre class="archivo-banco-vista-pre" tabindex="0" aria-label="@L("Vista previa del archivo")">@vistaTexto</pre>
             }
 
             @if (editando)
             {
                 <div class="acciones-fila">
-                    <BotonIcono Icono="save" Tooltip="Guardar el formato" Etiqueta="Guardar" Variante="primario" Deshabilitado="guardando" OnClick="GuardarAsync" />
-                    <BotonIcono Icono="copy" Tooltip="Copiar como un formato nuevo" Etiqueta="Duplicar" OnClick="Duplicar" />
-                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarAsync" />
+                    <BotonIcono Icono="save" Tooltip="@L("Guardar el formato")" Etiqueta="@L("Guardar")" Variante="primario" Deshabilitado="guardando" OnClick="GuardarAsync" />
+                    <BotonIcono Icono="copy" Tooltip="@L("Copiar como un formato nuevo")" Etiqueta="@L("Duplicar")" OnClick="Duplicar" />
+                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="CancelarAsync" />
                 </div>
             }
         }
@@ -299,9 +299,9 @@
         catch (Exception ex) { MostrarError(ex); }
     }
 
-    private static string SeparadorTexto(string? s) => s switch { ";" => "punto y coma", "|" => "barra", "TAB" => "tabulador", _ => "coma" };
+    private static string SeparadorTexto(string? s) => s switch { ";" => L("punto y coma"), "|" => "barra", "TAB" => "tabulador", _ => "coma" };
 
-    private static string UsoTexto(string uso) => uso switch { "P" => "Proveedores", "N" => "Planilla", _ => "Ambos" };
+    private static string UsoTexto(string uso) => uso switch { "P" => L("Proveedores"), "N" => L("Planilla"), _ => L("Ambos") };
 
     private void MostrarError(Exception ex)
     {
@@ -342,9 +342,9 @@
             Nombre = "",
             Columnas =
             [
-                new() { Campo = "CUENTA_DESTINO", Titulo = "Cuenta" },
-                new() { Campo = "BENEFICIARIO", Titulo = "Nombre" },
-                new() { Campo = "MONTO", Titulo = "Monto", Alineacion = "D" }
+                new() { Campo = "CUENTA_DESTINO", Titulo = L("Cuenta") },
+                new() { Campo = "BENEFICIARIO", Titulo = L("Nombre") },
+                new() { Campo = "MONTO", Titulo = L("Monto"), Alineacion = "D" }
             ]
         };
         editando = true;
@@ -357,7 +357,7 @@
         if (edicion is null) return;
         edicion = Copiar(edicion);
         edicion.BfaId = 0;
-        edicion.Nombre = $"{edicion.Nombre} (copia)";
+        edicion.Nombre = L("{0} (copia)", edicion.Nombre);
         Previsualizar();
     }
 
@@ -372,7 +372,7 @@
 
     private void Agregar()
     {
-        edicion?.Columnas.Add(new FormatoColumna { Campo = "REFERENCIA", Titulo = "Referencia" });
+        edicion?.Columnas.Add(new FormatoColumna { Campo = "REFERENCIA", Titulo = L("Referencia") });
         Previsualizar();
     }
 
@@ -411,18 +411,18 @@
         {
             Encabezado = new ArchivoBancoEncabezado
             {
-                Numero = "LT-000001", Fecha = DateTime.Today, Referencia = "Pago semana", Total = 15250.50m, Cantidad = 2,
+                Numero = "LT-000001", Fecha = DateTime.Today, Referencia = L("Pago semana"), Total = 15250.50m, Cantidad = 2,
                 CuentaOrigen = "301-0001122-3", GefIdOrigen = edicion.GefId ?? banco1?.GefId ?? 0, BancoOrigen = edicion.Banco ?? "", Estado = "A",
-                Descripcion = "Pago a proveedores"
+                Descripcion = L("Pago a proveedores")
             },
             Lineas =
             [
-                new() { Correlativo = 1, Codigo = "PRV01", Beneficiario = "Distribuidora Ejemplo, S.A.", Identificacion = "1234567K", GefId = banco1?.GefId,
+                new() { Correlativo = 1, Codigo = "PRV01", Beneficiario = L("Distribuidora Ejemplo, S.A."), Identificacion = "1234567K", GefId = banco1?.GefId,
                         BancoCodigo = banco1?.GefCodigo, Banco = banco1?.GefDescripcion, TipoCuenta = "M", Cuenta = "3000012345", Monto = 12000m,
-                        Referencia = "Pago contraseña CP-000001", Correo = "pagos@ejemplo.com" },
-                new() { Correlativo = 2, Codigo = "PRV02", Beneficiario = "Servicios Técnicos Peña", Identificacion = "7654321", GefId = banco2?.GefId,
+                        Referencia = L("Pago contraseña CP-000001"), Correo = "pagos@ejemplo.com" },
+                new() { Correlativo = 2, Codigo = "PRV02", Beneficiario = L("Servicios Técnicos Peña"), Identificacion = "7654321", GefId = banco2?.GefId,
                         BancoCodigo = banco2?.GefCodigo, Banco = banco2?.GefDescripcion, TipoCuenta = "A", Cuenta = "40-0098765-1", Monto = 3250.50m,
-                        Referencia = "Pago contraseña CP-000002" }
+                        Referencia = L("Pago contraseña CP-000002") }
             ]
         };
         vista = ArchivoBanco.Generar(edicion, datos);
@@ -442,7 +442,7 @@
             await CargarAsync();
             var guardado = formatos.First(f => f.BfaId == id);
             Seleccionar(guardado);
-            mensaje = $"Formato {guardado.Nombre} guardado.";
+            mensaje = L("Formato {0} guardado.", guardado.Nombre);
             esMensajeError = false;
         }
         catch (Exception ex) { MostrarError(ex); }

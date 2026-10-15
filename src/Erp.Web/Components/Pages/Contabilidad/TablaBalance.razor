@@ -4,31 +4,31 @@
 @{
     var t = Balance.Totales;
 }
-<div class="tabla-desplazable" tabindex="0" aria-label="Balance General">
+<div class="tabla-desplazable" tabindex="0" aria-label="@L("Balance General")">
     <table class="tabla-datos tabla-contable tabla-estado">
         <thead>
             <tr>
-                <th class="col-codigo">Cuenta</th><th>Nombre</th>
+                <th class="col-codigo">@L("Cuenta")</th><th>@L("Nombre")</th>
                 <th class="num col-monto">@Etiqueta</th>
                 @if (Comparar)
                 {
-                    <th class="num col-monto">@EtiquetaComparativa</th><th class="num col-monto">Variación</th>
+                    <th class="num col-monto">@EtiquetaComparativa</th><th class="num col-monto">@L("Variación")</th>
                 }
             </tr>
         </thead>
         <tbody>
             @Seccion("A", "ACTIVO")
-            <tr class="fila-total"><td colspan="2">TOTAL ACTIVO</td>@Montos(t.Activo, t.ActivoComparativo)</tr>
+            <tr class="fila-total"><td colspan="2">@L("TOTAL ACTIVO")</td>@Montos(t.Activo, t.ActivoComparativo)</tr>
             @Seccion("P", "PASIVO")
-            <tr class="fila-subtotal"><td colspan="2">Total pasivo</td>@Montos(t.Pasivo, t.PasivoComparativo)</tr>
+            <tr class="fila-subtotal"><td colspan="2">@L("Total pasivo")</td>@Montos(t.Pasivo, t.PasivoComparativo)</tr>
             @Seccion("K", "CAPITAL")
             @if (t.ResultadosAnteriores != 0 || t.ResultadosAnterioresComparativo != 0)
             {
-                <tr><td></td><td class="sangria-2">Resultados de ejercicios anteriores (sin partida de cierre)</td>@Montos(t.ResultadosAnteriores, t.ResultadosAnterioresComparativo)</tr>
+                <tr><td></td><td class="sangria-2">@L("Resultados de ejercicios anteriores (sin partida de cierre)")</td>@Montos(t.ResultadosAnteriores, t.ResultadosAnterioresComparativo)</tr>
             }
-            <tr><td></td><td class="sangria-2">@(t.ResultadoEjercicio >= 0 ? "Utilidad" : "Pérdida") del ejercicio</td>@Montos(t.ResultadoEjercicio, t.ResultadoEjercicioComparativo)</tr>
-            <tr class="fila-subtotal"><td colspan="2">Total capital</td>@Montos(t.Capital + t.ResultadoEjercicio + t.ResultadosAnteriores, t.CapitalComparativo + t.ResultadoEjercicioComparativo + t.ResultadosAnterioresComparativo)</tr>
-            <tr class="fila-total"><td colspan="2">TOTAL PASIVO Y CAPITAL</td>@Montos(t.PasivoCapital, t.PasivoCapitalComparativo)</tr>
+            <tr><td></td><td class="sangria-2">@L("{0} del ejercicio", t.ResultadoEjercicio >= 0 ? L("Utilidad") : L("Pérdida"))</td>@Montos(t.ResultadoEjercicio, t.ResultadoEjercicioComparativo)</tr>
+            <tr class="fila-subtotal"><td colspan="2">@L("Total capital")</td>@Montos(t.Capital + t.ResultadoEjercicio + t.ResultadosAnteriores, t.CapitalComparativo + t.ResultadoEjercicioComparativo + t.ResultadosAnterioresComparativo)</tr>
+            <tr class="fila-total"><td colspan="2">@L("TOTAL PASIVO Y CAPITAL")</td>@Montos(t.PasivoCapital, t.PasivoCapitalComparativo)</tr>
         </tbody>
     </table>
 </div>
@@ -40,8 +40,8 @@
 @code {
     [Parameter, EditorRequired] public BalanceGeneral Balance { get; set; } = new();
     [Parameter] public bool Comparar { get; set; }
-    [Parameter] public string Etiqueta { get; set; } = "Saldo";
-    [Parameter] public string EtiquetaComparativa { get; set; } = "Comparativo";
+    [Parameter] public string Etiqueta { get; set; } = L("Saldo");
+    [Parameter] public string EtiquetaComparativa { get; set; } = L("Comparativo");
     // Por nodos: las cuentas de agrupación se expanden y contraen.
     [Parameter] public bool Nodos { get; set; }
     [Parameter] public int ExpandirHasta { get; set; } = 3;
@@ -65,7 +65,7 @@
         if (Nodos && arbol.TieneHijos(f))
         {
             <button type="button" class="arbol-toggle" aria-expanded="@(arbol.Expandido(f) ? "true" : "false")"
-                    aria-label="@($"{(arbol.Expandido(f) ? "Contraer" : "Expandir")} {f.Cuenta}")" @onclick="() => arbol.Alternar(f)">@(arbol.Expandido(f) ? "▾" : "▸")</button>
+                    aria-label="@($"{(arbol.Expandido(f) ? L("Contraer") : L("Expandir"))} {f.Cuenta}")" @onclick="() => arbol.Alternar(f)">@(arbol.Expandido(f) ? "▾" : "▸")</button>
         }
         else if (Nodos)
         {
@@ -73,7 +73,7 @@
         }
         if (Nodos)
         {
-            <a class="estado-cuenta" href="@($"contabilidad/libros?vista=mayor&cta={f.CtaId}")" title="Ver los movimientos en el libro mayor">@f.Cuenta</a>
+            <a class="estado-cuenta" href="@($"contabilidad/libros?vista=mayor&cta={f.CtaId}")" title="@L("Ver los movimientos en el libro mayor")">@f.Cuenta</a>
         }
         else
         {

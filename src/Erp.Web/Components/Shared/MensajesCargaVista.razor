@@ -26,7 +26,7 @@
                 <tr>
                     <td class="num col-estado">@(m.Fila == 0 ? "—" : m.Fila.ToString())</td>
                     <td class="col-estado"><span class="estado-badge @(m.EsError ? "estado-badge-inactivo" : "estado-badge-pendiente")">@(m.EsError ? L("Error") : L("Aviso"))</span></td>
-                    <td>@m.Mensaje</td>
+                    <td>@Textos.Mensaje(m.Mensaje)</td>
                 </tr>
             }
         </tbody>

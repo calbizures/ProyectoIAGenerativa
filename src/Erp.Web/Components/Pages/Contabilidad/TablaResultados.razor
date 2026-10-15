@@ -7,39 +7,39 @@
     var ingresos = Estado.Filas.Where(f => f.Tipo == "I").ToList();
     var gastos = Estado.Filas.Where(f => f.Tipo == "G").ToList();
 }
-<div class="tabla-desplazable" tabindex="0" aria-label="Estado de Resultados">
+<div class="tabla-desplazable" tabindex="0" aria-label="@L("Estado de Resultados")">
     <table class="tabla-datos tabla-contable tabla-estado">
         <thead>
             <tr>
-                <th class="col-codigo">Cuenta</th><th>Nombre</th>
+                <th class="col-codigo">@L("Cuenta")</th><th>@L("Nombre")</th>
                 <th class="num col-monto">@Etiqueta</th>
                 @if (Comparar)
                 {
-                    <th class="num col-monto">@EtiquetaComparativa</th><th class="num col-monto">Variación</th>
+                    <th class="num col-monto">@EtiquetaComparativa</th><th class="num col-monto">@L("Variación")</th>
                 }
             </tr>
         </thead>
         <tbody>
             @Filas(ingresos)
-            <tr class="fila-subtotal"><td></td><td>Ventas e ingresos</td>@Montos(t.Ingresos, c.Ingresos)</tr>
-            <tr class="fila-subtotal"><td></td><td>(−) Costo de ventas</td>@Montos(t.Costos, c.Costos)</tr>
-            <tr class="fila-total"><td colspan="2">UTILIDAD BRUTA</td>@Montos(t.UtilidadBruta, c.UtilidadBruta)</tr>
+            <tr class="fila-subtotal"><td></td><td>@L("Ventas e ingresos")</td>@Montos(t.Ingresos, c.Ingresos)</tr>
+            <tr class="fila-subtotal"><td></td><td>@L("(−) Costo de ventas")</td>@Montos(t.Costos, c.Costos)</tr>
+            <tr class="fila-total"><td colspan="2">@L("UTILIDAD BRUTA")</td>@Montos(t.UtilidadBruta, c.UtilidadBruta)</tr>
             @Filas(gastos)
-            <tr class="fila-subtotal"><td></td><td>(−) Total gastos de operación</td>@Montos(t.Gastos, c.Gastos)</tr>
-            <tr class="fila-total"><td colspan="2">@(t.UtilidadNeta >= 0 ? "UTILIDAD" : "PÉRDIDA") NETA DEL PERÍODO</td>@Montos(t.UtilidadNeta, c.UtilidadNeta)</tr>
+            <tr class="fila-subtotal"><td></td><td>@L("(−) Total gastos de operación")</td>@Montos(t.Gastos, c.Gastos)</tr>
+            <tr class="fila-total"><td colspan="2">@L("{0} NETA DEL PERÍODO", t.UtilidadNeta >= 0 ? "UTILIDAD" : L("PÉRDIDA"))</td>@Montos(t.UtilidadNeta, c.UtilidadNeta)</tr>
         </tbody>
     </table>
 </div>
 @if (t.Ingresos != 0)
 {
-    <p class="texto-ayuda">Margen bruto: @((t.UtilidadBruta / t.Ingresos).ToString("P1")) · Margen neto: @((t.UtilidadNeta / t.Ingresos).ToString("P1")) · No incluye la partida de cierre anual.</p>
+    <p class="texto-ayuda">@L("Margen bruto: {0} · Margen neto: {1} · No incluye la partida de cierre anual.", (t.UtilidadBruta / t.Ingresos).ToString("P1"), (t.UtilidadNeta / t.Ingresos).ToString("P1"))</p>
 }
 
 @code {
     [Parameter, EditorRequired] public EstadoResultados Estado { get; set; } = new();
     [Parameter] public bool Comparar { get; set; }
-    [Parameter] public string Etiqueta { get; set; } = "Período";
-    [Parameter] public string EtiquetaComparativa { get; set; } = "Comparativo";
+    [Parameter] public string Etiqueta { get; set; } = L("Período");
+    [Parameter] public string EtiquetaComparativa { get; set; } = L("Comparativo");
     // Por nodos: las cuentas de agrupación se expanden y contraen.
     [Parameter] public bool Nodos { get; set; }
     [Parameter] public int ExpandirHasta { get; set; } = 3;
@@ -67,7 +67,7 @@
                     @if (Nodos && arbol.TieneHijos(f))
                     {
                         <button type="button" class="arbol-toggle" aria-expanded="@(arbol.Expandido(f) ? "true" : "false")"
-                                aria-label="@($"{(arbol.Expandido(f) ? "Contraer" : "Expandir")} {f.Cuenta}")" @onclick="() => arbol.Alternar(f)">@(arbol.Expandido(f) ? "▾" : "▸")</button>
+                                aria-label="@($"{(arbol.Expandido(f) ? L("Contraer") : L("Expandir"))} {f.Cuenta}")" @onclick="() => arbol.Alternar(f)">@(arbol.Expandido(f) ? "▾" : "▸")</button>
                     }
                     else if (Nodos)
                     {
@@ -75,7 +75,7 @@
                     }
                     @(f.Tipo == "I" && f.Naturaleza == "D" ? "(−) " : "")@if (Nodos)
                     {
-                        <a class="estado-cuenta" href="@($"contabilidad/libros?vista=mayor&cta={f.CtaId}")" title="Ver los movimientos en el libro mayor">@f.Cuenta</a>
+                        <a class="estado-cuenta" href="@($"contabilidad/libros?vista=mayor&cta={f.CtaId}")" title="@L("Ver los movimientos en el libro mayor")">@f.Cuenta</a>
                     }
                     else
                     {

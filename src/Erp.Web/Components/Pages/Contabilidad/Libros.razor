@@ -8,16 +8,16 @@
 @inject IGeneralRepository GeneralRepository
 @inject NavigationManager Navegacion
 
-<PageTitle>Libros contables</PageTitle>
+<PageTitle>@L("Libros contables")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Libros contables</h1>
-    <p>Libro diario (las pólizas en orden de fecha), libro mayor (los movimientos y el saldo de cada cuenta) y balanza de comprobación. Solo toman las pólizas vigentes.</p>
+    <h1>@L("Libros contables")</h1>
+    <p>@L("Libro diario (las pólizas en orden de fecha), libro mayor (los movimientos y el saldo de cada cuenta) y balanza de comprobación. Solo toman las pólizas vigentes.")</p>
 </div>
 
 @if (mensaje is not null)
 {
-    <p class="mensaje-error" role="alert">@mensaje</p>
+    <p class="mensaje-error" role="alert">@Textos.Mensaje(mensaje)</p>
 }
 
 <BarraPestanas Pestanas="Vistas" PestanaActiva="@reporte.Tipo" PestanaActivaChanged="CambiarVistaAsync" />
@@ -26,8 +26,8 @@
     <FiltroPeriodo Desde="reporte.Desde" DesdeChanged="d => reporte.Desde = d ?? reporte.Desde" Hasta="reporte.Hasta" HastaChanged="h => reporte.Hasta = h ?? reporte.Hasta" AlCambiar="ConsultarAsync" />
     @if (reporte.Tipo == "mayor")
     {
-        <select @bind="reporte.CtaId" @bind:after="ConsultarAsync" aria-label="Cuenta" class="selector-cuenta">
-            <option value="">Todas las cuentas con saldo o movimiento</option>
+        <select @bind="reporte.CtaId" @bind:after="ConsultarAsync" aria-label="@L("Cuenta")" class="selector-cuenta">
+            <option value="">@L("Todas las cuentas con saldo o movimiento")</option>
             @foreach (var c in cuentas)
             {
                 <option value="@c.CtaId">@(new string(' ', (c.CtaNivel - 1) * 2))@c.CtaCodigo — @c.CtaNombre</option>
@@ -36,20 +36,20 @@
     }
     @if (reporte.Tipo == "balanza")
     {
-        <select @bind="reporte.Nivel" @bind:after="ConsultarAsync" aria-label="Nivel de detalle">
+        <select @bind="reporte.Nivel" @bind:after="ConsultarAsync" aria-label="@L("Nivel de detalle")">
             @foreach (var n in ReporteContable.Niveles)
             {
                 <option value="@n.Nivel">@n.Nombre</option>
             }
         </select>
     }
-    <BotonIcono Icono="search" Tooltip="Consultar" Etiqueta="Consultar" Variante="primario" OnClick="ConsultarAsync" />
+    <BotonIcono Icono="search" Tooltip="@L("Consultar")" Etiqueta="@L("Consultar")" Variante="primario" OnClick="ConsultarAsync" />
     <span class="barra-herramientas-separador"></span>
-    <a class="boton-icono boton-icono-con-etiqueta" href="contabilidad/reportes/imprimir?@reporte.Query()" target="_blank" title="Vista para imprimir o guardar en PDF">
-        <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+    <a class="boton-icono boton-icono-con-etiqueta" href="contabilidad/reportes/imprimir?@reporte.Query()" target="_blank" title="@L("Vista para imprimir o guardar en PDF")">
+        <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">@L("Imprimir")</span>
     </a>
-    <a class="boton-icono boton-icono-con-etiqueta" href="reportes/contabilidad/libro.xlsx?@reporte.Query()" download title="Exportar a Excel">
-        <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Excel</span>
+    <a class="boton-icono boton-icono-con-etiqueta" href="reportes/contabilidad/libro.xlsx?@reporte.Query()" download title="@L("Exportar a Excel")">
+        <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">@L("Excel")</span>
     </a>
 </div>
 
@@ -60,7 +60,7 @@
     </div>
     @if (cargando)
     {
-        <p class="estado-vacio">Consultando...</p>
+        <p class="estado-vacio">@L("Consultando...")</p>
     }
     else
     {
@@ -72,7 +72,7 @@
             case "balanza":
                 <TablaBalanza Filas="balanza" />
                 break;
-            default:
+            @L("default:")
                 <TablaDiario Lineas="diario" />
                 break;
         }

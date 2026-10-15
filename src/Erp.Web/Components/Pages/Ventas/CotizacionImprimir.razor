@@ -9,7 +9,7 @@
 
 @if (enc is null)
 {
-    <p class="mensaje-error" role="alert">@(error ?? $"No existe la cotización {CotId}.")</p>
+    <p class="mensaje-error" role="alert">@(error ?? L("No existe la cotización {0}.", CotId))</p>
 }
 else
 {
@@ -20,12 +20,12 @@ else
 
     <div class="reporte-acciones fac-acciones">
         <button type="button" class="boton-icono boton-icono-primario boton-icono-con-etiqueta" onclick="window.print()">
-            <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir</span>
+            <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">@L("Imprimir")</span>
         </button>
-        <span class="texto-tenue">Formato carta. La vigencia se configura en General › Compañías.</span>
+        <span class="texto-tenue">@L("Formato carta. La vigencia se configura en General › Compañías.")</span>
     </div>
 
-    <article class="fac-carta">
+    <article lang="es" class="fac-carta">
         @if (MarcaAgua is not null) { <div class="fac-marca">@MarcaAgua</div> }
         <header class="fac-cab">
             <div class="fac-emisor">

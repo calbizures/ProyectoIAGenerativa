@@ -11,16 +11,16 @@
 @inject ICuentasRepository CuentasRepository
 @inject IBancosRepository BancosRepository
 
-<PageTitle>Pagos programados</PageTitle>
+<PageTitle>@L("Pagos programados")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Pagos programados</h1>
-    <p>Las contraseñas pendientes cuya fecha de pago ya llegó. Las de transferencia se pagan juntas en un lote: se genera una sola póliza y el archivo para subir al banco. Las de cheque se pagan una por una, con su póliza.</p>
+    <h1>@L("Pagos programados")</h1>
+    <p>@L("Las contraseñas pendientes cuya fecha de pago ya llegó. Las de transferencia se pagan juntas en un lote: se genera una sola póliza y el archivo para subir al banco. Las de cheque se pagan una por una, con su póliza.")</p>
 </div>
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
 }
 
 @if (loteGenerado is not null)
@@ -29,40 +29,40 @@
         <div class="exito-contenido">
             <Icono Nombre="check-circle" Tamano="22" />
             <div>
-                <h2>Lote @loteGenerado.Value.Numero generado</h2>
-                <p>@loteGenerado.Value.Cantidad transferencia(s) por Q@(loteGenerado.Value.Total.ToString("N2")). Descargue el archivo y súbalo a la banca en línea.</p>
+                <h2>@L("Lote {0} generado", loteGenerado.Value.Numero)</h2>
+                <p>@L("{0} transferencia(s) por Q{1}. Descargue el archivo y súbalo a la banca en línea.", loteGenerado.Value.Cantidad, loteGenerado.Value.Total.ToString("N2"))</p>
             </div>
         </div>
         <ArchivoBancoPanel Tipo="lote" Id="loteGenerado.Value.BltId" />
         <div class="acciones-fila">
-            <BotonIcono Icono="x" Tooltip="Cerrar" Etiqueta="Cerrar" OnClick="() => loteGenerado = null" />
+            <BotonIcono Icono="x" Tooltip="@L("Cerrar")" Etiqueta="@L("Cerrar")" OnClick="() => loteGenerado = null" />
         </div>
     </section>
 }
 
 <section class="tarjeta" aria-labelledby="titulo-por-pagar">
     <div class="maestro-detalle-encabezado">
-        <h2 id="titulo-por-pagar">Por pagar</h2>
-        <span class="texto-tenue">@pendientes.Count contraseña(s) · Q@(pendientes.Sum(c => c.Total).ToString("N2"))</span>
+        <h2 id="titulo-por-pagar">@L("Por pagar")</h2>
+        <span class="texto-tenue">@L("{0} contraseña(s) · Q{1}", pendientes.Count, pendientes.Sum(c => c.Total).ToString("N2"))</span>
     </div>
     <div class="barra-herramientas">
-        <label for="pp-hasta">Con fecha de pago hasta</label>
+        <label for="pp-hasta">@L("Con fecha de pago hasta")</label>
         <input id="pp-hasta" type="date" value="@pagoHasta.ToString("yyyy-MM-dd")" @onchange="CambiarHastaAsync" />
-        <span class="texto-tenue">Próximo día de pago: @proximoDia.ToString("dddd dd/MM/yyyy", Es)</span>
+        <span class="texto-tenue">@L("Próximo día de pago: {0}", proximoDia.ToString("dddd dd/MM/yyyy", Es))</span>
     </div>
 
-    <h3>Por transferencia</h3>
+    <h3>@L("Por transferencia")</h3>
     @if (!Transferencias.Any())
     {
-        <p class="estado-vacio">No hay contraseñas por transferencia para pagar.</p>
+        <p class="estado-vacio">@L("No hay contraseñas por transferencia para pagar.")</p>
     }
     else
     {
         <table class="tabla-datos">
             <thead>
                 <tr>
-                    <th class="col-check"><input type="checkbox" aria-label="Seleccionar todas las transferencias" checked="@(Transferencias.Where(c => c.TieneCuenta).All(c => seleccion.Contains(c.CpaId)))" @onchange="e => MarcarTodas((bool)(e.Value ?? false))" /></th>
-                    <th class="col-codigo">Contraseña</th><th>Proveedor</th><th>Banco y cuenta</th><th class="col-fecha">Se paga</th><th class="num">Facturas</th><th class="num">Total</th>
+                    <th class="col-check"><input type="checkbox" aria-label="@L("Seleccionar todas las transferencias")" checked="@(Transferencias.Where(c => c.TieneCuenta).All(c => seleccion.Contains(c.CpaId)))" @onchange="e => MarcarTodas((bool)(e.Value ?? false))" /></th>
+                    <th class="col-codigo">@L("Contraseña")</th><th>@L("Proveedor")</th><th>@L("Banco y cuenta")</th><th class="col-fecha">@L("Se paga")</th><th class="num">@L("Facturas")</th><th class="num">@L("Total")</th>
                 </tr>
             </thead>
             <tbody>
@@ -71,14 +71,14 @@
                     var marcada = seleccion.Contains(c.CpaId);
                     <tr class="@(marcada ? "fila-seleccionada" : "")">
                         <td class="col-check">
-                            <input type="checkbox" checked="@marcada" disabled="@(!c.TieneCuenta)" aria-label="@($"Pagar la contraseña {c.Numero}")"
+                            <input type="checkbox" checked="@marcada" disabled="@(!c.TieneCuenta)" aria-label="@(L("Pagar la contraseña {0}", c.Numero))"
                                    @onchange="e => Alternar(c.CpaId, (bool)(e.Value ?? false))" />
                         </td>
                         <td class="col-codigo"><a href="@($"cxp/contrasenas/{c.CpaId}/imprimir")" target="_blank" rel="noopener">@c.Numero</a></td>
                         <td>@c.Proveedor</td>
                         <td>
                             @if (c.TieneCuenta) { <span>@c.Banco · @c.CuentaProveedor</span> }
-                            else { <span class="estado-badge estado-badge-anulada">Sin cuenta</span> <a href="proveedores">registrar</a> }
+                            else { <span class="estado-badge estado-badge-anulada">@L("Sin cuenta")</span> <a href="proveedores">@L("registrar")</a> }
                         </td>
                         <td class="col-fecha">@c.FechaPago.ToString("dd/MM/yyyy")</td>
                         <td class="num">@c.Facturas</td>
@@ -87,7 +87,7 @@
                 }
             </tbody>
             <tfoot>
-                <tr><td colspan="6">Seleccionadas (@seleccion.Count)</td><td class="num"><strong>Q@(TotalSeleccion.ToString("N2"))</strong></td></tr>
+                <tr><td colspan="6">@L("Seleccionadas ({0})", seleccion.Count)</td><td class="num"><strong>Q@(TotalSeleccion.ToString("N2"))</strong></td></tr>
             </tfoot>
         </table>
 
@@ -95,7 +95,7 @@
         {
             <div class="panel-formulario panel-ancho">
                 <div class="campo">
-                    <label for="pp-cuenta">Cuenta que paga</label>
+                    <label for="pp-cuenta">@L("Cuenta que paga")</label>
                     <select id="pp-cuenta" @bind="bcbId">
                         @foreach (var c in cuentas)
                         {
@@ -104,32 +104,32 @@
                     </select>
                 </div>
                 <div class="campo">
-                    <label for="pp-fecha">Fecha</label>
+                    <label for="pp-fecha">@L("Fecha")</label>
                     <input id="pp-fecha" type="date" value="@fechaLote.ToString("yyyy-MM-dd")" @onchange="CambiarFechaLote" />
                 </div>
                 <div class="campo campo-ancho">
-                    <label for="pp-referencia">Referencia</label>
-                    <input id="pp-referencia" maxlength="60" @bind="referencia" placeholder="Ej.: pago a proveedores semana 40" />
+                    <label for="pp-referencia">@L("Referencia")</label>
+                    <input id="pp-referencia" maxlength="60" @bind="referencia" placeholder="@L("Ej.: pago a proveedores semana 40")" />
                 </div>
             </div>
             <div class="acciones-fila">
-                <BotonIcono Icono="send" Tooltip="Pagar las contraseñas seleccionadas en un lote de transferencias" Etiqueta="@($"Generar lote Q{TotalSeleccion:N2}")"
+                <BotonIcono Icono="send" Tooltip="@L("Pagar las contraseñas seleccionadas en un lote de transferencias")" Etiqueta="@(L("Generar lote Q{0:N2}", TotalSeleccion))"
                             Variante="primario" Deshabilitado="guardando || bcbId == 0" OnClick="GenerarLoteAsync" />
             </div>
-            <p class="texto-ayuda">Las facturas quedan pagadas con la fecha del lote y la póliza sale de la cuenta elegida. Si el banco rechaza el archivo, anule el lote abajo: las contraseñas vuelven a quedar pendientes.</p>
+            <p class="texto-ayuda">@L("Las facturas quedan pagadas con la fecha del lote y la póliza sale de la cuenta elegida. Si el banco rechaza el archivo, anule el lote abajo: las contraseñas vuelven a quedar pendientes.")</p>
         }
     }
 
-    <h3>Con cheque</h3>
+    <h3>@L("Con cheque")</h3>
     @if (!Cheques.Any())
     {
-        <p class="estado-vacio">No hay contraseñas con cheque para pagar.</p>
+        <p class="estado-vacio">@L("No hay contraseñas con cheque para pagar.")</p>
     }
     else
     {
         <table class="tabla-datos">
             <thead>
-                <tr><th class="col-codigo">Contraseña</th><th>Proveedor</th><th class="col-fecha">Se paga</th><th class="num">Facturas</th><th class="num">Total</th><th class="col-acciones">Acciones</th></tr>
+                <tr><th class="col-codigo">@L("Contraseña")</th><th>@L("Proveedor")</th><th class="col-fecha">@L("Se paga")</th><th class="num">@L("Facturas")</th><th class="num">@L("Total")</th><th class="col-acciones">@L("Acciones")</th></tr>
             </thead>
             <tbody>
                 @foreach (var c in Cheques)
@@ -141,7 +141,7 @@
                         <td class="num">@c.Facturas</td>
                         <td class="num">@c.Total.ToString("N2")</td>
                         <td class="col-acciones">
-                            <BotonIcono Icono="banknote" Tooltip="Pagar con cheque" Etiqueta="Pagar" OnClick="() => IniciarCheque(c)" />
+                            <BotonIcono Icono="banknote" Tooltip="@L("Pagar con cheque")" Etiqueta="@L("Pagar")" OnClick="() => IniciarCheque(c)" />
                         </td>
                     </tr>
                     @if (pagandoCheque?.CpaId == c.CpaId)
@@ -149,18 +149,18 @@
                         <tr class="fila-edicion-tabla">
                             <td colspan="6">
                                 <div class="anulacion-form">
-                                    <label for="pp-chequera">Chequera</label>
+                                    <label for="pp-chequera">@L("Chequera")</label>
                                     <select id="pp-chequera" value="@cbcId" @onchange="CambiarChequera">
                                         @foreach (var q in chequeras)
                                         {
                                             <option value="@q.CbcId">@q.Descripcion</option>
                                         }
                                     </select>
-                                    <label for="pp-numero">Número</label>
+                                    <label for="pp-numero">@L("Número")</label>
                                     <input id="pp-numero" class="entrada-referencia" maxlength="16" inputmode="numeric" @bind="numeroCheque" />
-                                    <BotonIcono Icono="save" Tooltip="Emitir el cheque" Etiqueta="@($"Emitir cheque Q{c.Total:N2}")" Variante="primario"
+                                    <BotonIcono Icono="save" Tooltip="@L("Emitir el cheque")" Etiqueta="@(L("Emitir cheque Q{0:N2}", c.Total))" Variante="primario"
                                                 Deshabilitado="guardando || cbcId == 0" OnClick="PagarChequeAsync" />
-                                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => pagandoCheque = null" />
+                                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => pagandoCheque = null" />
                                 </div>
                             </td>
                         </tr>
@@ -173,21 +173,21 @@
 
 <section class="tarjeta" aria-labelledby="titulo-lotes">
     <div class="maestro-detalle-encabezado">
-        <h2 id="titulo-lotes">Lotes de transferencias</h2>
-        <span class="texto-tenue">@lotes.Count(l => l.Estado == "A") vigente(s) · Q@(lotes.Where(l => l.Estado == "A").Sum(l => l.Total).ToString("N2"))</span>
+        <h2 id="titulo-lotes">@L("Lotes de transferencias")</h2>
+        <span class="texto-tenue">@L("{0} vigente(s) · Q{1}", lotes.Count(l => l.Estado == "A"), lotes.Where(l => l.Estado == "A").Sum(l => l.Total).ToString("N2"))</span>
     </div>
     <div class="barra-herramientas">
         <FiltroPeriodo @bind-Desde="desde" @bind-Hasta="hasta" AlCambiar="CargarLotesAsync" />
     </div>
     @if (lotes.Count == 0)
     {
-        <p class="estado-vacio">No hay lotes en el período.</p>
+        <p class="estado-vacio">@L("No hay lotes en el período.")</p>
     }
     else
     {
         <table class="tabla-datos">
             <thead>
-                <tr><th class="col-codigo">Lote</th><th class="col-fecha">Fecha</th><th>Cuenta</th><th>Referencia</th><th class="num">Transferencias</th><th class="num">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+                <tr><th class="col-codigo">@L("Lote")</th><th class="col-fecha">@L("Fecha")</th><th>@L("Cuenta")</th><th>@L("Referencia")</th><th class="num">@L("Transferencias")</th><th class="num">@L("Total")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr>
             </thead>
             <tbody>
                 @foreach (var l in lotes)
@@ -199,13 +199,13 @@
                         <td>@l.Referencia</td>
                         <td class="num">@l.Cantidad</td>
                         <td class="num">@l.Total.ToString("N2")</td>
-                        <td class="col-estado"><span class="estado-badge @(l.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")" title="@l.MotivoAnulacion">@(l.Estado == "A" ? "Vigente" : "Anulado")</span></td>
+                        <td class="col-estado"><span class="estado-badge @(l.Estado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")" title="@l.MotivoAnulacion">@(l.Estado == "A" ? L("Vigente") : L("Anulado"))</span></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
                                 @if (l.Estado == "A")
                                 {
-                                    <BotonIcono Icono="download" Tooltip="@(archivoBltId == l.BltId ? "Ocultar el archivo" : "Archivo para el banco")" OnClick="() => archivoBltId = archivoBltId == l.BltId ? null : l.BltId" />
-                                    <BotonIcono Icono="ban" Tooltip="Anular el lote" Variante="peligro" OnClick="() => IniciarAnulacion(l)" />
+                                    <BotonIcono Icono="download" Tooltip="@(archivoBltId == l.BltId ? L("Ocultar el archivo") : L("Archivo para el banco"))" OnClick="() => archivoBltId = archivoBltId == l.BltId ? null : l.BltId" />
+                                    <BotonIcono Icono="ban" Tooltip="@L("Anular el lote")" Variante="peligro" OnClick="() => IniciarAnulacion(l)" />
                                 }
                             </div>
                         </td>
@@ -221,12 +221,12 @@
                         <tr class="fila-edicion-tabla">
                             <td colspan="8">
                                 <div class="anulacion-form">
-                                    <label for="motivo-lote">Motivo de la anulación del lote @l.Numero</label>
-                                    <input id="motivo-lote" maxlength="200" placeholder="Ej.: el banco rechazó el archivo" @bind="motivoAnulacion" @bind:event="oninput" />
-                                    <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Anular lote" Variante="peligro"
+                                    <label for="motivo-lote">@L("Motivo de la anulación del lote {0}", l.Numero)</label>
+                                    <input id="motivo-lote" maxlength="200" placeholder="@L("Ej.: el banco rechazó el archivo")" @bind="motivoAnulacion" @bind:event="oninput" />
+                                    <BotonIcono Icono="ban" Tooltip="@L("Confirmar anulación")" Etiqueta="@L("Anular lote")" Variante="peligro"
                                                 Deshabilitado="motivoAnulacion.Trim().Length < 5 || guardando" OnClick="AnularLoteAsync" />
-                                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => anulando = null" />
-                                    <small class="texto-ayuda">Anúlelo solo si el banco no hizo las transferencias: el saldo vuelve a las facturas, las contraseñas quedan pendientes y la póliza se anula.</small>
+                                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => anulando = null" />
+                                    <small class="texto-ayuda">@L("Anúlelo solo si el banco no hizo las transferencias: el saldo vuelve a las facturas, las contraseñas quedan pendientes y la póliza se anula.")</small>
                                 </div>
                             </td>
                         </tr>
@@ -371,7 +371,7 @@
         pagandoCheque = c;
         cbcId = chequeras.FirstOrDefault()?.CbcId ?? 0;
         numeroCheque = SiguienteNumero();
-        mensaje = chequeras.Count == 0 ? "No hay chequeras activas. Registre una en Caja y bancos › Cuentas y chequeras." : null;
+        mensaje = chequeras.Count == 0 ? L("No hay chequeras activas. Registre una en Caja y bancos › Cuentas y chequeras.") : null;
         esMensajeError = chequeras.Count == 0;
     }
 
@@ -389,7 +389,7 @@
         {
             var c = pagandoCheque;
             await PagosRepository.PagarContrasenaChequeAsync(c.CpaId, cbcId, numeroCheque, await ObtenerUsuIdActualAsync());
-            mensaje = $"Contraseña {c.Numero} pagada con el cheque {numeroCheque} por Q{c.Total:N2}. El cheque se ve en Pagos a proveedores y en Cheques.";
+            mensaje = L("Contraseña {0} pagada con el cheque {1} por Q{2:N2}. El cheque se ve en Pagos a proveedores y en Cheques.", c.Numero, numeroCheque, c.Total);
             esMensajeError = false;
             pagandoCheque = null;
             chequeras = await CuentasRepository.ConsultarChequerasAsync();
@@ -414,7 +414,7 @@
         {
             var numero = anulando.Numero;
             await PagosRepository.AnularLoteAsync(anulando.BltId, motivoAnulacion.Trim(), await ObtenerUsuIdActualAsync());
-            mensaje = $"Lote {numero} anulado. Sus contraseñas vuelven a estar pendientes de pago.";
+            mensaje = L("Lote {0} anulado. Sus contraseñas vuelven a estar pendientes de pago.", numero);
             esMensajeError = false;
             anulando = null;
             archivoBltId = null;

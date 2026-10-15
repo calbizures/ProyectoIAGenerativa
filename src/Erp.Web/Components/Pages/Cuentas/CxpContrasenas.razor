@@ -9,16 +9,16 @@
 @inject IPagosRepository PagosRepository
 @inject IProveedorRepository ProveedorRepository
 
-<PageTitle>Contraseñas de pago</PageTitle>
+<PageTitle>@L("Contraseñas de pago")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Contraseñas de pago</h1>
-    <p>La contraseña es el comprobante que se le entrega al proveedor por las facturas recibidas, con la fecha en que se le pagará: el primer día de pago de la compañía (@NombreDia(diaPago)) a partir del vencimiento más lejano. El pago se hace en Cuentas por pagar › Pagos programados, con cheque o por transferencia.</p>
+    <h1>@L("Contraseñas de pago")</h1>
+    <p>@L("La contraseña es el comprobante que se le entrega al proveedor por las facturas recibidas, con la fecha en que se le pagará: el primer día de pago de la compañía ({0}) a partir del vencimiento más lejano. El pago se hace en Cuentas por pagar › Pagos programados, con cheque o por transferencia.", NombreDia(diaPago))</p>
 </div>
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
 }
 
 @if (emitida is not null)
@@ -27,31 +27,31 @@
         <div class="exito-contenido">
             <Icono Nombre="check-circle" Tamano="22" />
             <div>
-                <h2>Contraseña @emitida.Value.Numero emitida</h2>
-                <p>Q@(emitida.Value.Total.ToString("N2")) a @emitida.Value.Proveedor · se paga el @FechaLarga(emitida.Value.FechaPago)</p>
+                <h2>@L("Contraseña {0} emitida", emitida.Value.Numero)</h2>
+                <p>@L("Q{0} a {1} · se paga el {2}", emitida.Value.Total.ToString("N2"), emitida.Value.Proveedor, FechaLarga(emitida.Value.FechaPago))</p>
             </div>
         </div>
         <div class="acciones-fila">
             <a class="boton-icono boton-icono-primario boton-icono-con-etiqueta" href="@($"cxp/contrasenas/{emitida.Value.CpaId}/imprimir?auto=1")" target="_blank" rel="noopener">
-                <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">Imprimir para el proveedor</span>
+                <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">@L("Imprimir para el proveedor")</span>
             </a>
-            <BotonIcono Icono="plus" Tooltip="Emitir otra contraseña" Etiqueta="Otra contraseña" OnClick="() => emitida = null" />
+            <BotonIcono Icono="plus" Tooltip="@L("Emitir otra contraseña")" Etiqueta="@L("Otra contraseña")" OnClick="() => emitida = null" />
         </div>
     </section>
 }
 
 <section class="tarjeta" aria-labelledby="titulo-proveedor">
-    <h2 id="titulo-proveedor">1. Proveedor</h2>
+    <h2 id="titulo-proveedor">@L("1. Proveedor")</h2>
     <SelectorTercero EsCliente="false" SoloConSaldo="true" Seleccionado="proveedor" SeleccionadoChanged="CambiarProveedorAsync" />
     @if (proveedor is not null && datosPago is not null)
     {
         <p class="texto-tenue">
-            Forma de pago del proveedor: <strong>@(datosPago.FormaPago == "T" ? "transferencia" : "cheque")</strong>
+            @L("Forma de pago del proveedor:") <strong>@(datosPago.FormaPago == "T" ? L("transferencia") : L("cheque"))</strong>
             @if (datosPago.FormaPago == "T" || datosPago.NumeroCuenta is not null)
             {
-                <span> · @datosPago.Banco, cuenta @(datosPago.TipoCuenta == "A" ? "de ahorro" : "monetaria") @datosPago.NumeroCuenta</span>
+                <span> @L("· {0}, cuenta {1} {2}", datosPago.Banco, datosPago.TipoCuenta == "A" ? L("de ahorro") : L("monetaria"), datosPago.NumeroCuenta)</span>
             }
-            · <a href="proveedores">cambiar en Proveedores</a>
+            · <a href="proveedores">@L("cambiar en Proveedores")</a>
         </p>
     }
 </section>
@@ -59,24 +59,24 @@
 @if (proveedor is not null)
 {
     <section class="tarjeta" aria-labelledby="titulo-facturas">
-        <h2 id="titulo-facturas">2. Facturas que cubre</h2>
+        <h2 id="titulo-facturas">@L("2. Facturas que cubre")</h2>
         @if (cuotas.Count == 0)
         {
-            <p class="estado-vacio">El proveedor no tiene cuotas con saldo fuera de otra contraseña pendiente.</p>
+            <p class="estado-vacio">@L("El proveedor no tiene cuotas con saldo fuera de otra contraseña pendiente.")</p>
         }
         else
         {
             <div class="acciones-fila">
-                <BotonIcono Icono="check-check" Tooltip="Incluir todas las cuotas con saldo" Etiqueta="Todas" OnClick="MarcarTodas" />
-                <BotonIcono Icono="alert-triangle" Tooltip="Incluir las cuotas vencidas o que vencen hoy" Etiqueta="Vencidas" OnClick="MarcarVencidas" />
-                <button type="button" class="boton-texto" @onclick="Limpiar">Limpiar</button>
+                <BotonIcono Icono="check-check" Tooltip="@L("Incluir todas las cuotas con saldo")" Etiqueta="@L("Todas")" OnClick="MarcarTodas" />
+                <BotonIcono Icono="alert-triangle" Tooltip="@L("Incluir las cuotas vencidas o que vencen hoy")" Etiqueta="@L("Vencidas")" OnClick="MarcarVencidas" />
+                <button type="button" class="boton-texto" @onclick="Limpiar">@L("Limpiar")</button>
             </div>
             <table class="tabla-datos tabla-cuotas-cobro">
                 <thead>
                     <tr>
-                        <th class="col-check"><span class="sr-only">Incluir</span></th>
-                        <th>Documento</th><th class="col-fecha">Fecha</th><th class="num">Cuota</th><th class="col-fecha">Vence</th>
-                        <th class="num">Valor cuota</th><th class="num">Saldo</th><th class="num col-aplicar">En la contraseña</th>
+                        <th class="col-check"><span class="sr-only">@L("Incluir")</span></th>
+                        <th>@L("Documento")</th><th class="col-fecha">@L("Fecha")</th><th class="num">@L("Cuota")</th><th class="col-fecha">@L("Vence")</th>
+                        <th class="num">@L("Valor cuota")</th><th class="num">@L("Saldo")</th><th class="num col-aplicar">@L("En la contraseña")</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -84,20 +84,20 @@
                     {
                         var marcada = incluir.ContainsKey(c.PpgId);
                         <tr class="@(marcada ? "fila-seleccionada" : "")">
-                            <td class="col-check"><input type="checkbox" checked="@marcada" aria-label="@($"Incluir cuota {c.Cuota} de {c.Documento}")" @onchange="e => Alternar(c, (bool)(e.Value ?? false))" /></td>
+                            <td class="col-check"><input type="checkbox" checked="@marcada" aria-label="@(L("Incluir cuota {0} de {1}", c.Cuota, c.Documento))" @onchange="e => Alternar(c, (bool)(e.Value ?? false))" /></td>
                             <td>@c.Documento</td>
                             <td class="col-fecha">@c.FechaDocumento.ToString("dd/MM/yyyy")</td>
                             <td class="num">@c.Cuota</td>
                             <td class="col-fecha">
                                 @c.Vencimiento.ToString("dd/MM/yyyy")
-                                @if (c.Vencimiento < DateTime.Today) { <span class="estado-badge estado-badge-anulada">Vencida</span> }
+                                @if (c.Vencimiento < DateTime.Today) { <span class="estado-badge estado-badge-anulada">@L("Vencida")</span> }
                             </td>
                             <td class="num">@c.ValorCuota.ToString("N2")</td>
                             <td class="num">@c.Saldo.ToString("N2")</td>
                             <td class="num col-aplicar">
                                 @if (marcada)
                                 {
-                                    <input type="number" step="0.01" min="0" max="@c.Saldo" aria-label="@($"Monto de la cuota {c.Cuota} de {c.Documento}")"
+                                    <input type="number" step="0.01" min="0" max="@c.Saldo" aria-label="@(L("Monto de la cuota {0} de {1}", c.Cuota, c.Documento))"
                                            value="@incluir[c.PpgId].ToString(CultureInfo.InvariantCulture)" @onchange="e => CambiarMonto(c, e.Value)" />
                                 }
                                 else
@@ -109,7 +109,7 @@
                     }
                 </tbody>
                 <tfoot>
-                    <tr><td colspan="7">Total de la contraseña (@incluir.Count cuota@(incluir.Count == 1 ? "" : "s"))</td><td class="num"><strong>Q@(Total.ToString("N2"))</strong></td></tr>
+                    <tr><td colspan="7">@L("Total de la contraseña ({0} cuota{1})", incluir.Count, incluir.Count == 1 ? "" : "s")</td><td class="num"><strong>Q@(Total.ToString("N2"))</strong></td></tr>
                 </tfoot>
             </table>
         }
@@ -118,39 +118,39 @@
     @if (incluir.Count > 0)
     {
         <section class="tarjeta" aria-labelledby="titulo-pago">
-            <h2 id="titulo-pago">3. Fecha y forma de pago</h2>
+            <h2 id="titulo-pago">@L("3. Fecha y forma de pago")</h2>
             <div class="panel-formulario panel-ancho">
                 <div class="campo">
-                    <label for="cpa-fecha-pago">Fecha de pago</label>
+                    <label for="cpa-fecha-pago">@L("Fecha de pago")</label>
                     <input id="cpa-fecha-pago" type="date" min="@DateTime.Today.ToString("yyyy-MM-dd")" value="@fechaPago.ToString("yyyy-MM-dd")" @onchange="CambiarFechaPago" />
                     <small class="texto-ayuda">
-                        Sugerida: @FechaLarga(FechaSugerida).
+                        @L("Sugerida: {0}.", FechaLarga(FechaSugerida))
                         @if (fechaPago != FechaSugerida)
                         {
-                            <button type="button" class="boton-texto" @onclick="() => fechaPago = FechaSugerida">Usar la sugerida</button>
+                            <button type="button" class="boton-texto" @onclick="() => fechaPago = FechaSugerida">@L("Usar la sugerida")</button>
                         }
                     </small>
                 </div>
                 <div class="campo">
-                    <label for="cpa-forma">Forma de pago</label>
+                    <label for="cpa-forma">@L("Forma de pago")</label>
                     <select id="cpa-forma" @bind="formaPago">
-                        <option value="C">Cheque</option>
-                        <option value="T">Transferencia</option>
+                        <option value="C">@L("Cheque")</option>
+                        <option value="T">@L("Transferencia")</option>
                     </select>
                     @if (formaPago == "T" && datosPago?.NumeroCuenta is null)
                     {
-                        <small class="texto-ayuda" role="alert">El proveedor no tiene cuenta para transferencia: regístrela en Proveedores antes de pagar.</small>
+                        <small class="texto-ayuda" role="alert">@L("El proveedor no tiene cuenta para transferencia: regístrela en Proveedores antes de pagar.")</small>
                     }
                 </div>
                 <div class="campo campo-ancho">
-                    <label for="cpa-observaciones">Observaciones</label>
-                    <input id="cpa-observaciones" maxlength="250" @bind="observaciones" placeholder="Ej.: recibió Juan López, presentar DPI" />
+                    <label for="cpa-observaciones">@L("Observaciones")</label>
+                    <input id="cpa-observaciones" maxlength="250" @bind="observaciones" placeholder="@L("Ej.: recibió Juan López, presentar DPI")" />
                 </div>
             </div>
             <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Emitir la contraseña" Etiqueta="@($"Emitir contraseña Q{Total:N2}")" Variante="primario"
+                <BotonIcono Icono="save" Tooltip="@L("Emitir la contraseña")" Etiqueta="@(L("Emitir contraseña Q{0:N2}", Total))" Variante="primario"
                             Deshabilitado="guardando" OnClick="EmitirAsync" />
-                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="Limpiar" />
+                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="Limpiar" />
             </div>
         </section>
     }
@@ -158,27 +158,27 @@
 
 <section class="tarjeta" aria-labelledby="titulo-emitidas">
     <div class="maestro-detalle-encabezado">
-        <h2 id="titulo-emitidas">Contraseñas emitidas</h2>
-        <span class="texto-tenue">@lista.Count(c => c.Estado == "E") pendiente(s) · Q@(lista.Where(c => c.Estado == "E").Sum(c => c.Total).ToString("N2"))</span>
+        <h2 id="titulo-emitidas">@L("Contraseñas emitidas")</h2>
+        <span class="texto-tenue">@L("{0} pendiente(s) · Q{1}", lista.Count(c => c.Estado == "E"), lista.Where(c => c.Estado == "E").Sum(c => c.Total).ToString("N2"))</span>
     </div>
     <div class="barra-herramientas">
         <FiltroPeriodo @bind-Desde="desde" @bind-Hasta="hasta" AlCambiar="CargarListaAsync" />
-        <select value="@filtroEstado" @onchange="CambiarFiltroEstadoAsync" aria-label="Estado">
-            <option value="">Todas</option>
-            <option value="E">Pendientes de pago</option>
-            <option value="P">Pagadas</option>
-            <option value="A">Anuladas</option>
+        <select value="@filtroEstado" @onchange="CambiarFiltroEstadoAsync" aria-label="@L("Estado")">
+            <option value="">@L("Todas")</option>
+            <option value="E">@L("Pendientes de pago")</option>
+            <option value="P">@L("Pagadas")</option>
+            <option value="A">@L("Anuladas")</option>
         </select>
     </div>
     @if (lista.Count == 0)
     {
-        <p class="estado-vacio">No hay contraseñas en el período.</p>
+        <p class="estado-vacio">@L("No hay contraseñas en el período.")</p>
     }
     else
     {
         <table class="tabla-datos">
             <thead>
-                <tr><th class="col-codigo">Número</th><th class="col-fecha">Fecha</th><th>Proveedor</th><th class="num">Facturas</th><th class="col-fecha">Se paga</th><th>Forma</th><th class="num">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+                <tr><th class="col-codigo">@L("Número")</th><th class="col-fecha">@L("Fecha")</th><th>@L("Proveedor")</th><th class="num">@L("Facturas")</th><th class="col-fecha">@L("Se paga")</th><th>@L("Forma")</th><th class="num">@L("Total")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr>
             </thead>
             <tbody>
                 @foreach (var c in lista)
@@ -189,19 +189,19 @@
                         <td>@c.Proveedor</td>
                         <td class="num">@c.Facturas</td>
                         <td class="col-fecha">@c.FechaPago.ToString("dd/MM/yyyy")</td>
-                        <td>@(c.FormaPago == "T" ? "Transferencia" : "Cheque")</td>
+                        <td>@(c.FormaPago == "T" ? L("Transferencia") : L("Cheque"))</td>
                         <td class="num">@c.Total.ToString("N2")</td>
                         <td class="col-estado">
                             <span class="estado-badge @EstadoClase(c)">@EstadoTexto(c)</span>
                         </td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
-                                <a class="boton-icono" href="@($"cxp/contrasenas/{c.CpaId}/imprimir")" target="_blank" rel="noopener" title="Imprimir" aria-label="@($"Imprimir la contraseña {c.Numero}")">
+                                <a class="boton-icono" href="@($"cxp/contrasenas/{c.CpaId}/imprimir")" target="_blank" rel="noopener" title="@L("Imprimir")" aria-label="@(L("Imprimir la contraseña {0}", c.Numero))">
                                     <Icono Nombre="printer" Tamano="16" />
                                 </a>
                                 @if (c.Estado == "E")
                                 {
-                                    <BotonIcono Icono="ban" Tooltip="Anular la contraseña" Variante="peligro" OnClick="() => IniciarAnulacion(c)" />
+                                    <BotonIcono Icono="ban" Tooltip="@L("Anular la contraseña")" Variante="peligro" OnClick="() => IniciarAnulacion(c)" />
                                 }
                             </div>
                         </td>
@@ -211,12 +211,12 @@
                         <tr class="fila-edicion-tabla">
                             <td colspan="9">
                                 <div class="anulacion-form">
-                                    <label for="motivo-contrasena">Motivo de la anulación de la contraseña @c.Numero</label>
-                                    <input id="motivo-contrasena" maxlength="200" placeholder="Ej.: el proveedor devolvió la contraseña" @bind="motivoAnulacion" @bind:event="oninput" />
-                                    <BotonIcono Icono="ban" Tooltip="Confirmar anulación" Etiqueta="Anular contraseña" Variante="peligro"
+                                    <label for="motivo-contrasena">@L("Motivo de la anulación de la contraseña {0}", c.Numero)</label>
+                                    <input id="motivo-contrasena" maxlength="200" placeholder="@L("Ej.: el proveedor devolvió la contraseña")" @bind="motivoAnulacion" @bind:event="oninput" />
+                                    <BotonIcono Icono="ban" Tooltip="@L("Confirmar anulación")" Etiqueta="@L("Anular contraseña")" Variante="peligro"
                                                 Deshabilitado="motivoAnulacion.Trim().Length < 5 || guardando" OnClick="AnularAsync" />
-                                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => anulando = null" />
-                                    <small class="texto-ayuda">Las facturas quedan libres para otra contraseña. No cambia saldos ni pólizas.</small>
+                                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => anulando = null" />
+                                    <small class="texto-ayuda">@L("Las facturas quedan libres para otra contraseña. No cambia saldos ni pólizas.")</small>
                                 </div>
                             </td>
                         </tr>
@@ -288,17 +288,17 @@
 
     private static string NombreDia(int? dia) => dia switch
     {
-        1 => "lunes", 2 => "martes", 3 => "miércoles", 4 => "jueves", 5 => "viernes", 6 => "sábado", 7 => "domingo",
-        _ => "cualquier día"
+        1 => "lunes", 2 => "martes", 3 => L("miércoles"), 4 => "jueves", 5 => "viernes", 6 => L("sábado"), 7 => "domingo",
+        _ => L("cualquier día")
     };
 
     private static string FechaLarga(DateTime fecha) => fecha.ToString("dddd dd/MM/yyyy", Es);
 
     private static string EstadoTexto(ContrasenaResumen c) => c.Estado switch
     {
-        "E" => c.FechaPago <= DateTime.Today ? "Por pagar hoy" : "Pendiente",
-        "P" => c.Cheque is not null ? $"Pagada · cheque {c.Cheque}" : $"Pagada · {c.Lote}",
-        _ => "Anulada"
+        "E" => c.FechaPago <= DateTime.Today ? L("Por pagar hoy") : L("Pendiente"),
+        "P" => c.Cheque is not null ? L("Pagada · cheque {0}", c.Cheque) : L("Pagada · {0}", c.Lote),
+        _ => L("Anulada")
     };
 
     private static string EstadoClase(ContrasenaResumen c) => c.Estado switch
@@ -361,7 +361,7 @@
         Actualizar();
         if (incluir.Count == 0)
         {
-            mensaje = "El proveedor no tiene cuotas vencidas.";
+            mensaje = L("El proveedor no tiene cuotas vencidas.");
             esMensajeError = true;
         }
     }
@@ -391,13 +391,13 @@
         var mala = cuotas.FirstOrDefault(c => incluir.TryGetValue(c.PpgId, out var m) && (m <= 0 || m > c.Saldo));
         if (mala is not null)
         {
-            mensaje = $"El monto de la cuota {mala.Cuota} de {mala.Documento} debe ser mayor a cero y no pasar de su saldo (Q{mala.Saldo:N2}).";
+            mensaje = L("El monto de la cuota {0} de {1} debe ser mayor a cero y no pasar de su saldo (Q{2:N2}).", mala.Cuota, mala.Documento, mala.Saldo);
             esMensajeError = true;
             return;
         }
         if (sucId is not int sucursal)
         {
-            mensaje = "No se pudo determinar la sucursal de la sesión. Vuelva a iniciar sesión.";
+            mensaje = L("No se pudo determinar la sucursal de la sesión. Vuelva a iniciar sesión.");
             esMensajeError = true;
             return;
         }
@@ -443,7 +443,7 @@
         {
             var numero = anulando.Numero;
             await PagosRepository.AnularContrasenaAsync(anulando.CpaId, motivoAnulacion.Trim(), await ObtenerUsuIdActualAsync());
-            mensaje = $"Contraseña {numero} anulada. Sus facturas quedan libres para otra contraseña.";
+            mensaje = L("Contraseña {0} anulada. Sus facturas quedan libres para otra contraseña.", numero);
             esMensajeError = false;
             anulando = null;
             if (emitida?.Numero == numero) emitida = null;

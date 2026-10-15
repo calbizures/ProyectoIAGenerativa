@@ -8,55 +8,55 @@
 @inject IFelRepository FelRepository
 @inject FelService FelService
 
-<PageTitle>Documentos electrónicos</PageTitle>
+<PageTitle>@L("Documentos electrónicos")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Documentos electrónicos (FEL)</h1>
-    <p>Estado de certificación de facturas y notas ante SAT. Los pendientes por falla de comunicación se reintentan solos; los rechazados se corrigen y se envían de nuevo desde aquí.</p>
+    <h1>@L("Documentos electrónicos (FEL)")</h1>
+    <p>@L("Estado de certificación de facturas y notas ante SAT. Los pendientes por falla de comunicación se reintentan solos; los rechazados se corrigen y se envían de nuevo desde aquí.")</p>
 </div>
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
 }
 
-<div class="fel-conteos" role="group" aria-label="Filtrar por estado">
+<div class="fel-conteos" role="group" aria-label="@L("Filtrar por estado")">
     <button type="button" class="fel-conteo @(filtroEstado == "" ? "activo" : "")" @onclick='() => FiltrarEstado("")'>
-        <span class="fel-conteo-valor">@todos.Count</span><span>Todos</span>
+        <span class="fel-conteo-valor">@todos.Count</span><span>@L("Todos")</span>
     </button>
     @foreach (var (codigo, texto) in FelVista.Estados)
     {
         var n = todos.Count(d => d.FelEstado == codigo);
         <button type="button" class="fel-conteo @(filtroEstado == codigo ? "activo" : "")" @onclick="() => FiltrarEstado(codigo)" disabled="@(n == 0 && filtroEstado != codigo)">
-            <span class="fel-conteo-valor">@n</span><span class="estado-badge @FelVista.Clase(codigo)">@texto</span>
+            <span class="fel-conteo-valor">@n</span><span class="estado-badge @FelVista.Clase(codigo)">@L(texto)</span>
         </button>
     }
 </div>
 
 <div class="barra-filtros">
     <FiltroPeriodo @bind-Desde="desde" @bind-Hasta="hasta" AlCambiar="CargarAsync" />
-    <BotonIcono Icono="search" Tooltip="Consultar" Etiqueta="Consultar" OnClick="CargarAsync" />
-    <input type="search" placeholder="Filtrar por documento, cliente o autorización" aria-label="Filtrar por documento, cliente o autorización"
+    <BotonIcono Icono="search" Tooltip="@L("Consultar")" Etiqueta="@L("Consultar")" OnClick="CargarAsync" />
+    <input type="search" placeholder="@L("Filtrar por documento, cliente o autorización")" aria-label="@L("Filtrar por documento, cliente o autorización")"
            @bind="texto" @bind:event="oninput" @bind:after="() => pagina = 1" />
     <span class="barra-herramientas-separador"></span>
     @if (Filtrados.Any(d => d.FelEstado is "N" or "P" or "R" && d.EstadoDocumento == "G"))
     {
-        <BotonIcono Icono="refresh-cw" Tooltip="Enviar los no enviados, pendientes y rechazados de la lista, del más antiguo al más reciente" Etiqueta="Enviar pendientes"
+        <BotonIcono Icono="refresh-cw" Tooltip="@L("Enviar los no enviados, pendientes y rechazados de la lista, del más antiguo al más reciente")" Etiqueta="@L("Enviar pendientes")"
                     Variante="primario" Deshabilitado="procesando" OnClick="EnviarPendientesAsync" />
     }
 </div>
 
 @if (Filtrados.Count == 0)
 {
-    <p class="estado-vacio">No hay documentos para los filtros seleccionados.</p>
+    <p class="estado-vacio">@L("No hay documentos para los filtros seleccionados.")</p>
 }
 else
 {
     <table class="tabla-datos">
         <thead>
             <tr>
-                <th class="col-fecha-hora">Fecha y hora</th><th>Documento</th><th>Cliente</th><th class="num">Total</th><th class="col-codigo">DTE</th>
-                <th class="col-estado">Estado FEL</th><th>Autorización / mensaje</th><th class="col-acciones">Acciones</th>
+                <th class="col-fecha-hora">@L("Fecha y hora")</th><th>@L("Documento")</th><th>@L("Cliente")</th><th class="num">@L("Total")</th><th class="col-codigo">@L("DTE")</th>
+                <th class="col-estado">@L("Estado FEL")</th><th>@L("Autorización / mensaje")</th><th class="col-acciones">@L("Acciones")</th>
             </tr>
         </thead>
         <tbody>
@@ -64,7 +64,7 @@ else
             {
                 <tr class="@(abiertoId == d.EncId ? "fila-seleccionada" : "")">
                     <td class="col-fecha-hora"><FechaHoraDocumento Fecha="d.Fecha" Grabado="d.FechaHora" /></td>
-                    <td>@d.TdoCodigo @d.Documento @(d.EstadoDocumento != "G" ? "(anulado)" : "")</td>
+                    <td>@d.TdoCodigo @d.Documento @(d.EstadoDocumento != "G" ? L("(anulado)") : "")</td>
                     <td>@d.Cliente</td>
                     <td class="num">@d.Total.ToString("N2")</td>
                     <td class="col-codigo">@(d.TipoDte ?? "—")</td>
@@ -73,11 +73,11 @@ else
                         @if (d.Uuid is not null)
                         {
                             <span class="fel-uuid">@d.Uuid</span>
-                            <small class="texto-tenue">Serie @d.Serie · No. @d.Numero · @d.FechaCertificacion?.ToString("dd/MM/yyyy HH:mm")</small>
+                            <small class="texto-tenue">@L("Serie {0} · No. {1} · {2}", d.Serie, d.Numero, d.FechaCertificacion?.ToString("dd/MM/yyyy HH:mm"))</small>
                         }
                         else if (d.Mensaje is not null)
                         {
-                            <span class="texto-tenue">@d.Mensaje</span>
+                            <span class="texto-tenue">@Textos.Mensaje(d.Mensaje)</span>
                         }
                         else
                         {
@@ -86,14 +86,14 @@ else
                     </td>
                     <td class="col-acciones">
                         <div class="acciones-fila">
-                            <BotonIcono Icono="eye" Tooltip="Ver detalle y bitácora" OnClick="() => AlternarDetalleAsync(d)" />
+                            <BotonIcono Icono="eye" Tooltip="@L("Ver detalle y bitácora")" OnClick="() => AlternarDetalleAsync(d)" />
                             @if (d.EstadoDocumento == "G" && d.FelEstado is "N" or "P" or "R")
                             {
-                                <BotonIcono Icono="refresh-cw" Tooltip="@(d.FelEstado == "N" ? "Certificar" : "Reintentar certificación")" Deshabilitado="procesando" OnClick="() => CertificarAsync(d)" />
+                                <BotonIcono Icono="refresh-cw" Tooltip="@(d.FelEstado == "N" ? L("Certificar") : L("Reintentar certificación"))" Deshabilitado="procesando" OnClick="() => CertificarAsync(d)" />
                             }
                             @if (d.FelEstado == "X")
                             {
-                                <BotonIcono Icono="refresh-cw" Tooltip="Reintentar anulación ante SAT" Deshabilitado="procesando" OnClick="() => ReintentarAnulacionAsync(d)" />
+                                <BotonIcono Icono="refresh-cw" Tooltip="@L("Reintentar anulación ante SAT")" Deshabilitado="procesando" OnClick="() => ReintentarAnulacionAsync(d)" />
                             }
                         </div>
                     </td>
@@ -104,46 +104,46 @@ else
                         <td colspan="8">
                             @if (detalle is null)
                             {
-                                <p class="texto-tenue">Este documento todavía no se ha enviado al certificador.</p>
+                                <p class="texto-tenue">@L("Este documento todavía no se ha enviado al certificador.")</p>
                             }
                             else
                             {
                                 <div class="fel-detalle">
                                     <dl>
-                                        <dt>Certificador</dt><dd>@detalle.Certificador</dd>
-                                        <dt>Intentos</dt><dd>@detalle.Intentos</dd>
+                                        <dt>@L("Certificador")</dt><dd>@detalle.Certificador</dd>
+                                        <dt>@L("Intentos")</dt><dd>@detalle.Intentos</dd>
                                         @if (detalle.MotivoAnulacion is not null)
                                         {
-                                            <dt>Motivo de anulación</dt><dd>@detalle.MotivoAnulacion (@detalle.FechaAnulacion?.ToString("dd/MM/yyyy HH:mm"))</dd>
+                                            <dt>@L("Motivo de anulación")</dt><dd>@detalle.MotivoAnulacion (@detalle.FechaAnulacion?.ToString("dd/MM/yyyy HH:mm"))</dd>
                                         }
-                                        <dt>Último mensaje</dt><dd>@(detalle.Mensaje ?? "—")</dd>
+                                        <dt>@L("Último mensaje")</dt><dd>@(detalle.Mensaje ?? "—")</dd>
                                     </dl>
                                     <div class="acciones-fila">
                                         @if (detalle.XmlEnviado is not null)
                                         {
-                                            <a class="boton-icono boton-icono-con-etiqueta" href="@($"fel/xml/{d.EncId}/enviado")" download><Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">XML enviado</span></a>
+                                            <a class="boton-icono boton-icono-con-etiqueta" href="@($"fel/xml/{d.EncId}/enviado")" download><Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">@L("XML enviado")</span></a>
                                         }
                                         @if (detalle.XmlCertificado is not null)
                                         {
-                                            <a class="boton-icono boton-icono-con-etiqueta" href="@($"fel/xml/{d.EncId}/certificado")" download><Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">XML certificado</span></a>
+                                            <a class="boton-icono boton-icono-con-etiqueta" href="@($"fel/xml/{d.EncId}/certificado")" download><Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">@L("XML certificado")</span></a>
                                         }
                                         @if (detalle.XmlAnulacion is not null)
                                         {
-                                            <a class="boton-icono boton-icono-con-etiqueta" href="@($"fel/xml/{d.EncId}/anulacion")" download><Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">XML de anulación</span></a>
+                                            <a class="boton-icono boton-icono-con-etiqueta" href="@($"fel/xml/{d.EncId}/anulacion")" download><Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">@L("XML de anulación")</span></a>
                                         }
                                     </div>
                                 </div>
                                 <table class="tabla-datos fel-bitacora">
-                                    <thead><tr><th class="col-fecha">Fecha</th><th>Operación</th><th>Resultado</th><th>Mensaje</th><th>Usuario</th></tr></thead>
+                                    <thead><tr><th class="col-fecha">@L("Fecha")</th><th>@L("Operación")</th><th>@L("Resultado")</th><th>@L("Mensaje")</th><th>@L("Usuario")</th></tr></thead>
                                     <tbody>
                                         @foreach (var b in bitacora)
                                         {
                                             <tr>
                                                 <td class="col-fecha">@b.Fecha.ToString("dd/MM/yyyy HH:mm:ss")</td>
-                                                <td>@(b.Operacion == "ANULAR" ? "Anulación" : "Certificación")</td>
-                                                <td><span class="estado-badge @(b.Exito ? "estado-badge-activo" : "estado-badge-anulada")">@(b.Exito ? "Correcto" : "Con error")</span></td>
-                                                <td>@b.Mensaje</td>
-                                                <td>@(b.Usuario ?? "Automático")</td>
+                                                <td>@(b.Operacion == "ANULAR" ? L("Anulación") : L("Certificación"))</td>
+                                                <td><span class="estado-badge @(b.Exito ? "estado-badge-activo" : "estado-badge-anulada")">@(b.Exito ? L("Correcto") : L("Con error"))</span></td>
+                                                <td>@Textos.Mensaje(b.Mensaje)</td>
+                                                <td>@(b.Usuario ?? L("Automático"))</td>
                                             </tr>
                                         }
                                     </tbody>
@@ -215,7 +215,7 @@ else
         try
         {
             var r = await FelService.CertificarAsync(d.EncId, await UsuIdAsync());
-            mensaje = $"{d.Documento}: {r.Mensaje}";
+            mensaje = $"{d.Documento}: {Textos.Mensaje(r.Mensaje)}";
             esMensajeError = !r.Exito;
             await RefrescarAsync(d.EncId);
         }
@@ -229,7 +229,7 @@ else
         {
             var (det, _) = await FelRepository.ConsultarDetalleAsync(d.EncId);
             var r = await FelService.AnularAsync(d.EncId, det?.MotivoAnulacion ?? "", await UsuIdAsync());
-            mensaje = $"{d.Documento}: {r.Mensaje}";
+            mensaje = $"{d.Documento}: {Textos.Mensaje(r.Mensaje)}";
             esMensajeError = !r.Exito;
             await RefrescarAsync(d.EncId);
         }
@@ -249,7 +249,7 @@ else
                 var r = await FelService.CertificarAsync(d.EncId, usuId);
                 if (r.Exito) ok++; else fallas++;
             }
-            mensaje = $"Enviados: {ok} certificados, {fallas} con error.";
+            mensaje = L("Enviados: {0} certificados, {1} con error.", ok, fallas);
             esMensajeError = fallas > 0 && ok == 0;
             await CargarAsync();
         }

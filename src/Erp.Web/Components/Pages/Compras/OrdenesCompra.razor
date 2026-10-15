@@ -13,19 +13,19 @@
 @inject Erp.Data.General.IGeneralRepository GeneralRepository
 @inject ILogger<OrdenesCompra> Log
 
-<PageTitle>Órdenes de compra</PageTitle>
+<PageTitle>@L("Órdenes de compra")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Órdenes de compra</h1>
-    <p>Pedidos a proveedores. Una orden aprobada se recibe en la bodega, completa o por partes: cada recepción graba la compra con la factura del proveedor (inventario, cuenta por pagar y póliza).</p>
+    <h1>@L("Órdenes de compra")</h1>
+    <p>@L("Pedidos a proveedores. Una orden aprobada se recibe en la bodega, completa o por partes: cada recepción graba la compra con la factura del proveedor (inventario, cuenta por pagar y póliza).")</p>
 </div>
 
-<BorradorDocumento TDatos="BorradorOrden" Clave="ordenes-compra" Nombre="una orden de compra"
+<BorradorDocumento TDatos="BorradorOrden" Clave="ordenes-compra" Nombre="@L("una orden de compra")"
                    Capturar="CapturarBorrador" Describir="DescribirBorrador" Restaurar="RestaurarBorradorAsync" />
 
 @if (mensaje is not null)
 {
-    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@mensaje</p>
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
 }
 
 <BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
@@ -33,37 +33,37 @@
 @if (pestanaActiva == "lista")
 {
     <div class="barra-herramientas">
-        <select @bind="filtroEstado" @bind:after="BuscarAsync" aria-label="Estado">
-            <option value="X">Por recibir</option>
-            <option value="F">Pendientes de firma</option>
-            <option value="B">Borradores</option>
-            <option value="V">Con visto bueno de bodega</option>
-            <option value="A">Aprobadas</option>
-            <option value="P">Recibidas en parte</option>
-            <option value="R">Recibidas</option>
-            <option value="C">Cerradas</option>
-            <option value="N">Anuladas</option>
-            <option value="">Todas</option>
+        <select @bind="filtroEstado" @bind:after="BuscarAsync" aria-label="@L("Estado")">
+            <option value="X">@L("Por recibir")</option>
+            <option value="F">@L("Pendientes de firma")</option>
+            <option value="B">@L("Borradores")</option>
+            <option value="V">@L("Con visto bueno de bodega")</option>
+            <option value="A">@L("Aprobadas")</option>
+            <option value="P">@L("Recibidas en parte")</option>
+            <option value="R">@L("Recibidas")</option>
+            <option value="C">@L("Cerradas")</option>
+            <option value="N">@L("Anuladas")</option>
+            <option value="">@L("Todas")</option>
         </select>
         <FiltroPeriodo @bind-Desde="filtroDesde" @bind-Hasta="filtroHasta" AlCambiar="BuscarAsync" />
-        <input type="search" placeholder="Número, proveedor o NIT" aria-label="Buscar por número, proveedor o NIT" @bind="filtroTexto"
+        <input type="search" placeholder="@L("Número, proveedor o NIT")" aria-label="@L("Buscar por número, proveedor o NIT")" @bind="filtroTexto"
                @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
-        <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+        <BotonIcono Icono="search" Tooltip="@L("Buscar")" Etiqueta="@L("Buscar")" OnClick="BuscarAsync" />
         <span class="barra-herramientas-separador"></span>
         <AuthorizeView Policy="Permiso:COMPRAS_ORDEN" Context="permisoOrden">
-            <BotonIcono Icono="plus" Tooltip="Nueva orden de compra" Etiqueta="Nueva orden" Variante="primario" OnClick="IniciarNueva" />
+            <BotonIcono Icono="plus" Tooltip="@L("Nueva orden de compra")" Etiqueta="@L("Nueva orden")" Variante="primario" OnClick="IniciarNueva" />
         </AuthorizeView>
     </div>
 
     <div class="tabla-desplazable" tabindex="0">
         <table class="tabla-datos">
             <thead>
-                <tr><th class="col-codigo">Número</th><th class="col-fecha">Fecha</th><th>Proveedor</th><th class="col-fecha">Entrega</th><th class="num">Recibido</th><th class="num col-monto">Total</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+                <tr><th class="col-codigo">@L("Número")</th><th class="col-fecha">@L("Fecha")</th><th>@L("Proveedor")</th><th class="col-fecha">@L("Entrega")</th><th class="num">@L("Recibido")</th><th class="num col-monto">@L("Total")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr>
             </thead>
             <tbody>
                 @if (!ordenes.Any())
                 {
-                    <tr><td colspan="8" class="doc-tabla-vacia">No hay órdenes de compra con esos filtros.</td></tr>
+                    <tr><td colspan="8" class="doc-tabla-vacia">@L("No hay órdenes de compra con esos filtros.")</td></tr>
                 }
                 @foreach (var o in ordenes)
                 {
@@ -71,15 +71,15 @@
                         <td class="col-codigo">@o.Numero</td>
                         <td class="col-fecha">@o.Fecha.ToString("dd/MM/yyyy")</td>
                         <td>@o.Proveedor<br /><span class="texto-tenue">@o.Bodega</span></td>
-                        <td class="col-fecha">@(o.FechaEntrega?.ToString("dd/MM/yyyy") ?? "—")@if (o.Atrasada) { <br /><span class="texto-error">Atrasada</span> }</td>
+                        <td class="col-fecha">@(o.FechaEntrega?.ToString("dd/MM/yyyy") ?? "—")@if (o.Atrasada) { <br /><span class="texto-error">@L("Atrasada")</span> }</td>
                         <td class="num">@o.Recibido / @o.Ordenado</td>
                         <td class="num col-monto">@o.Simbolo @o.Total.ToString("N2")</td>
                         <td class="col-estado"><span class="estado-badge @ClaseEstado(o.Estado)">@TextoEstado(o.Estado)</span></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
-                                <BotonIcono Icono="eye" Tooltip="Ver la orden" OnClick="() => AbrirAsync(o.OcpId)" />
-                                <a class="boton-icono boton-icono-neutral" href="@($"compras/ordenes/{o.OcpId}/imprimir")" target="_blank" aria-label="Imprimir la orden">
-                                    <Icono Nombre="printer" Tamano="17" /><span class="boton-icono-tip" aria-hidden="true">Imprimir</span>
+                                <BotonIcono Icono="eye" Tooltip="@L("Ver la orden")" OnClick="() => AbrirAsync(o.OcpId)" />
+                                <a class="boton-icono boton-icono-neutral" href="@($"compras/ordenes/{o.OcpId}/imprimir")" target="_blank" aria-label="@L("Imprimir la orden")">
+                                    <Icono Nombre="printer" Tamano="17" /><span class="boton-icono-tip" aria-hidden="true">@L("Imprimir")</span>
                                 </a>
                             </div>
                         </td>
@@ -92,14 +92,14 @@
 else if (pestanaActiva == "orden")
 {
     <section class="tarjeta" aria-labelledby="titulo-orden">
-        <h2 id="titulo-orden">@(orden.OcpId is null ? "Nueva orden de compra" : $"Editar {numeroEditando}")</h2>
-        <p class="texto-ayuda">Queda en borrador hasta que se aprueba; solo una orden aprobada se puede recibir. Los costos incluyen IVA, como los cotiza el proveedor.</p>
+        <h2 id="titulo-orden">@(orden.OcpId is null ? L("Nueva orden de compra") : L("Editar {0}", numeroEditando))</h2>
+        <p class="texto-ayuda">@L("Queda en borrador hasta que se aprueba; solo una orden aprobada se puede recibir. Los costos incluyen IVA, como los cotiza el proveedor.")</p>
 
         <div class="fel-formulario">
             <div class="campo">
-                <label for="oc-proveedor">Proveedor</label>
+                <label for="oc-proveedor">@L("Proveedor")</label>
                 <select id="oc-proveedor" @bind="orden.PrvId" @bind:after="CargarProductosProveedorAsync">
-                    <option value="0">Seleccione…</option>
+                    <option value="0">@L("Seleccione…")</option>
                     @foreach (var p in proveedores)
                     {
                         <option value="@p.PrvId">@p.PrvCodigo · @p.PrvNombreComercial</option>
@@ -107,9 +107,9 @@ else if (pestanaActiva == "orden")
                 </select>
             </div>
             <div class="campo">
-                <label for="oc-bodega">Recibir en la bodega</label>
+                <label for="oc-bodega">@L("Recibir en la bodega")</label>
                 <select id="oc-bodega" @bind="orden.BodId">
-                    <option value="0">Seleccione…</option>
+                    <option value="0">@L("Seleccione…")</option>
                     @foreach (var b in BodegasSucursal)
                     {
                         <option value="@b.BodId">@b.SucDescripcion · @b.BodDescripcion</option>
@@ -117,53 +117,53 @@ else if (pestanaActiva == "orden")
                 </select>
             </div>
             <div class="campo">
-                <label for="oc-fecha">Fecha</label>
+                <label for="oc-fecha">@L("Fecha")</label>
                 <input id="oc-fecha" type="date" @bind="orden.Fecha" />
             </div>
             <div class="campo">
-                <label for="oc-entrega">Entrega esperada</label>
+                <label for="oc-entrega">@L("Entrega esperada")</label>
                 <input id="oc-entrega" type="date" @bind="orden.FechaEntrega" />
             </div>
             <div class="campo campo-ancho">
-                <label for="oc-condiciones">Condiciones (forma de pago, plazo, flete)</label>
+                <label for="oc-condiciones">@L("Condiciones (forma de pago, plazo, flete)")</label>
                 <input id="oc-condiciones" maxlength="256" @bind="orden.Condiciones" />
             </div>
             <div class="campo campo-ancho">
-                <label for="oc-obs">Observaciones</label>
+                <label for="oc-obs">@L("Observaciones")</label>
                 <input id="oc-obs" maxlength="500" @bind="orden.Observaciones" />
             </div>
         </div>
 
-        <h3>Productos</h3>
+        <h3>@L("Productos")</h3>
         @if (productosProveedor.Count > 0)
         {
             <div class="barra-herramientas">
-                <select aria-label="Productos del proveedor" @bind="proIdProveedor">
-                    <option value="0">Productos de este proveedor (@productosProveedor.Count)…</option>
+                <select aria-label="@L("Productos del proveedor")" @bind="proIdProveedor">
+                    <option value="0">@L("Productos de este proveedor ({0})…", productosProveedor.Count)</option>
                     @foreach (var r in productosProveedor)
                     {
-                        <option value="@r.ProId">@r.ProCodigo · @r.ProDescripcion@(r.UltimoCosto is decimal u ? $" · último costo Q {ConIva(u):N2}" : "")</option>
+                        <option value="@r.ProId">@r.ProCodigo · @r.ProDescripcion@(r.UltimoCosto is decimal u ? L(" · último costo Q {0:N2}", ConIva(u)) : "")</option>
                     }
                 </select>
-                <BotonIcono Icono="plus" Tooltip="Agregar el producto elegido" Etiqueta="Agregar" Deshabilitado="proIdProveedor == 0" OnClick="AgregarDelProveedor" />
+                <BotonIcono Icono="plus" Tooltip="@L("Agregar el producto elegido")" Etiqueta="@L("Agregar")" Deshabilitado="proIdProveedor == 0" OnClick="AgregarDelProveedor" />
             </div>
         }
         <div class="barra-herramientas">
-            <input type="search" placeholder="Buscar cualquier producto por código o descripción" aria-label="Buscar producto por código o descripción" @bind="textoProducto"
+            <input type="search" placeholder="@L("Buscar cualquier producto por código o descripción")" aria-label="@L("Buscar producto por código o descripción")" @bind="textoProducto"
                    @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
-            <BotonIcono Icono="search" Tooltip="Buscar producto" Etiqueta="Buscar" OnClick="BuscarProductosAsync" />
+            <BotonIcono Icono="search" Tooltip="@L("Buscar producto")" Etiqueta="@L("Buscar")" OnClick="BuscarProductosAsync" />
         </div>
         @if (productosEncontrados.Count > 0)
         {
             <table class="tabla-datos tabla-compacta">
-                <thead><tr><th class="col-codigo">Código</th><th>Producto</th><th class="col-acciones"><span class="sr-only">Agregar</span></th></tr></thead>
+                <thead><tr><th class="col-codigo">@L("Código")</th><th>@L("Producto")</th><th class="col-acciones"><span class="sr-only">@L("Agregar")</span></th></tr></thead>
                 <tbody>
                     @foreach (var p in productosEncontrados.Take(15))
                     {
                         <tr>
                             <td class="col-codigo">@p.ProCodigo</td>
                             <td>@p.ProDescripcion</td>
-                            <td class="col-acciones"><BotonIcono Icono="plus" Tooltip="Agregar a la orden" OnClick="() => AgregarProducto(p.ProId, p.ProCodigo, p.ProDescripcion, null, p.ProCostoUnitario)" /></td>
+                            <td class="col-acciones"><BotonIcono Icono="plus" Tooltip="@L("Agregar a la orden")" OnClick="() => AgregarProducto(p.ProId, p.ProCodigo, p.ProDescripcion, null, p.ProCostoUnitario)" /></td>
                         </tr>
                     }
                 </tbody>
@@ -173,36 +173,36 @@ else if (pestanaActiva == "orden")
         <div class="tabla-desplazable" tabindex="0">
             <table class="tabla-datos">
                 <thead>
-                    <tr><th class="col-codigo">Código</th><th>Descripción</th><th class="num col-monto">Cantidad</th><th class="num col-monto">Costo con IVA</th><th class="num col-monto">Total</th><th class="col-acciones"><span class="sr-only">Quitar</span></th></tr>
+                    <tr><th class="col-codigo">@L("Código")</th><th>@L("Descripción")</th><th class="num col-monto">@L("Cantidad")</th><th class="num col-monto">@L("Costo con IVA")</th><th class="num col-monto">@L("Total")</th><th class="col-acciones"><span class="sr-only">@L("Quitar")</span></th></tr>
                 </thead>
                 <tbody>
                     @if (lineas.Count == 0)
                     {
-                        <tr><td colspan="6" class="doc-tabla-vacia">Agregue los productos a pedir.</td></tr>
+                        <tr><td colspan="6" class="doc-tabla-vacia">@L("Agregue los productos a pedir.")</td></tr>
                     }
                     @foreach (var l in lineas)
                     {
                         <tr>
                             <td class="col-codigo">@l.Codigo</td>
-                            <td>@l.Descripcion@if (l.CodigoProveedor is not null) { <br /><span class="texto-tenue">Código del proveedor: @l.CodigoProveedor</span> }</td>
-                            <td class="num col-monto"><input class="entrada-numero" type="number" min="1" step="1" aria-label="Cantidad" @bind="l.Cantidad" @bind:event="oninput" /></td>
-                            <td class="num col-monto"><input class="entrada-numero" type="number" min="0" step="0.01" aria-label="Costo con IVA" @bind="l.CostoUnitario" @bind:event="oninput" /></td>
+                            <td>@l.Descripcion@if (l.CodigoProveedor is not null) { <br /><span class="texto-tenue">@L("Código del proveedor: {0}", l.CodigoProveedor)</span> }</td>
+                            <td class="num col-monto"><input class="entrada-numero" type="number" min="1" step="1" aria-label="@L("Cantidad")" @bind="l.Cantidad" @bind:event="oninput" /></td>
+                            <td class="num col-monto"><input class="entrada-numero" type="number" min="0" step="0.01" aria-label="@L("Costo con IVA")" @bind="l.CostoUnitario" @bind:event="oninput" /></td>
                             <td class="num col-monto">@l.Total.ToString("N2")</td>
-                            <td class="col-acciones"><BotonIcono Icono="trash-2" Tooltip="Quitar" Variante="peligro" OnClick="() => lineas.Remove(l)" /></td>
+                            <td class="col-acciones"><BotonIcono Icono="trash-2" Tooltip="@L("Quitar")" Variante="peligro" OnClick="() => lineas.Remove(l)" /></td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
         <div class="resumen-totales">
-            <span>Unidades: <strong>@lineas.Sum(l => l.Cantidad)</strong></span>
-            <span>IVA incluido: <strong>Q @Math.Round(TotalOrden * porcentajeIva / (100 + porcentajeIva), 2).ToString("N2")</strong></span>
-            <span>Total: <strong>Q @TotalOrden.ToString("N2")</strong></span>
+            <span>@L("Unidades:") <strong>@lineas.Sum(l => l.Cantidad)</strong></span>
+            <span>@L("IVA incluido:") <strong>Q @Math.Round(TotalOrden * porcentajeIva / (100 + porcentajeIva), 2).ToString("N2")</strong></span>
+            <span>@L("Total:") <strong>Q @TotalOrden.ToString("N2")</strong></span>
         </div>
 
         <div class="acciones-fila">
-            <BotonIcono Icono="save" Tooltip="Grabar la orden en borrador" Etiqueta="Grabar borrador" Variante="primario" Deshabilitado="lineas.Count == 0" OnClick="GrabarAsync" />
-            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarFormulario" />
+            <BotonIcono Icono="save" Tooltip="@L("Grabar la orden en borrador")" Etiqueta="@L("Grabar borrador")" Variante="primario" Deshabilitado="lineas.Count == 0" OnClick="GrabarAsync" />
+            <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="CancelarFormulario" />
         </div>
     </section>
 }
@@ -211,48 +211,48 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
     var o = seleccionada;
     <section class="tarjeta" aria-labelledby="titulo-detalle">
         <div class="maestro-detalle-encabezado">
-            <h2 id="titulo-detalle">Orden de compra @o.Numero</h2>
+            <h2 id="titulo-detalle">@L("Orden de compra {0}", o.Numero)</h2>
             <span class="estado-badge @ClaseEstado(o.Estado)">@TextoEstado(o.Estado)</span>
         </div>
         @if (o.Estado == "B")
         {
-            <p class="doc-nota" role="status"><Icono Nombre="info" Tamano="15" /><span>Borrador: se puede editar. Necesita el visto bueno del jefe de bodega y la aprobación del contador general antes de enviarla al proveedor y recibir la mercadería.</span></p>
+            <p class="doc-nota" role="status"><Icono Nombre="info" Tamano="15" /><span>@L("Borrador: se puede editar. Necesita el visto bueno del jefe de bodega y la aprobación del contador general antes de enviarla al proveedor y recibir la mercadería.")</span></p>
             @if (!string.IsNullOrWhiteSpace(o.MotivoDevolucion))
             {
-                <p class="doc-nota doc-nota-aviso" role="status"><Icono Nombre="alert-triangle" Tamano="15" /><span>Devuelta para corregir: @o.MotivoDevolucion</span></p>
+                <p class="doc-nota doc-nota-aviso" role="status"><Icono Nombre="alert-triangle" Tamano="15" /><span>@L("Devuelta para corregir: {0}", o.MotivoDevolucion)</span></p>
             }
         }
         else if (o.Estado == "V")
         {
-            <p class="doc-nota" role="status"><Icono Nombre="info" Tamano="15" /><span>Visto bueno de bodega: @o.VistoBueno (@o.FechaVistoBueno?.ToString("dd/MM/yyyy HH:mm")). Falta la aprobación del contador general, que debe darla otro usuario.</span></p>
+            <p class="doc-nota" role="status"><Icono Nombre="info" Tamano="15" /><span>@L("Visto bueno de bodega: {0} ({1}). Falta la aprobación del contador general, que debe darla otro usuario.", o.VistoBueno, o.FechaVistoBueno?.ToString("dd/MM/yyyy HH:mm"))</span></p>
         }
         else if (o.Estado is "C" or "N")
         {
-            <p class="doc-nota doc-nota-aviso" role="status"><Icono Nombre="ban" Tamano="15" /><span>@(o.Estado == "C" ? "Cerrada" : "Anulada"): @o.MotivoCierre</span></p>
+            <p class="doc-nota doc-nota-aviso" role="status"><Icono Nombre="ban" Tamano="15" /><span>@(o.Estado == "C" ? L("Cerrada") : L("Anulada")): @o.MotivoCierre</span></p>
         }
         else if (o.FechaEntrega < DateTime.Today && o.PorRecibir)
         {
-            <p class="doc-nota doc-nota-aviso" role="status"><Icono Nombre="alert-triangle" Tamano="15" /><span>La entrega se esperaba el @o.FechaEntrega?.ToString("dd/MM/yyyy") y todavía hay producto pendiente.</span></p>
+            <p class="doc-nota doc-nota-aviso" role="status"><Icono Nombre="alert-triangle" Tamano="15" /><span>@L("La entrega se esperaba el {0} y todavía hay producto pendiente.", o.FechaEntrega?.ToString("dd/MM/yyyy"))</span></p>
         }
 
         <div class="resumen-totales">
-            <span>Proveedor: <strong>@o.Proveedor</strong>@(string.IsNullOrWhiteSpace(o.Nit) ? "" : $" · NIT {o.Nit}")</span>
-            <span>Fecha: <strong>@o.Fecha.ToString("dd/MM/yyyy")</strong></span>
-            <span>Entrega: <strong>@(o.FechaEntrega?.ToString("dd/MM/yyyy") ?? "—")</strong></span>
-            <span>Bodega: <strong>@o.Bodega</strong></span>
-            @if (o.VistoBueno is not null) { <span>Visto bueno de bodega: <strong>@o.VistoBueno</strong> (@o.FechaVistoBueno?.ToString("dd/MM/yyyy HH:mm"))</span> }
-            @if (o.Aprobo is not null) { <span>Aprobó (contador general): <strong>@o.Aprobo</strong> (@o.FechaAprobacion?.ToString("dd/MM/yyyy HH:mm"))</span> }
+            <span>@L("Proveedor:") <strong>@o.Proveedor</strong>@(string.IsNullOrWhiteSpace(o.Nit) ? "" : L(" · NIT {0}", o.Nit))</span>
+            <span>@L("Fecha:") <strong>@o.Fecha.ToString("dd/MM/yyyy")</strong></span>
+            <span>@L("Entrega:") <strong>@(o.FechaEntrega?.ToString("dd/MM/yyyy") ?? "—")</strong></span>
+            <span>@L("Bodega:") <strong>@o.Bodega</strong></span>
+            @if (o.VistoBueno is not null) { <span>@L("Visto bueno de bodega:") <strong>@o.VistoBueno</strong> (@o.FechaVistoBueno?.ToString("dd/MM/yyyy HH:mm"))</span> }
+            @if (o.Aprobo is not null) { <span>@L("Aprobó (contador general):") <strong>@o.Aprobo</strong> (@o.FechaAprobacion?.ToString("dd/MM/yyyy HH:mm"))</span> }
         </div>
 
         <div class="tabla-desplazable" tabindex="0">
             <table class="tabla-datos">
-                <thead><tr><th class="num">#</th><th>Producto</th><th class="num">Pedido</th><th class="num">Recibido</th><th class="num">Pendiente</th><th class="num col-monto">Costo con IVA</th><th class="num col-monto">Total</th><th class="num">Existencia hoy</th></tr></thead>
+                <thead><tr><th class="num">#</th><th>@L("Producto")</th><th class="num">@L("Pedido")</th><th class="num">@L("Recibido")</th><th class="num">@L("Pendiente")</th><th class="num col-monto">@L("Costo con IVA")</th><th class="num col-monto">@L("Total")</th><th class="num">@L("Existencia hoy")</th></tr></thead>
                 <tbody>
                     @foreach (var l in lineasDetalle)
                     {
                         <tr>
                             <td class="num">@l.Item</td>
-                            <td>@l.Descripcion<br /><span class="texto-tenue">@l.Codigo@(l.CodigoProveedor is null ? "" : $" · proveedor {l.CodigoProveedor}")</span></td>
+                            <td>@l.Descripcion<br /><span class="texto-tenue">@l.Codigo@(l.CodigoProveedor is null ? "" : L(" · proveedor {0}", l.CodigoProveedor))</span></td>
                             <td class="num">@l.Cantidad</td>
                             <td class="num">@l.Recibido</td>
                             <td class="num">@(l.Pendiente > 0 && o.PorRecibir ? l.Pendiente.ToString() : "—")</td>
@@ -265,38 +265,38 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             </table>
         </div>
         <div class="resumen-totales">
-            <span>Avance: <strong>@o.Recibido de @o.Ordenado unidades</strong></span>
-            <span>IVA incluido: <strong>@o.Simbolo @o.IvaIncluido.ToString("N2")</strong></span>
-            <span>Total: <strong>@o.Simbolo @o.Total.ToString("N2")</strong></span>
+            <span>@L("Avance:") <strong>@L("{0} de {1} unidades", o.Recibido, o.Ordenado)</strong></span>
+            <span>@L("IVA incluido:") <strong>@o.Simbolo @o.IvaIncluido.ToString("N2")</strong></span>
+            <span>@L("Total:") <strong>@o.Simbolo @o.Total.ToString("N2")</strong></span>
         </div>
-        @if (!string.IsNullOrWhiteSpace(o.Condiciones)) { <p class="texto-ayuda">Condiciones: @o.Condiciones</p> }
-        @if (!string.IsNullOrWhiteSpace(o.Observaciones)) { <p class="texto-ayuda">Observaciones: @o.Observaciones</p> }
+        @if (!string.IsNullOrWhiteSpace(o.Condiciones)) { <p class="texto-ayuda">@L("Condiciones: {0}", o.Condiciones)</p> }
+        @if (!string.IsNullOrWhiteSpace(o.Observaciones)) { <p class="texto-ayuda">@L("Observaciones: {0}", o.Observaciones)</p> }
 
         <div class="acciones-fila">
             <a class="boton-icono boton-icono-neutral boton-icono-con-etiqueta" href="@($"compras/ordenes/{o.OcpId}/imprimir")" target="_blank">
-                <Icono Nombre="printer" Tamano="17" /><span class="boton-icono-etiqueta">Imprimir</span>
+                <Icono Nombre="printer" Tamano="17" /><span class="boton-icono-etiqueta">@L("Imprimir")</span>
             </a>
             @if (o.Estado == "B")
             {
                 <AuthorizeView Policy="Permiso:COMPRAS_ORDEN" Context="permisoEditar">
-                    <BotonIcono Icono="pencil" Tooltip="Editar el borrador" Etiqueta="Editar" OnClick="EditarAsync" />
+                    <BotonIcono Icono="pencil" Tooltip="@L("Editar el borrador")" Etiqueta="@L("Editar")" OnClick="EditarAsync" />
                 </AuthorizeView>
                 <AuthorizeView Policy="Permiso:COMPRAS_ORDEN_APROBAR_BODEGA" Context="permisoVistoBueno">
-                    <BotonIcono Icono="check-circle" Tooltip="Primera firma: visto bueno del jefe de bodega" Etiqueta="Visto bueno de bodega" Variante="primario"
-                                Confirmacion="¿Dar el visto bueno? La orden ya no se podrá editar." OnClick="AprobarBodegaAsync" />
+                    <BotonIcono Icono="check-circle" Tooltip="@L("Primera firma: visto bueno del jefe de bodega")" Etiqueta="@L("Visto bueno de bodega")" Variante="primario"
+                                Confirmacion="@L("¿Dar el visto bueno? La orden ya no se podrá editar.")" OnClick="AprobarBodegaAsync" />
                 </AuthorizeView>
             }
             @if (o.Estado == "V")
             {
                 <AuthorizeView Policy="Permiso:COMPRAS_ORDEN_APROBAR" Context="permisoAprobar">
-                    <BotonIcono Icono="check-circle" Tooltip="Segunda firma: aprobación del contador general" Etiqueta="Aprobar" Variante="primario"
-                                Confirmacion="¿Aprobar la orden de compra?" OnClick="AprobarAsync" />
+                    <BotonIcono Icono="check-circle" Tooltip="@L("Segunda firma: aprobación del contador general")" Etiqueta="@L("Aprobar")" Variante="primario"
+                                Confirmacion="@L("¿Aprobar la orden de compra?")" OnClick="AprobarAsync" />
                 </AuthorizeView>
             }
             @if (o.PorRecibir && !mostrarRecepcion)
             {
                 <AuthorizeView Policy="Permiso:COMPRAS_ORDEN_RECIBIR" Context="permisoRecibir">
-                    <BotonIcono Icono="truck" Tooltip="Recibir la mercadería con la factura del proveedor" Etiqueta="Recibir mercadería" Variante="primario" OnClick="IniciarRecepcion" />
+                    <BotonIcono Icono="truck" Tooltip="@L("Recibir la mercadería con la factura del proveedor")" Etiqueta="@L("Recibir mercadería")" Variante="primario" OnClick="IniciarRecepcion" />
                 </AuthorizeView>
             }
         </div>
@@ -308,9 +308,9 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
 
         @if (recepciones.Count > 0)
         {
-            <h3>Recepciones</h3>
+            <h3>@L("Recepciones")</h3>
             <table class="tabla-datos tabla-compacta">
-                <thead><tr><th class="col-fecha">Fecha</th><th>Factura del proveedor</th><th class="num">Unidades</th><th class="num col-monto">Total</th><th class="col-estado">Compra</th><th>Usuario</th></tr></thead>
+                <thead><tr><th class="col-fecha">@L("Fecha")</th><th>@L("Factura del proveedor")</th><th class="num">@L("Unidades")</th><th class="num col-monto">@L("Total")</th><th class="col-estado">@L("Compra")</th><th>@L("Usuario")</th></tr></thead>
                 <tbody>
                     @foreach (var r in recepciones)
                     {
@@ -319,7 +319,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
                             <td>@r.Documento</td>
                             <td class="num">@r.Unidades</td>
                             <td class="num col-monto">@r.Total.ToString("N2")</td>
-                            <td class="col-estado"><span class="estado-badge @(r.EstadoCompra == "A" ? "estado-badge-anulada" : "estado-badge-grabada")">@(r.EstadoCompra == "A" ? "Anulada" : "Grabada")</span></td>
+                            <td class="col-estado"><span class="estado-badge @(r.EstadoCompra == "A" ? "estado-badge-anulada" : "estado-badge-grabada")">@(r.EstadoCompra == "A" ? L("Anulada") : L("Grabada"))</span></td>
                             <td>@r.Usuario</td>
                         </tr>
                     }
@@ -327,7 +327,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             </table>
             @if (recepciones.Any(r => r.EstadoCompra == "A"))
             {
-                <p class="texto-ayuda">Lo recibido en una compra anulada vuelve a quedar pendiente.</p>
+                <p class="texto-ayuda">@L("Lo recibido en una compra anulada vuelve a quedar pendiente.")</p>
             }
         }
 
@@ -335,10 +335,10 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         {
             <AuthorizeView Policy="Permiso:COMPRAS_ORDEN_APROBAR_BODEGA,COMPRAS_ORDEN_APROBAR" Context="permisoDevolver">
                 <div class="fila-edicion">
-                    <label for="oc-devolver">Devolver a borrador para corregir</label>
-                    <input id="oc-devolver" maxlength="256" placeholder="Qué debe corregirse" @bind="motivoDevolucion" @bind:event="oninput" />
-                    <BotonIcono Icono="rotate-ccw" Tooltip="Devolver la orden al bodeguero" Etiqueta="Devolver" Deshabilitado="motivoDevolucion.Trim().Length < 3"
-                                Confirmacion="¿Devolver la orden a borrador? Se borra el visto bueno." OnClick="DevolverAsync" />
+                    <label for="oc-devolver">@L("Devolver a borrador para corregir")</label>
+                    <input id="oc-devolver" maxlength="256" placeholder="@L("Qué debe corregirse")" @bind="motivoDevolucion" @bind:event="oninput" />
+                    <BotonIcono Icono="rotate-ccw" Tooltip="@L("Devolver la orden al bodeguero")" Etiqueta="@L("Devolver")" Deshabilitado="motivoDevolucion.Trim().Length < 3"
+                                Confirmacion="@L("¿Devolver la orden a borrador? Se borra el visto bueno.")" OnClick="DevolverAsync" />
                 </div>
             </AuthorizeView>
         }
@@ -347,17 +347,17 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         {
             <AuthorizeView Policy="Permiso:COMPRAS_ORDEN" Context="permisoAnular">
                 <div class="fila-edicion">
-                    <label for="oc-motivo">@(o.Estado == "P" ? "Cerrar la orden (cancelar lo pendiente)" : "Anular la orden")</label>
-                    <input id="oc-motivo" maxlength="256" placeholder="Motivo" @bind="motivo" @bind:event="oninput" />
+                    <label for="oc-motivo">@(o.Estado == "P" ? L("Cerrar la orden (cancelar lo pendiente)") : L("Anular la orden"))</label>
+                    <input id="oc-motivo" maxlength="256" placeholder="@L("Motivo")" @bind="motivo" @bind:event="oninput" />
                     @if (o.Estado == "P")
                     {
-                        <BotonIcono Icono="ban" Tooltip="Cerrar: lo pendiente ya no se espera" Etiqueta="Cerrar" Variante="peligro" Deshabilitado="motivo.Trim().Length < 3"
-                                    Confirmacion="¿Cerrar la orden? Lo pendiente ya no se recibirá." OnClick="CerrarAsync" />
+                        <BotonIcono Icono="ban" Tooltip="@L("Cerrar: lo pendiente ya no se espera")" Etiqueta="@L("Cerrar")" Variante="peligro" Deshabilitado="motivo.Trim().Length < 3"
+                                    Confirmacion="@L("¿Cerrar la orden? Lo pendiente ya no se recibirá.")" OnClick="CerrarAsync" />
                     }
                     else
                     {
-                        <BotonIcono Icono="ban" Tooltip="Anular la orden" Etiqueta="Anular" Variante="peligro" Deshabilitado="motivo.Trim().Length < 3"
-                                    Confirmacion="¿Anular la orden de compra?" OnClick="AnularAsync" />
+                        <BotonIcono Icono="ban" Tooltip="@L("Anular la orden")" Etiqueta="@L("Anular")" Variante="peligro" Deshabilitado="motivo.Trim().Length < 3"
+                                    Confirmacion="@L("¿Anular la orden de compra?")" OnClick="AnularAsync" />
                     }
                 </div>
             </AuthorizeView>
@@ -420,9 +420,9 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
     {
         get
         {
-            var lista = new List<PestanaItem> { new("lista", "Órdenes") };
+            var lista = new List<PestanaItem> { new("lista", L("Órdenes")) };
             if (seleccionada is not null) lista.Add(new("detalle", seleccionada.Numero));
-            if (pestanaActiva == "orden") lista.Add(new("orden", orden.OcpId is null ? "Nueva orden" : "Editar"));
+            if (pestanaActiva == "orden") lista.Add(new("orden", orden.OcpId is null ? L("Nueva orden") : L("Editar")));
             return lista;
         }
     }
@@ -440,13 +440,13 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
 
     private static string TextoEstado(string estado) => estado switch
     {
-        "B" => "Borrador",
-        "V" => "Visto bueno de bodega",
-        "A" => "Aprobada",
-        "P" => "Recibida en parte",
-        "R" => "Recibida",
-        "C" => "Cerrada",
-        "N" => "Anulada",
+        "B" => L("Borrador"),
+        "V" => L("Visto bueno de bodega"),
+        "A" => L("Aprobada"),
+        "P" => L("Recibida en parte"),
+        "R" => L("Recibida"),
+        "C" => L("Cerrada"),
+        "N" => L("Anulada"),
         _ => estado
     };
 
@@ -611,18 +611,18 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
                 var relacion = productosProveedor.FirstOrDefault(r => r.ProId == exacto.ProId);
                 AgregarProducto(exacto.ProId, exacto.ProCodigo, exacto.ProDescripcion, relacion?.CodigoProveedor, relacion?.UltimoCosto ?? exacto.ProCostoUnitario);
             }
-            else if (productosEncontrados.Count == 0) MostrarError("No se encontraron productos con ese texto.");
+            else if (productosEncontrados.Count == 0) MostrarError(L("No se encontraron productos con ese texto."));
         }
         catch (Exception ex) { MostrarError(ex); }
     }
 
     private async Task GrabarAsync()
     {
-        if (orden.PrvId == 0) { MostrarError("Elija el proveedor."); return; }
-        if (orden.BodId == 0) { MostrarError("Elija la bodega donde se recibirá."); return; }
+        if (orden.PrvId == 0) { MostrarError(L("Elija el proveedor.")); return; }
+        if (orden.BodId == 0) { MostrarError(L("Elija la bodega donde se recibirá.")); return; }
         var sinCosto = lineas.FirstOrDefault(l => l.Cantidad <= 0 || l.CostoUnitario <= 0);
-        if (sinCosto is not null) { MostrarError($"Indique la cantidad y el costo de {sinCosto.Descripcion}."); return; }
-        if (orden.FechaEntrega < orden.Fecha) { MostrarError("La entrega no puede ser antes de la fecha de la orden."); return; }
+        if (sinCosto is not null) { MostrarError(L("Indique la cantidad y el costo de {0}.", sinCosto.Descripcion)); return; }
+        if (orden.FechaEntrega < orden.Fecha) { MostrarError(L("La entrega no puede ser antes de la fecha de la orden.")); return; }
         try
         {
             var (ocpId, numero) = await OrdenCompraRepository.GuardarAsync(orden,
@@ -632,7 +632,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             filtroEstado = "B";
             await BuscarAsync();
             await AbrirAsync(ocpId);
-            MostrarOk($"Orden {numero} grabada en borrador. Apruébela para enviarla al proveedor.");
+            MostrarOk(L("Orden {0} grabada en borrador. Apruébela para enviarla al proveedor.", numero));
         }
         catch (Exception ex) { MostrarError(ex); }
     }
@@ -655,8 +655,8 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
 
     private string DescribirBorrador(BorradorOrden b)
     {
-        var proveedor = proveedores.FirstOrDefault(p => p.PrvId == b.Orden.PrvId)?.PrvNombreComercial ?? "sin proveedor";
-        var cual = b.NumeroEditando is null ? "" : $"cambios a la {b.NumeroEditando}, ";
+        var proveedor = proveedores.FirstOrDefault(p => p.PrvId == b.Orden.PrvId)?.PrvNombreComercial ?? L("sin proveedor");
+        var cual = b.NumeroEditando is null ? "" : L("cambios a la {0}, ", b.NumeroEditando);
         return $"{cual}{proveedor}, {b.Lineas.Count} {(b.Lineas.Count == 1 ? "producto" : "productos")}, Q {b.Lineas.Sum(l => l.Total):N2}";
     }
 
@@ -670,8 +670,8 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         await CargarProductosProveedorAsync();
         edicionOriginal = null;
         MostrarOk(b.NumeroEditando is null
-            ? "Se recuperó la orden sin terminar. Revise los costos antes de grabar."
-            : $"Se recuperaron los cambios sin grabar de la orden {b.NumeroEditando}. Solo se graban si la orden sigue en borrador.");
+            ? L("Se recuperó la orden sin terminar. Revise los costos antes de grabar.")
+            : L("Se recuperaron los cambios sin grabar de la orden {0}. Solo se graban si la orden sigue en borrador.", b.NumeroEditando));
     }
 
     private async Task AbrirAsync(int ocpId)
@@ -702,7 +702,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         try
         {
             await OrdenCompraRepository.AprobarBodegaAsync(seleccionada.OcpId, await ObtenerUsuIdActualAsync());
-            await RefrescarAsync($"Orden {seleccionada.Numero} con visto bueno de bodega. Falta la aprobación del contador general.");
+            await RefrescarAsync(L("Orden {0} con visto bueno de bodega. Falta la aprobación del contador general.", seleccionada.Numero));
         }
         catch (Exception ex) { MostrarError(ex); }
     }
@@ -713,7 +713,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         try
         {
             await OrdenCompraRepository.AprobarAsync(seleccionada.OcpId, await ObtenerUsuIdActualAsync());
-            await RefrescarAsync($"Orden {seleccionada.Numero} aprobada con las dos firmas. Ya se puede imprimir para el proveedor y recibir.");
+            await RefrescarAsync(L("Orden {0} aprobada con las dos firmas. Ya se puede imprimir para el proveedor y recibir.", seleccionada.Numero));
         }
         catch (Exception ex) { MostrarError(ex); }
     }
@@ -727,7 +727,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         {
             await OrdenCompraRepository.DevolverAsync(seleccionada.OcpId, motivoDevolucion.Trim(), await ObtenerUsuIdActualAsync());
             motivoDevolucion = "";
-            await RefrescarAsync($"Orden {seleccionada.Numero} devuelta a borrador para corregir.");
+            await RefrescarAsync(L("Orden {0} devuelta a borrador para corregir.", seleccionada.Numero));
         }
         catch (Exception ex) { MostrarError(ex); }
     }
@@ -738,7 +738,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         try
         {
             await OrdenCompraRepository.AnularAsync(seleccionada.OcpId, motivo.Trim(), await ObtenerUsuIdActualAsync());
-            await RefrescarAsync("Orden anulada.");
+            await RefrescarAsync(L("Orden anulada."));
         }
         catch (Exception ex) { MostrarError(ex); }
     }
@@ -749,7 +749,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         try
         {
             await OrdenCompraRepository.CerrarAsync(seleccionada.OcpId, motivo.Trim(), await ObtenerUsuIdActualAsync());
-            await RefrescarAsync("Orden cerrada: lo pendiente ya no se espera.");
+            await RefrescarAsync(L("Orden cerrada: lo pendiente ya no se espera."));
         }
         catch (Exception ex) { MostrarError(ex); }
     }

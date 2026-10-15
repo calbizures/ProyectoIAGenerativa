@@ -3,20 +3,20 @@
 
 @if (Lineas.Count == 0)
 {
-    <p class="estado-vacio">No hay pólizas vigentes en ese rango.</p>
+    <p class="estado-vacio">@L("No hay pólizas vigentes en ese rango.")</p>
 }
 else
 {
-    <div class="tabla-desplazable" tabindex="0" aria-label="Libro diario">
+    <div class="tabla-desplazable" tabindex="0" aria-label="@L("Libro diario")">
         <table class="tabla-datos tabla-contable">
-            <thead><tr><th class="col-fecha">Fecha</th><th class="col-codigo">Cuenta</th><th>Nombre / concepto</th><th class="num col-monto">Debe</th><th class="num col-monto">Haber</th></tr></thead>
+            <thead><tr><th class="col-fecha">@L("Fecha")</th><th class="col-codigo">@L("Cuenta")</th><th>@L("Nombre / concepto")</th><th class="num col-monto">@L("Debe")</th><th class="num col-monto">@L("Haber")</th></tr></thead>
             <tbody>
                 @foreach (var poliza in Lineas.GroupBy(l => l.AsiId))
                 {
                     var primera = poliza.First();
                     <tr class="fila-grupo">
                         <td class="col-fecha">@primera.Fecha.ToString("dd/MM/yyyy")</td>
-                        <td colspan="4"><strong>Póliza #@poliza.Key</strong> · @OrigenesPoliza.Nombre(primera.Origen) · @primera.Descripcion</td>
+                        <td colspan="4"><strong>@L("Póliza #{0}", poliza.Key)</strong> · @OrigenesPoliza.Nombre(primera.Origen) · @primera.Descripcion</td>
                     </tr>
                     @foreach (var l in poliza)
                     {
@@ -31,7 +31,7 @@ else
                 }
             </tbody>
             <tfoot>
-                <tr class="fila-total"><td colspan="3">Totales (@Lineas.Select(l => l.AsiId).Distinct().Count() pólizas)</td><td class="num">@Lineas.Sum(l => l.Debe).ToString("N2")</td><td class="num">@Lineas.Sum(l => l.Haber).ToString("N2")</td></tr>
+                <tr class="fila-total"><td colspan="3">@L("Totales ({0} pólizas)", Lineas.Select(l => l.AsiId).Distinct().Count())</td><td class="num">@Lineas.Sum(l => l.Debe).ToString("N2")</td><td class="num">@Lineas.Sum(l => l.Haber).ToString("N2")</td></tr>
             </tfoot>
         </table>
     </div>

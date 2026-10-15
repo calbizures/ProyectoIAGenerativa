@@ -3,11 +3,11 @@
 
 <table class="tabla-datos tabla-estado-cuenta">
     <thead>
-        <tr><th>Fecha</th><th>Tipo</th><th>Documento</th><th>Referencia</th><th class="num">Cargo</th><th class="num">Abono</th><th class="num">Saldo</th></tr>
+        <tr><th>@L("Fecha")</th><th>@L("Tipo")</th><th>@L("Documento")</th><th>@L("Referencia")</th><th class="num">@L("Cargo")</th><th class="num">@L("Abono")</th><th class="num">@L("Saldo")</th></tr>
     </thead>
     <tbody>
         <tr class="antiguedad-grupo">
-            <td colspan="6">Saldo inicial</td>
+            <td colspan="6">@L("Saldo inicial")</td>
             <td class="num">@SaldoInicial.ToString("N2")</td>
         </tr>
         @foreach (var m in Movimientos)
@@ -25,7 +25,7 @@
     </tbody>
     <tfoot>
         <tr>
-            <td colspan="4">Totales del período</td>
+            <td colspan="4">@L("Totales del período")</td>
             <td class="num">@Movimientos.Sum(m => m.Cargo).ToString("N2")</td>
             <td class="num">@Movimientos.Sum(m => m.Abono).ToString("N2")</td>
             <td class="num">@((Movimientos.LastOrDefault()?.Saldo ?? SaldoInicial).ToString("N2"))</td>

@@ -3,7 +3,7 @@
 <table class="tabla-datos">
     <thead>
         <tr>
-            <th>Período</th>
+            <th>@L("Período")</th>
             @foreach (var s in Series)
             {
                 <th class="num">@s.Nombre</th>
@@ -24,7 +24,7 @@
     </tbody>
     <tfoot>
         <tr>
-            <td>Total</td>
+            <td>@L("Total")</td>
             @foreach (var s in Series)
             {
                 <td class="num">@s.Valores.Sum().ToString("N2")</td>
