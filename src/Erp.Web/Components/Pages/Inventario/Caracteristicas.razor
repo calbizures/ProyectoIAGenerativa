@@ -8,11 +8,11 @@
 @inject IProductoCaracteristicaRepository CaracteristicaRepository
 @inject IProductoRepository ProductoRepository
 
-<PageTitle>Características de productos</PageTitle>
+<PageTitle>@L("Características de productos")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Características de productos</h1>
-    <p>Mantenimiento de características (marca, modelo, garantía, etc.) por producto.</p>
+    <h1>@L("Características de productos")</h1>
+    <p>@L("Mantenimiento de características (marca, modelo, garantía, etc.) por producto.")</p>
 </div>
 
 @if (mensaje is not null)
@@ -21,22 +21,22 @@
 }
 
 <div class="barra-herramientas">
-    <select @bind="filtroProId" aria-label="Producto">
-        <option value="0">Todos los productos</option>
+    <select @bind="filtroProId" aria-label="@L("Producto")">
+        <option value="0">@L("Todos los productos")</option>
         @foreach (var p in productos)
         {
             <option value="@p.ProId">@p.ProCodigo - @p.ProDescripcion</option>
         }
     </select>
-    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+    <BotonIcono Icono="search" Tooltip="@L("Buscar")" Etiqueta="@L("Buscar")" OnClick="BuscarAsync" />
     <span class="barra-herramientas-separador"></span>
-    <BotonIcono Icono="plus" Tooltip="Nueva característica" Etiqueta="Nueva característica" Variante="primario" OnClick="MostrarFormularioNuevo" />
-    <BotonIcono Icono="upload" Tooltip="Importar desde Excel" Etiqueta="Importar Excel" OnClick="() => mostrarImportar = !mostrarImportar" />
+    <BotonIcono Icono="plus" Tooltip="@L("Nueva característica")" Etiqueta="@L("Nueva característica")" Variante="primario" OnClick="MostrarFormularioNuevo" />
+    <BotonIcono Icono="upload" Tooltip="@L("Importar desde Excel")" Etiqueta="@L("Importar Excel")" OnClick="() => mostrarImportar = !mostrarImportar" />
 </div>
 
 @if (mostrarImportar)
 {
-    <ImportadorExcel Titulo="Importar características desde Excel"
+    <ImportadorExcel Titulo="@L("Importar características desde Excel")"
                       Columnas="@(new[] { "pro_codigo", "ptc_codigo", "pca_valor", "pca_descripcion" })"
                       OnImportar="ImportarAsync" />
 }
@@ -47,9 +47,9 @@
         <DataAnnotationsValidator />
         <ResumenValidacion />
         <div class="campo">
-            <label for="caracteristicas-caracteristica-proid">Producto</label>
+            <label for="caracteristicas-caracteristica-proid">@L("Producto")</label>
             <select id="caracteristicas-caracteristica-proid" @bind="nuevaCaracteristica.ProId">
-                <option value="0">Seleccione...</option>
+                <option value="0">@L("Seleccione...")</option>
                 @foreach (var p in productos)
                 {
                     <option value="@p.ProId">@p.ProCodigo - @p.ProDescripcion</option>
@@ -57,32 +57,32 @@
             </select>
         </div>
         <div class="campo">
-            <label for="caracteristicas-caracteristica-ptcid">Tipo</label>
+            <label for="caracteristicas-caracteristica-ptcid">@L("Tipo")</label>
             <select id="caracteristicas-caracteristica-ptcid" @bind="nuevaCaracteristica.PtcId">
-                <option value="0">Seleccione...</option>
+                <option value="0">@L("Seleccione...")</option>
                 @foreach (var tipo in tiposCaracteristica)
                 {
                     <option value="@tipo.PtcId">@tipo.PtcDescripcion</option>
                 }
             </select>
         </div>
-        <div class="campo"><label for="caracteristicas-caracteristica-valor">Valor</label><InputText id="caracteristicas-caracteristica-valor" @bind-Value="nuevaCaracteristica.Valor" /></div>
-        <div class="campo"><label for="caracteristicas-caracteristica-descripcion">Descripción</label><InputText id="caracteristicas-caracteristica-descripcion" @bind-Value="nuevaCaracteristica.Descripcion" /></div>
+        <div class="campo"><label for="caracteristicas-caracteristica-valor">@L("Valor")</label><InputText id="caracteristicas-caracteristica-valor" @bind-Value="nuevaCaracteristica.Valor" /></div>
+        <div class="campo"><label for="caracteristicas-caracteristica-descripcion">@L("Descripción")</label><InputText id="caracteristicas-caracteristica-descripcion" @bind-Value="nuevaCaracteristica.Descripcion" /></div>
         <div class="acciones-fila">
-            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
-            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+            <BotonIcono Icono="save" Tooltip="@L("Guardar")" Etiqueta="@L("Guardar")" Variante="primario" TipoBoton="submit" />
+            <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => mostrarNuevo = false" />
         </div>
     </EditForm>
 }
 
 <table class="tabla-datos">
     <thead>
-        <tr><th>Producto</th><th>Tipo</th><th>Valor</th><th>Descripción</th><th class="col-acciones">Acciones</th></tr>
+        <tr><th>@L("Producto")</th><th>@L("Tipo")</th><th>@L("Valor")</th><th>@L("Descripción")</th><th class="col-acciones">@L("Acciones")</th></tr>
     </thead>
     <tbody>
         @if (caracteristicas.Count == 0)
         {
-            <tr><td colspan="5">Sin características registradas.</td></tr>
+            <tr><td colspan="5">@L("Sin características registradas.")</td></tr>
         }
         @foreach (var c in caracteristicas)
         {
@@ -95,8 +95,8 @@
                     <td><input @bind="editDescripcion" /></td>
                     <td>
                         <div class="acciones-fila">
-                            <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="GuardarEdicionAsync" />
-                            <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => editandoId = null" />
+                            <BotonIcono Icono="save" Tooltip="@L("Guardar")" Variante="primario" OnClick="GuardarEdicionAsync" />
+                            <BotonIcono Icono="x" Tooltip="@L("Cancelar")" OnClick="() => editandoId = null" />
                         </div>
                     </td>
                 }
@@ -108,8 +108,8 @@
                     <td>@c.PcaDescripcion</td>
                     <td>
                         <div class="acciones-fila">
-                            <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => Editar(c)" />
-                            <BotonIcono Icono="trash-2" Tooltip="Eliminar" Confirmacion="¿Eliminar la característica?" Variante="peligro" OnClick="() => EliminarAsync(c)" />
+                            <BotonIcono Icono="pencil" Tooltip="@L("Editar")" OnClick="() => Editar(c)" />
+                            <BotonIcono Icono="trash-2" Tooltip="@L("Eliminar")" Confirmacion="@L("¿Eliminar la característica?")" Variante="peligro" OnClick="() => EliminarAsync(c)" />
                         </div>
                     </td>
                 }
@@ -173,7 +173,7 @@
             var usuId = await ObtenerUsuIdActualAsync();
             await CaracteristicaRepository.InsertarAsync(nuevaCaracteristica.ProId, nuevaCaracteristica.PtcId, nuevaCaracteristica.Valor, nuevaCaracteristica.Descripcion, usuId);
             mostrarNuevo = false;
-            mensaje = "Característica creada correctamente.";
+            mensaje = L("Característica creada correctamente.");
             esMensajeError = false;
             await BuscarAsync();
         }
@@ -200,7 +200,7 @@
             var usuId = await ObtenerUsuIdActualAsync();
             await CaracteristicaRepository.ActualizarAsync(editandoId.Value, editValor, editDescripcion, usuId);
             editandoId = null;
-            mensaje = "Cambios guardados.";
+            mensaje = L("Cambios guardados.");
             esMensajeError = false;
             await BuscarAsync();
         }
@@ -216,7 +216,7 @@
         try
         {
             await CaracteristicaRepository.EliminarAsync(c.PcaId);
-            mensaje = "Característica eliminada.";
+            mensaje = L("Característica eliminada.");
             esMensajeError = false;
             await BuscarAsync();
         }
@@ -260,8 +260,8 @@
         }
 
         mensaje = errores.Count == 0
-            ? $"Se importaron {exitosas} características correctamente."
-            : $"Se importaron {exitosas} de {filas.Count}. Errores: {string.Join(" | ", errores.Take(5))}";
+            ? L("Se importaron {0} características correctamente.", exitosas)
+            : L("Se importaron {0} de {1}. Errores: {2}", exitosas, filas.Count, string.Join(" | ", errores.Take(5)));
         esMensajeError = errores.Count > 0;
         mostrarImportar = false;
         await BuscarAsync();

@@ -8,14 +8,14 @@
 @inject IInventarioFisicoRepository TomaRepository
 @inject IBodegaRepository BodegaRepository
 
-<PageTitle>Inventario físico</PageTitle>
+<PageTitle>@L("Inventario físico")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Inventario físico</h1>
-    <p>Abra una toma por bodega, registre el conteo junto a la existencia del sistema y aplíquela: las diferencias generan el documento de ajuste (sobrante o faltante) y su póliza.</p>
+    <h1>@L("Inventario físico")</h1>
+    <p>@L("Abra una toma por bodega, registre el conteo junto a la existencia del sistema y aplíquela: las diferencias generan el documento de ajuste (sobrante o faltante) y su póliza.")</p>
 </div>
 
-<BorradorDocumento TDatos="BorradorConteo" Clave="inventario-fisico" Nombre="un conteo de inventario"
+<BorradorDocumento TDatos="BorradorConteo" Clave="inventario-fisico" Nombre="@L("un conteo de inventario")"
                    Capturar="CapturarBorrador" Describir="DescribirBorrador" Restaurar="RestaurarBorradorAsync" />
 
 @if (mensaje is not null)
@@ -28,36 +28,36 @@
 @if (pestanaActiva == "lista")
 {
     <div class="barra-herramientas">
-        <select @bind="filtroSucId" @bind:after="CambiarSucursalAsync" aria-label="Sucursal">
-            <option value="">Todas las sucursales</option>
+        <select @bind="filtroSucId" @bind:after="CambiarSucursalAsync" aria-label="@L("Sucursal")">
+            <option value="">@L("Todas las sucursales")</option>
             @foreach (var s in bodegas.GroupBy(b => (b.SucId, b.SucDescripcion)))
             {
                 <option value="@s.Key.SucId">@s.Key.SucDescripcion</option>
             }
         </select>
-        <select @bind="filtroBodId" @bind:after="BuscarAsync" aria-label="Bodega">
-            <option value="">Todas las bodegas</option>
+        <select @bind="filtroBodId" @bind:after="BuscarAsync" aria-label="@L("Bodega")">
+            <option value="">@L("Todas las bodegas")</option>
             @foreach (var b in BodegasDeSucursal)
             {
                 <option value="@b.BodId">@b.BodDescripcion</option>
             }
         </select>
-        <select @bind="filtroEstado" @bind:after="BuscarAsync" aria-label="Estado">
-            <option value="">Todos los estados</option>
-            <option value="B">En conteo</option>
-            <option value="A">Aplicadas</option>
-            <option value="N">Anuladas</option>
+        <select @bind="filtroEstado" @bind:after="BuscarAsync" aria-label="@L("Estado")">
+            <option value="">@L("Todos los estados")</option>
+            <option value="B">@L("En conteo")</option>
+            <option value="A">@L("Aplicadas")</option>
+            <option value="N">@L("Anuladas")</option>
         </select>
         <span class="barra-herramientas-separador"></span>
-        <BotonIcono Icono="plus" Tooltip="Abrir una toma de inventario" Etiqueta="Nueva toma" Variante="primario" OnClick="IniciarNueva" />
+        <BotonIcono Icono="plus" Tooltip="@L("Abrir una toma de inventario")" Etiqueta="@L("Nueva toma")" Variante="primario" OnClick="IniciarNueva" />
     </div>
 
     @if (mostrarNueva)
     {
         <div class="panel-formulario">
-            <h2>Nueva toma de inventario</h2>
+            <h2>@L("Nueva toma de inventario")</h2>
             <div class="campo">
-                <label for="toma-bodega">Bodega</label>
+                <label for="toma-bodega">@L("Bodega")</label>
                 <select id="toma-bodega" @bind="nuevaBodId">
                     @foreach (var b in BodegasDeSucursal)
                     {
@@ -65,24 +65,24 @@
                     }
                 </select>
             </div>
-            <div class="campo"><label for="toma-fecha">Fecha del conteo</label><input id="toma-fecha" type="date" @bind="nuevaFecha" /></div>
-            <div class="campo"><label for="toma-obs">Observaciones</label><input id="toma-obs" maxlength="250" @bind="nuevaObservaciones" /></div>
-            <label class="casilla"><input type="checkbox" @bind="nuevaSoloConExistencia" /> Solo productos con existencia en la bodega</label>
+            <div class="campo"><label for="toma-fecha">@L("Fecha del conteo")</label><input id="toma-fecha" type="date" @bind="nuevaFecha" /></div>
+            <div class="campo"><label for="toma-obs">@L("Observaciones")</label><input id="toma-obs" maxlength="250" @bind="nuevaObservaciones" /></div>
+            <label class="casilla"><input type="checkbox" @bind="nuevaSoloConExistencia" /> @L("Solo productos con existencia en la bodega")</label>
             <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Abrir la toma" Etiqueta="Abrir toma" Variante="primario" OnClick="CrearAsync" />
-                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNueva = false" />
+                <BotonIcono Icono="save" Tooltip="@L("Abrir la toma")" Etiqueta="@L("Abrir toma")" Variante="primario" OnClick="CrearAsync" />
+                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => mostrarNueva = false" />
             </div>
         </div>
     }
 
     @if (tomas.Count == 0)
     {
-        <p class="estado-vacio">No hay tomas de inventario con esos filtros.</p>
+        <p class="estado-vacio">@L("No hay tomas de inventario con esos filtros.")</p>
     }
     else
     {
         <table class="tabla-datos">
-            <thead><tr><th class="col-codigo">Toma</th><th class="col-fecha">Fecha</th><th>Bodega</th><th class="num col-estado">Contados</th><th class="num col-monto">Sobrante</th><th class="num col-monto">Faltante</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+            <thead><tr><th class="col-codigo">@L("Toma")</th><th class="col-fecha">@L("Fecha")</th><th>@L("Bodega")</th><th class="num col-estado">@L("Contados")</th><th class="num col-monto">@L("Sobrante")</th><th class="num col-monto">@L("Faltante")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr></thead>
             <tbody>
                 @foreach (var t in tomas)
                 {
@@ -96,7 +96,7 @@
                         <td class="col-estado"><span class="estado-badge @ClaseEstado(t.Estado)">@NombreEstado(t.Estado)</span></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
-                                <BotonIcono Icono="@(t.Estado == "B" ? "clipboard-list" : "eye")" Tooltip="@(t.Estado == "B" ? "Registrar conteo" : "Ver detalle")" OnClick="() => AbrirAsync(t)" />
+                                <BotonIcono Icono="@(t.Estado == "B" ? "clipboard-list" : "eye")" Tooltip="@(t.Estado == "B" ? L("Registrar conteo") : L("Ver detalle"))" OnClick="() => AbrirAsync(t)" />
                             </div>
                         </td>
                     </tr>
@@ -109,46 +109,46 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
 {
     <section class="tarjeta">
         <div class="maestro-detalle-encabezado">
-            <h2>Toma #@seleccionada.TfiId · @seleccionada.Bodega</h2>
+            <h2>@L("Toma #{0} · {1}", seleccionada.TfiId, seleccionada.Bodega)</h2>
             <span class="estado-badge @ClaseEstado(seleccionada.Estado)">@NombreEstado(seleccionada.Estado)</span>
         </div>
         <div class="resumen-totales">
-            <span>Fecha: <strong>@seleccionada.Fecha.ToString("dd/MM/yyyy")</strong></span>
-            <span>Contados: <strong>@lineas.Count(l => ConteoDe(l) is not null) de @lineas.Count</strong></span>
-            <span>Sobrante: <strong>Q @ValorSobrante.ToString("N2")</strong></span>
-            <span>Faltante: <strong>Q @ValorFaltante.ToString("N2")</strong></span>
+            <span>@L("Fecha:") <strong>@seleccionada.Fecha.ToString("dd/MM/yyyy")</strong></span>
+            <span>@L("Contados:") <strong>@L("{0} de {1}", lineas.Count(l => ConteoDe(l) is not null), lineas.Count)</strong></span>
+            <span>@L("Sobrante:") <strong>Q @ValorSobrante.ToString("N2")</strong></span>
+            <span>@L("Faltante:") <strong>Q @ValorFaltante.ToString("N2")</strong></span>
             @if (seleccionada.Estado == "N" && seleccionada.MotivoAnulacion is not null)
             {
-                <span>Anulada: <strong>@seleccionada.MotivoAnulacion</strong></span>
+                <span>@L("Anulada:") <strong>@seleccionada.MotivoAnulacion</strong></span>
             }
         </div>
         @if (EnConteo)
         {
-            <p class="texto-ayuda">La existencia es la del sistema en este momento (no se modifica). Anote el conteo; los productos sin conteo no se ajustan. Al aplicar, la diferencia se calcula contra la existencia de ese momento y se valora al costo promedio.</p>
+            <p class="texto-ayuda">@L("La existencia es la del sistema en este momento (no se modifica). Anote el conteo; los productos sin conteo no se ajustan. Al aplicar, la diferencia se calcula contra la existencia de ese momento y se valora al costo promedio.")</p>
         }
 
         <div class="barra-herramientas">
-            <input placeholder="Buscar por código o descripción" aria-label="Buscar producto" @bind="filtroProducto" @bind:event="oninput" />
-            <label class="casilla"><input type="checkbox" @bind="soloDiferencias" /> Solo con diferencia</label>
+            <input placeholder="@L("Buscar por código o descripción")" aria-label="@L("Buscar producto")" @bind="filtroProducto" @bind:event="oninput" />
+            <label class="casilla"><input type="checkbox" @bind="soloDiferencias" /> @L("Solo con diferencia")</label>
             <span class="barra-herramientas-separador"></span>
-            <a class="boton-icono boton-icono-con-etiqueta" href="reportes/inventario/toma/@(seleccionada.TfiId).xlsx" download title="Hoja de conteo en Excel">
-                <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Hoja de conteo</span>
+            <a class="boton-icono boton-icono-con-etiqueta" href="reportes/inventario/toma/@(seleccionada.TfiId).xlsx" download title="@L("Hoja de conteo en Excel")">
+                <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">@L("Hoja de conteo")</span>
             </a>
             @if (EnConteo)
             {
-                <label class="boton-icono boton-icono-con-etiqueta" title="Subir la hoja de conteo llena (columnas Código y Conteo)">
-                    <Icono Nombre="upload" Tamano="16" /><span class="boton-icono-etiqueta">Importar conteo</span>
+                <label class="boton-icono boton-icono-con-etiqueta" title="@L("Subir la hoja de conteo llena (columnas Código y Conteo)")">
+                    <Icono Nombre="upload" Tamano="16" /><span class="boton-icono-etiqueta">@L("Importar conteo")</span>
                     <InputFile OnChange="ImportarConteoAsync" accept=".xlsx" class="oculto" />
                 </label>
             }
         </div>
 
         <table class="tabla-datos">
-            <thead><tr><th class="col-codigo">Código</th><th>Producto</th><th class="col-estado">Unidad</th><th class="num col-monto">Existencia</th><th class="num col-monto">Conteo</th><th class="num col-monto">Diferencia</th><th class="num col-monto">Costo</th><th class="num col-monto">Valor</th></tr></thead>
+            <thead><tr><th class="col-codigo">@L("Código")</th><th>@L("Producto")</th><th class="col-estado">@L("Unidad")</th><th class="num col-monto">@L("Existencia")</th><th class="num col-monto">@L("Conteo")</th><th class="num col-monto">@L("Diferencia")</th><th class="num col-monto">@L("Costo")</th><th class="num col-monto">@L("Valor")</th></tr></thead>
             <tbody>
                 @if (!LineasVisibles.Any())
                 {
-                    <tr><td colspan="8" class="doc-tabla-vacia">Ningún producto coincide con el filtro.</td></tr>
+                    <tr><td colspan="8" class="doc-tabla-vacia">@L("Ningún producto coincide con el filtro.")</td></tr>
                 }
                 @foreach (var l in LineasVisibles)
                 {
@@ -162,7 +162,7 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
                         <td class="num col-monto">
                             @if (EnConteo)
                             {
-                                <input class="entrada-numero" type="number" min="0" step="any" aria-label="@($"Conteo de {l.Codigo}")"
+                                <input class="entrada-numero" type="number" min="0" step="any" aria-label="@(L("Conteo de {0}", l.Codigo))"
                                        value="@conteo" @onchange="e => CambiarConteo(l, e)" />
                             }
                             else
@@ -181,17 +181,17 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
         @if (EnConteo)
         {
             <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Guardar el conteo" Etiqueta="Guardar conteo" Variante="primario" Deshabilitado="guardando" OnClick="GuardarConteoAsync" />
-                <BotonIcono Icono="check-check" Tooltip="Aplicar la toma y generar los ajustes" Etiqueta="Aplicar ajustes"
-                            Confirmacion="@($"¿Aplicar la toma? Sobrante Q {ValorSobrante:N2}, faltante Q {ValorFaltante:N2}.")" Deshabilitado="guardando" OnClick="AplicarAsync" />
+                <BotonIcono Icono="save" Tooltip="@L("Guardar el conteo")" Etiqueta="@L("Guardar conteo")" Variante="primario" Deshabilitado="guardando" OnClick="GuardarConteoAsync" />
+                <BotonIcono Icono="check-check" Tooltip="@L("Aplicar la toma y generar los ajustes")" Etiqueta="@L("Aplicar ajustes")"
+                            Confirmacion="@(L("¿Aplicar la toma? Sobrante Q {0:N2}, faltante Q {1:N2}.", ValorSobrante, ValorFaltante))" Deshabilitado="guardando" OnClick="AplicarAsync" />
             </div>
         }
         @if (seleccionada.Estado != "N")
         {
             <div class="fila-edicion">
-                <label for="motivo-toma">Anular la toma@(seleccionada.Estado == "A" ? " (revierte los ajustes y sus pólizas)" : "")</label>
-                <input id="motivo-toma" maxlength="200" placeholder="Motivo de la anulación" @bind="motivoAnulacion" @bind:event="oninput" />
-                <BotonIcono Icono="ban" Tooltip="Anular la toma" Etiqueta="Anular" Variante="peligro" Deshabilitado="motivoAnulacion.Trim().Length < 5 || guardando" OnClick="AnularAsync" />
+                <label for="motivo-toma">@L("Anular la toma{0}", seleccionada.Estado == "A" ? L(" (revierte los ajustes y sus pólizas)") : "")</label>
+                <input id="motivo-toma" maxlength="200" placeholder="@L("Motivo de la anulación")" @bind="motivoAnulacion" @bind:event="oninput" />
+                <BotonIcono Icono="ban" Tooltip="@L("Anular la toma")" Etiqueta="@L("Anular")" Variante="peligro" Deshabilitado="motivoAnulacion.Trim().Length < 5 || guardando" OnClick="AnularAsync" />
             </div>
         }
     </section>
@@ -228,8 +228,8 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
     private bool EnConteo => seleccionada?.Estado == "B";
 
     private IReadOnlyList<PestanaItem> Pestanas => seleccionada is null
-        ? new[] { new PestanaItem("lista", "Tomas") }
-        : new[] { new PestanaItem("lista", "Tomas"), new PestanaItem("toma", $"Toma #{seleccionada.TfiId}") };
+        ? new[] { new PestanaItem("lista", L("Tomas")) }
+        : new[] { new PestanaItem("lista", L("Tomas")), new PestanaItem("toma", L("Toma #{0}", seleccionada.TfiId)) };
 
     private IEnumerable<BodegaDetalle> BodegasDeSucursal =>
         bodegas.Where(b => b.BodEstado == "A" && (filtroSucId is null || b.SucId == filtroSucId));
@@ -244,7 +244,7 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
 
     private decimal? ConteoDe(TomaFisicaLinea l) => conteos.TryGetValue(l.ProId, out var c) ? c : l.Conteo;
 
-    private static string NombreEstado(string estado) => estado switch { "B" => "En conteo", "A" => "Aplicada", _ => "Anulada" };
+    private static string NombreEstado(string estado) => estado switch { "B" => L("En conteo"), "A" => L("Aplicada"), _ => L("Anulada") };
     private static string ClaseEstado(string estado) => estado switch { "B" => "estado-badge-pendiente", "A" => "estado-badge-activo", _ => "estado-badge-inactivo" };
 
     protected override async Task OnInitializedAsync()
@@ -304,7 +304,7 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
     {
         if (nuevaBodId == 0)
         {
-            mensaje = "Seleccione la bodega.";
+            mensaje = L("Seleccione la bodega.");
             esMensajeError = true;
             return;
         }
@@ -315,7 +315,7 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
             await BuscarAsync();
             var toma = tomas.FirstOrDefault(t => t.TfiId == id);
             if (toma is not null) await AbrirAsync(toma);
-            MostrarOk($"Toma #{id} abierta. Registre el conteo de cada producto.");
+            MostrarOk(L("Toma #{0} abierta. Registre el conteo de cada producto.", id));
         }
         catch (Exception ex) { MostrarError(ex); }
     }
@@ -346,7 +346,7 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
         try
         {
             await GuardarPendientesAsync();
-            MostrarOk("Conteo guardado. Puede seguir contando o aplicar la toma.");
+            MostrarOk(L("Conteo guardado. Puede seguir contando o aplicar la toma."));
         }
         catch (Exception ex) { MostrarError(ex); }
         finally { guardando = false; }
@@ -384,15 +384,15 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
             }
             if (lector.Errores.Count > 0)
             {
-                mensaje = string.Join(" ", lector.Errores.Take(5).Select(m => (m.Fila > 0 ? $"Fila {m.Fila}: " : "") + m.Mensaje));
+                mensaje = string.Join(" ", lector.Errores.Take(5).Select(m => (m.Fila > 0 ? L("Fila {0}: ", m.Fila) : "") + m.Mensaje));
                 esMensajeError = true;
                 return;
             }
-            MostrarOk($"Se leyeron {aplicados} conteos{(desconocidos > 0 ? $" ({desconocidos} códigos no están en esta toma)" : "")}. Revise y presione Guardar conteo.");
+            MostrarOk(L("Se leyeron {0} conteos{1}. Revise y presione Guardar conteo.", aplicados, (desconocidos > 0 ? L(" ({0} códigos no están en esta toma)", desconocidos) : "")));
         }
         catch (Exception)
         {
-            mensaje = "No se pudo leer el archivo. Verifique que sea un libro de Excel (.xlsx) válido.";
+            mensaje = L("No se pudo leer el archivo. Verifique que sea un libro de Excel (.xlsx) válido.");
             esMensajeError = true;
         }
     }
@@ -405,7 +405,7 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
             : new BorradorConteo(seleccionada.TfiId, seleccionada.Bodega, new Dictionary<int, decimal?>(conteos));
 
     private static string DescribirBorrador(BorradorConteo b) =>
-        $"toma #{b.TfiId} de {b.Bodega}, {b.Conteos.Count} {(b.Conteos.Count == 1 ? "producto contado" : "productos contados")}";
+        L("toma #{0} de {1}, {2} {3}", b.TfiId, b.Bodega, b.Conteos.Count, (b.Conteos.Count == 1 ? L("producto contado") : L("productos contados")));
 
     private async Task RestaurarBorradorAsync(BorradorConteo b)
     {
@@ -414,14 +414,14 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
             var toma = (await TomaRepository.ConsultarAsync(null, null, "B")).FirstOrDefault(t => t.TfiId == b.TfiId);
             if (toma is null)
             {
-                mensaje = $"La toma #{b.TfiId} ya no está en conteo (se aplicó o se anuló): el conteo sin guardar no se puede recuperar.";
+                mensaje = L("La toma #{0} ya no está en conteo (se aplicó o se anuló): el conteo sin guardar no se puede recuperar.", b.TfiId);
                 esMensajeError = true;
                 return;
             }
             await AbrirAsync(toma);
             foreach (var l in lineas)
                 if (b.Conteos.TryGetValue(l.ProId, out var conteo)) conteos[l.ProId] = conteo;
-            MostrarOk($"Se {(conteos.Count == 1 ? "recuperó 1 conteo" : $"recuperaron {conteos.Count} conteos")} sin guardar de la toma #{b.TfiId}. Presione Guardar conteo para grabarlos.");
+            MostrarOk(L("Se {0} sin guardar de la toma #{1}. Presione Guardar conteo para grabarlos.", (conteos.Count == 1 ? L("recuperó 1 conteo") : L("recuperaron {0} conteos", conteos.Count)), b.TfiId));
         }
         catch (Exception ex) { MostrarError(ex); }
     }
@@ -437,7 +437,7 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
             await BuscarAsync();
             var toma = tomas.FirstOrDefault(t => t.TfiId == seleccionada.TfiId);
             if (toma is not null) await AbrirAsync(toma);
-            MostrarOk($"Toma aplicada: sobrante Q {toma?.ValorSobrante:N2} y faltante Q {toma?.ValorFaltante:N2}, con sus documentos de ajuste y pólizas.");
+            MostrarOk(L("Toma aplicada: sobrante Q {0:N2} y faltante Q {1:N2}, con sus documentos de ajuste y pólizas.", toma?.ValorSobrante, toma?.ValorFaltante));
         }
         catch (Exception ex) { MostrarError(ex); }
         finally { guardando = false; }
@@ -453,7 +453,7 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
             await BuscarAsync();
             var toma = tomas.FirstOrDefault(t => t.TfiId == seleccionada.TfiId);
             if (toma is not null) await AbrirAsync(toma);
-            MostrarOk("Toma anulada.");
+            MostrarOk(L("Toma anulada."));
         }
         catch (Exception ex) { MostrarError(ex); }
         finally { guardando = false; }

@@ -28,11 +28,11 @@ public sealed class Traslado
 
 	public string EstadoTexto => Estado switch
 	{
-		"E" => "En tránsito",
-		"R" => "Recibido",
-		"P" => Diferencia == "P" ? "Recibido con pérdida" : "Recibido con devolución",
-		"X" => "Rechazado",
-		"N" => "Cancelado",
+		"E" => L("En tránsito"),
+		"R" => L("Recibido"),
+		"P" => Diferencia == "P" ? L("Recibido con pérdida") : L("Recibido con devolución"),
+		"X" => L("Rechazado"),
+		"N" => L("Cancelado"),
 		_ => Estado
 	};
 }

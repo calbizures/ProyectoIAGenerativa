@@ -54,10 +54,10 @@ public sealed class ActivoFijo
 
 	public static string NombreEstado(string estado) => estado switch
 	{
-		"A" => "En uso",
-		"B" => "Dado de baja",
-		"V" => "Vendido",
-		_ => "Anulado"
+		"A" => L("En uso"),
+		"B" => L("Dado de baja"),
+		"V" => L("Vendido"),
+		_ => L("Anulado")
 	};
 }
 

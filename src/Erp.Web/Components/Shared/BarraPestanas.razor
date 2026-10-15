@@ -6,7 +6,7 @@
         <button type="button"
                 class="@("pestana-boton" + (p.Id == PestanaActiva ? " activa" : ""))"
                 @onclick="() => Seleccionar(p.Id)">
-            @p.Etiqueta
+            @L(p.Etiqueta)
         </button>
     }
 </div>

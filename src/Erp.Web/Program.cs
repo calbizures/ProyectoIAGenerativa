@@ -65,8 +65,9 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
-// Textos en inglés (Idioma/en/*.json).
+// Textos en inglés (Idioma/en/*.json), también para las etiquetas de los modelos.
 Textos.Cargar();
+Erp.Data.TextosDatos.Traductor = texto => Textos.L(texto);
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

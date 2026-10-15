@@ -20,5 +20,5 @@ public sealed class NodoCuenta
 	// Pólizas automáticas y tipos de movimiento de nómina que usan la cuenta.
 	public int CantidadAsignaciones { get; set; }
 
-	public string TipoNodo => CtaNivel switch { 1 => "Grupo", 2 => "Subgrupo", 3 => "Cuenta", _ => "Subcuenta" };
+	public string TipoNodo => CtaNivel switch { 1 => L("Grupo"), 2 => L("Subgrupo"), 3 => L("Cuenta"), _ => L("Subcuenta") };
 }

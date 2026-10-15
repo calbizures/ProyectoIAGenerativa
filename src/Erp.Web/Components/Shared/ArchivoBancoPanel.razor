@@ -8,7 +8,7 @@
 <div class="archivo-banco">
     @if (formatos.Count == 0)
     {
-        <p class="mensaje-error" role="alert">@L("No hay formatos de archivo activos para {0}. Créelos en Caja y bancos › Formatos de archivo.", Tipo == "nomina" ? "planilla" : "proveedores")</p>
+        <p class="mensaje-error" role="alert">@L("No hay formatos de archivo activos para {0}. Créelos en Caja y bancos › Formatos de archivo.", Tipo == "nomina" ? L("planilla") : L("proveedores"))</p>
     }
     else
     {

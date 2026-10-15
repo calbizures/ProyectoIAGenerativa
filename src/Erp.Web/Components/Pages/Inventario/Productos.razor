@@ -12,11 +12,11 @@
 @inject Erp.Data.Compras.IProductoProveedorRepository ProductoProveedorRepository
 @inject Erp.Data.Compras.IProveedorRepository ProveedorRepository
 
-<PageTitle>Productos</PageTitle>
+<PageTitle>@L("Productos")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Productos</h1>
-    <p>Catálogo de productos y servicios, con sus características, existencias y precios.</p>
+    <h1>@L("Productos")</h1>
+    <p>@L("Catálogo de productos y servicios, con sus características, existencias y precios.")</p>
 </div>
 
 @if (mensaje is not null)
@@ -29,18 +29,18 @@
 @if (pestanaActiva == "lista")
 {
     <div class="barra-filtros">
-        <input placeholder="Buscar por código" aria-label="Buscar por código" @bind="filtroCodigo" />
-        <input placeholder="Buscar por descripción" aria-label="Buscar por descripción" @bind="filtroDescripcion" type="search" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
-        <select @bind="filtroEstado" aria-label="Estado">
-            <option value="A">Activos</option>
-            <option value="I">Inactivos</option>
-            <option value="">Todos</option>
+        <input placeholder="@L("Buscar por código")" aria-label="@L("Buscar por código")" @bind="filtroCodigo" />
+        <input placeholder="@L("Buscar por descripción")" aria-label="@L("Buscar por descripción")" @bind="filtroDescripcion" type="search" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
+        <select @bind="filtroEstado" aria-label="@L("Estado")">
+            <option value="A">@L("Activos")</option>
+            <option value="I">@L("Inactivos")</option>
+            <option value="">@L("Todos")</option>
         </select>
-        <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+        <BotonIcono Icono="search" Tooltip="@L("Buscar")" Etiqueta="@L("Buscar")" OnClick="BuscarAsync" />
 
         <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR">
             <Authorized>
-                <BotonIcono Icono="plus" Tooltip="Nuevo producto" Etiqueta="Nuevo producto" Variante="primario" OnClick="MostrarFormularioNuevo" />
+                <BotonIcono Icono="plus" Tooltip="@L("Nuevo producto")" Etiqueta="@L("Nuevo producto")" Variante="primario" OnClick="MostrarFormularioNuevo" />
             </Authorized>
         </AuthorizeView>
     </div>
@@ -50,12 +50,12 @@
         <EditForm Model="nuevoProducto" OnValidSubmit="CrearProductoAsync" class="panel-formulario">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label for="productos-producto-codigo">Código</label><InputText id="productos-producto-codigo" @bind-Value="nuevoProducto.Codigo" /></div>
-            <div class="campo"><label for="productos-producto-descripcion">Descripción</label><InputText id="productos-producto-descripcion" @bind-Value="nuevoProducto.Descripcion" /></div>
+            <div class="campo"><label for="productos-producto-codigo">@L("Código")</label><InputText id="productos-producto-codigo" @bind-Value="nuevoProducto.Codigo" /></div>
+            <div class="campo"><label for="productos-producto-descripcion">@L("Descripción")</label><InputText id="productos-producto-descripcion" @bind-Value="nuevoProducto.Descripcion" /></div>
             <div class="campo">
-                <label for="productos-producto-prtid">Tipo de producto</label>
+                <label for="productos-producto-prtid">@L("Tipo de producto")</label>
                 <select id="productos-producto-prtid" @bind="nuevoProducto.PrtId">
-                    <option value="0">Seleccione...</option>
+                    <option value="0">@L("Seleccione...")</option>
                     @foreach (var tipo in tiposProducto)
                     {
                         <option value="@tipo.PrtId">@tipo.PrtDescripcion</option>
@@ -63,16 +63,16 @@
                 </select>
             </div>
             <div class="campo">
-                <label for="productos-producto-tipoitem">Clasificación</label>
+                <label for="productos-producto-tipoitem">@L("Clasificación")</label>
                 <select id="productos-producto-tipoitem" @bind="nuevoProducto.TipoItem">
-                    <option value="B">Bien</option>
-                    <option value="S">Servicio</option>
+                    <option value="B">@L("Bien")</option>
+                    <option value="S">@L("Servicio")</option>
                 </select>
             </div>
             <div class="campo">
-                <label for="productos-producto-umeid">Unidad de medida</label>
+                <label for="productos-producto-umeid">@L("Unidad de medida")</label>
                 <select id="productos-producto-umeid" @bind="nuevoProducto.UmeId">
-                    <option value="0">Según la clasificación</option>
+                    <option value="0">@L("Según la clasificación")</option>
                     @foreach (var u in unidadesMedida)
                     {
                         <option value="@u.UmeId">@u.UmeCodigo - @u.UmeDescripcion</option>
@@ -80,11 +80,11 @@
                 </select>
             </div>
             <div class="campo campo-checkbox">
-                <label><input type="checkbox" @bind="nuevoProducto.ManejaExistencia" /> Maneja existencia</label>
+                <label><input type="checkbox" @bind="nuevoProducto.ManejaExistencia" /> @L("Maneja existencia")</label>
             </div>
             <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
-                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+                <BotonIcono Icono="save" Tooltip="@L("Guardar")" Etiqueta="@L("Guardar")" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => mostrarNuevo = false" />
             </div>
         </EditForm>
     }
@@ -92,19 +92,19 @@
     <table class="tabla-datos">
         <thead>
             <tr>
-                <th class="col-codigo">Código</th>
-                <th>Descripción</th>
-                <th class="col-telefono">Tipo</th>
-                <th class="num col-estado">Existencia</th>
-                <th class="num col-monto">Costo unitario</th>
-                <th class="col-estado">Estado</th>
-                <th class="col-acciones">Acciones</th>
+                <th class="col-codigo">@L("Código")</th>
+                <th>@L("Descripción")</th>
+                <th class="col-telefono">@L("Tipo")</th>
+                <th class="num col-estado">@L("Existencia")</th>
+                <th class="num col-monto">@L("Costo unitario")</th>
+                <th class="col-estado">@L("Estado")</th>
+                <th class="col-acciones">@L("Acciones")</th>
             </tr>
         </thead>
         <tbody>
             @if (!productos.Any())
             {
-                <tr><td colspan="7" class="doc-tabla-vacia">Ningún producto coincide con la búsqueda.</td></tr>
+                <tr><td colspan="7" class="doc-tabla-vacia">@L("Ningún producto coincide con la búsqueda.")</td></tr>
             }
             @foreach (var p in productos)
             {
@@ -114,15 +114,15 @@
                     <td class="col-telefono">@p.PrtDescripcion</td>
                     <td class="num col-estado">@(p.ProManejaExistencia ? p.ProTotalCantidad.ToString("N0") : "—")</td>
                     <td class="num col-monto">@p.ProCostoUnitario.ToString("N2")</td>
-                    <td class="col-estado"><span class="estado-badge @(p.ProEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(p.ProEstado == "A" ? "Activo" : "Inactivo")</span></td>
+                    <td class="col-estado"><span class="estado-badge @(p.ProEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(p.ProEstado == "A" ? L("Activo") : L("Inactivo"))</span></td>
                     <td class="col-acciones">
                         <div class="acciones-fila">
-                            <BotonIcono Icono="eye" Tooltip="Ver detalle" OnClick="() => SeleccionarAsync(p)" />
+                            <BotonIcono Icono="eye" Tooltip="@L("Ver detalle")" OnClick="() => SeleccionarAsync(p)" />
                             <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_EDITAR">
                                 <Authorized>
                                     @if (p.ProEstado == "A")
                                     {
-                                        <BotonIcono Icono="trash-2" Tooltip="Desactivar producto" Confirmacion="¿Desactivar el producto?" Variante="peligro" OnClick="() => DesactivarAsync(p)" />
+                                        <BotonIcono Icono="trash-2" Tooltip="@L("Desactivar producto")" Confirmacion="@L("¿Desactivar el producto?")" Variante="peligro" OnClick="() => DesactivarAsync(p)" />
                                     }
                                 </Authorized>
                             </AuthorizeView>
@@ -136,14 +136,14 @@
 else if (pestanaActiva == "editar" && seleccionado is not null)
 {
     <div class="panel-formulario">
-        <h2>Editar: @seleccionado.ProDescripcion</h2>
+        <h2>@L("Editar: {0}", seleccionado.ProDescripcion)</h2>
         <EditForm Model="edicionProducto" OnValidSubmit="GuardarEdicionAsync">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label for="productos-edicionproducto-codigo">Código</label><InputText id="productos-edicionproducto-codigo" @bind-Value="edicionProducto.Codigo" /></div>
-            <div class="campo"><label for="productos-edicionproducto-descripcion">Descripción</label><InputText id="productos-edicionproducto-descripcion" @bind-Value="edicionProducto.Descripcion" /></div>
+            <div class="campo"><label for="productos-edicionproducto-codigo">@L("Código")</label><InputText id="productos-edicionproducto-codigo" @bind-Value="edicionProducto.Codigo" /></div>
+            <div class="campo"><label for="productos-edicionproducto-descripcion">@L("Descripción")</label><InputText id="productos-edicionproducto-descripcion" @bind-Value="edicionProducto.Descripcion" /></div>
             <div class="campo">
-                <label for="productos-edicionproducto-prtid">Tipo de producto</label>
+                <label for="productos-edicionproducto-prtid">@L("Tipo de producto")</label>
                 <select id="productos-edicionproducto-prtid" @bind="edicionProducto.PrtId">
                     @foreach (var tipo in tiposProducto)
                     {
@@ -152,14 +152,14 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
                 </select>
             </div>
             <div class="campo">
-                <label for="productos-edicionproducto-tipoitem">Clasificación</label>
+                <label for="productos-edicionproducto-tipoitem">@L("Clasificación")</label>
                 <select id="productos-edicionproducto-tipoitem" @bind="edicionProducto.TipoItem">
-                    <option value="B">Bien</option>
-                    <option value="S">Servicio</option>
+                    <option value="B">@L("Bien")</option>
+                    <option value="S">@L("Servicio")</option>
                 </select>
             </div>
             <div class="campo">
-                <label for="productos-edicionproducto-umeid">Unidad de medida</label>
+                <label for="productos-edicionproducto-umeid">@L("Unidad de medida")</label>
                 <select id="productos-edicionproducto-umeid" @bind="edicionProducto.UmeId">
                     @foreach (var u in unidadesMedida.Where(u => u.UmeEstado == "A" || u.UmeId == edicionProducto.UmeId))
                     {
@@ -168,11 +168,11 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
                 </select>
             </div>
             <div class="campo campo-checkbox">
-                <label><input type="checkbox" @bind="edicionProducto.ManejaExistencia" /> Maneja existencia</label>
+                <label><input type="checkbox" @bind="edicionProducto.ManejaExistencia" /> @L("Maneja existencia")</label>
             </div>
             <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Guardar cambios" Etiqueta="Guardar cambios" Variante="primario" TipoBoton="submit" />
-                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="CancelarEdicionAsync" />
+                <BotonIcono Icono="save" Tooltip="@L("Guardar cambios")" Etiqueta="@L("Guardar cambios")" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="CancelarEdicionAsync" />
             </div>
         </EditForm>
     </div>
@@ -180,29 +180,29 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
 else if (pestanaActiva == "detalle" && seleccionado is not null)
 {
     <div class="panel-detalle">
-        <h2>Detalle: @seleccionado.ProDescripcion</h2>
+        <h2>@L("Detalle: {0}", seleccionado.ProDescripcion)</h2>
 
-        <div class="campo"><label>Código</label><span class="valor-detalle">@seleccionado.ProCodigo</span></div>
-        <div class="campo"><label>Descripción</label><span class="valor-detalle">@seleccionado.ProDescripcion</span></div>
-        <div class="campo"><label>Tipo de producto</label><span class="valor-detalle">@seleccionado.PrtDescripcion</span></div>
-        <div class="campo"><label>Clasificación</label><span class="valor-detalle">@(seleccionado.ProTipoItem == "B" ? "Bien" : "Servicio")</span></div>
-        <div class="campo"><label>Unidad de medida</label><span class="valor-detalle">@(seleccionado.UmeDescripcion ?? "—")</span></div>
-        <div class="campo campo-checkbox"><label>Maneja existencia</label><span class="valor-detalle">@(seleccionado.ProManejaExistencia ? "Sí" : "No")</span></div>
+        <div class="campo"><label>@L("Código")</label><span class="valor-detalle">@seleccionado.ProCodigo</span></div>
+        <div class="campo"><label>@L("Descripción")</label><span class="valor-detalle">@seleccionado.ProDescripcion</span></div>
+        <div class="campo"><label>@L("Tipo de producto")</label><span class="valor-detalle">@seleccionado.PrtDescripcion</span></div>
+        <div class="campo"><label>@L("Clasificación")</label><span class="valor-detalle">@(seleccionado.ProTipoItem == "B" ? L("Bien") : L("Servicio"))</span></div>
+        <div class="campo"><label>@L("Unidad de medida")</label><span class="valor-detalle">@(seleccionado.UmeDescripcion ?? "—")</span></div>
+        <div class="campo campo-checkbox"><label>@L("Maneja existencia")</label><span class="valor-detalle">@(seleccionado.ProManejaExistencia ? L("Sí") : L("No"))</span></div>
         <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_EDITAR">
             <Authorized>
                 <div class="acciones-fila">
-                    <BotonIcono Icono="pencil" Tooltip="Editar" Etiqueta="Editar" OnClick="IniciarEdicion" />
+                    <BotonIcono Icono="pencil" Tooltip="@L("Editar")" Etiqueta="@L("Editar")" OnClick="IniciarEdicion" />
                 </div>
             </Authorized>
         </AuthorizeView>
 
-        <h3>Existencia por bodega</h3>
+        <h3>@L("Existencia por bodega")</h3>
         <table class="tabla-datos">
-            <thead><tr><th>Bodega</th><th class="num">Existencia</th></tr></thead>
+            <thead><tr><th>@L("Bodega")</th><th class="num">@L("Existencia")</th></tr></thead>
             <tbody>
                 @if (existenciasPorBodega.Count == 0)
                 {
-                    <tr><td colspan="2">Sin movimientos registrados.</td></tr>
+                    <tr><td colspan="2">@L("Sin movimientos registrados.")</td></tr>
                 }
                 @foreach (var existencia in existenciasPorBodega)
                 {
@@ -219,37 +219,37 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
 else if (pestanaActiva == "caracteristicas" && seleccionado is not null)
 {
     <div class="panel-detalle panel-ancho">
-        <h2>Características: @seleccionado.ProDescripcion</h2>
+        <h2>@L("Características: {0}", seleccionado.ProDescripcion)</h2>
         <div class="barra-herramientas">
-            <BotonIcono Icono="plus" Tooltip="Agregar característica" Etiqueta="Agregar característica" Variante="primario" OnClick="() => mostrarNuevaCaracteristica = !mostrarNuevaCaracteristica" />
+            <BotonIcono Icono="plus" Tooltip="@L("Agregar característica")" Etiqueta="@L("Agregar característica")" Variante="primario" OnClick="() => mostrarNuevaCaracteristica = !mostrarNuevaCaracteristica" />
         </div>
         @if (mostrarNuevaCaracteristica)
         {
             <div class="panel-formulario">
                 <div class="campo">
-                    <label for="productos-caracteristica-ptcid">Tipo</label>
+                    <label for="productos-caracteristica-ptcid">@L("Tipo")</label>
                     <select id="productos-caracteristica-ptcid" @bind="nuevaCaracteristica.PtcId">
-                        <option value="0">Seleccione...</option>
+                        <option value="0">@L("Seleccione...")</option>
                         @foreach (var tipo in tiposCaracteristica)
                         {
                             <option value="@tipo.PtcId">@tipo.PtcDescripcion</option>
                         }
                     </select>
                 </div>
-                <div class="campo"><label for="productos-caracteristica-valor">Valor</label><input id="productos-caracteristica-valor" @bind="nuevaCaracteristica.Valor" /></div>
-                <div class="campo"><label for="productos-caracteristica-descripcion">Descripción</label><input id="productos-caracteristica-descripcion" @bind="nuevaCaracteristica.Descripcion" /></div>
+                <div class="campo"><label for="productos-caracteristica-valor">@L("Valor")</label><input id="productos-caracteristica-valor" @bind="nuevaCaracteristica.Valor" /></div>
+                <div class="campo"><label for="productos-caracteristica-descripcion">@L("Descripción")</label><input id="productos-caracteristica-descripcion" @bind="nuevaCaracteristica.Descripcion" /></div>
                 <div class="acciones-fila">
-                    <BotonIcono Icono="save" Tooltip="Guardar característica" Etiqueta="Guardar" Variante="primario" OnClick="CrearCaracteristicaAsync" />
-                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevaCaracteristica = false" />
+                    <BotonIcono Icono="save" Tooltip="@L("Guardar característica")" Etiqueta="@L("Guardar")" Variante="primario" OnClick="CrearCaracteristicaAsync" />
+                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => mostrarNuevaCaracteristica = false" />
                 </div>
             </div>
         }
         <table class="tabla-datos">
-            <thead><tr><th>Tipo</th><th>Valor</th><th>Descripción</th><th class="col-acciones">Acciones</th></tr></thead>
+            <thead><tr><th>@L("Tipo")</th><th>@L("Valor")</th><th>@L("Descripción")</th><th class="col-acciones">@L("Acciones")</th></tr></thead>
             <tbody>
                 @if (caracteristicasProducto.Count == 0)
                 {
-                    <tr><td colspan="4">Sin características registradas.</td></tr>
+                    <tr><td colspan="4">@L("Sin características registradas.")</td></tr>
                 }
                 @foreach (var c in caracteristicasProducto)
                 {
@@ -261,8 +261,8 @@ else if (pestanaActiva == "caracteristicas" && seleccionado is not null)
                             <td><input @bind="pcaEditDescripcion" /></td>
                             <td>
                                 <div class="acciones-fila">
-                                    <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="GuardarCaracteristicaAsync" />
-                                    <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => pcaEditandoId = null" />
+                                    <BotonIcono Icono="save" Tooltip="@L("Guardar")" Variante="primario" OnClick="GuardarCaracteristicaAsync" />
+                                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" OnClick="() => pcaEditandoId = null" />
                                 </div>
                             </td>
                         }
@@ -273,8 +273,8 @@ else if (pestanaActiva == "caracteristicas" && seleccionado is not null)
                             <td>@c.PcaDescripcion</td>
                             <td>
                                 <div class="acciones-fila">
-                                    <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => EditarCaracteristica(c)" />
-                                    <BotonIcono Icono="trash-2" Tooltip="Eliminar" Confirmacion="¿Eliminar la característica?" Variante="peligro" OnClick="() => EliminarCaracteristicaAsync(c)" />
+                                    <BotonIcono Icono="pencil" Tooltip="@L("Editar")" OnClick="() => EditarCaracteristica(c)" />
+                                    <BotonIcono Icono="trash-2" Tooltip="@L("Eliminar")" Confirmacion="@L("¿Eliminar la característica?")" Variante="peligro" OnClick="() => EliminarCaracteristicaAsync(c)" />
                                 </div>
                             </td>
                         }
@@ -288,17 +288,17 @@ else if (pestanaActiva == "caracteristicas" && seleccionado is not null)
 else if (pestanaActiva == "precios" && seleccionado is not null)
 {
     <div class="panel-detalle panel-ancho">
-        <h2>Precios: @seleccionado.ProDescripcion</h2>
+        <h2>@L("Precios: {0}", seleccionado.ProDescripcion)</h2>
         <div class="barra-herramientas">
-            <BotonIcono Icono="plus" Tooltip="Agregar precio" Etiqueta="Agregar precio" Variante="primario" OnClick="() => mostrarNuevoPrecio = !mostrarNuevoPrecio" />
+            <BotonIcono Icono="plus" Tooltip="@L("Agregar precio")" Etiqueta="@L("Agregar precio")" Variante="primario" OnClick="() => mostrarNuevoPrecio = !mostrarNuevoPrecio" />
         </div>
         @if (mostrarNuevoPrecio)
         {
             <div class="panel-formulario">
                 <div class="campo">
-                    <label for="productos-precio-bodid">Bodega</label>
+                    <label for="productos-precio-bodid">@L("Bodega")</label>
                     <select id="productos-precio-bodid" @bind="nuevoPrecio.BodId">
-                        <option value="0">Seleccione...</option>
+                        <option value="0">@L("Seleccione...")</option>
                         @foreach (var bod in bodegasDisponibles)
                         {
                             <option value="@bod.BodId">@bod.BodDescripcion</option>
@@ -306,31 +306,31 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
                     </select>
                 </div>
                 <div class="campo">
-                    <label for="productos-precio-monid">Moneda</label>
+                    <label for="productos-precio-monid">@L("Moneda")</label>
                     <select id="productos-precio-monid" @bind="nuevoPrecio.MonId">
-                        <option value="0">Seleccione...</option>
+                        <option value="0">@L("Seleccione...")</option>
                         @foreach (var mon in monedasDisponibles)
                         {
                             <option value="@mon.MonId">@mon.MonCodigo</option>
                         }
                     </select>
                 </div>
-                <div class="campo"><label for="productos-precio-preciounitarioventa">Precio unitario de venta</label><input id="productos-precio-preciounitarioventa" type="number" step="0.01" @bind="nuevoPrecio.PrecioUnitarioVenta" /></div>
-                <div class="campo"><label for="productos-precio-descripcion">Descripción</label><input id="productos-precio-descripcion" @bind="nuevoPrecio.Descripcion" /></div>
-                <div class="campo"><label for="productos-precio-vigenciadesde">Vigencia desde</label><input id="productos-precio-vigenciadesde" type="date" @bind="nuevoPrecio.VigenciaDesde" /></div>
-                <div class="campo"><label for="productos-precio-vigenciahasta">Vigencia hasta</label><input id="productos-precio-vigenciahasta" type="date" @bind="nuevoPrecio.VigenciaHasta" /></div>
+                <div class="campo"><label for="productos-precio-preciounitarioventa">@L("Precio unitario de venta")</label><input id="productos-precio-preciounitarioventa" type="number" step="0.01" @bind="nuevoPrecio.PrecioUnitarioVenta" /></div>
+                <div class="campo"><label for="productos-precio-descripcion">@L("Descripción")</label><input id="productos-precio-descripcion" @bind="nuevoPrecio.Descripcion" /></div>
+                <div class="campo"><label for="productos-precio-vigenciadesde">@L("Vigencia desde")</label><input id="productos-precio-vigenciadesde" type="date" @bind="nuevoPrecio.VigenciaDesde" /></div>
+                <div class="campo"><label for="productos-precio-vigenciahasta">@L("Vigencia hasta")</label><input id="productos-precio-vigenciahasta" type="date" @bind="nuevoPrecio.VigenciaHasta" /></div>
                 <div class="acciones-fila">
-                    <BotonIcono Icono="save" Tooltip="Guardar precio" Etiqueta="Guardar" Variante="primario" OnClick="CrearPrecioAsync" />
-                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevoPrecio = false" />
+                    <BotonIcono Icono="save" Tooltip="@L("Guardar precio")" Etiqueta="@L("Guardar")" Variante="primario" OnClick="CrearPrecioAsync" />
+                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => mostrarNuevoPrecio = false" />
                 </div>
             </div>
         }
         <table class="tabla-datos">
-            <thead><tr><th>Bodega</th><th>Moneda</th><th class="num">Precio</th><th class="col-fecha">Desde</th><th class="col-fecha">Hasta</th><th class="col-acciones">Acciones</th></tr></thead>
+            <thead><tr><th>@L("Bodega")</th><th>@L("Moneda")</th><th class="num">@L("Precio")</th><th class="col-fecha">@L("Desde")</th><th class="col-fecha">@L("Hasta")</th><th class="col-acciones">@L("Acciones")</th></tr></thead>
             <tbody>
                 @if (preciosProducto.Count == 0)
                 {
-                    <tr><td colspan="6">Sin precios vigentes.</td></tr>
+                    <tr><td colspan="6">@L("Sin precios vigentes.")</td></tr>
                 }
                 @foreach (var p in preciosProducto)
                 {
@@ -351,8 +351,8 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
                             <td class="col-fecha"><input type="date" @bind="editPrecioVigenciaHasta" /></td>
                             <td class="col-acciones">
                                 <div class="acciones-fila">
-                                    <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="GuardarEdicionPrecioAsync" />
-                                    <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => editandoPrecioId = null" />
+                                    <BotonIcono Icono="save" Tooltip="@L("Guardar")" Variante="primario" OnClick="GuardarEdicionPrecioAsync" />
+                                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" OnClick="() => editandoPrecioId = null" />
                                 </div>
                             </td>
                         }
@@ -365,8 +365,8 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
                             <td class="col-fecha">@(p.PprVigenciaHasta?.ToString("dd/MM/yyyy") ?? "—")</td>
                             <td class="col-acciones">
                                 <div class="acciones-fila">
-                                    <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => EditarPrecio(p)" />
-                                    <BotonIcono Icono="trash-2" Tooltip="Desactivar precio" Confirmacion="¿Desactivar el precio?" Variante="peligro" OnClick="() => EliminarPrecioAsync(p)" />
+                                    <BotonIcono Icono="pencil" Tooltip="@L("Editar")" OnClick="() => EditarPrecio(p)" />
+                                    <BotonIcono Icono="trash-2" Tooltip="@L("Desactivar precio")" Confirmacion="@L("¿Desactivar el precio?")" Variante="peligro" OnClick="() => EliminarPrecioAsync(p)" />
                                 </div>
                             </td>
                         }
@@ -379,38 +379,38 @@ else if (pestanaActiva == "precios" && seleccionado is not null)
 else if (pestanaActiva == "proveedores" && seleccionado is not null)
 {
     <div class="panel-detalle panel-ancho">
-        <h2>Proveedores: @seleccionado.ProDescripcion</h2>
+        <h2>@L("Proveedores: {0}", seleccionado.ProDescripcion)</h2>
         <div class="barra-herramientas">
-            <BotonIcono Icono="plus" Tooltip="Relacionar un proveedor" Etiqueta="Agregar proveedor" Variante="primario" OnClick="MostrarNuevoProveedorProducto" />
+            <BotonIcono Icono="plus" Tooltip="@L("Relacionar un proveedor")" Etiqueta="@L("Agregar proveedor")" Variante="primario" OnClick="MostrarNuevoProveedorProducto" />
         </div>
         @if (mostrarNuevoProveedor)
         {
             <div class="panel-formulario">
                 <div class="campo">
-                    <label for="pp-proveedor">Proveedor</label>
+                    <label for="pp-proveedor">@L("Proveedor")</label>
                     <select id="pp-proveedor" @bind="nuevoProveedorId">
-                        <option value="0">Seleccione...</option>
+                        <option value="0">@L("Seleccione...")</option>
                         @foreach (var p in proveedoresActivos.Where(p => proveedoresProducto.All(r => r.PrvId != p.PrvId)))
                         {
                             <option value="@p.PrvId">@p.PrvNombreComercial (@p.PrvCodigo)</option>
                         }
                     </select>
                 </div>
-                <div class="campo"><label for="pp-codigo">Código del producto en el catálogo del proveedor</label><input id="pp-codigo" maxlength="64" @bind="nuevoProveedorCodigo" /></div>
-                <label class="casilla"><input type="checkbox" @bind="nuevoProveedorPreferido" /> Proveedor preferido</label>
+                <div class="campo"><label for="pp-codigo">@L("Código del producto en el catálogo del proveedor")</label><input id="pp-codigo" maxlength="64" @bind="nuevoProveedorCodigo" /></div>
+                <label class="casilla"><input type="checkbox" @bind="nuevoProveedorPreferido" /> @L("Proveedor preferido")</label>
                 <div class="acciones-fila">
-                    <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario"
+                    <BotonIcono Icono="save" Tooltip="@L("Guardar")" Etiqueta="@L("Guardar")" Variante="primario"
                                 OnClick="() => GuardarProveedorProductoAsync(null, nuevoProveedorId, nuevoProveedorPreferido, nuevoProveedorCodigo)" />
-                    <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevoProveedor = false" />
+                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => mostrarNuevoProveedor = false" />
                 </div>
             </div>
         }
         <table class="tabla-datos">
-            <thead><tr><th>Proveedor</th><th>Código del proveedor</th><th class="num col-monto">Último costo (sin IVA)</th><th class="col-fecha">Última compra</th><th class="col-estado">Preferido</th><th class="col-acciones">Acciones</th></tr></thead>
+            <thead><tr><th>@L("Proveedor")</th><th>@L("Código del proveedor")</th><th class="num col-monto">@L("Último costo (sin IVA)")</th><th class="col-fecha">@L("Última compra")</th><th class="col-estado">@L("Preferido")</th><th class="col-acciones">@L("Acciones")</th></tr></thead>
             <tbody>
                 @if (proveedoresProducto.Count == 0)
                 {
-                    <tr><td colspan="6">Ningún proveedor relacionado. También se relacionan al grabar una compra.</td></tr>
+                    <tr><td colspan="6">@L("Ningún proveedor relacionado. También se relacionan al grabar una compra.")</td></tr>
                 }
                 @foreach (var r in proveedoresProducto)
                 {
@@ -418,14 +418,14 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
                         @if (pppEditandoId == r.PppId)
                         {
                             <td>@r.Proveedor</td>
-                            <td><input maxlength="64" aria-label="Código del proveedor" @bind="pppEditCodigo" /></td>
+                            <td><input maxlength="64" aria-label="@L("Código del proveedor")" @bind="pppEditCodigo" /></td>
                             <td class="num col-monto">@(r.UltimoCosto?.ToString("N2") ?? "—")</td>
                             <td class="col-fecha">@(r.FechaUltimaCompra?.ToString("dd/MM/yyyy") ?? "—")</td>
-                            <td class="col-estado"><input type="checkbox" aria-label="Preferido" @bind="pppEditPreferido" /></td>
+                            <td class="col-estado"><input type="checkbox" aria-label="@L("Preferido")" @bind="pppEditPreferido" /></td>
                             <td class="col-acciones">
                                 <div class="acciones-fila">
-                                    <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="() => GuardarProveedorProductoAsync(r.PppId, r.PrvId, pppEditPreferido, pppEditCodigo)" />
-                                    <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => pppEditandoId = null" />
+                                    <BotonIcono Icono="save" Tooltip="@L("Guardar")" Variante="primario" OnClick="() => GuardarProveedorProductoAsync(r.PppId, r.PrvId, pppEditPreferido, pppEditCodigo)" />
+                                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" OnClick="() => pppEditandoId = null" />
                                 </div>
                             </td>
                         }
@@ -435,11 +435,11 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
                             <td>@(r.CodigoProveedor ?? "—")</td>
                             <td class="num col-monto">@(r.UltimoCosto?.ToString("N2") ?? "—")</td>
                             <td class="col-fecha">@(r.FechaUltimaCompra?.ToString("dd/MM/yyyy") ?? "—")</td>
-                            <td class="col-estado">@if (r.Preferido) { <span class="estado-badge estado-badge-activo">Preferido</span> } else { <span class="texto-tenue">Alterno</span> }</td>
+                            <td class="col-estado">@if (r.Preferido) { <span class="estado-badge estado-badge-activo">@L("Preferido")</span> } else { <span class="texto-tenue">@L("Alterno")</span> }</td>
                             <td class="col-acciones">
                                 <div class="acciones-fila">
-                                    <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => { pppEditandoId = r.PppId; pppEditCodigo = r.CodigoProveedor; pppEditPreferido = r.Preferido; }" />
-                                    <BotonIcono Icono="trash-2" Tooltip="Quitar el proveedor" Confirmacion="¿Quitar este proveedor del producto?" Variante="peligro" OnClick="() => EliminarProveedorProductoAsync(r)" />
+                                    <BotonIcono Icono="pencil" Tooltip="@L("Editar")" OnClick="() => { pppEditandoId = r.PppId; pppEditCodigo = r.CodigoProveedor; pppEditPreferido = r.Preferido; }" />
+                                    <BotonIcono Icono="trash-2" Tooltip="@L("Quitar el proveedor")" Confirmacion="@L("¿Quitar este proveedor del producto?")" Variante="peligro" OnClick="() => EliminarProveedorProductoAsync(r)" />
                                 </div>
                             </td>
                         }
@@ -466,10 +466,10 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
     private string pestanaActiva = "lista";
 
     private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
-        ? new[] { new PestanaItem("lista", "Lista") }
+        ? new[] { new PestanaItem("lista", L("Lista")) }
         : pestanaActiva == "editar"
-            ? new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("editar", "Editar"), new PestanaItem("caracteristicas", "Características"), new PestanaItem("precios", "Precios"), new PestanaItem("proveedores", "Proveedores") }
-            : new[] { new PestanaItem("lista", "Lista"), new PestanaItem("detalle", "Detalle"), new PestanaItem("caracteristicas", "Características"), new PestanaItem("precios", "Precios"), new PestanaItem("proveedores", "Proveedores") };
+            ? new[] { new PestanaItem("lista", L("Lista")), new PestanaItem("detalle", L("Detalle")), new PestanaItem("editar", L("Editar")), new PestanaItem("caracteristicas", L("Características")), new PestanaItem("precios", L("Precios")), new PestanaItem("proveedores", L("Proveedores")) }
+            : new[] { new PestanaItem("lista", L("Lista")), new PestanaItem("detalle", L("Detalle")), new PestanaItem("caracteristicas", L("Características")), new PestanaItem("precios", L("Precios")), new PestanaItem("proveedores", L("Proveedores")) };
 
     private bool mostrarNuevaCaracteristica;
     private readonly CaracteristicaModelo nuevaCaracteristica = new();
@@ -546,7 +546,7 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
                 nuevoProducto.TipoItem, nuevoProducto.ManejaExistencia, idPadre: null, usuId,
                 umeId: nuevoProducto.UmeId == 0 ? null : nuevoProducto.UmeId);
             mostrarNuevo = false;
-            mensaje = "Producto creado correctamente.";
+            mensaje = L("Producto creado correctamente.");
             esMensajeError = false;
             await BuscarAsync();
         }
@@ -618,14 +618,14 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
         if (seleccionado is null) return;
         if (prvId <= 0)
         {
-            mensaje = "Seleccione el proveedor.";
+            mensaje = L("Seleccione el proveedor.");
             esMensajeError = true;
             return;
         }
         try
         {
             await ProductoProveedorRepository.GuardarAsync(pppId, prvId, seleccionado.ProId, preferido, codigo, await ObtenerUsuIdActualAsync());
-            mensaje = pppId is null ? "Proveedor relacionado con el producto." : "Cambios guardados.";
+            mensaje = pppId is null ? L("Proveedor relacionado con el producto.") : L("Cambios guardados.");
             esMensajeError = false;
             await CargarProveedoresProductoAsync();
         }
@@ -641,7 +641,7 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
         try
         {
             await ProductoProveedorRepository.EliminarAsync(relacion.PppId, await ObtenerUsuIdActualAsync());
-            mensaje = $"{relacion.Proveedor} ya no aparece como proveedor del producto.";
+            mensaje = L("{0} ya no aparece como proveedor del producto.", relacion.Proveedor);
             esMensajeError = false;
             await CargarProveedoresProductoAsync();
         }
@@ -682,7 +682,7 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
         if (seleccionado is null) return;
         if (nuevaCaracteristica.PtcId == 0 || string.IsNullOrWhiteSpace(nuevaCaracteristica.Valor))
         {
-            mensaje = "Debe seleccionar el tipo e indicar el valor de la característica.";
+            mensaje = L("Debe seleccionar el tipo e indicar el valor de la característica.");
             esMensajeError = true;
             return;
         }
@@ -696,7 +696,7 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
             nuevaCaracteristica.PtcId = 0;
             nuevaCaracteristica.Valor = "";
             nuevaCaracteristica.Descripcion = null;
-            mensaje = "Característica agregada.";
+            mensaje = L("Característica agregada.");
             esMensajeError = false;
         }
         catch (Exception ex)
@@ -715,7 +715,7 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
             await CaracteristicaRepository.ActualizarAsync(pcaEditandoId.Value, pcaEditValor, pcaEditDescripcion, usuId);
             caracteristicasProducto = await CaracteristicaRepository.ConsultarAsync(seleccionado.ProId);
             pcaEditandoId = null;
-            mensaje = "Característica actualizada.";
+            mensaje = L("Característica actualizada.");
             esMensajeError = false;
         }
         catch (Exception ex)
@@ -732,7 +732,7 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
         {
             await CaracteristicaRepository.EliminarAsync(caracteristica.PcaId);
             caracteristicasProducto = await CaracteristicaRepository.ConsultarAsync(seleccionado.ProId);
-            mensaje = "Característica eliminada.";
+            mensaje = L("Característica eliminada.");
             esMensajeError = false;
         }
         catch (Exception ex)
@@ -747,7 +747,7 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
         if (seleccionado is null) return;
         if (nuevoPrecio.BodId == 0 || nuevoPrecio.MonId == 0)
         {
-            mensaje = "Debe seleccionar bodega y moneda para el precio.";
+            mensaje = L("Debe seleccionar bodega y moneda para el precio.");
             esMensajeError = true;
             return;
         }
@@ -766,7 +766,7 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
             nuevoPrecio.Descripcion = null;
             nuevoPrecio.VigenciaDesde = DateTime.Today;
             nuevoPrecio.VigenciaHasta = null;
-            mensaje = "Precio agregado.";
+            mensaje = L("Precio agregado.");
             esMensajeError = false;
         }
         catch (Exception ex)
@@ -784,7 +784,7 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
             var usuId = await ObtenerUsuIdActualAsync();
             await PrecioRepository.EliminarAsync(precio.PprId, usuId);
             preciosProducto = await PrecioRepository.ConsultarAsync(seleccionado.ProId, bodId: null, estado: "A");
-            mensaje = "Precio desactivado.";
+            mensaje = L("Precio desactivado.");
             esMensajeError = false;
         }
         catch (Exception ex)
@@ -816,7 +816,7 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
                 precio.PprDescripcion, editPrecioVigenciaDesde, editPrecioVigenciaHasta, usuId);
             editandoPrecioId = null;
             preciosProducto = await PrecioRepository.ConsultarAsync(seleccionado.ProId, bodId: null, estado: "A");
-            mensaje = "Cambios guardados.";
+            mensaje = L("Cambios guardados.");
             esMensajeError = false;
         }
         catch (Exception ex)
@@ -836,7 +836,7 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
                 seleccionado.ProId, edicionProducto.Codigo, edicionProducto.Descripcion, edicionProducto.PrtId,
                 edicionProducto.TipoItem, edicionProducto.ManejaExistencia, idPadre: null, porcentajeRentabilidad: null, usuId,
                 umeId: edicionProducto.UmeId == 0 ? null : edicionProducto.UmeId);
-            mensaje = "Cambios guardados.";
+            mensaje = L("Cambios guardados.");
             esMensajeError = false;
             await BuscarAsync();
             seleccionado = productos.FirstOrDefault(p => p.ProId == seleccionado.ProId) ?? seleccionado;
@@ -855,7 +855,7 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
         {
             var usuId = await ObtenerUsuIdActualAsync();
             await ProductoRepository.EliminarAsync(producto.ProId, usuId);
-            mensaje = "Producto desactivado.";
+            mensaje = L("Producto desactivado.");
             esMensajeError = false;
             if (seleccionado?.ProId == producto.ProId)
             {

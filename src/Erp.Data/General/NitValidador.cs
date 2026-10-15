@@ -68,7 +68,7 @@ public static class NitValidador
 	}
 
 	public static string MensajeInvalido(string? nit, string dato = "NIT") =>
-		$"El {dato} {nit} no es válido: revise el dígito verificador (o use C/F o el CUI de 13 dígitos).";
+		L("El {0} {1} no es válido: revise el dígito verificador (o use C/F o el CUI de 13 dígitos).", dato, nit);
 
 	private static bool CorrelativoCuiValido(string digitos)
 	{

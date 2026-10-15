@@ -7,11 +7,11 @@
 @inject ITrasladoRepository TrasladoRepository
 @inject IBodegaRepository BodegaRepository
 
-<PageTitle>Traslados entre bodegas</PageTitle>
+<PageTitle>@L("Traslados entre bodegas")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Traslados entre bodegas</h1>
-    <p>El envío genera la salida por traslado en la bodega de origen y deja la mercadería en tránsito. El ingreso por traslado se genera solo cuando la sucursal que recibe confirma lo que llegó; lo que falte se devuelve a origen o se registra como pérdida.</p>
+    <h1>@L("Traslados entre bodegas")</h1>
+    <p>@L("El envío genera la salida por traslado en la bodega de origen y deja la mercadería en tránsito. El ingreso por traslado se genera solo cuando la sucursal que recibe confirma lo que llegó; lo que falte se devuelve a origen o se registra como pérdida.")</p>
 </div>
 
 @if (mensaje is not null)
@@ -24,25 +24,25 @@
 @if (pestanaActiva == "lista")
 {
     <div class="barra-herramientas">
-        <select @bind="filtroSucId" @bind:after="BuscarAsync" aria-label="Sucursal">
-            <option value="">Todas las sucursales</option>
+        <select @bind="filtroSucId" @bind:after="BuscarAsync" aria-label="@L("Sucursal")">
+            <option value="">@L("Todas las sucursales")</option>
             @foreach (var s in Sucursales)
             {
                 <option value="@s.SucId">@s.Nombre</option>
             }
         </select>
-        <select @bind="filtroEstado" @bind:after="BuscarAsync" aria-label="Estado">
-            <option value="">Todos los estados</option>
-            <option value="E">En tránsito</option>
-            <option value="R">Recibidos</option>
-            <option value="P">Recibidos con diferencias</option>
-            <option value="X">Rechazados</option>
-            <option value="N">Cancelados</option>
+        <select @bind="filtroEstado" @bind:after="BuscarAsync" aria-label="@L("Estado")">
+            <option value="">@L("Todos los estados")</option>
+            <option value="E">@L("En tránsito")</option>
+            <option value="R">@L("Recibidos")</option>
+            <option value="P">@L("Recibidos con diferencias")</option>
+            <option value="X">@L("Rechazados")</option>
+            <option value="N">@L("Cancelados")</option>
         </select>
         <FiltroPeriodo @bind-Desde="filtroDesde" @bind-Hasta="filtroHasta" AlCambiar="BuscarAsync" />
         <span class="barra-herramientas-separador"></span>
         <AuthorizeView Policy="Permiso:INVENTARIO_TRASLADO_ENVIAR" Context="permisoEnviar">
-            <BotonIcono Icono="plus" Tooltip="Enviar mercadería a otra bodega" Etiqueta="Nuevo traslado" Variante="primario" OnClick="IniciarNuevo" />
+            <BotonIcono Icono="plus" Tooltip="@L("Enviar mercadería a otra bodega")" Etiqueta="@L("Nuevo traslado")" Variante="primario" OnClick="IniciarNuevo" />
         </AuthorizeView>
     </div>
 
@@ -50,18 +50,18 @@
     {
         <p class="aviso-pendiente" role="status">
             <Icono Nombre="truck" Tamano="16" />
-            Hay @PorRecibir.Count() @(PorRecibir.Count() == 1 ? "traslado" : "traslados") en tránsito hacia @(sucursalSesion ?? "su sucursal") por Q @PorRecibir.Sum(t => t.Valor).ToString("N2"): revise lo que llegó y confirme la recepción.
+            @L("Hay {0} {1} en tránsito hacia {2} por Q {3}: revise lo que llegó y confirme la recepción.", PorRecibir.Count(), PorRecibir.Count() == 1 ? L("traslado") : L("traslados"), sucursalSesion ?? L("su sucursal"), PorRecibir.Sum(t => t.Valor).ToString("N2"))
         </p>
     }
 
     @if (traslados.Count == 0)
     {
-        <p class="estado-vacio">No hay traslados con esos filtros.</p>
+        <p class="estado-vacio">@L("No hay traslados con esos filtros.")</p>
     }
     else
     {
         <table class="tabla-datos">
-            <thead><tr><th class="col-codigo">Número</th><th class="col-fecha">Fecha</th><th>Origen</th><th>Destino</th><th class="num col-estado">Unidades</th><th class="num col-monto">Valor</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+            <thead><tr><th class="col-codigo">@L("Número")</th><th class="col-fecha">@L("Fecha")</th><th>@L("Origen")</th><th>@L("Destino")</th><th class="num col-estado">@L("Unidades")</th><th class="num col-monto">@L("Valor")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr></thead>
             <tbody>
                 @foreach (var t in traslados)
                 {
@@ -71,12 +71,12 @@
                         <td class="col-fecha">@t.Fecha.ToString("dd/MM/yyyy")</td>
                         <td>@t.BodegaOrigen<br /><span class="texto-tenue">@t.SucursalOrigen</span></td>
                         <td>@t.BodegaDestino<br /><span class="texto-tenue">@t.SucursalDestino</span></td>
-                        <td class="num col-estado">@t.Unidades.ToString("#,##0.##")<br /><span class="texto-tenue">@t.Lineas @(t.Lineas == 1 ? "producto" : "productos")</span></td>
+                        <td class="num col-estado">@t.Unidades.ToString("#,##0.##")<br /><span class="texto-tenue">@t.Lineas @(t.Lineas == 1 ? L("producto") : L("productos"))</span></td>
                         <td class="num col-monto">@t.Valor.ToString("N2")</td>
                         <td class="col-estado"><span class="estado-badge @ClaseEstado(t.Estado)">@t.EstadoTexto</span></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
-                                <BotonIcono Icono="@(porRecibir ? "check-check" : "eye")" Tooltip="@(porRecibir ? "Recibir el traslado" : "Ver detalle")" OnClick="() => AbrirAsync(t)" />
+                                <BotonIcono Icono="@(porRecibir ? "check-check" : "eye")" Tooltip="@(porRecibir ? L("Recibir el traslado") : L("Ver detalle"))" OnClick="() => AbrirAsync(t)" />
                             </div>
                         </td>
                     </tr>
@@ -88,12 +88,12 @@
 else if (pestanaActiva == "nuevo")
 {
     <section class="tarjeta" aria-labelledby="titulo-nuevo">
-        <h2 id="titulo-nuevo">Nuevo traslado</h2>
+        <h2 id="titulo-nuevo">@L("Nuevo traslado")</h2>
         <div class="fel-formulario">
             <div class="campo">
-                <label for="tra-origen">Bodega de origen</label>
+                <label for="tra-origen">@L("Bodega de origen")</label>
                 <select id="tra-origen" @bind="nuevoOrigen" @bind:after="CambiarOrigenAsync">
-                    <option value="0">Seleccione…</option>
+                    <option value="0">@L("Seleccione…")</option>
                     @foreach (var b in BodegasActivas)
                     {
                         <option value="@b.BodId">@b.SucDescripcion · @b.BodDescripcion</option>
@@ -101,9 +101,9 @@ else if (pestanaActiva == "nuevo")
                 </select>
             </div>
             <div class="campo">
-                <label for="tra-destino">Bodega de destino</label>
+                <label for="tra-destino">@L("Bodega de destino")</label>
                 <select id="tra-destino" @bind="nuevoDestino">
-                    <option value="0">Seleccione…</option>
+                    <option value="0">@L("Seleccione…")</option>
                     @foreach (var b in BodegasActivas.Where(b => b.BodId != nuevoOrigen))
                     {
                         <option value="@b.BodId">@b.SucDescripcion · @b.BodDescripcion</option>
@@ -111,11 +111,11 @@ else if (pestanaActiva == "nuevo")
                 </select>
                 @if (DestinoSeleccionado is { } destino && OrigenSeleccionado is { } origen)
                 {
-                    <span class="texto-ayuda">@(destino.SucId == origen.SucId ? "Traslado dentro de la misma sucursal." : $"Traslado a otra sucursal: lo recibe un usuario de {destino.SucDescripcion}.")</span>
+                    <span class="texto-ayuda">@(destino.SucId == origen.SucId ? L("Traslado dentro de la misma sucursal.") : L("Traslado a otra sucursal: lo recibe un usuario de {0}.", destino.SucDescripcion))</span>
                 }
             </div>
             <div class="campo campo-ancho">
-                <label for="tra-obs">Observaciones</label>
+                <label for="tra-obs">@L("Observaciones")</label>
                 <input id="tra-obs" maxlength="250" @bind="nuevoObservaciones" />
             </div>
         </div>
@@ -123,14 +123,14 @@ else if (pestanaActiva == "nuevo")
         @if (nuevoOrigen != 0)
         {
             <div class="barra-herramientas">
-                <input id="tra-buscar" placeholder="Escanee o busque por código o descripción" aria-label="Buscar producto en la bodega de origen"
+                <input id="tra-buscar" placeholder="@L("Escanee o busque por código o descripción")" aria-label="@L("Buscar producto en la bodega de origen")"
                        @bind="textoProducto" @bind:event="oninput" @onkeydown="TeclaBuscarAsync" />
-                <BotonIcono Icono="search" Tooltip="Buscar productos con existencia" Etiqueta="Buscar" OnClick="BuscarProductosAsync" />
+                <BotonIcono Icono="search" Tooltip="@L("Buscar productos con existencia")" Etiqueta="@L("Buscar")" OnClick="BuscarProductosAsync" />
             </div>
             @if (productos.Count > 0)
             {
                 <table class="tabla-datos tabla-compacta">
-                    <thead><tr><th class="col-codigo">Código</th><th>Producto</th><th class="num col-monto">Existencia</th><th class="num col-monto">Costo</th><th class="col-acciones"><span class="sr-only">Agregar</span></th></tr></thead>
+                    <thead><tr><th class="col-codigo">@L("Código")</th><th>@L("Producto")</th><th class="num col-monto">@L("Existencia")</th><th class="num col-monto">@L("Costo")</th><th class="col-acciones"><span class="sr-only">@L("Agregar")</span></th></tr></thead>
                     <tbody>
                         @foreach (var p in productos.Take(15))
                         {
@@ -139,7 +139,7 @@ else if (pestanaActiva == "nuevo")
                                 <td>@p.Descripcion</td>
                                 <td class="num col-monto">@p.Existencia.ToString("#,##0.##") @p.Unidad</td>
                                 <td class="num col-monto">@p.CostoUnitario.ToString("N2")</td>
-                                <td class="col-acciones"><BotonIcono Icono="plus" Tooltip="Agregar al traslado" OnClick="() => Agregar(p)" /></td>
+                                <td class="col-acciones"><BotonIcono Icono="plus" Tooltip="@L("Agregar al traslado")" OnClick="() => Agregar(p)" /></td>
                             </tr>
                         }
                     </tbody>
@@ -149,12 +149,12 @@ else if (pestanaActiva == "nuevo")
 
         @if (lineasNuevas.Count == 0)
         {
-            <p class="estado-vacio">Agregue los productos que va a enviar.</p>
+            <p class="estado-vacio">@L("Agregue los productos que va a enviar.")</p>
         }
         else
         {
             <table class="tabla-datos">
-                <thead><tr><th class="col-codigo">Código</th><th>Producto</th><th class="num col-monto">Existencia</th><th class="num col-monto">Cantidad</th><th class="num col-monto">Costo</th><th class="num col-monto">Valor</th><th class="col-acciones"><span class="sr-only">Quitar</span></th></tr></thead>
+                <thead><tr><th class="col-codigo">@L("Código")</th><th>@L("Producto")</th><th class="num col-monto">@L("Existencia")</th><th class="num col-monto">@L("Cantidad")</th><th class="num col-monto">@L("Costo")</th><th class="num col-monto">@L("Valor")</th><th class="col-acciones"><span class="sr-only">@L("Quitar")</span></th></tr></thead>
                 <tbody>
                     @foreach (var l in lineasNuevas)
                     {
@@ -163,28 +163,28 @@ else if (pestanaActiva == "nuevo")
                             <td>@l.Producto.Descripcion</td>
                             <td class="num col-monto">@l.Producto.Existencia.ToString("#,##0.##")</td>
                             <td class="num col-monto">
-                                <input class="entrada-numero" type="number" min="0" step="any" aria-label="@($"Cantidad de {l.Producto.Codigo}")"
+                                <input class="entrada-numero" type="number" min="0" step="any" aria-label="@(L("Cantidad de {0}", l.Producto.Codigo))"
                                        @bind="l.Cantidad" @bind:event="oninput" />
                             </td>
                             <td class="num col-monto">@l.Producto.CostoUnitario.ToString("N2")</td>
                             <td class="num col-monto">@Math.Round(l.Cantidad * l.Producto.CostoUnitario, 2).ToString("N2")</td>
-                            <td class="col-acciones"><BotonIcono Icono="trash-2" Tooltip="Quitar" Variante="peligro" OnClick="() => lineasNuevas.Remove(l)" /></td>
+                            <td class="col-acciones"><BotonIcono Icono="trash-2" Tooltip="@L("Quitar")" Variante="peligro" OnClick="() => lineasNuevas.Remove(l)" /></td>
                         </tr>
                     }
                 </tbody>
             </table>
             <div class="resumen-totales">
-                <span>Productos: <strong>@lineasNuevas.Count</strong></span>
-                <span>Unidades: <strong>@lineasNuevas.Sum(l => l.Cantidad).ToString("#,##0.##")</strong></span>
-                <span>Valor al costo: <strong>Q @ValorNuevo.ToString("N2")</strong></span>
+                <span>@L("Productos:") <strong>@lineasNuevas.Count</strong></span>
+                <span>@L("Unidades:") <strong>@lineasNuevas.Sum(l => l.Cantidad).ToString("#,##0.##")</strong></span>
+                <span>@L("Valor al costo:") <strong>Q @ValorNuevo.ToString("N2")</strong></span>
             </div>
         }
 
         <div class="acciones-fila">
-            <BotonIcono Icono="truck" Tooltip="Enviar el traslado" Etiqueta="Enviar traslado" Variante="primario"
-                        Confirmacion="@($"¿Enviar {lineasNuevas.Count} productos por Q {ValorNuevo:N2}? Sale de la bodega de origen y queda en tránsito hasta que lo reciban.")"
+            <BotonIcono Icono="truck" Tooltip="@L("Enviar el traslado")" Etiqueta="@L("Enviar traslado")" Variante="primario"
+                        Confirmacion="@(L("¿Enviar {0} productos por Q {1:N2}? Sale de la bodega de origen y queda en tránsito hasta que lo reciban.", lineasNuevas.Count, ValorNuevo))"
                         Deshabilitado="guardando || nuevoOrigen == 0 || nuevoDestino == 0 || lineasNuevas.Count == 0" OnClick="EnviarAsync" />
-            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="VolverALista" />
+            <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="VolverALista" />
         </div>
     </section>
 }
@@ -193,38 +193,38 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
     var enTransito = seleccionado.Estado == "E";
     <section class="tarjeta" aria-labelledby="titulo-traslado">
         <div class="maestro-detalle-encabezado">
-            <h2 id="titulo-traslado">Traslado @seleccionado.Numero</h2>
+            <h2 id="titulo-traslado">@L("Traslado {0}", seleccionado.Numero)</h2>
             <span class="estado-badge @ClaseEstado(seleccionado.Estado)">@seleccionado.EstadoTexto</span>
         </div>
         <div class="resumen-totales">
-            <span>Fecha: <strong>@seleccionado.Fecha.ToString("dd/MM/yyyy")</strong></span>
-            <span>De: <strong>@seleccionado.BodegaOrigen</strong> (@seleccionado.SucursalOrigen)</span>
+            <span>@L("Fecha:") <strong>@seleccionado.Fecha.ToString("dd/MM/yyyy")</strong></span>
+            <span>@L("De:") <strong>@seleccionado.BodegaOrigen</strong> (@seleccionado.SucursalOrigen)</span>
             <span>A: <strong>@seleccionado.BodegaDestino</strong> (@seleccionado.SucursalDestino)</span>
-            <span>Valor: <strong>Q @seleccionado.Valor.ToString("N2")</strong></span>
-            <span>Envió: <strong>@seleccionado.Envia</strong></span>
+            <span>@L("Valor:") <strong>Q @seleccionado.Valor.ToString("N2")</strong></span>
+            <span>@L("Envió:") <strong>@seleccionado.Envia</strong></span>
             @if (seleccionado.Recibe is not null)
             {
-                <span>@(seleccionado.Estado is "X" or "N" ? "Resolvió" : "Recibió"): <strong>@seleccionado.Recibe</strong> @seleccionado.FechaRecepcion?.ToString("dd/MM/yyyy HH:mm")</span>
+                <span>@(seleccionado.Estado is "X" or "N" ? L("Resolvió") : L("Recibió")): <strong>@seleccionado.Recibe</strong> @seleccionado.FechaRecepcion?.ToString("dd/MM/yyyy HH:mm")</span>
             }
         </div>
         @if (!string.IsNullOrWhiteSpace(seleccionado.Observaciones))
         {
-            <p class="texto-tenue">Observaciones: @seleccionado.Observaciones</p>
+            <p class="texto-tenue">@L("Observaciones: {0}", seleccionado.Observaciones)</p>
         }
         @if (!string.IsNullOrWhiteSpace(seleccionado.NotaRecepcion))
         {
-            <p class="texto-tenue">Nota: @seleccionado.NotaRecepcion</p>
+            <p class="texto-tenue">@L("Nota: {0}", seleccionado.NotaRecepcion)</p>
         }
 
         @if (enTransito)
         {
             <AuthorizeView Policy="Permiso:INVENTARIO_TRASLADO_RECIBIR" Context="permisoRecibir">
-                <p class="texto-ayuda">Cuente lo que llegó. Si todo está completo, confirme sin cambiar nada; si falta algo, corrija la cantidad recibida y elija qué hacer con la diferencia.</p>
+                <p class="texto-ayuda">@L("Cuente lo que llegó. Si todo está completo, confirme sin cambiar nada; si falta algo, corrija la cantidad recibida y elija qué hacer con la diferencia.")</p>
             </AuthorizeView>
         }
 
         <table class="tabla-datos">
-            <thead><tr><th class="col-codigo">Código</th><th>Producto</th><th class="num col-monto">Enviado</th><th class="num col-monto">Recibido</th><th class="num col-monto">Diferencia</th><th class="num col-monto">Costo</th><th class="num col-monto">Valor</th></tr></thead>
+            <thead><tr><th class="col-codigo">@L("Código")</th><th>@L("Producto")</th><th class="num col-monto">@L("Enviado")</th><th class="num col-monto">@L("Recibido")</th><th class="num col-monto">@L("Diferencia")</th><th class="num col-monto">@L("Costo")</th><th class="num col-monto">@L("Valor")</th></tr></thead>
             <tbody>
                 @foreach (var l in lineas)
                 {
@@ -237,7 +237,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
                         <td class="num col-monto">
                             @if (enTransito)
                             {
-                                <input class="entrada-numero" type="number" min="0" max="@l.Cantidad" step="any" aria-label="@($"Cantidad recibida de {l.Codigo}")"
+                                <input class="entrada-numero" type="number" min="0" max="@l.Cantidad" step="any" aria-label="@(L("Cantidad recibida de {0}", l.Codigo))"
                                        value="@recibida?.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture)" @onchange="e => CambiarRecibida(l, e)" />
                             }
                             else
@@ -257,33 +257,33 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         {
             <AuthorizeView Policy="Permiso:INVENTARIO_TRASLADO_RECIBIR" Context="permisoRecibir">
                 <div class="panel-formulario">
-                    <h3>Recepción</h3>
+                    <h3>@L("Recepción")</h3>
                     @if (HayFaltante)
                     {
                         <fieldset class="grupo-opciones">
-                            <legend>Faltan @UnidadesFaltantes.ToString("#,##0.##") @(UnidadesFaltantes == 1 ? "unidad" : "unidades") (Q @ValorFaltante.ToString("N2")). ¿Qué hacer con la diferencia?</legend>
-                            <label class="casilla"><input type="radio" name="diferencia" checked="@(diferenciaRecepcion == "D")" @onchange="@(() => diferenciaRecepcion = "D")" /> Devolver a la bodega de origen (no salió)</label>
-                            <label class="casilla"><input type="radio" name="diferencia" checked="@(diferenciaRecepcion == "P")" @onchange="@(() => diferenciaRecepcion = "P")" /> Registrar como pérdida en tránsito</label>
+                            <legend>@L("Faltan {0} {1} (Q {2}). ¿Qué hacer con la diferencia?", UnidadesFaltantes.ToString("#,##0.##"), UnidadesFaltantes == 1 ? L("unidad") : L("unidades"), ValorFaltante.ToString("N2"))</legend>
+                            <label class="casilla"><input type="radio" name="diferencia" checked="@(diferenciaRecepcion == "D")" @onchange="@(() => diferenciaRecepcion = "D")" /> @L("Devolver a la bodega de origen (no salió)")</label>
+                            <label class="casilla"><input type="radio" name="diferencia" checked="@(diferenciaRecepcion == "P")" @onchange="@(() => diferenciaRecepcion = "P")" /> @L("Registrar como pérdida en tránsito")</label>
                         </fieldset>
                     }
-                    <div class="campo"><label for="tra-nota">Nota de recepción</label><input id="tra-nota" maxlength="250" @bind="notaRecepcion" /></div>
+                    <div class="campo"><label for="tra-nota">@L("Nota de recepción")</label><input id="tra-nota" maxlength="250" @bind="notaRecepcion" /></div>
                     <div class="acciones-fila">
-                        <BotonIcono Icono="check-check" Tooltip="Confirmar lo recibido" Etiqueta="@(HayFaltante ? "Recibir con diferencias" : "Recibir completo")" Variante="primario"
-                                    Confirmacion="@(HayFaltante ? $"¿Recibir con {UnidadesFaltantes:#,##0.##} unidades de menos ({(diferenciaRecepcion == "P" ? "pérdida" : "devolución a origen")})?" : "¿Confirmar que llegó todo completo?")"
+                        <BotonIcono Icono="check-check" Tooltip="@L("Confirmar lo recibido")" Etiqueta="@(HayFaltante ? L("Recibir con diferencias") : L("Recibir completo"))" Variante="primario"
+                                    Confirmacion="@(HayFaltante ? L("¿Recibir con {0:#,##0.##} unidades de menos ({1})?", UnidadesFaltantes, (diferenciaRecepcion == "P" ? L("pérdida") : L("devolución a origen"))) : L("¿Confirmar que llegó todo completo?"))"
                                     Deshabilitado="guardando" OnClick="RecibirAsync" />
                     </div>
                 </div>
                 <div class="fila-edicion">
-                    <label for="motivo-rechazo">Rechazar el traslado (todo regresa a la bodega de origen)</label>
-                    <input id="motivo-rechazo" maxlength="200" placeholder="Motivo del rechazo" @bind="motivoRechazo" @bind:event="oninput" />
-                    <BotonIcono Icono="ban" Tooltip="Rechazar el traslado" Etiqueta="Rechazar" Variante="peligro" Deshabilitado="motivoRechazo.Trim().Length < 5 || guardando" OnClick="() => DevolverAsync(false)" />
+                    <label for="motivo-rechazo">@L("Rechazar el traslado (todo regresa a la bodega de origen)")</label>
+                    <input id="motivo-rechazo" maxlength="200" placeholder="@L("Motivo del rechazo")" @bind="motivoRechazo" @bind:event="oninput" />
+                    <BotonIcono Icono="ban" Tooltip="@L("Rechazar el traslado")" Etiqueta="@L("Rechazar")" Variante="peligro" Deshabilitado="motivoRechazo.Trim().Length < 5 || guardando" OnClick="() => DevolverAsync(false)" />
                 </div>
             </AuthorizeView>
             <AuthorizeView Policy="Permiso:INVENTARIO_TRASLADO_ENVIAR" Context="permisoEnviar">
                 <div class="fila-edicion">
-                    <label for="motivo-cancelacion">Cancelar el envío (solo la sucursal de origen, mientras siga en tránsito)</label>
-                    <input id="motivo-cancelacion" maxlength="200" placeholder="Motivo de la cancelación" @bind="motivoCancelacion" @bind:event="oninput" />
-                    <BotonIcono Icono="ban" Tooltip="Cancelar el traslado" Etiqueta="Cancelar envío" Variante="peligro" Deshabilitado="motivoCancelacion.Trim().Length < 5 || guardando" OnClick="() => DevolverAsync(true)" />
+                    <label for="motivo-cancelacion">@L("Cancelar el envío (solo la sucursal de origen, mientras siga en tránsito)")</label>
+                    <input id="motivo-cancelacion" maxlength="200" placeholder="@L("Motivo de la cancelación")" @bind="motivoCancelacion" @bind:event="oninput" />
+                    <BotonIcono Icono="ban" Tooltip="@L("Cancelar el traslado")" Etiqueta="@L("Cancelar envío")" Variante="peligro" Deshabilitado="motivoCancelacion.Trim().Length < 5 || guardando" OnClick="() => DevolverAsync(true)" />
                 </div>
             </AuthorizeView>
         }
@@ -334,8 +334,8 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
     {
         get
         {
-            var lista = new List<PestanaItem> { new("lista", "Traslados") };
-            if (pestanaActiva == "nuevo") lista.Add(new("nuevo", "Nuevo traslado"));
+            var lista = new List<PestanaItem> { new("lista", L("Traslados")) };
+            if (pestanaActiva == "nuevo") lista.Add(new("nuevo", L("Nuevo traslado")));
             if (seleccionado is not null) lista.Add(new("detalle", seleccionado.Numero));
             return lista;
         }
@@ -453,7 +453,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
             }
             else if (productos.Count == 0)
             {
-                mensaje = "No hay productos con existencia en la bodega de origen que coincidan.";
+                mensaje = L("No hay productos con existencia en la bodega de origen que coincidan.");
                 esMensajeError = true;
             }
         }
@@ -474,7 +474,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
     {
         if (lineasNuevas.Any(l => l.Cantidad > l.Producto.Existencia))
         {
-            mensaje = "Hay cantidades mayores a la existencia de la bodega de origen (en rojo).";
+            mensaje = L("Hay cantidades mayores a la existencia de la bodega de origen (en rojo).");
             esMensajeError = true;
             return;
         }
@@ -489,7 +489,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
                 ?? (await TrasladoRepository.ConsultarAsync(null, null, null, null)).FirstOrDefault(t => t.TraId == id);
             if (traslado is not null) await AbrirAsync(traslado);
             else pestanaActiva = "lista";
-            MostrarOk($"Traslado {traslado?.Numero} enviado: salió de la bodega de origen y queda en tránsito hasta que lo reciban.");
+            MostrarOk(L("Traslado {0} enviado: salió de la bodega de origen y queda en tránsito hasta que lo reciban.", traslado?.Numero));
         }
         catch (Exception ex) { MostrarError(ex); }
         finally { guardando = false; }
@@ -529,8 +529,8 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
             await TrasladoRepository.RecibirAsync(seleccionado.TraId, cambios, diferencia, notaRecepcion, await ObtenerUsuIdActualAsync());
             await RefrescarSeleccionadoAsync();
             MostrarOk(faltante
-                ? $"Traslado {numero} recibido con diferencias: el ingreso por traslado registra lo que llegó y el resto quedó {(diferencia == "P" ? "como pérdida en tránsito" : "devuelto a la bodega de origen")}."
-                : $"Traslado {numero} recibido completo: se generó el ingreso por traslado en la bodega destino.");
+                ? L("Traslado {0} recibido con diferencias: el ingreso por traslado registra lo que llegó y el resto quedó {1}.", numero, (diferencia == "P" ? L("como pérdida en tránsito") : L("devuelto a la bodega de origen")))
+                : L("Traslado {0} recibido completo: se generó el ingreso por traslado en la bodega destino.", numero));
         }
         catch (Exception ex) { MostrarError(ex); }
         finally { guardando = false; }
@@ -545,7 +545,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
             var numero = seleccionado.Numero;
             await TrasladoRepository.DevolverAsync(seleccionado.TraId, esCancelacion ? motivoCancelacion : motivoRechazo, esCancelacion, await ObtenerUsuIdActualAsync());
             await RefrescarSeleccionadoAsync();
-            MostrarOk($"Traslado {numero} {(esCancelacion ? "cancelado" : "rechazado")}: la mercadería regresó a la bodega de origen.");
+            MostrarOk(L("Traslado {0} {1}: la mercadería regresó a la bodega de origen.", numero, (esCancelacion ? L("cancelado") : L("rechazado"))));
         }
         catch (Exception ex) { MostrarError(ex); }
         finally { guardando = false; }

@@ -267,7 +267,7 @@ public sealed class ChequeResumen
 	public string EstadoCheque { get; set; } = "E";	// E emitido, C cobrado, A anulado
 	public string? Observaciones { get; set; }
 	public string? Usuario { get; set; }
-	public string EstadoTexto => EstadoCheque switch { "A" => "Anulado", "C" => "Cobrado", _ => "Emitido" };
+	public string EstadoTexto => EstadoCheque switch { "A" => L("Anulado"), "C" => L("Cobrado"), _ => L("Emitido") };
 }
 
 // Transferencia a un proveedor ya hecha en el banco, con su comprobante.
@@ -314,7 +314,7 @@ public sealed class TransferenciaResumen
 	public int? ComprobanteTamanio { get; set; }
 	public string? Usuario { get; set; }
 	public DateTime? Registrado { get; set; }
-	public string EstadoTexto => Estado == "N" ? "Anulada" : "Vigente";
+	public string EstadoTexto => Estado == "N" ? L("Anulada") : L("Vigente");
 	public string CuentaDestinoTexto => string.IsNullOrEmpty(CuentaDestino) ? "—"
 		: $"{BancoDestino} {(TipoCuentaDestino == "A" ? "ahorro" : "monetaria")} {CuentaDestino}";
 }
@@ -413,7 +413,7 @@ public sealed class BoletaResumen
 	public string? Documentos { get; set; }
 	public bool TieneComprobante { get; set; }
 
-	public string EstadoTexto => Estado switch { "P" => "Por verificar", "V" => "Verificada", "R" => "Rechazada", _ => "Anulada" };
+	public string EstadoTexto => Estado switch { "P" => L("Por verificar"), "V" => L("Verificada"), "R" => L("Rechazada"), _ => L("Anulada") };
 }
 
 public sealed class BoletaCuota

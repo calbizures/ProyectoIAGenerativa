@@ -50,10 +50,10 @@ public sealed class GastoCajaChica
 
 	public static string NombreTipo(string tipo) => tipo switch
 	{
-		"F" => "Factura",
-		"P" => "Factura peq. contribuyente",
-		"R" => "Recibo",
-		_ => "Vale"
+		"F" => L("Factura"),
+		"P" => L("Factura peq. contribuyente"),
+		"R" => L("Recibo"),
+		_ => L("Vale")
 	};
 }
 
@@ -92,7 +92,7 @@ public sealed class ChequeCajaChica
 	public string? Liquidacion { get; set; }
 	public string? Cuenta { get; set; }
 
-	public string NombreTipo => Tipo switch { "C" => "Constitución", "A" => "Aumento", _ => "Reposición" };
+	public string NombreTipo => Tipo switch { "C" => L("Constitución"), "A" => L("Aumento"), _ => L("Reposición") };
 }
 
 public sealed class ArqueoCajaChica

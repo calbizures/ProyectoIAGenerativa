@@ -8,11 +8,11 @@
 @inject IGeneralRepository GeneralRepository
 @inject IBodegaRepository BodegaRepository
 
-<PageTitle>Bodegas</PageTitle>
+<PageTitle>@L("Bodegas")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Bodegas</h1>
-    <p>Cada bodega pertenece a una sucursal; una sucursal puede tener varias. Una bodega con existencias no se puede inactivar ni cambiar de sucursal.</p>
+    <h1>@L("Bodegas")</h1>
+    <p>@L("Cada bodega pertenece a una sucursal; una sucursal puede tener varias. Una bodega con existencias no se puede inactivar ni cambiar de sucursal.")</p>
 </div>
 
 @if (mensaje is not null)
@@ -21,38 +21,38 @@
 }
 
 <div class="barra-filtros">
-    <label for="filtro-sucursal">Sucursal</label>
+    <label for="filtro-sucursal">@L("Sucursal")</label>
     <select id="filtro-sucursal" value="@filtroSucId" @onchange="CambiarFiltroAsync">
-        <option value="0">Todas</option>
+        <option value="0">@L("Todas")</option>
         @foreach (var s in sucursales)
         {
             <option value="@s.SucId">@s.SucCodigo - @s.SucDescripcion</option>
         }
     </select>
     <span class="barra-herramientas-separador"></span>
-    <BotonIcono Icono="plus" Tooltip="Nueva bodega" Etiqueta="Nueva bodega" Variante="primario" OnClick="Nueva" />
+    <BotonIcono Icono="plus" Tooltip="@L("Nueva bodega")" Etiqueta="@L("Nueva bodega")" Variante="primario" OnClick="Nueva" />
 </div>
 
 @if (editandoId is not null)
 {
     <section class="tarjeta" aria-labelledby="titulo-edicion">
-        <h2 id="titulo-edicion">@(editandoId == 0 ? "Nueva bodega" : "Editar bodega")</h2>
+        <h2 id="titulo-edicion">@(editandoId == 0 ? L("Nueva bodega") : L("Editar bodega"))</h2>
         <div class="panel-formulario">
             <div class="campo">
-                <label for="bod-sucursal">Sucursal</label>
+                <label for="bod-sucursal">@L("Sucursal")</label>
                 <select id="bod-sucursal" @bind="formSucId">
-                    <option value="0">Seleccione...</option>
+                    <option value="0">@L("Seleccione...")</option>
                     @foreach (var s in sucursales.Where(s => s.SucEstado == "A" || s.SucId == formSucId))
                     {
                         <option value="@s.SucId">@s.SucCodigo - @s.SucDescripcion</option>
                     }
                 </select>
             </div>
-            <div class="campo"><label for="bod-codigo">Código</label><input id="bod-codigo" @bind="formCodigo" maxlength="8" /></div>
-            <div class="campo"><label for="bod-desc">Descripción</label><input id="bod-desc" @bind="formDescripcion" maxlength="128" /></div>
+            <div class="campo"><label for="bod-codigo">@L("Código")</label><input id="bod-codigo" @bind="formCodigo" maxlength="8" /></div>
+            <div class="campo"><label for="bod-desc">@L("Descripción")</label><input id="bod-desc" @bind="formDescripcion" maxlength="128" /></div>
             <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" OnClick="GuardarAsync" />
-                <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => editandoId = null" />
+                <BotonIcono Icono="save" Tooltip="@L("Guardar")" Etiqueta="@L("Guardar")" Variante="primario" OnClick="GuardarAsync" />
+                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => editandoId = null" />
             </div>
         </div>
     </section>
@@ -60,13 +60,13 @@
 
 @if (bodegas.Count == 0)
 {
-    <p class="estado-vacio">No hay bodegas para el filtro seleccionado.</p>
+    <p class="estado-vacio">@L("No hay bodegas para el filtro seleccionado.")</p>
 }
 else
 {
     <table class="tabla-datos">
         <thead>
-            <tr><th>Sucursal</th><th class="col-codigo">Código</th><th>Bodega</th><th class="num">Productos con existencia</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+            <tr><th>@L("Sucursal")</th><th class="col-codigo">@L("Código")</th><th>@L("Bodega")</th><th class="num">@L("Productos con existencia")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr>
         </thead>
         <tbody>
             @foreach (var b in bodegas)
@@ -76,17 +76,17 @@ else
                     <td class="col-codigo">@b.BodCodigo</td>
                     <td>@b.BodDescripcion</td>
                     <td class="num">@b.ProductosConExistencia</td>
-                    <td class="col-estado"><span class="estado-badge @(b.BodEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(b.BodEstado == "A" ? "Activa" : "Inactiva")</span></td>
+                    <td class="col-estado"><span class="estado-badge @(b.BodEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(b.BodEstado == "A" ? L("Activa") : L("Inactiva"))</span></td>
                     <td class="col-acciones">
                         <div class="acciones-fila">
-                            <BotonIcono Icono="pencil" Tooltip="Editar bodega" OnClick="() => Editar(b)" />
+                            <BotonIcono Icono="pencil" Tooltip="@L("Editar bodega")" OnClick="() => Editar(b)" />
                             @if (b.BodEstado == "A")
                             {
-                                <BotonIcono Icono="ban" Tooltip="Inactivar bodega" Variante="peligro" Confirmacion="¿Inactivar la bodega?" OnClick='() => CambiarEstadoAsync(b, "I")' />
+                                <BotonIcono Icono="ban" Tooltip="@L("Inactivar bodega")" Variante="peligro" Confirmacion="@L("¿Inactivar la bodega?")" OnClick='() => CambiarEstadoAsync(b, "I")' />
                             }
                             else
                             {
-                                <BotonIcono Icono="check-circle" Tooltip="Activar bodega" OnClick='() => CambiarEstadoAsync(b, "A")' />
+                                <BotonIcono Icono="check-circle" Tooltip="@L("Activar bodega")" OnClick='() => CambiarEstadoAsync(b, "A")' />
                             }
                         </div>
                     </td>
@@ -172,14 +172,14 @@ else
     {
         if (formSucId == 0 || string.IsNullOrWhiteSpace(formCodigo) || string.IsNullOrWhiteSpace(formDescripcion))
         {
-            mensaje = "Seleccione la sucursal e ingrese el código y la descripción.";
+            mensaje = L("Seleccione la sucursal e ingrese el código y la descripción.");
             esMensajeError = true;
             return;
         }
         try
         {
             await BodegaRepository.GuardarAsync(editandoId == 0 ? null : editandoId, formSucId, formCodigo.Trim(), formDescripcion.Trim(), await ObtenerUsuIdActualAsync());
-            mensaje = editandoId == 0 ? "Bodega creada." : "Bodega actualizada.";
+            mensaje = editandoId == 0 ? L("Bodega creada.") : L("Bodega actualizada.");
             esMensajeError = false;
             editandoId = null;
             await CargarAsync();
@@ -192,7 +192,7 @@ else
         try
         {
             await BodegaRepository.CambiarEstadoAsync(b.BodId, estado, await ObtenerUsuIdActualAsync());
-            mensaje = estado == "A" ? "Bodega activada." : "Bodega inactivada.";
+            mensaje = estado == "A" ? L("Bodega activada.") : L("Bodega inactivada.");
             esMensajeError = false;
             await CargarAsync();
         }

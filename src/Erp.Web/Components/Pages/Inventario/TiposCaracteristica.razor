@@ -7,11 +7,11 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IProductoCaracteristicaRepository CaracteristicaRepository
 
-<PageTitle>Tipos de característica</PageTitle>
+<PageTitle>@L("Tipos de característica")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Tipos de característica</h1>
-    <p>Catálogo de tipos de característica de producto (Marca, Modelo, Garantía, Capacidad...).</p>
+    <h1>@L("Tipos de característica")</h1>
+    <p>@L("Catálogo de tipos de característica de producto (Marca, Modelo, Garantía, Capacidad...).")</p>
 </div>
 
 @if (mensaje is not null)
@@ -20,14 +20,14 @@
 }
 
 <div class="barra-herramientas">
-    <select @bind="filtroEstado" aria-label="Estado">
-        <option value="A">Vigentes</option>
-        <option value="I">Desactivados</option>
-        <option value="">Todos</option>
+    <select @bind="filtroEstado" aria-label="@L("Estado")">
+        <option value="A">@L("Vigentes")</option>
+        <option value="I">@L("Desactivados")</option>
+        <option value="">@L("Todos")</option>
     </select>
-    <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+    <BotonIcono Icono="search" Tooltip="@L("Buscar")" Etiqueta="@L("Buscar")" OnClick="BuscarAsync" />
     <span class="barra-herramientas-separador"></span>
-    <BotonIcono Icono="plus" Tooltip="Nuevo tipo" Etiqueta="Nuevo tipo" Variante="primario" OnClick="MostrarFormularioNuevo" />
+    <BotonIcono Icono="plus" Tooltip="@L("Nuevo tipo")" Etiqueta="@L("Nuevo tipo")" Variante="primario" OnClick="MostrarFormularioNuevo" />
 </div>
 
 @if (mostrarNuevo)
@@ -35,38 +35,38 @@
     <EditForm Model="nuevoTipo" OnValidSubmit="CrearTipoAsync" class="panel-formulario">
         <DataAnnotationsValidator />
         <ResumenValidacion />
-        <div class="campo"><label for="tipos-caracteristica-tipo-codigo">Código</label><InputText id="tipos-caracteristica-tipo-codigo" @bind-Value="nuevoTipo.Codigo" /></div>
-        <div class="campo"><label for="tipos-caracteristica-tipo-descripcion">Descripción</label><InputText id="tipos-caracteristica-tipo-descripcion" @bind-Value="nuevoTipo.Descripcion" /></div>
-        <div class="campo"><label for="tipos-caracteristica-tipo-orden">Orden</label><InputNumber id="tipos-caracteristica-tipo-orden" @bind-Value="nuevoTipo.Orden" /></div>
+        <div class="campo"><label for="tipos-caracteristica-tipo-codigo">@L("Código")</label><InputText id="tipos-caracteristica-tipo-codigo" @bind-Value="nuevoTipo.Codigo" /></div>
+        <div class="campo"><label for="tipos-caracteristica-tipo-descripcion">@L("Descripción")</label><InputText id="tipos-caracteristica-tipo-descripcion" @bind-Value="nuevoTipo.Descripcion" /></div>
+        <div class="campo"><label for="tipos-caracteristica-tipo-orden">@L("Orden")</label><InputNumber id="tipos-caracteristica-tipo-orden" @bind-Value="nuevoTipo.Orden" /></div>
         <div class="acciones-fila">
-            <BotonIcono Icono="save" Tooltip="Guardar" Etiqueta="Guardar" Variante="primario" TipoBoton="submit" />
-            <BotonIcono Icono="x" Tooltip="Cancelar" Etiqueta="Cancelar" OnClick="() => mostrarNuevo = false" />
+            <BotonIcono Icono="save" Tooltip="@L("Guardar")" Etiqueta="@L("Guardar")" Variante="primario" TipoBoton="submit" />
+            <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => mostrarNuevo = false" />
         </div>
     </EditForm>
 }
 
 <table class="tabla-datos">
     <thead>
-        <tr><th class="col-codigo">Código</th><th>Descripción</th><th class="col-estado">Orden</th><th class="col-estado">Estado</th><th class="col-acciones">Acciones</th></tr>
+        <tr><th class="col-codigo">@L("Código")</th><th>@L("Descripción")</th><th class="col-estado">@L("Orden")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr>
     </thead>
     <tbody>
         @if (tipos.Count == 0)
         {
-            <tr><td colspan="5">Sin tipos de característica registrados.</td></tr>
+            <tr><td colspan="5">@L("Sin tipos de característica registrados.")</td></tr>
         }
         @foreach (var t in tipos)
         {
             <tr>
                 @if (editandoId == t.PtcId)
                 {
-                    <td><input @bind="editCodigo" aria-label="Código" /></td>
-                    <td><input @bind="editDescripcion" aria-label="Descripción" /></td>
-                    <td class="col-estado"><input type="number" @bind="editOrden" aria-label="Orden" /></td>
-                    <td class="col-estado">@(t.PtcEstado == "A" ? "Vigente" : "Desactivado")</td>
+                    <td><input @bind="editCodigo" aria-label="@L("Código")" /></td>
+                    <td><input @bind="editDescripcion" aria-label="@L("Descripción")" /></td>
+                    <td class="col-estado"><input type="number" @bind="editOrden" aria-label="@L("Orden")" /></td>
+                    <td class="col-estado">@(t.PtcEstado == "A" ? L("Vigente") : L("Desactivado"))</td>
                     <td class="col-acciones">
                         <div class="acciones-fila">
-                            <BotonIcono Icono="save" Tooltip="Guardar" Variante="primario" OnClick="GuardarEdicionAsync" />
-                            <BotonIcono Icono="x" Tooltip="Cancelar" OnClick="() => editandoId = null" />
+                            <BotonIcono Icono="save" Tooltip="@L("Guardar")" Variante="primario" OnClick="GuardarEdicionAsync" />
+                            <BotonIcono Icono="x" Tooltip="@L("Cancelar")" OnClick="() => editandoId = null" />
                         </div>
                     </td>
                 }
@@ -75,13 +75,13 @@
                     <td class="col-codigo">@t.PtcCodigo</td>
                     <td>@t.PtcDescripcion</td>
                     <td class="col-estado">@t.PtcOrden</td>
-                    <td class="col-estado">@(t.PtcEstado == "A" ? "Vigente" : "Desactivado")</td>
+                    <td class="col-estado">@(t.PtcEstado == "A" ? L("Vigente") : L("Desactivado"))</td>
                     <td class="col-acciones">
                         <div class="acciones-fila">
-                            <BotonIcono Icono="pencil" Tooltip="Editar" OnClick="() => Editar(t)" />
+                            <BotonIcono Icono="pencil" Tooltip="@L("Editar")" OnClick="() => Editar(t)" />
                             @if (t.PtcEstado == "A")
                             {
-                                <BotonIcono Icono="trash-2" Tooltip="Desactivar" Confirmacion="¿Desactivar el tipo?" Variante="peligro" OnClick="() => DesactivarAsync(t)" />
+                                <BotonIcono Icono="trash-2" Tooltip="@L("Desactivar")" Confirmacion="@L("¿Desactivar el tipo?")" Variante="peligro" OnClick="() => DesactivarAsync(t)" />
                             }
                         </div>
                     </td>
@@ -138,7 +138,7 @@
             var usuId = await ObtenerUsuIdActualAsync();
             await CaracteristicaRepository.InsertarTipoAsync(nuevoTipo.Codigo, nuevoTipo.Descripcion, nuevoTipo.Orden, usuId);
             mostrarNuevo = false;
-            mensaje = "Tipo de característica creado correctamente.";
+            mensaje = L("Tipo de característica creado correctamente.");
             esMensajeError = false;
             await BuscarAsync();
         }
@@ -166,7 +166,7 @@
             var usuId = await ObtenerUsuIdActualAsync();
             await CaracteristicaRepository.ActualizarTipoAsync(editandoId.Value, editCodigo, editDescripcion, editOrden, usuId);
             editandoId = null;
-            mensaje = "Cambios guardados.";
+            mensaje = L("Cambios guardados.");
             esMensajeError = false;
             await BuscarAsync();
         }
@@ -183,7 +183,7 @@
         {
             var usuId = await ObtenerUsuIdActualAsync();
             await CaracteristicaRepository.EliminarTipoAsync(tipo.PtcId, usuId);
-            mensaje = "Tipo de característica desactivado.";
+            mensaje = L("Tipo de característica desactivado.");
             esMensajeError = false;
             await BuscarAsync();
         }

@@ -6,11 +6,11 @@
 @inject IProductoRepository ProductoRepository
 @inject IBodegaRepository BodegaRepository
 
-<PageTitle>Existencias por bodega</PageTitle>
+<PageTitle>@L("Existencias por bodega")</PageTitle>
 
 <div class="pagina-encabezado">
-    <h1>Existencias por bodega</h1>
-    <p>Consulta de existencias y kardex de cada producto. Este dato lo mantienen automáticamente las compras, ventas, traslados, ajustes y anulaciones — no se edita a mano.</p>
+    <h1>@L("Existencias por bodega")</h1>
+    <p>@L("Consulta de existencias y kardex de cada producto. Este dato lo mantienen automáticamente las compras, ventas, traslados, ajustes y anulaciones — no se edita a mano.")</p>
 </div>
 
 @if (mensaje is not null)
@@ -19,16 +19,16 @@
 }
 
 <div class="barra-filtros">
-    <input type="search" placeholder="Buscar por código o descripción" aria-label="Buscar producto por código o descripción" @bind="textoBusqueda" @bind:event="oninput" />
-    <select @bind="filtroProId" @bind:after="CambiarFiltroAsync" aria-label="Producto">
-        <option value="0">@(vista == "kardex" ? "Seleccione el producto..." : "Todos los productos")</option>
+    <input type="search" placeholder="@L("Buscar por código o descripción")" aria-label="@L("Buscar producto por código o descripción")" @bind="textoBusqueda" @bind:event="oninput" />
+    <select @bind="filtroProId" @bind:after="CambiarFiltroAsync" aria-label="@L("Producto")">
+        <option value="0">@(vista == "kardex" ? L("Seleccione el producto...") : L("Todos los productos"))</option>
         @foreach (var p in ProductosVisibles)
         {
             <option value="@p.ProId">@p.ProCodigo - @p.ProDescripcion</option>
         }
     </select>
-    <select @bind="filtroBodId" @bind:after="CambiarFiltroAsync" aria-label="Bodega">
-        <option value="0">Todas las bodegas</option>
+    <select @bind="filtroBodId" @bind:after="CambiarFiltroAsync" aria-label="@L("Bodega")">
+        <option value="0">@L("Todas las bodegas")</option>
         @foreach (var bod in bodegas)
         {
             <option value="@bod.BodId">@bod.BodDescripcion</option>
@@ -40,14 +40,14 @@
         <span class="barra-herramientas-separador"></span>
         @if (kardex is not null)
         {
-            <a class="boton-icono boton-icono-con-etiqueta" href="@UrlExcel" download title="Exportar el kardex a Excel">
-                <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">Excel</span>
+            <a class="boton-icono boton-icono-con-etiqueta" href="@UrlExcel" download title="@L("Exportar el kardex a Excel")">
+                <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">@L("Excel")</span>
             </a>
         }
     }
     else
     {
-        <BotonIcono Icono="search" Tooltip="Buscar" Etiqueta="Buscar" OnClick="BuscarAsync" />
+        <BotonIcono Icono="search" Tooltip="@L("Buscar")" Etiqueta="@L("Buscar")" OnClick="BuscarAsync" />
     }
 </div>
 
@@ -58,12 +58,12 @@
     <div class="tabla-desplazable">
         <table class="tabla-datos">
             <thead>
-                <tr><th>Producto</th><th>Bodega</th><th class="num">Existencia</th><th class="col-acciones"><span class="sr-only">Kardex</span></th></tr>
+                <tr><th>@L("Producto")</th><th>@L("Bodega")</th><th class="num">@L("Existencia")</th><th class="col-acciones"><span class="sr-only">@L("Kardex")</span></th></tr>
             </thead>
             <tbody>
                 @if (!ExistenciasVisibles.Any())
                 {
-                    <tr><td colspan="4">Sin existencias para los filtros seleccionados.</td></tr>
+                    <tr><td colspan="4">@L("Sin existencias para los filtros seleccionados.")</td></tr>
                 }
                 @foreach (var e in ExistenciasVisibles)
                 {
@@ -72,7 +72,7 @@
                         <td>@e.BodDescripcion</td>
                         <td class="num">@e.Existencia.ToString("N0")</td>
                         <td class="col-acciones">
-                            <BotonIcono Icono="list" Tooltip="@($"Ver el kardex de {e.ProCodigo}")" Etiqueta="Kardex" OnClick="() => VerKardexAsync(e.ProId, e.BodId)" />
+                            <BotonIcono Icono="list" Tooltip="@(L("Ver el kardex de {0}", e.ProCodigo))" Etiqueta="@L("Kardex")" OnClick="() => VerKardexAsync(e.ProId, e.BodId)" />
                         </td>
                     </tr>
                 }
@@ -82,7 +82,7 @@
 }
 else if (filtroProId == 0)
 {
-    <p class="estado-vacio">Elija un producto para ver su kardex: cada entrada y salida con su costo, el saldo y el costo promedio después de cada movimiento.</p>
+    <p class="estado-vacio">@L("Elija un producto para ver su kardex: cada entrada y salida con su costo, el saldo y el costo promedio después de cada movimiento.")</p>
 }
 else if (kardex is not null)
 {
@@ -93,42 +93,42 @@ else if (kardex is not null)
     <div class="kpi-fila">
         @if (desde is not null)
         {
-            <div class="kpi"><span class="kpi-etiqueta">Saldo anterior</span><span class="kpi-valor">@r.InicialCantidad.ToString("N0")</span><span class="kpi-detalle">Q@(r.InicialValor.ToString("N2"))</span></div>
+            <div class="kpi"><span class="kpi-etiqueta">@L("Saldo anterior")</span><span class="kpi-valor">@r.InicialCantidad.ToString("N0")</span><span class="kpi-detalle">Q@(r.InicialValor.ToString("N2"))</span></div>
         }
-        <div class="kpi"><span class="kpi-etiqueta">Entradas</span><span class="kpi-valor">@entradas.ToString("N0")</span></div>
-        <div class="kpi"><span class="kpi-etiqueta">Salidas</span><span class="kpi-valor">@salidas.ToString("N0")</span></div>
-        <div class="kpi"><span class="kpi-etiqueta">@(filtroBodId == 0 ? "Existencia" : "Existencia en la bodega")</span><span class="kpi-valor">@((filtroBodId == 0 ? r.ExistenciaBodegas : r.ExistenciaBodega).ToString("N0"))</span></div>
-        <div class="kpi"><span class="kpi-etiqueta">Costo promedio actual</span><span class="kpi-valor">Q@(r.GuardadoPromedio.ToString("N2"))</span><span class="kpi-detalle">Valor Q@(r.GuardadoValor.ToString("N2"))</span></div>
+        <div class="kpi"><span class="kpi-etiqueta">@L("Entradas")</span><span class="kpi-valor">@entradas.ToString("N0")</span></div>
+        <div class="kpi"><span class="kpi-etiqueta">@L("Salidas")</span><span class="kpi-valor">@salidas.ToString("N0")</span></div>
+        <div class="kpi"><span class="kpi-etiqueta">@(filtroBodId == 0 ? L("Existencia") : L("Existencia en la bodega"))</span><span class="kpi-valor">@((filtroBodId == 0 ? r.ExistenciaBodegas : r.ExistenciaBodega).ToString("N0"))</span></div>
+        <div class="kpi"><span class="kpi-etiqueta">@L("Costo promedio actual")</span><span class="kpi-valor">Q@(r.GuardadoPromedio.ToString("N2"))</span><span class="kpi-detalle">@L("Valor Q{0}", r.GuardadoValor.ToString("N2"))</span></div>
     </div>
 
     @if (r.CuadraCantidad && r.CuadraCosto && (filtroBodId == 0 || r.CalculadoBodega == r.ExistenciaBodega))
     {
-        <p class="doc-nota" role="status"><Icono Nombre="check-circle" Tamano="15" /><span>Comprobado: el kardex llega a la misma existencia (@r.CalculadoCantidad.ToString("N0")), al mismo valor (Q@(r.CalculadoValor.ToString("N2"))) y al mismo costo promedio (Q@(r.CalculadoPromedio.ToString("N4"))) guardados en el producto.</span></p>
+        <p class="doc-nota" role="status"><Icono Nombre="check-circle" Tamano="15" /><span>@L("Comprobado: el kardex llega a la misma existencia ({0}), al mismo valor (Q{1}) y al mismo costo promedio (Q{2}) guardados en el producto.", r.CalculadoCantidad.ToString("N0"), r.CalculadoValor.ToString("N2"), r.CalculadoPromedio.ToString("N4"))</span></p>
     }
     else
     {
         <div class="mensaje-error" role="alert">
-            <strong>El kardex no cuadra con lo guardado.</strong>
-            Según el kardex: @r.CalculadoCantidad.ToString("N2") unidades, Q@(r.CalculadoValor.ToString("N2")), promedio Q@(r.CalculadoPromedio.ToString("N4")).
-            Guardado: @r.GuardadoCantidad.ToString("N2") unidades, Q@(r.GuardadoValor.ToString("N2")), promedio Q@(r.GuardadoPromedio.ToString("N4")); existencia en bodegas @r.ExistenciaBodegas.ToString("N2")@(filtroBodId == 0 ? "" : $" (en esta bodega: kardex {r.CalculadoBodega:N2}, guardado {r.ExistenciaBodega:N2})").
+            <strong>@L("El kardex no cuadra con lo guardado.")</strong>
+            @L("Según el kardex: {0} unidades, Q{1}, promedio Q{2}.", r.CalculadoCantidad.ToString("N2"), r.CalculadoValor.ToString("N2"), r.CalculadoPromedio.ToString("N4"))
+            @L("Guardado: {0} unidades, Q{1}, promedio Q{2}; existencia en bodegas {3}", r.GuardadoCantidad.ToString("N2"), r.GuardadoValor.ToString("N2"), r.GuardadoPromedio.ToString("N4"), r.ExistenciaBodegas.ToString("N2"))@(filtroBodId == 0 ? "" : L(" (en esta bodega: kardex {0:N2}, guardado {1:N2})", r.CalculadoBodega, r.ExistenciaBodega)).
         </div>
     }
-    <p class="texto-ayuda">Orden de proceso del sistema (fecha y hora de registro). El saldo, el valor y el costo promedio son del producto en todas las bodegas; la última columna es la existencia de la bodega del movimiento. Un documento anulado aparece con su anulación, al mismo costo.</p>
+    <p class="texto-ayuda">@L("Orden de proceso del sistema (fecha y hora de registro). El saldo, el valor y el costo promedio son del producto en todas las bodegas; la última columna es la existencia de la bodega del movimiento. Un documento anulado aparece con su anulación, al mismo costo.")</p>
 
     <div class="tabla-desplazable">
         <table class="tabla-datos tabla-compacta kardex-tabla">
             <thead>
                 <tr>
-                    <th class="col-fecha">Fecha</th><th>Documento</th><th>Bodega</th>
-                    <th class="num">Entrada</th><th class="num">Salida</th><th class="num">Costo unit.</th><th class="num">Costo total</th>
-                    <th class="num">Saldo</th><th class="num">Valor</th><th class="num">Promedio</th><th class="num">En bodega</th>
+                    <th class="col-fecha">@L("Fecha")</th><th>@L("Documento")</th><th>@L("Bodega")</th>
+                    <th class="num">@L("Entrada")</th><th class="num">@L("Salida")</th><th class="num">@L("Costo unit.")</th><th class="num">@L("Costo total")</th>
+                    <th class="num">@L("Saldo")</th><th class="num">@L("Valor")</th><th class="num">@L("Promedio")</th><th class="num">@L("En bodega")</th>
                 </tr>
             </thead>
             <tbody>
                 @if (desde is not null)
                 {
                     <tr class="kardex-saldo-anterior">
-                        <td colspan="7">Saldo anterior al @desde.Value.ToString("dd/MM/yyyy")</td>
+                        <td colspan="7">@L("Saldo anterior al {0}", desde.Value.ToString("dd/MM/yyyy"))</td>
                         <td class="num">@r.InicialCantidad.ToString("N0")</td>
                         <td class="num">@r.InicialValor.ToString("N2")</td>
                         <td class="num">@r.InicialPromedio.ToString("N2")</td>
@@ -137,14 +137,14 @@ else if (kardex is not null)
                 }
                 @if (kardex.Movimientos.Count == 0)
                 {
-                    <tr><td colspan="11" class="doc-tabla-vacia">Sin movimientos para los filtros seleccionados.</td></tr>
+                    <tr><td colspan="11" class="doc-tabla-vacia">@L("Sin movimientos para los filtros seleccionados.")</td></tr>
                 }
                 @foreach (var m in kardex.Movimientos)
                 {
                     <tr class="@(m.EsReversa ? "kardex-reversa" : "")">
                         <td class="col-fecha" title="Registrado @m.Registrado.ToString("dd/MM/yyyy HH:mm")">@m.Fecha.ToString("dd/MM/yyyy")</td>
                         <td>
-                            <strong>@(m.EsReversa ? "Anulación · " : "")@m.Tipo @m.Documento</strong>
+                            <strong>@(m.EsReversa ? L("Anulación · ") : "")@m.Tipo @m.Documento</strong>
                             <small class="texto-tenue kardex-detalle">@m.TipoNombre@(string.IsNullOrWhiteSpace(m.Tercero) ? "" : $" · {m.Tercero}")</small>
                         </td>
                         <td>@m.Bodega</td>
@@ -163,7 +163,7 @@ else if (kardex is not null)
             {
                 <tfoot>
                     <tr>
-                        <td colspan="3">Total del período</td>
+                        <td colspan="3">@L("Total del período")</td>
                         <td class="num">@entradas.ToString("N0")</td>
                         <td class="num">@salidas.ToString("N0")</td>
                         <td></td>
