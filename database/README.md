@@ -2099,6 +2099,55 @@ Errores nuevos: 55901-55914.
   grababa (exigía el código sin cargarlo) y borraba el correo.
 
 
+## Tema e idioma de la aplicación
+
+No cambia la base de datos. En el menú lateral (y en el inicio de sesión)
+hay dos grupos de botones:
+
+- **Tema**: Sistema (sigue al sistema operativo), Claro u Oscuro. Se guarda
+  en la cookie `erp-tema` del navegador y el servidor pinta la página ya con
+  el tema elegido (`data-theme` en `<html>`). Los colores están como
+  variables en `wwwroot/app.css`; el tema oscuro las redefine solo en
+  pantalla: al imprimir, y en las vistas imprimibles, se usan los claros.
+- **Idioma**: ES o EN. Se guarda en la cookie `erp-idioma` y la pantalla se
+  recarga. Solo cambia el idioma de la interfaz: los números, las fechas y
+  los montos conservan el formato de la aplicación.
+
+**Cómo funcionan las traducciones.** Los textos de la aplicación siguen
+escritos en español y pasan por `L("texto")` (`Erp.Web/Idioma/Textos.cs`):
+el texto en español es la llave y la traducción está en
+`Erp.Web/Idioma/en/*.json`, un archivo por módulo (incrustados en el
+ensamblado). Si una llave no tiene traducción, se muestra en español. Los
+mensajes que ya vienen armados (errores de la base de datos, de FEL o del
+correo) se traducen con `Mensaje(...)`, que también reconoce las plantillas
+con valores (`"El pago (Q{0}) supera el saldo de la cuota (Q{1})."`): los
+583 mensajes de los `THROW` de los scripts están en `BaseDatos.json`. Las
+etiquetas de los modelos de `Erp.Data` usan el mismo traductor
+(`TextosDatos`).
+
+Para agregar un texto nuevo: escríbalo en español con `L("...")` (con
+`{0}`, `{1}` si lleva valores) y agregue su traducción al JSON del módulo.
+Un mensaje nuevo de un procedimiento (`THROW`) se agrega a `BaseDatos.json`.
+
+**Se quedan en español** aunque la pantalla esté en inglés:
+
+- Los documentos para terceros y los legales: factura y ticket, cotización,
+  recibo de caja, contraseña de pago, orden de compra impresa, XML del DTE,
+  correos al cliente, estado de cuenta en PDF, libro de salarios y planilla
+  del IGSS (pantalla, Excel y archivo).
+- Lo que se graba en la base al hacer una operación (concepto del pago,
+  descripción de una devolución o de una póliza de reversión, observaciones
+  de una orden sugerida, descripción de la nómina) y los datos capturados
+  por los usuarios (nombres, productos, cuentas contables, municipios).
+- Las plantillas de Excel que se vuelven a subir (inventario inicial,
+  empleados, saldos iniciales, hoja de conteo, estado de cuenta del banco):
+  el archivo se lee por los nombres de sus columnas.
+
+Los catálogos que llena la instalación y se muestran como texto de la
+interfaz sí se traducen: descripciones de los permisos, conceptos de las
+cuentas de pólizas, controles de integridad, orígenes de las pólizas y
+conceptos del flujo de caja.
+
 ## Módulos nuevos
 
 - **Seguridad (`sec_*`)**: roles, permisos y las tablas de asignación
