@@ -540,5 +540,6 @@
   "Partida proyectada": "Projected item",
   "Préstamos recibidos y pagados": "Loans received and repaid",
   "Saldos de apertura": "Opening balances",
-  "Sueldos y prestaciones": "Salaries and benefits"
+  "Sueldos y prestaciones": "Salaries and benefits",
+  "Sem. {0:dd/MM}": "Wk. {0:dd/MM}"
 }

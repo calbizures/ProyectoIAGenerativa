@@ -28,8 +28,8 @@ public sealed class FlujoCajaPivote
 	public decimal SaldoFinal => SaldoInicial + Periodos.Sum(Neto);
 
 	public string Etiqueta(DateTime periodo) => Agrupar == "S"
-		? $"Sem. {periodo:dd/MM}"
-		: CultureInfo.GetCultureInfo("es-GT").TextInfo.ToTitleCase(periodo.ToString("MMM yyyy", CultureInfo.GetCultureInfo("es-GT")).Replace(".", ""));
+		? L("Sem. {0:dd/MM}", periodo)
+		: CultureInfo.GetCultureInfo(EsIngles ? "en-US" : "es-GT").TextInfo.ToTitleCase(periodo.ToString("MMM yyyy", CultureInfo.GetCultureInfo(EsIngles ? "en-US" : "es-GT")).Replace(".", ""));
 
 	public static DateTime Periodo(DateTime fecha, string agrupar) => agrupar == "S"
 		? fecha.Date.AddDays(-(((int)fecha.DayOfWeek + 6) % 7))

@@ -82,7 +82,7 @@
             </TarjetaGrafico>
             <TarjetaGrafico Titulo="@L("Mejores clientes")" Descripcion="@L("Venta neta del período; clic para ver su estado de cuenta.")">
                 <GraficoBarrasH Titulo="@L("Mejores clientes")" Filas="@(ventas.Clientes.Select(c => new BarraFila(c.Id, c.Nombre, c.Ventas, L("{0} fact.", c.Facturas))).ToList())"
-                                OnSeleccionar="@(id => Abrir($"cxc/estado-cuenta?id={id}"))" PistaSeleccion="Abrir su estado de cuenta" />
+                                OnSeleccionar="@(id => Abrir($"cxc/estado-cuenta?id={id}"))" PistaSeleccion="@L("Abrir su estado de cuenta")" />
             </TarjetaGrafico>
             <TarjetaGrafico Titulo="@L("Productos y servicios más vendidos")" Descripcion="@L("Venta neta y margen del período.")">
                 <GraficoBarrasH Titulo="@L("Productos y servicios")" Filas="@(ventas.Productos.Select(p => new BarraFila(p.Id, p.Nombre, p.Ventas, L("margen {0}", PaletaGraficos.Porcentaje(p.Ventas == 0 ? 0 : (p.Ventas - p.Costo) / p.Ventas * 100)))).ToList())" />
@@ -119,11 +119,11 @@
             </TarjetaGrafico>
             <TarjetaGrafico Titulo="@L("Antigüedad del saldo")" Descripcion="@L("Saldo a hoy por días de atraso.")">
                 <GraficoBarrasH Titulo="@L("Antigüedad del saldo")" Filas="@(cartera.Antiguedad.Select(a => new BarraFila(a.Orden, a.Rango, a.Saldo, L("{0} cuotas", a.Cuotas))).ToList())"
-                                OnSeleccionar="@(_ => Abrir("cxc/antiguedad"))" PistaSeleccion="Abrir la antigüedad de saldos" />
+                                OnSeleccionar="@(_ => Abrir("cxc/antiguedad"))" PistaSeleccion="@L("Abrir la antigüedad de saldos")" />
             </TarjetaGrafico>
             <TarjetaGrafico Titulo="@L("Clientes con más saldo vencido")" Descripcion="@L("Clic para ver su estado de cuenta.")">
                 <GraficoBarrasH Titulo="@L("Clientes con saldo vencido")" Filas="@(cartera.Deudores.Select(d => new BarraFila(d.Id, d.Nombre, d.Vencido, L("{0} días", d.DiasMaximo))).ToList())"
-                                OnSeleccionar="@(id => Abrir($"cxc/estado-cuenta?id={id}"))" PistaSeleccion="Abrir su estado de cuenta"
+                                OnSeleccionar="@(id => Abrir($"cxc/estado-cuenta?id={id}"))" PistaSeleccion="@L("Abrir su estado de cuenta")"
                                 TextoVacio="@L("Ningún cliente tiene saldo vencido.")" />
             </TarjetaGrafico>
             <TarjetaGrafico Titulo="@L("Cobros por forma de pago")">
@@ -162,7 +162,7 @@
             </TarjetaGrafico>
             <TarjetaGrafico Titulo="@L("Principales proveedores")" Descripcion="@L("Compras del período; clic para ver su estado de cuenta.")" Clase="tablero-ancho">
                 <GraficoBarrasH Titulo="@L("Principales proveedores")" Filas="@(compras.Proveedores.Select(p => new BarraFila(p.Id, p.Nombre, p.Compras, p.Saldo > 0 ? L("saldo {0}", PaletaGraficos.MonedaCompacta(p.Saldo)) : null)).ToList())"
-                                OnSeleccionar="@(id => Abrir($"cxp/estado-cuenta?id={id}"))" PistaSeleccion="Abrir su estado de cuenta" />
+                                OnSeleccionar="@(id => Abrir($"cxp/estado-cuenta?id={id}"))" PistaSeleccion="@L("Abrir su estado de cuenta")" />
             </TarjetaGrafico>
             <TarjetaGrafico Titulo="@L("Próximos pagos")" Descripcion="@L("Cuotas pendientes con proveedores, de la más antigua a la más reciente.")" Clase="tablero-ancho">
                 @if (compras.Proximas.Count == 0)

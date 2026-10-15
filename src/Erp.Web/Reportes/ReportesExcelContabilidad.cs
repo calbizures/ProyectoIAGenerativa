@@ -9,9 +9,9 @@ public static partial class ReportesExcel
 	public static byte[] LibroDiario(IReadOnlyList<LibroDiarioLinea> lineas, ReporteContable reporte, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
-		var hoja = libro.Worksheets.Add("Libro diario");
+		var hoja = libro.Worksheets.Add(L("Libro diario"));
 		var fila = Encabezado(hoja, compania, reporte.Titulo, reporte.Rango);
-		fila = Titulos(hoja, fila, new List<string> { "Fecha", "Póliza", "Origen", "Concepto", "Cuenta", "Nombre", "Descripción", "Debe", "Haber" });
+		fila = Titulos(hoja, fila, new List<string> { L("Fecha"), L("Póliza"), L("Origen"), L("Concepto"), L("Cuenta"), L("Nombre"), L("Descripción"), L("Debe"), L("Haber") });
 		var inicioDatos = fila;
 		foreach (var l in lineas)
 		{
@@ -36,15 +36,15 @@ public static partial class ReportesExcel
 	public static byte[] LibroMayor(IReadOnlyList<MayorCuenta> cuentas, ReporteContable reporte, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
-		var hoja = libro.Worksheets.Add("Libro mayor");
+		var hoja = libro.Worksheets.Add(L("Libro mayor"));
 		var fila = Encabezado(hoja, compania, reporte.Titulo, reporte.Rango);
-		fila = Titulos(hoja, fila, new List<string> { "Cuenta", "Nombre", "Fecha", "Póliza", "Concepto", "Debe", "Haber", "Saldo" });
+		fila = Titulos(hoja, fila, new List<string> { L("Cuenta"), L("Nombre"), L("Fecha"), L("Póliza"), L("Concepto"), L("Debe"), L("Haber"), L("Saldo") });
 		var inicioDatos = fila;
 		foreach (var c in cuentas)
 		{
 			hoja.Cell(fila, 1).Value = c.Codigo;
 			hoja.Cell(fila, 2).Value = c.Cuenta;
-			hoja.Cell(fila, 5).Value = "Saldo inicial";
+			hoja.Cell(fila, 5).Value = L("Saldo inicial");
 			hoja.Cell(fila, 8).Value = c.SaldoInicial;
 			hoja.Range(fila, 1, fila, 8).Style.Font.Bold = true;
 			fila++;
@@ -61,7 +61,7 @@ public static partial class ReportesExcel
 				fila++;
 			}
 			hoja.Cell(fila, 1).Value = c.Codigo;
-			hoja.Cell(fila, 5).Value = "Saldo final";
+			hoja.Cell(fila, 5).Value = L("Saldo final");
 			hoja.Cell(fila, 6).Value = c.Debe;
 			hoja.Cell(fila, 7).Value = c.Haber;
 			hoja.Cell(fila, 8).Value = c.SaldoFinal;
@@ -77,9 +77,9 @@ public static partial class ReportesExcel
 	public static byte[] Balanza(IReadOnlyList<BalanzaFila> filas, ReporteContable reporte, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
-		var hoja = libro.Worksheets.Add("Balanza");
+		var hoja = libro.Worksheets.Add(L("Balanza"));
 		var fila = Encabezado(hoja, compania, reporte.Titulo, reporte.Rango);
-		fila = Titulos(hoja, fila, new List<string> { "Cuenta", "Nombre", "Nivel", "Inicial deudor", "Inicial acreedor", "Debe", "Haber", "Final deudor", "Final acreedor" });
+		fila = Titulos(hoja, fila, new List<string> { L("Cuenta"), L("Nombre"), L("Nivel"), L("Inicial deudor"), L("Inicial acreedor"), L("Debe"), L("Haber"), L("Final deudor"), L("Final acreedor") });
 		var inicioDatos = fila;
 		var maximo = filas.Count == 0 ? 0 : filas.Max(f => f.Nivel);
 		var minimo = filas.Count == 0 ? 0 : filas.Min(f => f.Nivel);
@@ -98,7 +98,7 @@ public static partial class ReportesExcel
 			fila++;
 		}
 		// Sumas iguales: solo las cuentas del primer nivel mostrado (las demás ya están dentro).
-		hoja.Cell(fila, 2).Value = "Sumas iguales";
+		hoja.Cell(fila, 2).Value = L("Sumas iguales");
 		for (var c = 4; c <= 9; c++)
 		{
 			var letra = XLHelper.GetColumnLetterFromNumber(c);
@@ -114,10 +114,10 @@ public static partial class ReportesExcel
 	public static byte[] BalanceGeneral(BalanceGeneral balance, ReporteContable reporte, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
-		var hoja = libro.Worksheets.Add("Balance General");
+		var hoja = libro.Worksheets.Add(L("Balance General"));
 		var fila = Encabezado(hoja, compania, reporte.Titulo, reporte.Rango);
-		var columnas = new List<string> { "Cuenta", "Nombre", reporte.EtiquetaActual };
-		if (reporte.Comparar) columnas.AddRange(new[] { reporte.EtiquetaComparativa, "Variación" });
+		var columnas = new List<string> { L("Cuenta"), L("Nombre"), reporte.EtiquetaActual };
+		if (reporte.Comparar) columnas.AddRange(new[] { reporte.EtiquetaComparativa, L("Variación") });
 		fila = Titulos(hoja, fila, columnas);
 		var inicioDatos = fila;
 		var t = balance.Totales;
@@ -145,19 +145,19 @@ public static partial class ReportesExcel
 			switch (tipo)
 			{
 				case "A":
-					Fila("", "TOTAL ACTIVO", t.Activo, t.ActivoComparativo, true);
+					Fila("", L("TOTAL ACTIVO"), t.Activo, t.ActivoComparativo, true);
 					fila++;
 					break;
 				case "P":
-					Fila("", "Total pasivo", t.Pasivo, t.PasivoComparativo, true);
+					Fila("", L("Total pasivo"), t.Pasivo, t.PasivoComparativo, true);
 					break;
 				default:
 					if (t.ResultadosAnteriores != 0 || t.ResultadosAnterioresComparativo != 0)
-						Fila("", "  Resultados de ejercicios anteriores (sin partida de cierre)", t.ResultadosAnteriores, t.ResultadosAnterioresComparativo, false);
-					Fila("", $"  {(t.ResultadoEjercicio >= 0 ? "Utilidad" : "Pérdida")} del ejercicio", t.ResultadoEjercicio, t.ResultadoEjercicioComparativo, false);
-					Fila("", "Total capital", t.Capital + t.ResultadoEjercicio + t.ResultadosAnteriores,
+						Fila("", L("  Resultados de ejercicios anteriores (sin partida de cierre)"), t.ResultadosAnteriores, t.ResultadosAnterioresComparativo, false);
+					Fila("", L("  {0} del ejercicio", (t.ResultadoEjercicio >= 0 ? L("Utilidad") : L("Pérdida"))), t.ResultadoEjercicio, t.ResultadoEjercicioComparativo, false);
+					Fila("", L("Total capital"), t.Capital + t.ResultadoEjercicio + t.ResultadosAnteriores,
 						t.CapitalComparativo + t.ResultadoEjercicioComparativo + t.ResultadosAnterioresComparativo, true);
-					Fila("", "TOTAL PASIVO Y CAPITAL", t.PasivoCapital, t.PasivoCapitalComparativo, true);
+					Fila("", L("TOTAL PASIVO Y CAPITAL"), t.PasivoCapital, t.PasivoCapitalComparativo, true);
 					break;
 			}
 		}
@@ -168,10 +168,10 @@ public static partial class ReportesExcel
 	public static byte[] EstadoResultados(EstadoResultados estado, ReporteContable reporte, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
-		var hoja = libro.Worksheets.Add("Estado de Resultados");
+		var hoja = libro.Worksheets.Add(L("Estado de Resultados"));
 		var fila = Encabezado(hoja, compania, reporte.Titulo, reporte.Rango);
-		var columnas = new List<string> { "Cuenta", "Nombre", reporte.EtiquetaActual };
-		if (reporte.Comparar) columnas.AddRange(new[] { reporte.EtiquetaComparativa, "Variación" });
+		var columnas = new List<string> { L("Cuenta"), L("Nombre"), reporte.EtiquetaActual };
+		if (reporte.Comparar) columnas.AddRange(new[] { reporte.EtiquetaComparativa, L("Variación") });
 		fila = Titulos(hoja, fila, columnas);
 		var inicioDatos = fila;
 		var t = estado.Totales;
@@ -194,14 +194,14 @@ public static partial class ReportesExcel
 
 		foreach (var f in estado.Filas.Where(f => f.Tipo == "I"))
 			Fila(f.Codigo, new string(' ', (f.Nivel - 1) * 2) + (f.Naturaleza == "D" ? "(−) " : "") + f.Cuenta, f.Saldo, f.SaldoComparativo, f.Nivel < maximo);
-		Fila("", "Ventas e ingresos", t.Ingresos, c.Ingresos, false);
-		Fila("", "(−) Costo de ventas", t.Costos, c.Costos, false);
-		Fila("", "UTILIDAD BRUTA", t.UtilidadBruta, c.UtilidadBruta, true);
+		Fila("", L("Ventas e ingresos"), t.Ingresos, c.Ingresos, false);
+		Fila("", L("(−) Costo de ventas"), t.Costos, c.Costos, false);
+		Fila("", L("UTILIDAD BRUTA"), t.UtilidadBruta, c.UtilidadBruta, true);
 		fila++;
 		foreach (var f in estado.Filas.Where(f => f.Tipo == "G"))
 			Fila(f.Codigo, new string(' ', (f.Nivel - 1) * 2) + f.Cuenta, f.Saldo, f.SaldoComparativo, f.Nivel < maximo);
-		Fila("", "(−) Total gastos de operación", t.Gastos, c.Gastos, false);
-		Fila("", $"{(t.UtilidadNeta >= 0 ? "UTILIDAD" : "PÉRDIDA")} NETA DEL PERÍODO", t.UtilidadNeta, c.UtilidadNeta, true);
+		Fila("", L("(−) Total gastos de operación"), t.Gastos, c.Gastos, false);
+		Fila("", L("{0} NETA DEL PERÍODO", (t.UtilidadNeta >= 0 ? L("UTILIDAD") : L("PÉRDIDA"))), t.UtilidadNeta, c.UtilidadNeta, true);
 		Formato(hoja, inicioDatos, fila, 3, columnas.Count);
 		return Guardar(libro);
 	}
@@ -209,10 +209,10 @@ public static partial class ReportesExcel
 	public static byte[] ActivosFijos(IReadOnlyList<Erp.Data.ActivosFijos.ActivoFijo> activos, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
-		var hoja = libro.Worksheets.Add("Activos fijos");
-		var fila = Encabezado(hoja, compania, "Registro de activos fijos", $"Al {DateTime.Today:dd/MM/yyyy}");
-		fila = Titulos(hoja, fila, new List<string> { "Código", "Descripción", "Categoría", "% anual", "Sucursal", "Centro de costo", "Responsable", "Serie",
-			"Adquisición", "Documento", "Estado", "Costo", "Valor residual", "Dep. acumulada", "Valor en libros", "Cuota mensual" });
+		var hoja = libro.Worksheets.Add(L("Activos fijos"));
+		var fila = Encabezado(hoja, compania, L("Registro de activos fijos"), L("Al {0:dd/MM/yyyy}", DateTime.Today));
+		fila = Titulos(hoja, fila, new List<string> { L("Código"), L("Descripción"), L("Categoría"), L("% anual"), L("Sucursal"), L("Centro de costo"), L("Responsable"), L("Serie"),
+			L("Adquisición"), L("Documento"), L("Estado"), L("Costo"), L("Valor residual"), L("Dep. acumulada"), L("Valor en libros"), L("Cuota mensual") });
 		var inicioDatos = fila;
 		foreach (var a in activos)
 		{

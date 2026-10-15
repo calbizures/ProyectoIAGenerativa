@@ -14,16 +14,16 @@ public static partial class ReportesExcel
 
 	public static byte[] Antiguedad(IReadOnlyList<AntiguedadFila> filas, bool esCliente, DateTime fechaCorte, CompaniaReporte compania)
 	{
-		var tercero = esCliente ? "Cliente" : "Proveedor";
-		var documento = esCliente ? "Factura" : "Compra";
+		var tercero = esCliente ? L("Cliente") : L("Proveedor");
+		var documento = esCliente ? L("Factura") : L("Compra");
 		var grupos = AntiguedadGrupo.Agrupar(filas);
 		using var libro = new XLWorkbook();
 
 		// Hoja 1: resumen por tercero.
-		var hoja = libro.Worksheets.Add($"Por {tercero.ToLowerInvariant()}");
-		var fila = Encabezado(hoja, compania, $"Antigüedad de saldos de {(esCliente ? "clientes" : "proveedores")}", $"Fecha de corte: {fechaCorte:dd/MM/yyyy}");
-		var columnas = new List<string> { "Código", tercero, "Documentos" };
-		columnas.AddRange(RangosAntiguedad.Etiquetas);
+		var hoja = libro.Worksheets.Add(L("Por {0}", tercero.ToLowerInvariant()));
+		var fila = Encabezado(hoja, compania, L("Antigüedad de saldos de {0}", (esCliente ? L("clientes") : L("proveedores"))), L("Fecha de corte: {0:dd/MM/yyyy}", fechaCorte));
+		var columnas = new List<string> { L("Código"), tercero, L("Documentos") };
+		columnas.AddRange(RangosAntiguedad.Etiquetas.Select(e => L(e)));
 		columnas.Add("Total");
 		fila = Titulos(hoja, fila, columnas);
 		var inicioDatos = fila;
@@ -40,10 +40,10 @@ public static partial class ReportesExcel
 		Formato(hoja, inicioDatos, fila, 4, 9);
 
 		// Hoja 2: por documento.
-		var hojaDocs = libro.Worksheets.Add($"Por {documento.ToLowerInvariant()}");
-		fila = Encabezado(hojaDocs, compania, $"Antigüedad de saldos por {documento.ToLowerInvariant()}", $"Fecha de corte: {fechaCorte:dd/MM/yyyy}");
-		columnas = new List<string> { "Código", tercero, documento, "Fecha", "Vence", "Días" };
-		columnas.AddRange(RangosAntiguedad.Etiquetas);
+		var hojaDocs = libro.Worksheets.Add(L("Por {0}", documento.ToLowerInvariant()));
+		fila = Encabezado(hojaDocs, compania, L("Antigüedad de saldos por {0}", documento.ToLowerInvariant()), L("Fecha de corte: {0:dd/MM/yyyy}", fechaCorte));
+		columnas = new List<string> { L("Código"), tercero, documento, L("Fecha"), L("Vence"), L("Días") };
+		columnas.AddRange(RangosAntiguedad.Etiquetas.Select(e => L(e)));
 		columnas.Add("Total");
 		fila = Titulos(hojaDocs, fila, columnas);
 		inicioDatos = fila;
@@ -65,8 +65,8 @@ public static partial class ReportesExcel
 		hojaDocs.Range(inicioDatos, 4, fila, 5).Style.DateFormat.Format = "dd/MM/yyyy";
 
 		// Hoja 3: cada cuota (para filtrar o armar tablas dinámicas).
-		var hojaCuotas = libro.Worksheets.Add("Cuotas");
-		fila = Titulos(hojaCuotas, 1, new List<string> { "Código", tercero, documento, "Fecha", "Cuota", "Vencimiento", "Días", "Rango", "Saldo" });
+		var hojaCuotas = libro.Worksheets.Add(L("Cuotas"));
+		fila = Titulos(hojaCuotas, 1, new List<string> { L("Código"), tercero, documento, L("Fecha"), L("Cuota"), L("Vencimiento"), L("Días"), L("Rango"), L("Saldo") });
 		inicioDatos = fila;
 		foreach (var f in filas)
 		{
@@ -77,7 +77,7 @@ public static partial class ReportesExcel
 			hojaCuotas.Cell(fila, 5).Value = f.Cuota;
 			hojaCuotas.Cell(fila, 6).Value = f.Vencimiento;
 			hojaCuotas.Cell(fila, 7).Value = f.Dias;
-			hojaCuotas.Cell(fila, 8).Value = RangosAntiguedad.Etiquetas[Array.FindIndex(RangosAntiguedad.De(f), m => m != 0) is var i and >= 0 ? i : 0];
+			hojaCuotas.Cell(fila, 8).Value = L(RangosAntiguedad.Etiquetas[Array.FindIndex(RangosAntiguedad.De(f), m => m != 0) is var i and >= 0 ? i : 0]);
 			hojaCuotas.Cell(fila, 9).Value = f.Saldo;
 			fila++;
 		}
@@ -94,15 +94,15 @@ public static partial class ReportesExcel
 		string tercero, DateTime? desde, DateTime? hasta, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
-		var hoja = libro.Worksheets.Add("Estado de cuenta");
-		var rango = $"{(desde is null ? "Desde el inicio" : $"Del {desde:dd/MM/yyyy}")} al {(hasta ?? DateTime.Today):dd/MM/yyyy}";
-		var fila = Encabezado(hoja, compania, $"Estado de cuenta · {tercero}", rango);
+		var hoja = libro.Worksheets.Add(L("Estado de cuenta"));
+		var rango = L("{0} al {1:dd/MM/yyyy}", (desde is null ? L("Desde el inicio") : L("Del {0:dd/MM/yyyy}", desde)), (hasta ?? DateTime.Today));
+		var fila = Encabezado(hoja, compania, L("Estado de cuenta · {0}", tercero), rango);
 		var saldoInicial = movimientos.FirstOrDefault()?.SaldoInicial ?? 0;
-		hoja.Cell(fila, 1).Value = "Saldo inicial";
+		hoja.Cell(fila, 1).Value = L("Saldo inicial");
 		hoja.Cell(fila, 7).Value = saldoInicial;
 		hoja.Cell(fila, 7).Style.NumberFormat.Format = FormatoMonto;
 		fila += 2;
-		fila = Titulos(hoja, fila, new List<string> { "Fecha", "Tipo", "Documento", "Referencia", "Cargo", "Abono", "Saldo" });
+		fila = Titulos(hoja, fila, new List<string> { L("Fecha"), L("Tipo"), L("Documento"), L("Referencia"), L("Cargo"), L("Abono"), L("Saldo") });
 		var inicioDatos = fila;
 		foreach (var m in movimientos)
 		{
@@ -117,14 +117,14 @@ public static partial class ReportesExcel
 		}
 		hoja.Range(inicioDatos, 1, fila, 1).Style.DateFormat.Format = "dd/MM/yyyy";
 		hoja.Range(inicioDatos, 5, fila, 7).Style.NumberFormat.Format = FormatoMonto;
-		hoja.Cell(fila, 4).Value = "Totales";
+		hoja.Cell(fila, 4).Value = L("Totales");
 		hoja.Cell(fila, 5).FormulaA1 = $"SUM(E{inicioDatos}:E{fila - 1})";
 		hoja.Cell(fila, 6).FormulaA1 = $"SUM(F{inicioDatos}:F{fila - 1})";
 		hoja.Range(fila, 1, fila, 7).Style.Font.Bold = true;
 		hoja.Columns().AdjustToContents();
 
-		var hojaDocs = libro.Worksheets.Add("Documentos con saldo");
-		fila = Titulos(hojaDocs, 1, new List<string> { esCliente ? "Factura" : "Compra", "Fecha", "Total", "Pagado", "Notas de crédito", "Notas de débito", "Saldo", "Próximo vencimiento" });
+		var hojaDocs = libro.Worksheets.Add(L("Documentos con saldo"));
+		fila = Titulos(hojaDocs, 1, new List<string> { esCliente ? L("Factura") : L("Compra"), L("Fecha"), L("Total"), L("Pagado"), L("Notas de crédito"), L("Notas de débito"), L("Saldo"), L("Próximo vencimiento") });
 		inicioDatos = fila;
 		foreach (var d in documentos)
 		{
@@ -157,7 +157,7 @@ public static partial class ReportesExcel
 			try
 			{
 				using var imagen = new MemoryStream(logo);
-				var foto = hoja.AddPicture(imagen, "Logotipo").MoveTo(hoja.Cell(1, 1), 4, 4);
+				var foto = hoja.AddPicture(imagen, L("Logotipo")).MoveTo(hoja.Cell(1, 1), 4, 4);
 				foto.Scale(Math.Min(56.0 / foto.OriginalHeight, 220.0 / foto.OriginalWidth));
 				fila = 5;
 			}
@@ -172,7 +172,7 @@ public static partial class ReportesExcel
 		hoja.Cell(fila + 1, 1).Style.Font.Bold = true;
 		hoja.Cell(fila + 1, 1).Style.Font.FontSize = 14;
 		hoja.Cell(fila + 2, 1).Value = subtitulo;
-		hoja.Cell(fila + 3, 1).Value = $"Generado el {DateTime.Now:dd/MM/yyyy HH:mm}";
+		hoja.Cell(fila + 3, 1).Value = L("Generado el {0:dd/MM/yyyy HH:mm}", DateTime.Now);
 		hoja.Cell(fila + 3, 1).Style.Font.FontColor = XLColor.Gray;
 		return fila + 5;
 	}
@@ -183,13 +183,13 @@ public static partial class ReportesExcel
 	{
 		using var libro = new XLWorkbook();
 		var primera = filas.FirstOrDefault();
-		var subtitulo = primera is null ? "Sin transferencias"
-			: $"{primera.Nomina} · pagado el {primera.FechaPago:dd/MM/yyyy} desde {primera.CuentaOrigen}{(string.IsNullOrWhiteSpace(primera.Referencia) ? "" : $" · referencia {primera.Referencia}")}";
-		var bancos = filas.GroupBy(f => f.Banco ?? "(sin banco)").OrderBy(g => g.Key).ToList();
+		var subtitulo = primera is null ? L("Sin transferencias")
+			: L("{0} · pagado el {1:dd/MM/yyyy} desde {2}{3}", primera.Nomina, primera.FechaPago, primera.CuentaOrigen, (string.IsNullOrWhiteSpace(primera.Referencia) ? "" : $" · referencia {primera.Referencia}"));
+		var bancos = filas.GroupBy(f => f.Banco ?? L("(sin banco)")).OrderBy(g => g.Key).ToList();
 
-		var hoja = libro.Worksheets.Add("Resumen");
-		var fila = Encabezado(hoja, compania, "Transferencias de nómina por banco", subtitulo);
-		fila = Titulos(hoja, fila, new List<string> { "Banco", "Empleados", "Monto" });
+		var hoja = libro.Worksheets.Add(L("Resumen"));
+		var fila = Encabezado(hoja, compania, L("Transferencias de nómina por banco"), subtitulo);
+		fila = Titulos(hoja, fila, new List<string> { L("Banco"), L("Empleados"), L("Monto") });
 		var inicioDatos = fila;
 		foreach (var g in bancos)
 		{
@@ -205,8 +205,8 @@ public static partial class ReportesExcel
 		{
 			var nombreHoja = new string(g.Key.Where(c => !"[]*?/\\:".Contains(c)).ToArray());
 			var hojaBanco = libro.Worksheets.Add(nombreHoja.Length > 31 ? nombreHoja[..31] : nombreHoja);
-			fila = Encabezado(hojaBanco, compania, $"Transferencias a {g.Key}", subtitulo);
-			fila = Titulos(hojaBanco, fila, new List<string> { "Tipo de cuenta", "Número de cuenta", "Código", "Empleado", "Documento", "Monto" });
+			fila = Encabezado(hojaBanco, compania, L("Transferencias a {0}", g.Key), subtitulo);
+			fila = Titulos(hojaBanco, fila, new List<string> { L("Tipo de cuenta"), L("Número de cuenta"), L("Código"), L("Empleado"), L("Documento"), L("Monto") });
 			inicioDatos = fila;
 			foreach (var f in g)
 			{
@@ -231,9 +231,9 @@ public static partial class ReportesExcel
 	public static byte[] CentrosCosto(IReadOnlyList<Erp.Data.Contabilidad.CentroCostoFila> filas, DateTime desde, DateTime hasta, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
-		var hoja = libro.Worksheets.Add("Centros de costo");
-		var fila = Encabezado(hoja, compania, "Gasto por centro de costo", $"Del {desde:dd/MM/yyyy} al {hasta:dd/MM/yyyy}");
-		fila = Titulos(hoja, fila, new List<string> { "Centro de costo", "Cuenta", "Nombre", "Pólizas", "Debe", "Haber", "Saldo" });
+		var hoja = libro.Worksheets.Add(L("Centros de costo"));
+		var fila = Encabezado(hoja, compania, L("Gasto por centro de costo"), L("Del {0:dd/MM/yyyy} al {1:dd/MM/yyyy}", desde, hasta));
+		fila = Titulos(hoja, fila, new List<string> { L("Centro de costo"), L("Cuenta"), L("Nombre"), L("Pólizas"), L("Debe"), L("Haber"), L("Saldo") });
 		var inicioDatos = fila;
 		foreach (var f in filas)
 		{
@@ -265,7 +265,7 @@ public static partial class ReportesExcel
 
 	private static void Totales(IXLWorksheet hoja, int fila, int inicioDatos, int primeraColumna, int ultimaColumna, int columnaEtiqueta)
 	{
-		hoja.Cell(fila, columnaEtiqueta).Value = "Total general";
+		hoja.Cell(fila, columnaEtiqueta).Value = L("Total general");
 		for (var c = primeraColumna; c <= ultimaColumna; c++)
 		{
 			var letra = XLHelper.GetColumnLetterFromNumber(c);

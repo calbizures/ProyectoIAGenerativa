@@ -509,7 +509,7 @@
         {
             var usuario = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User;
             var r = await DocumentosCorreo.AvisarBoletaAsync(b, verificada, ppeId, motivo, usuario?.ObtenerUsuId(), usuario?.ObtenerSucId());
-            return r.Enviado ? L(" Se avisó al cliente a {0}.", b.ClienteCorreo) : L(" No se avisó al cliente: {0}.", r.Mensaje.TrimEnd('.'));
+            return r.Enviado ? L(" Se avisó al cliente a {0}.", b.ClienteCorreo) : L(" No se avisó al cliente: {0}.", Textos.Mensaje(r.Mensaje).TrimEnd('.'));
         }
         catch (Exception ex) { return L(" No se avisó al cliente: {0}", MensajesError.Traducir(ex)); }
     }

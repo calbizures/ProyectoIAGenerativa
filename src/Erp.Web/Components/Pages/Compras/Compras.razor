@@ -81,7 +81,7 @@
             @if (ordenElegida is not null)
             {
                 <RecibirOrdenCompra Orden="ordenElegida" Lineas="lineasOrdenElegida" Titulo="@(L("Factura del proveedor para la orden {0}", ordenElegida.Numero))"
-                                    EtiquetaGrabar="Grabar compra" OnGrabada="CompraDesdeOrdenGrabadaAsync" OnCancelar="CerrarDesdeOrden" />
+                                    EtiquetaGrabar="@L("Grabar compra")" OnGrabada="CompraDesdeOrdenGrabadaAsync" OnCancelar="CerrarDesdeOrden" />
             }
             else
             {

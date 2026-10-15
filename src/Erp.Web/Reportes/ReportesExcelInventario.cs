@@ -8,24 +8,24 @@ public static partial class ReportesExcel
 {
 	public static string ClaseRotacion(string clase) => clase switch
 	{
-		"A" => "Alta",
-		"M" => "Media",
-		"B" => "Baja",
-		_ => "Sin ventas"
+		"A" => L("Alta"),
+		"M" => L("Media"),
+		"B" => L("Baja"),
+		_ => L("Sin ventas")
 	};
 
 	public static byte[] Rotacion(IReadOnlyList<RotacionInventarioFila> filas, string ambito, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
-		var hoja = libro.Worksheets.Add("Rotación y reorden");
+		var hoja = libro.Worksheets.Add(L("Rotación y reorden"));
 		var primera = filas.FirstOrDefault();
-		var periodo = primera is null ? "" : $"Del {primera.Desde:dd/MM/yyyy} al {primera.Hasta:dd/MM/yyyy} ({primera.Dias} días) · {ambito}";
-		var fila = Encabezado(hoja, compania, "Rotación del inventario y punto de reorden", periodo);
+		var periodo = primera is null ? "" : L("Del {0:dd/MM/yyyy} al {1:dd/MM/yyyy} ({2} días) · {3}", primera.Desde, primera.Hasta, primera.Dias, ambito);
+		var fila = Encabezado(hoja, compania, L("Rotación del inventario y punto de reorden"), periodo);
 		fila = Titulos(hoja, fila, new List<string>
 		{
-			"Código", "Producto", "Bodega", "Clase", "Existencia", "En tránsito", "Inv. inicial", "Inv. final", "Inv. promedio",
-			"Vendidas", "Costo vendido", "Venta diaria", "Rotación", "Rotación anual", "Días de inventario", "Días de cobertura",
-			"Última venta", "Días entrega", "Días seguridad", "Punto de reorden", "Sugerido", "Proveedor", "Valor inventario"
+			L("Código"), L("Producto"), L("Bodega"), L("Clase"), L("Existencia"), L("En tránsito"), L("Inv. inicial"), L("Inv. final"), L("Inv. promedio"),
+			L("Vendidas"), L("Costo vendido"), L("Venta diaria"), L("Rotación"), L("Rotación anual"), L("Días de inventario"), L("Días de cobertura"),
+			L("Última venta"), L("Días entrega"), L("Días seguridad"), L("Punto de reorden"), L("Sugerido"), L("Proveedor"), L("Valor inventario")
 		});
 		var inicioDatos = fila;
 		foreach (var f in filas)
@@ -69,20 +69,20 @@ public static partial class ReportesExcel
 	public static byte[] Kardex(Kardex kardex, string ambito, DateTime? desde, DateTime? hasta, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
-		var hoja = libro.Worksheets.Add("Kardex");
-		var periodo = desde is null && hasta is null ? "Todos los movimientos"
-			: $"Del {(desde is null ? "inicio" : desde.Value.ToString("dd/MM/yyyy"))} al {(hasta ?? DateTime.Today):dd/MM/yyyy}";
-		var fila = Encabezado(hoja, compania, $"Kardex · {kardex.Codigo} {kardex.Descripcion}", $"{periodo} · {ambito}");
+		var hoja = libro.Worksheets.Add(L("Kardex"));
+		var periodo = desde is null && hasta is null ? L("Todos los movimientos")
+			: L("Del {0} al {1:dd/MM/yyyy}", (desde is null ? L("inicio") : desde.Value.ToString("dd/MM/yyyy")), (hasta ?? DateTime.Today));
+		var fila = Encabezado(hoja, compania, L("Kardex · {0} {1}", kardex.Codigo, kardex.Descripcion), $"{periodo} · {ambito}");
 		fila = Titulos(hoja, fila, new List<string>
 		{
-			"Fecha", "Registrado", "Tipo", "Documento", "Cliente / proveedor", "Bodega", "Entrada", "Salida", "Costo unitario", "Costo total",
-			"Saldo", "Valor del saldo", "Costo promedio", "Existencia en la bodega"
+			L("Fecha"), L("Registrado"), L("Tipo"), L("Documento"), L("Cliente / proveedor"), L("Bodega"), L("Entrada"), L("Salida"), L("Costo unitario"), L("Costo total"),
+			L("Saldo"), L("Valor del saldo"), L("Costo promedio"), L("Existencia en la bodega")
 		});
 		var inicioDatos = fila;
 		var r = kardex.Resumen;
 		if (desde is not null)
 		{
-			hoja.Cell(fila, 3).Value = "Saldo anterior";
+			hoja.Cell(fila, 3).Value = L("Saldo anterior");
 			hoja.Cell(fila, 11).Value = r.InicialCantidad;
 			hoja.Cell(fila, 12).Value = r.InicialValor;
 			hoja.Cell(fila, 13).Value = r.InicialPromedio;
@@ -95,7 +95,7 @@ public static partial class ReportesExcel
 			hoja.Cell(fila, 1).Style.DateFormat.Format = "dd/MM/yyyy";
 			hoja.Cell(fila, 2).Value = m.Registrado;
 			hoja.Cell(fila, 2).Style.DateFormat.Format = "dd/MM/yyyy HH:mm";
-			hoja.Cell(fila, 3).Value = m.EsReversa ? $"Anulación {m.Tipo}" : m.Tipo;
+			hoja.Cell(fila, 3).Value = m.EsReversa ? L("Anulación {0}", m.Tipo) : m.Tipo;
 			hoja.Cell(fila, 4).Value = m.Documento;
 			hoja.Cell(fila, 5).Value = m.Tercero;
 			hoja.Cell(fila, 6).Value = m.Bodega;
@@ -109,7 +109,7 @@ public static partial class ReportesExcel
 			hoja.Cell(fila, 14).Value = m.SaldoBodega;
 			fila++;
 		}
-		hoja.Cell(fila, 6).Value = "Total";
+		hoja.Cell(fila, 6).Value = L("Total");
 		hoja.Cell(fila, 7).Value = kardex.Movimientos.Sum(m => m.Entrada);
 		hoja.Cell(fila, 8).Value = kardex.Movimientos.Sum(m => m.Salida);
 		hoja.Cell(fila, 10).Value = kardex.Movimientos.Sum(m => m.CostoTotal);
@@ -120,18 +120,18 @@ public static partial class ReportesExcel
 		hoja.Range(inicioDatos, 12, fila, 13).Style.NumberFormat.Format = "#,##0.00";
 		hoja.Range(inicioDatos, 14, fila, 14).Style.NumberFormat.Format = "#,##0.##";
 		fila += 2;
-		hoja.Cell(fila, 1).Value = "Comprobación";
+		hoja.Cell(fila, 1).Value = L("Comprobación");
 		hoja.Cell(fila, 1).Style.Font.Bold = true;
 		var comprobacion = new (string, decimal, decimal)[]
 		{
-			("Cantidad", r.CalculadoCantidad, r.GuardadoCantidad),
-			("Valor del inventario", r.CalculadoValor, r.GuardadoValor),
-			("Costo promedio", r.CalculadoPromedio, r.GuardadoPromedio),
-			("Existencia en bodegas", r.CalculadoCantidad, r.ExistenciaBodegas)
+			(L("Cantidad"), r.CalculadoCantidad, r.GuardadoCantidad),
+			(L("Valor del inventario"), r.CalculadoValor, r.GuardadoValor),
+			(L("Costo promedio"), r.CalculadoPromedio, r.GuardadoPromedio),
+			(L("Existencia en bodegas"), r.CalculadoCantidad, r.ExistenciaBodegas)
 		};
-		hoja.Cell(fila + 1, 2).Value = "Según el kardex";
-		hoja.Cell(fila + 1, 3).Value = "Guardado";
-		hoja.Cell(fila + 1, 4).Value = "Diferencia";
+		hoja.Cell(fila + 1, 2).Value = L("Según el kardex");
+		hoja.Cell(fila + 1, 3).Value = L("Guardado");
+		hoja.Cell(fila + 1, 4).Value = L("Diferencia");
 		hoja.Range(fila + 1, 1, fila + 1, 4).Style.Font.Bold = true;
 		fila += 2;
 		foreach (var (concepto, calculado, guardado) in comprobacion)

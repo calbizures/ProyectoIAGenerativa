@@ -923,6 +923,8 @@ input[type=checkbox], input[type=radio] {
 .login-campo input {
     padding: 0.65rem 0.85rem;
     border: 1px solid var(--borde);
+    background: var(--superficie);
+    color: var(--texto);
     border-radius: 8px;
     font-size: 0.95rem;
     transition: border-color 0.15s, box-shadow 0.15s;

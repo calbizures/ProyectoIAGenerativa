@@ -19,7 +19,8 @@ public static class PaletaGraficos
 
 	public static string Color(int slot) => Categorica[Math.Clamp(slot, 1, Categorica.Length) - 1];
 
-	private static readonly CultureInfo Cultura = CultureInfo.GetCultureInfo("es-GT");
+	// Nombres de los meses en el idioma de la pantalla.
+	private static CultureInfo Cultura => CultureInfo.GetCultureInfo(EsIngles ? "en-US" : "es-GT");
 
 	public static string Moneda(decimal valor) => "Q" + valor.ToString("N2", CultureInfo.InvariantCulture);
 

@@ -9,9 +9,9 @@ public static partial class ReportesExcel
 	public static byte[] FlujoCaja(FlujoCajaPivote pivote, string titulo, string subtitulo, CompaniaReporte compania)
 	{
 		using var libro = new XLWorkbook();
-		var hoja = libro.Worksheets.Add("Flujo de caja");
+		var hoja = libro.Worksheets.Add(L("Flujo de caja"));
 		var fila = Encabezado(hoja, compania, titulo, subtitulo);
-		var columnas = new List<string> { "Concepto" };
+		var columnas = new List<string> { L("Concepto") };
 		columnas.AddRange(pivote.Periodos.Select(pivote.Etiqueta));
 		columnas.Add("Total");
 		fila = Titulos(hoja, fila, columnas);
@@ -27,19 +27,19 @@ public static partial class ReportesExcel
 			fila++;
 		}
 
-		Fila("Saldo inicial de efectivo", pivote.SaldoInicialDe, pivote.SaldoInicial, true);
+		Fila(L("Saldo inicial de efectivo"), pivote.SaldoInicialDe, pivote.SaldoInicial, true);
 		foreach (var (actividad, nombre) in ActividadesFlujo.Todas)
 		{
 			var filas = pivote.Filas.Where(f => f.Actividad == actividad).ToList();
 			if (filas.Count == 0) continue;
-			hoja.Cell(fila, 1).Value = nombre.ToUpperInvariant();
+			hoja.Cell(fila, 1).Value = L(nombre).ToUpperInvariant();
 			hoja.Cell(fila, 1).Style.Font.Bold = true;
 			fila++;
 			foreach (var f in filas) Fila("   " + f.Concepto, p => f.Montos.GetValueOrDefault(p), f.Total, false);
-			Fila($"Flujo neto de {nombre.Replace("Actividades de ", "")}", p => pivote.Neto(p, actividad), filas.Sum(f => f.Total), true);
+			Fila(L("Flujo neto de " + nombre.Replace("Actividades de ", "")), p => pivote.Neto(p, actividad), filas.Sum(f => f.Total), true);
 		}
-		Fila("Flujo neto del período", pivote.Neto, pivote.Periodos.Sum(pivote.Neto), true);
-		Fila("Saldo final de efectivo", pivote.SaldoFinalDe, pivote.SaldoFinal, true);
+		Fila(L("Flujo neto del período"), pivote.Neto, pivote.Periodos.Sum(pivote.Neto), true);
+		Fila(L("Saldo final de efectivo"), pivote.SaldoFinalDe, pivote.SaldoFinal, true);
 		hoja.Range(fila - 1, 1, fila - 1, ultima).Style.Border.TopBorder = XLBorderStyleValues.Thin;
 		Formato(hoja, inicioDatos, fila, 2, ultima);
 		return Guardar(libro);

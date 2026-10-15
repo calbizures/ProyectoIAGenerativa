@@ -273,7 +273,7 @@ app.MapGet("/bancos/archivo/{tipo}/{id:int}", async (string tipo, int id, int fo
 	if (formatoArchivo is null) return Results.NotFound();
 	var datos = tipo == "lote" ? await pagos.ConsultarArchivoLoteAsync(id) : await pagos.ConsultarArchivoNominaAsync(id);
 	var resultado = ArchivoBanco.Generar(formatoArchivo, datos);
-	if (!resultado.Valido) return Results.BadRequest("El archivo no se puede generar: " + string.Join(" ", resultado.Errores));
+	if (!resultado.Valido) return Results.BadRequest(L("El archivo no se puede generar: ") + string.Join(" ", resultado.Errores.Select(Textos.Mensaje)));
 	var tipoContenido = formatoArchivo.Extension.Equals("csv", StringComparison.OrdinalIgnoreCase) ? "text/csv" : "text/plain";
 	return Results.File(resultado.Contenido!, $"{tipoContenido}; charset={(formatoArchivo.Codificacion == "UTF-8" ? "utf-8" : "iso-8859-1")}", resultado.NombreArchivo);
 }).RequireAuthorization();
@@ -285,8 +285,8 @@ app.MapGet("/reportes/inventario/rotacion.xlsx", async (int? bodega, int? sucurs
 {
 	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:INVENTARIO_REORDEN")).Succeeded) return Results.Forbid();
 	var filas = await reorden.ConsultarRotacionAsync(bodega, bodega is null ? sucursal : null, dias, hasta);
-	var ambito = bodega is int b ? (await bodegas.ConsultarAsync(null, null)).FirstOrDefault(x => x.BodId == b)?.BodDescripcion ?? $"Bodega {b}"
-		: "Todas las bodegas";
+	var ambito = bodega is int b ? (await bodegas.ConsultarAsync(null, null)).FirstOrDefault(x => x.BodId == b)?.BodDescripcion ?? L("Bodega {0}", b)
+		: L("Todas las bodegas");
 	var archivo = ReportesExcel.Rotacion(filas, ambito, await CompaniaReporteAsync(contexto, general));
 	return Results.File(archivo, TipoExcel, $"rotacion-inventario-{(hasta ?? DateTime.Today):yyyyMMdd}.xlsx");
 }).RequireAuthorization();
@@ -299,8 +299,8 @@ app.MapGet("/reportes/inventario/kardex.xlsx", async (int producto, int? bodega,
 	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR")).Succeeded) return Results.Forbid();
 	var kardex = await productos.ConsultarKardexAsync(producto, bodega, desde, hasta);
 	if (kardex is null) return Results.NotFound();
-	var ambito = bodega is int b ? (await bodegas.ConsultarAsync(null, null)).FirstOrDefault(x => x.BodId == b)?.BodDescripcion ?? $"Bodega {b}"
-		: "Todas las bodegas";
+	var ambito = bodega is int b ? (await bodegas.ConsultarAsync(null, null)).FirstOrDefault(x => x.BodId == b)?.BodDescripcion ?? L("Bodega {0}", b)
+		: L("Todas las bodegas");
 	var archivo = ReportesExcel.Kardex(kardex, ambito, desde, hasta, await CompaniaReporteAsync(contexto, general));
 	return Results.File(archivo, TipoExcel, $"kardex-{kardex.Codigo}-{DateTime.Today:yyyyMMdd}.xlsx");
 }).RequireAuthorization();
@@ -336,7 +336,7 @@ app.MapGet("/reportes/rrhh/planilla-igss.txt", async (int cia, int anio, int mes
 	var datos = await igss.ConsultarArchivoAsync(cia, anio, mes);
 	if (datos.Patrono is null) return Results.NotFound();
 	if (datos.TieneErrores)
-		return Results.BadRequest("El archivo no se puede generar: " + string.Join(" ", datos.Observaciones.Where(o => o.Nivel == "E").Select(o => o.Mensaje)));
+		return Results.BadRequest(L("El archivo no se puede generar: ") + string.Join(" ", datos.Observaciones.Where(o => o.Nivel == "E").Select(o => Textos.Mensaje(o.Mensaje))));
 	var ahora = DateTime.Now;
 	var texto = ArchivoPlanillaIgss.Generar(datos, new ArchivoPlanillaIgss.Opciones(ahora, pruebas == true, complementaria == true, nota));
 	return Results.File(ArchivoPlanillaIgss.Codificacion.GetBytes(texto), "text/plain; charset=iso-8859-1", ArchivoPlanillaIgss.NombreArchivo(datos, ahora));
@@ -393,12 +393,12 @@ app.MapGet("/reportes/bancos/flujo-caja.xlsx", async (string? tipo, DateTime? de
 	{
 		if (fin < DateTime.Today) fin = DateTime.Today;
 		var pivote = FlujoCajaPivote.DeProyectado(await flujo.ConsultarProyectadoAsync(fin), fin, grupo);
-		return Results.File(ReportesExcel.FlujoCaja(pivote, "Flujo de caja proyectado", $"Del {DateTime.Today:dd/MM/yyyy} al {fin:dd/MM/yyyy}", compania),
+		return Results.File(ReportesExcel.FlujoCaja(pivote, L("Flujo de caja proyectado"), L("Del {0:dd/MM/yyyy} al {1:dd/MM/yyyy}", DateTime.Today, fin), compania),
 			TipoExcel, $"flujo-caja-proyectado-{fin:yyyyMMdd}.xlsx");
 	}
 	var inicio = (desde ?? new DateTime(fin.Year, 1, 1)).Date;
 	var real = FlujoCajaPivote.DeReal(await flujo.ConsultarRealAsync(inicio, fin, grupo), inicio, fin, grupo);
-	return Results.File(ReportesExcel.FlujoCaja(real, "Flujo de caja real", $"Del {inicio:dd/MM/yyyy} al {fin:dd/MM/yyyy}", compania),
+	return Results.File(ReportesExcel.FlujoCaja(real, L("Flujo de caja real"), L("Del {0:dd/MM/yyyy} al {1:dd/MM/yyyy}", inicio, fin), compania),
 		TipoExcel, $"flujo-caja-{inicio:yyyyMMdd}-{fin:yyyyMMdd}.xlsx");
 }).RequireAuthorization();
 

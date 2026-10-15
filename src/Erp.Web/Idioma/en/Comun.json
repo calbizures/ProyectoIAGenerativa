@@ -287,5 +287,20 @@
   "Diciembre": "December",
   "{0} KB": "{0} KB",
   "{0:N1} MB": "{0:N1} MB",
-  "Grabado el {0} a las {1}": "Saved on {0} at {1}"
+  "Grabado el {0} a las {1}": "Saved on {0} at {1}",
+  "La compañía no tiene configurado el correo saliente. Configúrelo en General › Compañías › Correo saliente.": "The company has no outgoing mail configured. Configure it in General › Companies › Outgoing mail.",
+  "Indique al menos un correo de destino válido.": "Enter at least one valid destination email.",
+  "El correo «{0}» no es válido.": "The email «{0}» is not valid.",
+  "No se pudo leer la contraseña del correo guardada (cambiaron las llaves del servidor). Vuelva a escribirla en Compañías.": "The saved email password could not be read (the server keys changed). Enter it again in Companies.",
+  "Correo para {0} guardado en la carpeta {1} (no se envió).": "Email for {0} saved in folder {1} (not sent).",
+  "Correo enviado a {0}.": "Email sent to {0}.",
+  "Correo enviado a {0} con copia a {1}.": "Email sent to {0} with a copy to {1}.",
+  "El servidor exige conexión segura: active STARTTLS.": "The server requires a secure connection: turn on STARTTLS.",
+  "El servidor rechazó el usuario o la contraseña del correo. En Gmail use una contraseña de aplicación (no la contraseña normal de la cuenta).": "The server rejected the email user or password. In Gmail use an app password (not the account's normal password).",
+  "No se pudo guardar el correo en la carpeta: el servidor no tiene permiso de escritura ({0}).": "The email could not be saved in the folder: the server has no write permission ({0}).",
+  "El servidor no aceptó el correo de destino.": "The server did not accept the destination email.",
+  "No se pudo conectar con el servidor de correo ({0}). Revise el servidor, el puerto y STARTTLS.": "Could not connect to the mail server ({0}). Check the server, the port and STARTTLS.",
+  "El servidor de correo respondió: {0}": "The mail server responded: {0}",
+  "No se pudo enviar el correo: {0}": "The email could not be sent: {0}",
+  "el cliente no tiene correo registrado": "the customer has no email on file"
 }
