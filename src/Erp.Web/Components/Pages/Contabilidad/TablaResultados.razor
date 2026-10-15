@@ -26,7 +26,7 @@
             <tr class="fila-total"><td colspan="2">@L("UTILIDAD BRUTA")</td>@Montos(t.UtilidadBruta, c.UtilidadBruta)</tr>
             @Filas(gastos)
             <tr class="fila-subtotal"><td></td><td>@L("(−) Total gastos de operación")</td>@Montos(t.Gastos, c.Gastos)</tr>
-            <tr class="fila-total"><td colspan="2">@L("{0} NETA DEL PERÍODO", t.UtilidadNeta >= 0 ? "UTILIDAD" : L("PÉRDIDA"))</td>@Montos(t.UtilidadNeta, c.UtilidadNeta)</tr>
+            <tr class="fila-total"><td colspan="2">@L("{0} NETA DEL PERÍODO", t.UtilidadNeta >= 0 ? L("UTILIDAD") : L("PÉRDIDA"))</td>@Montos(t.UtilidadNeta, c.UtilidadNeta)</tr>
         </tbody>
     </table>
 </div>

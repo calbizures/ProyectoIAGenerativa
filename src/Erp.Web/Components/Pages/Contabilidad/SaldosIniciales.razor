@@ -148,7 +148,7 @@
             await e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(memoria);
             memoria.Position = 0;
             using var lector = LectorExcel.Leer(memoria, ReportesExcel.ColumnasSaldosIniciales);
-            var faltantes = lector.ColumnasFaltantes(new[] { L("Código"), L("Debe"), L("Haber") }).ToList();
+            var faltantes = lector.ColumnasFaltantes(new[] { "Código", "Debe", "Haber" }).ToList();
             if (lector.Errores.Count == 0 && faltantes.Count > 0)
                 lector.Errores.Add(new MensajeCarga { Mensaje = L("Faltan las columnas: {0}.", string.Join(", ", faltantes)) });
             if (lector.Errores.Count == 0)

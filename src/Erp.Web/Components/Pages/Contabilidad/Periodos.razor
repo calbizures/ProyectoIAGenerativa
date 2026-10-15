@@ -80,8 +80,7 @@
             <span>@(t.UtilidadNeta >= 0 ? L("Utilidad") : L("Pérdida")): <strong>Q @Math.Abs(t.UtilidadNeta).ToString("N2")</strong></span>
         </div>
         <p class="texto-ayuda">
-            @L("La partida (fecha 31/12/{0}) salda cada cuenta de ingresos, costos y gastos y lleva la diferencia a", anio)
-            @(t.UtilidadNeta >= 0 ? L("Utilidades del ejercicio") : L("Pérdidas del ejercicio")) (cuentas en Contabilidad &gt; Cuentas de pólizas: CIERRE_UTILIDAD y CIERRE_PERDIDA).
+            @L("La partida (fecha 31/12/{0}) salda cada cuenta de ingresos, costos y gastos y lleva la diferencia a {1} (cuentas en Contabilidad > Cuentas de pólizas: CIERRE_UTILIDAD y CIERRE_PERDIDA).", anio, t.UtilidadNeta >= 0 ? L("Utilidades del ejercicio") : L("Pérdidas del ejercicio"))
             @L("Diciembre debe estar abierto. Conviene generarla cuando ya estén registrados todos los ajustes del año (depreciaciones, provisiones, conciliaciones).")
         </p>
         <BotonIcono Icono="book-open" Tooltip="@L("Generar la partida de cierre")" Etiqueta="@L("Generar partida de cierre")" Variante="primario"

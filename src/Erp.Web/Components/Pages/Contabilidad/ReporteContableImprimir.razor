@@ -28,7 +28,7 @@
                 <div class="firmas-poliza"><div><span>@L("Contador")</span></div><div><span>@L("Representante legal")</span></div></div>
             }
             break;
-        @L("default:")
+        default:
             <TablaDiario Lineas="diario" />
             break;
     }
@@ -65,7 +65,7 @@
                     break;
                 case "balanza":
                     balanza = await LibrosRepository.ConsultarBalanzaAsync(reporte.Desde, reporte.Hasta, reporte.Nivel);
-                    detalle = ReporteContable.Niveles.First(n => n.Nivel == reporte.Nivel).Nombre;
+                    detalle = L(ReporteContable.Niveles.First(n => n.Nivel == reporte.Nivel).Nombre);
                     break;
                 case "balance":
                     balance = await LibrosRepository.ConsultarBalanceGeneralAsync(reporte.Hasta, reporte.Nivel, reporte.Comparar ? reporte.HastaComparativo : null);

@@ -22,18 +22,18 @@ public sealed class ReporteContable
 
 	public string Titulo => Tipo switch
 	{
-		"mayor" => "Libro mayor",
-		"balanza" => "Balanza de comprobación",
-		"balance" => "Balance General",
-		"resultados" => "Estado de Resultados",
-		_ => "Libro diario"
+		"mayor" => L("Libro mayor"),
+		"balanza" => L("Balanza de comprobación"),
+		"balance" => L("Balance General"),
+		"resultados" => L("Estado de Resultados"),
+		_ => L("Libro diario")
 	};
 
 	public string Rango => Tipo == "balance"
-		? $"Al {Hasta:dd/MM/yyyy}" + (Comparar && HastaComparativo is not null ? $" comparado con el {HastaComparativo:dd/MM/yyyy}" : "")
-		: $"Del {Desde:dd/MM/yyyy} al {Hasta:dd/MM/yyyy}"
+		? L("Al {0:dd/MM/yyyy}", Hasta) + (Comparar && HastaComparativo is not null ? L(" comparado con el {0:dd/MM/yyyy}", HastaComparativo) : "")
+		: L("Del {0:dd/MM/yyyy} al {1:dd/MM/yyyy}", Desde, Hasta)
 		  + (Tipo == "resultados" && Comparar && DesdeComparativo is not null && HastaComparativo is not null
-			  ? $" comparado con del {DesdeComparativo:dd/MM/yyyy} al {HastaComparativo:dd/MM/yyyy}" : "");
+			  ? L(" comparado con del {0:dd/MM/yyyy} al {1:dd/MM/yyyy}", DesdeComparativo, HastaComparativo) : "");
 
 	public string Query()
 	{

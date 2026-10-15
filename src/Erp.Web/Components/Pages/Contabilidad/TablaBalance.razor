@@ -34,7 +34,7 @@
 </div>
 @if (t.Diferencia != 0)
 {
-    <p class="mensaje-error" role="alert">El balance no cuadra por Q @t.Diferencia.ToString("N2"): revise Contabilidad &gt; Revisión de integridad.</p>
+    <p class="mensaje-error" role="alert">@L("El balance no cuadra por Q {0}: revise Contabilidad > Revisión de integridad.", t.Diferencia.ToString("N2"))</p>
 }
 
 @code {

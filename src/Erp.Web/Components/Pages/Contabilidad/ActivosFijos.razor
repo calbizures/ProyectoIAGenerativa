@@ -220,7 +220,7 @@
                                     <td colspan="9">
                                         @if (historial.Count == 0)
                                         {
-                                            <p class="texto-ayuda">Todavía no tiene depreciación grabada@(a.DepreciacionInicial > 0 ? L(" (depreciación anterior: Q {0:N2})", a.DepreciacionInicial) : "").</p>
+                                            <p class="texto-ayuda">@L("Todavía no tiene depreciación grabada")@(a.DepreciacionInicial > 0 ? L(" (depreciación anterior: Q {0:N2})", a.DepreciacionInicial) : "").</p>
                                         }
                                         else
                                         {

@@ -33,7 +33,7 @@
         <select @bind="reporte.Nivel" @bind:after="() => version++" aria-label="@L("Abrir los nodos hasta el nivel")">
             @foreach (var n in ReporteContable.Niveles)
             {
-                <option value="@n.Nivel">@n.Nombre</option>
+                <option value="@n.Nivel">@L(n.Nombre)</option>
             }
         </select>
     </label>

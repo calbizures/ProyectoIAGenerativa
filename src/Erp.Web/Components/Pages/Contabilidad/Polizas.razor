@@ -31,7 +31,7 @@
         <option value="">@L("Todos los orígenes")</option>
         @foreach (var o in OrigenesPoliza.Todos)
         {
-            <option value="@o.Codigo">@o.Nombre</option>
+            <option value="@o.Codigo">@L(o.Nombre)</option>
         }
     </select>
     <select @bind="filtroEstado" @bind:after="ConsultarAsync" aria-label="@L("Estado")">
@@ -318,7 +318,7 @@
             captura.Lineas.Add(new LineaCaptura());
             return;
         }
-        captura.Descripcion = invertir ? L("Reversión de la póliza #{0}: {1}", origen.AsiId, origen.Descripcion) : origen.Descripcion;
+        captura.Descripcion = invertir ? $"Reversión de la póliza #{origen.AsiId}: {origen.Descripcion}" : origen.Descripcion;
         if (captura.Descripcion.Length > 256) captura.Descripcion = captura.Descripcion[..256];
         foreach (var l in origen.Detalle)
         {

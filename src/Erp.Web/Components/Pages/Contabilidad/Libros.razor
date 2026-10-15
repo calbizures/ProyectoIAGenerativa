@@ -39,7 +39,7 @@
         <select @bind="reporte.Nivel" @bind:after="ConsultarAsync" aria-label="@L("Nivel de detalle")">
             @foreach (var n in ReporteContable.Niveles)
             {
-                <option value="@n.Nivel">@n.Nombre</option>
+                <option value="@n.Nivel">@L(n.Nombre)</option>
             }
         </select>
     }
@@ -72,7 +72,7 @@
             case "balanza":
                 <TablaBalanza Filas="balanza" />
                 break;
-            @L("default:")
+            default:
                 <TablaDiario Lineas="diario" />
                 break;
         }

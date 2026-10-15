@@ -32,7 +32,7 @@
                 {
                     <tr>
                         <td class="num col-estado">@c.Orden</td>
-                        <td>@c.Control</td>
+                        <td>@L(c.Control)</td>
                         <td class="num col-estado">@c.Casos</td>
                         <td>@(c.Ejemplo ?? "—")</td>
                         <td class="col-estado"><span class="estado-badge @(c.Casos == 0 ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.Casos == 0 ? L("Correcto") : L("Revisar"))</span></td>

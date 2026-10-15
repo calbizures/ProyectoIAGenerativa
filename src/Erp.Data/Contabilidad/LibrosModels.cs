@@ -187,5 +187,5 @@ public static class OrigenesPoliza
 		("CIERRE_ANUAL", "Cierre anual")
 	};
 
-	public static string Nombre(string codigo) => Todos.FirstOrDefault(o => o.Codigo == codigo).Nombre ?? codigo;
+	public static string Nombre(string codigo) => Todos.FirstOrDefault(o => o.Codigo == codigo).Nombre is { } nombre ? L(nombre) : codigo;
 }
