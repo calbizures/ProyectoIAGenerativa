@@ -1,0 +1,325 @@
+@implements IDisposable
+@inject NavigationManager NavigationManager
+
+<aside class="sidebar @(menuAbierto ? "sidebar-abierta" : "")">
+    <div class="sidebar-marca">
+        <LogoCompania Clase="sidebar-logo-compania" ClaseNombre="sidebar-marca-texto">
+            <img src="images/logo-si-icono.svg" alt="" class="sidebar-logo" />
+            <span class="sidebar-marca-texto">@L("ERP · Servicios Informáticos Integrados")</span>
+        </LogoCompania>
+        <button type="button" class="sidebar-menu-boton"
+                aria-label="@(menuAbierto ? L("Cerrar menú") : L("Abrir menú"))"
+                aria-expanded="@(menuAbierto ? "true" : "false")"
+                aria-controls="menu-principal"
+                @onclick="AlternarMenu">
+            <Icono Nombre="@(menuAbierto ? "x" : "menu")" Tamano="22" />
+        </button>
+    </div>
+
+    <nav id="menu-principal" class="sidebar-nav" aria-label="@L("Menú principal")">
+        <NavLink href="" Match="NavLinkMatch.All" class="sidebar-link">
+            <span class="sidebar-icono"><Icono Nombre="home" Tamano="17" /></span>
+            <span class="sidebar-titulo">@L("Inicio")</span>
+        </NavLink>
+
+        <AuthorizeView Policy="Permiso:TABLERO_GERENCIAL">
+            <Authorized>
+                <NavLink href="tableros" class="sidebar-link">
+                    <span class="sidebar-icono"><Icono Nombre="trending-up" Tamano="17" /></span>
+                    <span class="sidebar-titulo">@L("Tableros")</span>
+                </NavLink>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Policy="Permiso:SEGURIDAD_USUARIO_ADMIN">
+            <Authorized>
+                <SidebarNodo Titulo="@L("Seguridad")" IconoNombre="lock" Rutas="@(new[] { "usuarios", "roles", "permisos" })">
+                    <NavLink href="usuarios" class="sidebar-hijo-link">@L("Usuarios")</NavLink>
+                    <NavLink href="roles" class="sidebar-hijo-link">@L("Roles")</NavLink>
+                    <NavLink href="permisos" class="sidebar-hijo-link">@L("Permisos")</NavLink>
+                </SidebarNodo>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR,INVENTARIO_FISICO,INVENTARIO_CARGA_INICIAL,INVENTARIO_TRASLADO_ENVIAR,INVENTARIO_TRASLADO_RECIBIR,INVENTARIO_REORDEN">
+            <Authorized>
+                <SidebarNodo Titulo="@L("Inventario")" IconoNombre="package" Rutas="@(new[] { "productos", "caracteristicas", "tipos-caracteristica", "existencias", "precios", "bodegas", "unidades-medida", "inventario" })">
+                    <AuthorizeView Policy="Permiso:INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR" Context="productosContexto">
+                        <Authorized>
+                            <NavLink href="productos" class="sidebar-hijo-link">@L("Productos")</NavLink>
+                            <NavLink href="caracteristicas" class="sidebar-hijo-link">@L("Características")</NavLink>
+                            <NavLink href="tipos-caracteristica" class="sidebar-hijo-link">@L("Tipos de característica")</NavLink>
+                            <NavLink href="existencias" class="sidebar-hijo-link">@L("Existencias")</NavLink>
+                            <NavLink href="precios" class="sidebar-hijo-link">@L("Precios")</NavLink>
+                            <NavLink href="bodegas" class="sidebar-hijo-link">@L("Bodegas")</NavLink>
+                            <NavLink href="unidades-medida" class="sidebar-hijo-link">@L("Unidades de medida")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:INVENTARIO_FISICO" Context="fisicoContexto">
+                        <Authorized>
+                            <NavLink href="inventario/fisico" class="sidebar-hijo-link">@L("Inventario físico")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:INVENTARIO_TRASLADO_ENVIAR,INVENTARIO_TRASLADO_RECIBIR" Context="trasladoContexto">
+                        <Authorized>
+                            <NavLink href="inventario/traslados" class="sidebar-hijo-link">@L("Traslados entre bodegas")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:INVENTARIO_CARGA_INICIAL" Context="inicialContexto">
+                        <Authorized>
+                            <NavLink href="inventario/carga-inicial" class="sidebar-hijo-link">@L("Inventario inicial")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:INVENTARIO_REORDEN" Context="reordenContexto">
+                        <Authorized>
+                            <NavLink href="inventario/rotacion" class="sidebar-hijo-link">@L("Rotación y reorden")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                </SidebarNodo>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Policy="Permiso:VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR,VENTAS_COTIZACION">
+            <Authorized>
+                <SidebarNodo Titulo="@L("Ventas / POS")" IconoNombre="receipt" Rutas="@(new[] { "facturas", "clientes", "vendedores", "ventas", "fel/documentos" })">
+                    <AuthorizeView Policy="Permiso:VENTAS_COTIZACION,VENTAS_FACTURA_CREAR" Context="cotizacionContexto">
+                        <Authorized>
+                            <NavLink href="ventas/cotizaciones" class="sidebar-hijo-link">@L("Cotizaciones")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <NavLink href="facturas" class="sidebar-hijo-link">@L("Facturas")</NavLink>
+                    <AuthorizeView Policy="Permiso:FEL_ADMIN" Context="felContexto">
+                        <Authorized>
+                            <NavLink href="fel/documentos" class="sidebar-hijo-link">@L("Documentos electrónicos")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <NavLink href="clientes" class="sidebar-hijo-link">@L("Clientes")</NavLink>
+                    <AuthorizeView Policy="Permiso:VENTAS_VENDEDOR_ADMIN" Context="vendedorContexto">
+                        <Authorized>
+                            <NavLink href="vendedores" class="sidebar-hijo-link">@L("Vendedores")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <NavLink href="ventas/antiguedad" class="sidebar-hijo-link">@L("Antigüedad de saldos")</NavLink>
+                </SidebarNodo>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Policy="Permiso:COMPRAS_DOCUMENTO_CREAR,COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR">
+            <Authorized>
+                <SidebarNodo Titulo="@L("Compras")" IconoNombre="shopping-cart" Rutas="@(new[] { "compras", "proveedores" })">
+                    <AuthorizeView Policy="Permiso:COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR_BODEGA,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR" Context="ordenContexto">
+                        <Authorized>
+                            <NavLink href="compras/ordenes" class="sidebar-hijo-link">@L("Órdenes de compra")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:COMPRAS_DOCUMENTO_CREAR" Context="compraContexto">
+                        <Authorized>
+                            <NavLink href="compras" Match="NavLinkMatch.All" class="sidebar-hijo-link">@L("Compras")</NavLink>
+                            <NavLink href="proveedores" class="sidebar-hijo-link">@L("Proveedores")</NavLink>
+                            <NavLink href="compras/productos-proveedor" class="sidebar-hijo-link">@L("Productos por proveedor")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                </SidebarNodo>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Policy="Permiso:CXC_ADMIN">
+            <Authorized>
+                <SidebarNodo Titulo="@L("Cuentas por cobrar")" IconoNombre="wallet" Rutas="@(new[] { "cxc" })">
+                    <NavLink href="cxc/estado-cuenta" class="sidebar-hijo-link">@L("Estado de cuenta")</NavLink>
+                    <NavLink href="cxc/cobros" class="sidebar-hijo-link">@L("Cobros")</NavLink>
+                    <NavLink href="cxc/notas" class="sidebar-hijo-link">@L("Notas de crédito y débito")</NavLink>
+                    <NavLink href="cxc/antiguedad" class="sidebar-hijo-link">@L("Antigüedad de saldos")</NavLink>
+                </SidebarNodo>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Policy="Permiso:CXP_ADMIN,CXP_CONTRASENA,CXP_PAGO_PROGRAMADO">
+            <Authorized>
+                <SidebarNodo Titulo="@L("Cuentas por pagar")" IconoNombre="banknote" Rutas="@(new[] { "cxp" })">
+                    <AuthorizeView Policy="Permiso:CXP_ADMIN" Context="cxpContexto">
+                        <Authorized>
+                            <NavLink href="cxp/estado-cuenta" class="sidebar-hijo-link">@L("Estado de cuenta")</NavLink>
+                            <NavLink href="cxp/pagos" class="sidebar-hijo-link">@L("Pagos a proveedores")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CXP_CONTRASENA" Context="contrasenaContexto">
+                        <Authorized>
+                            <NavLink href="cxp/contrasenas" class="sidebar-hijo-link">@L("Contraseñas de pago")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CXP_PAGO_PROGRAMADO" Context="programadoContexto">
+                        <Authorized>
+                            <NavLink href="cxp/pagos-programados" class="sidebar-hijo-link">@L("Pagos programados")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CXP_ADMIN" Context="cxpNotasContexto">
+                        <Authorized>
+                            <NavLink href="cxp/notas" class="sidebar-hijo-link">@L("Notas de crédito y débito")</NavLink>
+                            <NavLink href="cxp/antiguedad" class="sidebar-hijo-link">@L("Antigüedad de saldos")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                </SidebarNodo>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Policy="Permiso:BANCOS_CAJA_ADMIN,BANCOS_ADMIN,BANCOS_CHEQUE_EMITIR,BANCOS_FORMATO_ARCHIVO,CAJA_CHICA_GASTOS,CAJA_CHICA_ADMIN,FLUJO_CAJA,CONCILIACION_BANCARIA">
+            <Authorized>
+                <SidebarNodo Titulo="@L("Caja y bancos")" IconoNombre="landmark" Rutas="@(new[] { "caja", "bancos" })">
+                    <AuthorizeView Policy="Permiso:BANCOS_CAJA_ADMIN" Context="cajaContexto">
+                        <Authorized>
+                            <NavLink href="caja" class="sidebar-hijo-link">@L("Caja")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:BANCOS_ADMIN,BANCOS_CHEQUE_EMITIR" Context="chequesContexto">
+                        <Authorized>
+                            <NavLink href="bancos/cheques" class="sidebar-hijo-link">@L("Cheques")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CAJA_CHICA_GASTOS,CAJA_CHICA_ADMIN" Context="cajaChicaContexto">
+                        <Authorized>
+                            <NavLink href="bancos/caja-chica" class="sidebar-hijo-link">@L("Caja chica")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CONCILIACION_BANCARIA" Context="conciliacionContexto">
+                        <Authorized>
+                            <NavLink href="bancos/conciliacion" class="sidebar-hijo-link">@L("Conciliación bancaria")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:FLUJO_CAJA" Context="flujoContexto">
+                        <Authorized>
+                            <NavLink href="bancos/flujo-caja" class="sidebar-hijo-link">@L("Flujo de caja")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:BANCOS_ADMIN" Context="bancosContexto">
+                        <Authorized>
+                            <NavLink href="bancos/cuentas" class="sidebar-hijo-link">@L("Cuentas y chequeras")</NavLink>
+                            <NavLink href="bancos/motivos" class="sidebar-hijo-link">@L("Motivos de pago")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:BANCOS_FORMATO_ARCHIVO" Context="formatoContexto">
+                        <Authorized>
+                            <NavLink href="bancos/formatos" class="sidebar-hijo-link">@L("Formatos de archivo")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                </SidebarNodo>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Policy="Permiso:RRHH_ADMIN">
+            <Authorized>
+                <SidebarNodo Titulo="@L("RRHH")" IconoNombre="briefcase" Rutas="@(new[] { "rrhh" })">
+                    <NavLink href="rrhh/empleados" class="sidebar-hijo-link">@L("Empleados")</NavLink>
+                    <NavLink href="rrhh/carga-empleados" class="sidebar-hijo-link">@L("Carga de empleados")</NavLink>
+                    <NavLink href="rrhh/nominas" class="sidebar-hijo-link">@L("Nóminas")</NavLink>
+                    <NavLink href="rrhh/movimientos" class="sidebar-hijo-link">@L("Movimientos de nómina")</NavLink>
+                    <NavLink href="rrhh/libro-salarios" class="sidebar-hijo-link">@L("Libro de salarios")</NavLink>
+                    <NavLink href="rrhh/planilla-igss" class="sidebar-hijo-link">@L("Planilla del IGSS")</NavLink>
+                    <NavLink href="rrhh/tipos-movimiento" class="sidebar-hijo-link">@L("Tipos de movimiento")</NavLink>
+                    <NavLink href="rrhh/estructura" class="sidebar-hijo-link">@L("Estructura organizativa")</NavLink>
+                    <NavLink href="rrhh/catalogos" class="sidebar-hijo-link">@L("Catálogos")</NavLink>
+                </SidebarNodo>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Policy="Permiso:GENERAL_CONFIG_ADMIN,GENERAL_NIT_REVISION">
+            <Authorized>
+                <SidebarNodo Titulo="@L("General")" IconoNombre="settings" Rutas="@(new[] { "general", "fel/configuracion" })">
+                    <AuthorizeView Policy="Permiso:GENERAL_CONFIG_ADMIN" Context="generalContexto">
+                        <Authorized>
+                            <NavLink href="general/companias" class="sidebar-hijo-link">@L("Compañías")</NavLink>
+                            <NavLink href="general/sucursales" class="sidebar-hijo-link">@L("Sucursales y bodegas")</NavLink>
+                            <NavLink href="general/entidades-financieras" class="sidebar-hijo-link">@L("Entidades financieras")</NavLink>
+                            <NavLink href="general/ubicacion" class="sidebar-hijo-link">@L("Ubicación geográfica")</NavLink>
+                            <NavLink href="general/cuentas-poliza" class="sidebar-hijo-link">@L("Cuentas de pólizas")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:GENERAL_CONFIG_ADMIN,GENERAL_NIT_REVISION" Context="nitContexto">
+                        <Authorized>
+                            <NavLink href="general/revision-nit" class="sidebar-hijo-link">@L("Revisión de NIT")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:FEL_ADMIN" Context="felContexto">
+                        <Authorized>
+                            <NavLink href="fel/configuracion" class="sidebar-hijo-link">@L("Factura electrónica")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                </SidebarNodo>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Policy="Permiso:CONTABILIDAD_NOMENCLATURA_ADMIN,CONTABILIDAD_CENTRO_COSTO,CONTABILIDAD_SALDOS_INICIALES,CONTABILIDAD_POLIZAS,CONTABILIDAD_ASIENTO_MANUAL,CONTABILIDAD_ESTADOS,CONTABILIDAD_CIERRE,ACTIVOS_FIJOS">
+            <Authorized>
+                <SidebarNodo Titulo="@L("Contabilidad")" IconoNombre="bar-chart-2" Rutas="@(new[] { "contabilidad" })">
+                    <AuthorizeView Policy="Permiso:CONTABILIDAD_POLIZAS,CONTABILIDAD_ASIENTO_MANUAL" Context="polizasContexto">
+                        <Authorized>
+                            <NavLink href="contabilidad/polizas" class="sidebar-hijo-link">@L("Pólizas")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CONTABILIDAD_POLIZAS,CONTABILIDAD_ESTADOS" Context="librosContexto">
+                        <Authorized>
+                            <NavLink href="contabilidad/libros" class="sidebar-hijo-link">@L("Libros y balanza")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CONTABILIDAD_ESTADOS" Context="estadosContexto">
+                        <Authorized>
+                            <NavLink href="contabilidad/estados-financieros" class="sidebar-hijo-link">@L("Estados financieros")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:ACTIVOS_FIJOS" Context="activosContexto">
+                        <Authorized>
+                            <NavLink href="contabilidad/activos-fijos" class="sidebar-hijo-link">@L("Activos fijos")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CONTABILIDAD_CIERRE" Context="cierreContexto">
+                        <Authorized>
+                            <NavLink href="contabilidad/periodos" class="sidebar-hijo-link">@L("Períodos y cierre")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CONTABILIDAD_NOMENCLATURA_ADMIN" Context="nomenclaturaContexto">
+                        <Authorized>
+                            <NavLink href="contabilidad/nomenclatura" class="sidebar-hijo-link">@L("Nomenclatura")</NavLink>
+                            <NavLink href="general/cuentas-poliza" class="sidebar-hijo-link">@L("Cuentas de pólizas")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CONTABILIDAD_SALDOS_INICIALES" Context="saldosContexto">
+                        <Authorized>
+                            <NavLink href="contabilidad/saldos-iniciales" class="sidebar-hijo-link">@L("Saldos iniciales")</NavLink>
+                            <NavLink href="contabilidad/integridad" class="sidebar-hijo-link">@L("Revisión de integridad")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CONTABILIDAD_CENTRO_COSTO" Context="centroContexto">
+                        <Authorized>
+                            <NavLink href="contabilidad/centros-costo" class="sidebar-hijo-link">@L("Centros de costo")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                </SidebarNodo>
+            </Authorized>
+            <NotAuthorized>
+                <SidebarNodo Titulo="@L("Contabilidad")" IconoNombre="bar-chart-2" Disponible="false" />
+            </NotAuthorized>
+        </AuthorizeView>
+    </nav>
+
+    <AuthorizeView>
+        <Authorized>
+            <div class="sidebar-usuario">
+                <span class="sidebar-usuario-nombre">@context.User.Identity?.Name</span>
+                <Preferencias />
+                <form method="post" action="logout">
+                    <button type="submit" class="sidebar-boton-salir">@L("Cerrar sesión")</button>
+                </form>
+            </div>
+        </Authorized>
+    </AuthorizeView>
+</aside>
+
+@code {
+    private bool menuAbierto;
+
+    protected override void OnInitialized() => NavigationManager.LocationChanged += AlCambiarUbicacion;
+
+    private void AlternarMenu() => menuAbierto = !menuAbierto;
+
+    // En móvil el menú se cierra al elegir una pantalla, para mostrar el contenido.
+    private void AlCambiarUbicacion(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        if (!menuAbierto) return;
+        menuAbierto = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose() => NavigationManager.LocationChanged -= AlCambiarUbicacion;
+}

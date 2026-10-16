@@ -1,0 +1,70 @@
+using Erp.Data.Bancos;
+using Erp.Data.Caja;
+using Erp.Data.Cargas;
+using Erp.Data.Compras;
+using Erp.Data.Contabilidad;
+using Erp.Data.Correo;
+using Erp.Data.Cuentas;
+using Erp.Data.Fel;
+using Erp.Data.General;
+using Erp.Data.Inventario;
+using Erp.Data.Pagos;
+using Erp.Data.Rrhh;
+using Erp.Data.Security;
+using Erp.Data.Tableros;
+using Erp.Data.Ventas;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Erp.Data;
+
+public static class DependencyInjection
+{
+	public static IServiceCollection AddErpData(this IServiceCollection services, string connectionString)
+	{
+		// Los procedimientos usan columnas snake_case (usu_id, rol_codigo, ...);
+		// esto le dice a Dapper que las relacione con propiedades PascalCase
+		// (UsuId, RolCodigo, ...) sin tener que mapear cada una a mano.
+		Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
+
+		services.AddSingleton<IDbConnectionFactory>(_ => new SqlServerConnectionFactory(connectionString));
+		services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+		services.AddScoped<IRolRepository, RolRepository>();
+		services.AddScoped<IPermisoRepository, PermisoRepository>();
+		services.AddScoped<IAuthRepository, AuthRepository>();
+		services.AddScoped<IProductoRepository, ProductoRepository>();
+		services.AddScoped<IBodegaRepository, BodegaRepository>();
+		services.AddScoped<IFacturaRepository, FacturaRepository>();
+		services.AddScoped<ICotizacionRepository, CotizacionRepository>();
+		services.AddScoped<ICompraRepository, CompraRepository>();
+		services.AddScoped<IOrdenCompraRepository, OrdenCompraRepository>();
+		services.AddScoped<IReordenRepository, ReordenRepository>();
+		services.AddScoped<IVendedorRepository, VendedorRepository>();
+		services.AddScoped<IClienteRepository, ClienteRepository>();
+		services.AddScoped<IProveedorRepository, ProveedorRepository>();
+		services.AddScoped<IProductoProveedorRepository, ProductoProveedorRepository>();
+		services.AddScoped<IProductoCaracteristicaRepository, ProductoCaracteristicaRepository>();
+		services.AddScoped<IProductoPrecioRepository, ProductoPrecioRepository>();
+		services.AddScoped<ICajaRepository, CajaRepository>();
+		services.AddScoped<IGeneralRepository, GeneralRepository>();
+		services.AddScoped<IRrhhRepository, RrhhRepository>();
+		services.AddScoped<IIgssRepository, IgssRepository>();
+		services.AddScoped<INomenclaturaRepository, NomenclaturaRepository>();
+		services.AddScoped<ICuentasRepository, CuentasRepository>();
+		services.AddScoped<IFelRepository, FelRepository>();
+		services.AddScoped<ITableroRepository, TableroRepository>();
+		services.AddScoped<IBancosRepository, BancosRepository>();
+		services.AddScoped<ICentroCostoRepository, CentroCostoRepository>();
+		services.AddScoped<ILibrosRepository, LibrosRepository>();
+		services.AddScoped<Erp.Data.Conciliacion.IConciliacionRepository, Erp.Data.Conciliacion.ConciliacionRepository>();
+		services.AddScoped<Erp.Data.FlujoCaja.IFlujoCajaRepository, Erp.Data.FlujoCaja.FlujoCajaRepository>();
+		services.AddScoped<Erp.Data.ActivosFijos.IActivosFijosRepository, Erp.Data.ActivosFijos.ActivosFijosRepository>();
+		services.AddScoped<Erp.Data.CajaChica.ICajaChicaRepository, Erp.Data.CajaChica.CajaChicaRepository>();
+		services.AddScoped<IIntegridadRepository, IntegridadRepository>();
+		services.AddScoped<IInventarioFisicoRepository, InventarioFisicoRepository>();
+		services.AddScoped<ITrasladoRepository, TrasladoRepository>();
+		services.AddScoped<ICargasRepository, CargasRepository>();
+		services.AddScoped<IPagosRepository, PagosRepository>();
+		services.AddScoped<ICorreoRepository, CorreoRepository>();
+		return services;
+	}
+}

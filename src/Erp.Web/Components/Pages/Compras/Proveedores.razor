@@ -1,0 +1,381 @@
+@page "/proveedores"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:COMPRAS_DOCUMENTO_CREAR")]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.Compras
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IProveedorRepository ProveedorRepository
+@inject Erp.Data.Pagos.IPagosRepository PagosRepository
+@inject Erp.Data.General.IGeneralRepository GeneralRepository
+
+<PageTitle>@L("Proveedores")</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>@L("Proveedores")</h1>
+    <p>@L("Mantenimiento de proveedores.")</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
+}
+
+<BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestanaActiva" />
+
+@if (pestanaActiva == "lista")
+{
+    <div class="barra-herramientas">
+        <input placeholder="@L("Buscar por código, nombre o NIT")" aria-label="@L("Buscar por código, nombre o NIT")" @bind="textoBusqueda" type="search" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarAsync(); })" />
+        <select @bind="filtroEstado" aria-label="@L("Estado")">
+            <option value="A">@L("Activos")</option>
+            <option value="I">@L("Inactivos")</option>
+            <option value="">@L("Todos")</option>
+        </select>
+        <BotonIcono Icono="search" Tooltip="@L("Buscar")" Etiqueta="@L("Buscar")" OnClick="BuscarAsync" />
+        <span class="barra-herramientas-separador"></span>
+        <BotonIcono Icono="plus" Tooltip="@L("Nuevo proveedor")" Etiqueta="@L("Nuevo proveedor")" Variante="primario" OnClick="MostrarFormularioNuevo" />
+    </div>
+
+    @if (mostrarNuevo)
+    {
+        <EditForm Model="nuevoProveedor" OnValidSubmit="CrearProveedorAsync" class="panel-formulario">
+            <DataAnnotationsValidator />
+            <ResumenValidacion />
+            <div class="campo"><label for="proveedores-proveedor-codigo">@L("Código")</label><InputText id="proveedores-proveedor-codigo" @bind-Value="nuevoProveedor.Codigo" /></div>
+            <div class="campo"><label for="proveedores-proveedor-nombrecomercial">@L("Nombre comercial")</label><InputText id="proveedores-proveedor-nombrecomercial" @bind-Value="nuevoProveedor.NombreComercial" /></div>
+            <div class="campo"><label for="proveedores-proveedor-nit">@L("NIT")</label><InputText id="proveedores-proveedor-nit" @bind-Value="nuevoProveedor.Nit" /></div>
+            <div class="campo"><label for="proveedores-proveedor-contacto">@L("Contacto")</label><InputText id="proveedores-proveedor-contacto" @bind-Value="nuevoProveedor.Contacto" /></div>
+            <div class="campo"><label for="proveedores-proveedor-telefonooficina">@L("Teléfono oficina")</label><InputText id="proveedores-proveedor-telefonooficina" @bind-Value="nuevoProveedor.TelefonoOficina" /></div>
+            <div class="campo"><label for="proveedores-proveedor-direccion">@L("Dirección")</label><InputText id="proveedores-proveedor-direccion" @bind-Value="nuevoProveedor.Direccion" /></div>
+            <div class="campo"><label for="proveedores-proveedor-emailempresa">@L("Email empresa")</label><InputText id="proveedores-proveedor-emailempresa" @bind-Value="nuevoProveedor.EmailEmpresa" /></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="@L("Guardar")" Etiqueta="@L("Guardar")" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => mostrarNuevo = false" />
+            </div>
+        </EditForm>
+    }
+
+    <table class="tabla-datos">
+        <thead>
+            <tr><th class="col-codigo">@L("Código")</th><th>@L("Nombre comercial")</th><th class="col-codigo">@L("NIT")</th><th>@L("Contacto")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr>
+        </thead>
+        <tbody>
+            @if (!proveedores.Any())
+            {
+                <tr><td colspan="6" class="doc-tabla-vacia">@L("Ningún proveedor coincide con la búsqueda.")</td></tr>
+            }
+            @foreach (var p in proveedores)
+            {
+                <tr class="@(seleccionado?.PrvId == p.PrvId ? "fila-seleccionada" : "")">
+                    <td class="col-codigo">@p.PrvCodigo</td>
+                    <td>@p.PrvNombreComercial</td>
+                    <td class="col-codigo">@p.PrvNit</td>
+                    <td>@p.PrvContacto</td>
+                    <td class="col-estado"><span class="estado-badge @(p.PrvEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(p.PrvEstado == "A" ? L("Activo") : L("Inactivo"))</span></td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="eye" Tooltip="@L("Ver detalle")" OnClick="() => SeleccionarAsync(p)" />
+                            <a class="boton-icono boton-icono-neutral" href="compras/productos-proveedor?prv=@p.PrvId" aria-label="@L("Productos del proveedor")">
+                                <Icono Nombre="package" Tamano="17" /><span class="boton-icono-tip" aria-hidden="true">@L("Productos del proveedor")</span>
+                            </a>
+                            @if (p.PrvEstado == "A")
+                            {
+                                <BotonIcono Icono="trash-2" Tooltip="@L("Desactivar proveedor")" Confirmacion="@L("¿Desactivar el proveedor?")" Variante="peligro" OnClick="() => DesactivarAsync(p)" />
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (pestanaActiva == "detalle" && seleccionado is not null)
+{
+    <div class="panel-detalle">
+        <h2>@L("Detalle: {0}", seleccionado.PrvNombreComercial)</h2>
+        <div class="campo"><label>@L("Nombre comercial")</label><span class="valor-detalle">@seleccionado.PrvNombreComercial</span></div>
+        <div class="campo"><label>@L("NIT")</label><span class="valor-detalle">@seleccionado.PrvNit</span></div>
+        <div class="campo"><label>@L("Contacto")</label><span class="valor-detalle">@seleccionado.PrvContacto</span></div>
+        <div class="campo"><label>@L("Teléfono oficina")</label><span class="valor-detalle">@seleccionado.PrvTelefonoOficina</span></div>
+        <div class="campo"><label>@L("Email empresa")</label><span class="valor-detalle">@seleccionado.PrvEmailEmpresa</span></div>
+        <div class="acciones-fila">
+            <BotonIcono Icono="pencil" Tooltip="@L("Editar")" Etiqueta="@L("Editar")" OnClick="IniciarEdicion" />
+        </div>
+
+        <h3 id="titulo-datos-pago">@L("Datos de pago")</h3>
+        @if (pagoEdicion is null)
+        {
+            <div class="campo"><label>@L("Forma de pago")</label><span class="valor-detalle">@(datosPago?.FormaPago == "T" ? L("Transferencia") : L("Cheque"))</span></div>
+            <div class="campo"><label>@L("Banco")</label><span class="valor-detalle">@(datosPago?.Banco ?? "—")</span></div>
+            <div class="campo"><label>@L("Cuenta")</label><span class="valor-detalle">@(datosPago?.NumeroCuenta is null ? "—" : $"{(datosPago.TipoCuenta == "A" ? "Ahorro" : "Monetaria")} {datosPago.NumeroCuenta}")</span></div>
+            <div class="campo"><label>@L("A nombre de")</label><span class="valor-detalle">@(datosPago?.Titular ?? seleccionado.PrvNombreComercial)</span></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="pencil" Tooltip="@L("Editar los datos de pago")" Etiqueta="@L("Editar datos de pago")" OnClick="IniciarEdicionPago" />
+            </div>
+        }
+        else
+        {
+            <div class="panel-formulario">
+                <div class="campo">
+                    <label for="prv-forma-pago">@L("Forma de pago")</label>
+                    <select id="prv-forma-pago" @bind="pagoEdicion.FormaPago">
+                        <option value="C">@L("Cheque")</option>
+                        <option value="T">@L("Transferencia")</option>
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="prv-banco">@L("Banco")</label>
+                    <select id="prv-banco" value="@(pagoEdicion.GefId?.ToString() ?? "")" @onchange="e => pagoEdicion.GefId = int.TryParse(e.Value?.ToString(), out var g) ? g : null">
+                        <option value="">@L("(Ninguno)")</option>
+                        @foreach (var b in bancos)
+                        {
+                            <option value="@b.GefId">@b.GefDescripcion</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="prv-tipo-cuenta">@L("Tipo de cuenta")</label>
+                    <select id="prv-tipo-cuenta" value="@(pagoEdicion.TipoCuenta ?? "")" @onchange="e => pagoEdicion.TipoCuenta = e.Value?.ToString() is { Length: > 0 } v ? v : null">
+                        <option value="">@L("(Ninguno)")</option>
+                        <option value="M">@L("Monetaria")</option>
+                        <option value="A">@L("Ahorro")</option>
+                    </select>
+                </div>
+                <div class="campo"><label for="prv-cuenta">@L("Número de cuenta")</label><input id="prv-cuenta" maxlength="30" inputmode="numeric" @bind="pagoEdicion.NumeroCuenta" /></div>
+                <div class="campo"><label for="prv-titular">@L("Nombre de la cuenta")</label><input id="prv-titular" maxlength="150" placeholder="@L("Si difiere del nombre comercial")" @bind="pagoEdicion.Titular" /></div>
+                <p class="texto-ayuda">@L("Para pagar por transferencia se necesitan el banco, el tipo y el número de cuenta. La forma de pago se propone al emitir la contraseña.")</p>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="@L("Guardar los datos de pago")" Etiqueta="@L("Guardar")" Variante="primario" OnClick="GuardarPagoAsync" />
+                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => pagoEdicion = null" />
+                </div>
+            </div>
+        }
+    </div>
+}
+else if (pestanaActiva == "editar" && seleccionado is not null)
+{
+    <div class="panel-formulario">
+        <h2>@L("Editar: {0}", seleccionado.PrvNombreComercial)</h2>
+        <EditForm Model="edicionProveedor" OnValidSubmit="GuardarEdicionAsync">
+            <DataAnnotationsValidator />
+            <ResumenValidacion />
+            <div class="campo"><label for="proveedores-edicionproveedor-nombrecomercial">@L("Nombre comercial")</label><InputText id="proveedores-edicionproveedor-nombrecomercial" @bind-Value="edicionProveedor.NombreComercial" /></div>
+            <div class="campo"><label for="proveedores-edicionproveedor-nit">@L("NIT")</label><InputText id="proveedores-edicionproveedor-nit" @bind-Value="edicionProveedor.Nit" /></div>
+            <div class="campo"><label for="proveedores-edicionproveedor-contacto">@L("Contacto")</label><InputText id="proveedores-edicionproveedor-contacto" @bind-Value="edicionProveedor.Contacto" /></div>
+            <div class="campo"><label for="proveedores-edicionproveedor-telefonooficina">@L("Teléfono oficina")</label><InputText id="proveedores-edicionproveedor-telefonooficina" @bind-Value="edicionProveedor.TelefonoOficina" /></div>
+            <div class="campo"><label for="proveedores-edicionproveedor-direccion">@L("Dirección")</label><InputText id="proveedores-edicionproveedor-direccion" @bind-Value="edicionProveedor.Direccion" /></div>
+            <div class="campo"><label for="proveedores-edicionproveedor-emailempresa">@L("Email empresa")</label><InputText id="proveedores-edicionproveedor-emailempresa" @bind-Value="edicionProveedor.EmailEmpresa" /></div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="@L("Guardar cambios")" Etiqueta="@L("Guardar cambios")" Variante="primario" TipoBoton="submit" />
+                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="CancelarEdicion" />
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IReadOnlyList<Proveedor> proveedores = Array.Empty<Proveedor>();
+    private Proveedor? seleccionado;
+    private string pestanaActiva = "lista";
+
+    private IReadOnlyList<PestanaItem> Pestanas => seleccionado is null
+        ? new[] { new PestanaItem("lista", L("Lista")) }
+        : pestanaActiva == "editar"
+            ? new[] { new PestanaItem("lista", L("Lista")), new PestanaItem("detalle", L("Detalle")), new PestanaItem("editar", L("Editar")) }
+            : new[] { new PestanaItem("lista", L("Lista")), new PestanaItem("detalle", L("Detalle")) };
+
+    private string textoBusqueda = "";
+    private string filtroEstado = "A";
+    private bool mostrarNuevo;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private readonly ProveedorModelo nuevoProveedor = new();
+    private readonly ProveedorModelo edicionProveedor = new();
+    private Erp.Data.Pagos.ProveedorPago? datosPago;
+    private Erp.Data.Pagos.ProveedorPago? pagoEdicion;
+    private IReadOnlyList<Erp.Data.Caja.EntidadFinanciera> bancos = Array.Empty<Erp.Data.Caja.EntidadFinanciera>();
+
+    protected override async Task OnInitializedAsync() => await BuscarAsync();
+
+    private async Task<int?> ObtenerUsuIdActualAsync()
+    {
+        if (AuthenticationStateTask is null) return null;
+        var estado = await AuthenticationStateTask;
+        return estado.User.ObtenerUsuId();
+    }
+
+    private async Task BuscarAsync()
+    {
+        proveedores = await ProveedorRepository.ConsultarAsync(
+            string.IsNullOrWhiteSpace(textoBusqueda) ? null : textoBusqueda,
+            string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado);
+    }
+
+    private void MostrarFormularioNuevo()
+    {
+        mensaje = null;
+        nuevoProveedor.Codigo = "";
+        nuevoProveedor.NombreComercial = "";
+        nuevoProveedor.Nit = null;
+        nuevoProveedor.Contacto = null;
+        nuevoProveedor.TelefonoOficina = null;
+        nuevoProveedor.Direccion = null;
+        nuevoProveedor.EmailEmpresa = null;
+        mostrarNuevo = true;
+    }
+
+    private async Task CrearProveedorAsync()
+    {
+        try
+        {
+            if (!Erp.Data.General.NitValidador.EsValido(nuevoProveedor.Nit))
+            {
+                mensaje = Erp.Data.General.NitValidador.MensajeInvalido(nuevoProveedor.Nit);
+                esMensajeError = true;
+                return;
+            }
+            nuevoProveedor.Nit = Erp.Data.General.NitValidador.Formatear(nuevoProveedor.Nit);
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ProveedorRepository.InsertarAsync(
+                nuevoProveedor.Codigo, nuevoProveedor.NombreComercial, nuevoProveedor.Nit, nuevoProveedor.Contacto,
+                nuevoProveedor.Direccion, nuevoProveedor.TelefonoOficina, nuevoProveedor.EmailEmpresa, usuId);
+            mostrarNuevo = false;
+            mensaje = L("Proveedor creado correctamente.");
+            esMensajeError = false;
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private async Task SeleccionarAsync(Proveedor proveedor)
+    {
+        seleccionado = proveedor;
+        pestanaActiva = "detalle";
+        mensaje = null;
+        pagoEdicion = null;
+        try { datosPago = await PagosRepository.ConsultarProveedorPagoAsync(proveedor.PrvId); }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); esMensajeError = true; }
+    }
+
+    private async Task IniciarEdicionPago()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            if (bancos.Count == 0)
+            {
+                var tipoBanco = (await GeneralRepository.ConsultarTiposEntidadAsync()).FirstOrDefault(t => t.GeftDescripcion == "Banco");
+                if (tipoBanco is not null) bancos = await GeneralRepository.ConsultarEntidadesAsync(tipoBanco.GeftId, soloActivas: true);
+            }
+            pagoEdicion = new Erp.Data.Pagos.ProveedorPago
+            {
+                PrvId = seleccionado.PrvId, FormaPago = datosPago?.FormaPago ?? "C", GefId = datosPago?.GefId, TipoCuenta = datosPago?.TipoCuenta,
+                NumeroCuenta = datosPago?.NumeroCuenta, Titular = datosPago?.Titular
+            };
+            mensaje = null;
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); esMensajeError = true; }
+    }
+
+    private async Task GuardarPagoAsync()
+    {
+        if (pagoEdicion is null) return;
+        try
+        {
+            await PagosRepository.GuardarProveedorPagoAsync(pagoEdicion, await ObtenerUsuIdActualAsync());
+            datosPago = await PagosRepository.ConsultarProveedorPagoAsync(pagoEdicion.PrvId);
+            pagoEdicion = null;
+            mensaje = L("Datos de pago guardados.");
+            esMensajeError = false;
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); esMensajeError = true; }
+    }
+
+    private void IniciarEdicion()
+    {
+        if (seleccionado is null) return;
+        edicionProveedor.NombreComercial = seleccionado.PrvNombreComercial;
+        edicionProveedor.Nit = seleccionado.PrvNit;
+        edicionProveedor.Contacto = seleccionado.PrvContacto;
+        edicionProveedor.TelefonoOficina = seleccionado.PrvTelefonoOficina;
+        edicionProveedor.EmailEmpresa = seleccionado.PrvEmailEmpresa;
+        mensaje = null;
+        pestanaActiva = "editar";
+    }
+
+    private void CancelarEdicion()
+    {
+        pestanaActiva = "detalle";
+    }
+
+    private async Task GuardarEdicionAsync()
+    {
+        if (seleccionado is null) return;
+        try
+        {
+            if (!Erp.Data.General.NitValidador.EsValido(edicionProveedor.Nit))
+            {
+                mensaje = Erp.Data.General.NitValidador.MensajeInvalido(edicionProveedor.Nit);
+                esMensajeError = true;
+                return;
+            }
+            edicionProveedor.Nit = Erp.Data.General.NitValidador.Formatear(edicionProveedor.Nit);
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ProveedorRepository.ActualizarAsync(
+                seleccionado.PrvId, edicionProveedor.NombreComercial, edicionProveedor.Nit, edicionProveedor.Contacto,
+                edicionProveedor.Direccion, edicionProveedor.TelefonoOficina, edicionProveedor.EmailEmpresa, usuId);
+            mensaje = L("Cambios guardados.");
+            esMensajeError = false;
+            await BuscarAsync();
+            seleccionado = proveedores.FirstOrDefault(p => p.PrvId == seleccionado.PrvId) ?? seleccionado;
+            pestanaActiva = "detalle";
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private async Task DesactivarAsync(Proveedor proveedor)
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await ProveedorRepository.EliminarAsync(proveedor.PrvId, usuId);
+            mensaje = L("Proveedor desactivado.");
+            esMensajeError = false;
+            if (seleccionado?.PrvId == proveedor.PrvId)
+            {
+                seleccionado = null;
+                pestanaActiva = "lista";
+            }
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private sealed class ProveedorModelo
+    {
+        [Required] public string Codigo { get; set; } = "";
+        [Required] public string NombreComercial { get; set; } = "";
+        public string? Nit { get; set; }
+        public string? Contacto { get; set; }
+        public string? TelefonoOficina { get; set; }
+        public string? Direccion { get; set; }
+        public string? EmailEmpresa { get; set; }
+    }
+}
