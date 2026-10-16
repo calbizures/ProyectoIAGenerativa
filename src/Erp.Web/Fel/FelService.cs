@@ -28,10 +28,21 @@ public sealed class FelService(IFelRepository repositorio, IEnumerable<IFelCerti
 	private IFelCertificador? Certificador(string? nombre) =>
 		certificadores.FirstOrDefault(c => c.Nombre.Equals(nombre ?? "", StringComparison.OrdinalIgnoreCase));
 
-	private FelSolicitud Solicitud(FelEncabezado e, string xml, string identificador, string? url) => new(
+	private FelSolicitud Solicitud(FelEncabezado e, string clave, string xml, string identificador, string? url) => new(
 		xml, identificador, e.NitEmisor, e.CorreoCopia, url, e.UsuarioFirma,
-		configuracion[$"Fel:Credenciales:{e.NitEmisor}:LlaveFirma"], e.UsuarioApi,
-		configuracion[$"Fel:Credenciales:{e.NitEmisor}:LlaveApi"], e.TimeoutSegundos);
+		configuracion[$"{clave}:LlaveFirma"], e.UsuarioApi,
+		configuracion[$"{clave}:LlaveApi"], e.TimeoutSegundos);
+
+	// Las credenciales del emisor van en Fel:Credenciales:<NIT de la compañía>.
+	// En el ambiente de pruebas el certificador asigna su propio NIT de emisor:
+	// si la sección trae NitEmisor, ese es el que va en el XML.
+	private string UsarNitCertificador(FelEncabezado e)
+	{
+		var clave = $"Fel:Credenciales:{e.NitEmisor}";
+		var nit = configuracion[$"{clave}:NitEmisor"];
+		if (!string.IsNullOrWhiteSpace(nit)) e.NitEmisor = nit.Replace("-", "").Trim().ToUpperInvariant();
+		return clave;
+	}
 
 	public async Task<FelEnvio> CertificarAsync(int encId, int? usuId, CancellationToken cancelacion = default)
 	{
@@ -64,6 +75,7 @@ public sealed class FelService(IFelRepository repositorio, IEnumerable<IFelCerti
 
 		var certificador = Certificador(e.Certificador);
 		var tipoDte = e.TipoDte!;
+		var clave = UsarNitCertificador(e);
 
 		// Validaciones previas: sin estos datos el certificador lo rechazaría.
 		string? problema = null;
@@ -96,7 +108,7 @@ public sealed class FelService(IFelRepository repositorio, IEnumerable<IFelCerti
 		{
 			var identificador = e.NumeroUnico ?? $"DOC-{encId}";
 			FelRespuesta respuesta;
-			try { respuesta = await certificador!.CertificarAsync(Solicitud(e, xml!, identificador, e.UrlCertificacion), cancelacion); }
+			try { respuesta = await certificador!.CertificarAsync(Solicitud(e, clave, xml!, identificador, e.UrlCertificacion), cancelacion); }
 			catch (Exception ex) when (ex is not OperationCanceledException)
 			{
 				log.LogError(ex, "Error inesperado del certificador para el documento {EncId}", encId);
@@ -135,6 +147,7 @@ public sealed class FelService(IFelRepository repositorio, IEnumerable<IFelCerti
 			return FelEnvio.NoAplica("El documento no estaba certificado; no hay nada que anular ante SAT.");
 
 		var certificador = Certificador(e.Certificador);
+		var clave = UsarNitCertificador(e);
 		var motivoFinal = string.IsNullOrWhiteSpace(motivo) ? "Anulación del documento" : motivo.Trim();
 		var xml = FelXmlBuilder.ConstruirAnulacion(e, e.FechaHoraEmision, e.FelUuid, motivoFinal, DateTime.Now);
 		var resultado = new FelResultado
@@ -151,7 +164,7 @@ public sealed class FelService(IFelRepository repositorio, IEnumerable<IFelCerti
 		else
 		{
 			FelRespuesta respuesta;
-			try { respuesta = await certificador.AnularAsync(Solicitud(e, xml, $"ANU-{e.NumeroUnico ?? encId.ToString()}", e.UrlAnulacion), cancelacion); }
+			try { respuesta = await certificador.AnularAsync(Solicitud(e, clave, xml, $"ANU-{e.NumeroUnico ?? encId.ToString()}", e.UrlAnulacion), cancelacion); }
 			catch (Exception ex) when (ex is not OperationCanceledException)
 			{
 				log.LogError(ex, "Error inesperado del certificador al anular el documento {EncId}", encId);

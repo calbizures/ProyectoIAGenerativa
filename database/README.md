@@ -89,30 +89,31 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 72_transferencias_boletas_hora.sql            -- comprobante de transferencias, pago con boleta verificado, hora en listados
 73_ubicacion_geografica.sql                   -- país › departamento › municipio (INE) en la compañía y los empleados
 74_ubicacion_clientes_sucursales.sql          -- la misma ubicación en cascada en clientes y sucursales
+75_fel_infile_pruebas.sql                     -- factura electrónica con el ambiente de pruebas de INFILE por defecto
 ```
 
 **Instalación de una sola vez:** después de crear la base con
-`00_crear_base_datos.sql`, el archivo `instalar_01_al_74.sql` corre en orden
-del `01` al `74` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
+`00_crear_base_datos.sql`, el archivo `instalar_01_al_75.sql` corre en orden
+del `01` al `75` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
 active *Consulta › Modo SQLCMD*, cambie la ruta de la línea `:setvar RUTA` por la
 carpeta de los scripts y ejecútelo; desde la línea de comandos:
-`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_74.sql -o instalacion.log`.
+`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_75.sql -o instalacion.log`.
 Se detiene en el primer error y muestra en qué script ocurrió. Incluye los
 datos de prueba, así que es para una base nueva, no para una con datos reales.
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `74` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `75` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `74` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `75` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `paCajaCerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `74`. Si vuelves a
-correr `12`, corre después `22` a `74` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `75`. Si vuelves a
+correr `12`, corre después `22` a `75` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -132,7 +133,8 @@ vuelves a correr `10`, `17`, `34` o `35`, corre después el `72` (la hora en
 los listados de facturas y documentos electrónicos, y el recibo impreso de un
 pago con boleta). Si vuelves a correr `25`, `26`, `36` o `40`, corre después el
 `73` (compañía y empleado con su municipio). Si vuelves a correr `10`,
-`31` o `66`, corre después el `74` (cliente y sucursal con su municipio).
+`31` o `66`, corre después el `74` (cliente y sucursal con su municipio). Si
+vuelves a correr `12` o `35`, corre después el `75` (INFILE de pruebas).
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -2098,6 +2100,29 @@ Errores nuevos: 55901-55914.
   muestran la ubicación. De paso se corrigió la edición de clientes, que no
   grababa (exigía el código sin cargarlo) y borraba el correo.
 
+
+## INFILE de pruebas por defecto (`75`)
+
+La compañía de demostración queda con el certificador **INFILE** activo, en
+el ambiente **PRUEBAS**, con el emisor de pruebas `DESARROLLOMODERNO_DEMO`
+(usuario de firma = *Alias*, usuario de la API = *Prefijo*). El `75` solo
+cambia la configuración si sigue como la dejó el `35` (simulador y sin
+usuarios).
+
+- **NIT del emisor.** INFILE asigna al emisor de pruebas el NIT
+  `9300000118K`, que no pasa la validación del dígito verificador, así que el
+  NIT de la compañía no cambia. La aplicación lo toma de
+  `Fel:Credenciales:12345679:NitEmisor` en `appsettings.json` y lo pone en el
+  XML de la factura y de la anulación. Para un emisor real se deja vacío y va
+  el NIT de la compañía.
+- **Llaves.** No van en la base ni en el repositorio (es público). Se
+  configuran en la aplicación, por ejemplo desde `src/Erp.Web`:
+  `dotnet user-secrets set "Fel:Credenciales:12345679:LlaveFirma" "<Token>"` y
+  `dotnet user-secrets set "Fel:Credenciales:12345679:LlaveApi" "<Llave>"`.
+  La consulta de NIT usa el usuario de la API y la misma `LlaveApi`.
+- Sin llaves o sin conexión con INFILE la factura se graba igual y queda
+  **Pendiente**; para volver al simulador basta con elegirlo en
+  **General › Factura electrónica**.
 
 ## Tema e idioma de la aplicación
 

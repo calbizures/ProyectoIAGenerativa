@@ -417,7 +417,7 @@
   "No enviado": "Not sent",
   "Ya está {0}.": "It is already {0}.",
   "Falta la URL o los usuarios de INFILE en la configuración FEL de la compañía.": "The INFILE URL or users are missing in the company's FEL settings.",
-  "Faltan las llaves de INFILE: configure Fel:Credenciales:{0}:LlaveFirma y :LlaveApi en la aplicación.": "The INFILE keys are missing: configure Fel:Credenciales:{0}:LlaveFirma and :LlaveApi in the application.",
+  "Faltan las llaves de INFILE: configure LlaveFirma y LlaveApi en Fel:Credenciales:<NIT de la compañía> en la aplicación.": "The INFILE keys are missing: configure LlaveFirma and LlaveApi under Fel:Credenciales:<company tax ID> in the application.",
   "INFILE respondió HTTP {0}.": "INFILE responded HTTP {0}.",
   "No hubo respuesta de INFILE: {0}": "No response from INFILE: {0}",
   "Certificado.": "Certified.",

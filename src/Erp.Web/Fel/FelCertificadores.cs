@@ -40,7 +40,7 @@ public sealed class InfileCertificador(IHttpClientFactory httpClientFactory) : I
 			return new FelRespuesta(false, true, null, null, null, null, null, "Falta la URL o los usuarios de INFILE en la configuración FEL de la compañía.", null);
 		if (string.IsNullOrWhiteSpace(s.LlaveFirma) || string.IsNullOrWhiteSpace(s.LlaveApi))
 			return new FelRespuesta(false, true, null, null, null, null, null,
-				$"Faltan las llaves de INFILE: configure Fel:Credenciales:{s.NitEmisor}:LlaveFirma y :LlaveApi en la aplicación.", null);
+				"Faltan las llaves de INFILE: configure LlaveFirma y LlaveApi en Fel:Credenciales:<NIT de la compañía> en la aplicación.", null);
 
 		var cliente = httpClientFactory.CreateClient("Fel");
 		cliente.Timeout = TimeSpan.FromSeconds(s.TimeoutSegundos);
