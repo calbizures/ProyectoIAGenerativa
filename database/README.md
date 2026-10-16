@@ -2103,7 +2103,7 @@ Errores nuevos: 55901-55914.
 
 ## INFILE de pruebas por defecto (`75`)
 
-La compañía de demostración queda con el certificador **INFILE** activo, en
+Las compañías que siguen con el simulador quedan con el certificador **INFILE** activo, en
 el ambiente **PRUEBAS**, con el emisor de pruebas `DESARROLLOMODERNO_DEMO`
 (usuario de firma = *Alias*, usuario de la API = *Prefijo*). El `75` solo
 cambia la configuración si sigue como la dejó el `35` (simulador y sin
@@ -2112,8 +2112,10 @@ usuarios).
 - **NIT del emisor.** INFILE asigna al emisor de pruebas el NIT
   `9300000118K`, que no pasa la validación del dígito verificador, así que el
   NIT de la compañía no cambia. La aplicación lo toma de
-  `Fel:Credenciales:12345679:NitEmisor` en `appsettings.json` y lo pone en el
-  XML de la factura y de la anulación. Para un emisor real se deja vacío y va
+  `Fel:Credenciales:<NIT de la compañía sin guion>:NitEmisor` en
+  `appsettings.json` (viene con el de la compañía de demostración, `12345679`;
+  si tu compañía tiene otro NIT, cambia el nombre de esa sección) y lo pone en
+  el XML de la factura y de la anulación. Para un emisor real se deja vacío y va
   el NIT de la compañía.
 - **Llaves.** No van en la base ni en el repositorio (es público). Se
   configuran en la aplicación, por ejemplo desde `src/Erp.Web`:

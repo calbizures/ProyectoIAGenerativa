@@ -3,7 +3,7 @@
  75_fel_infile_pruebas.sql
  Factura electrónica con el ambiente de pruebas de INFILE por defecto.
 
-   La compañía de demostración (NIT 1234567-9) queda con el certificador
+   Las compañías que siguen con el simulador quedan con el certificador
    INFILE activo, en el ambiente PRUEBAS, con los usuarios del emisor de
    pruebas DESARROLLOMODERNO_DEMO:
      usuario de firma   = Alias
@@ -13,12 +13,14 @@
 
    INFILE asigna a ese emisor el NIT 9300000118K. El NIT de la compañía no
    cambia, porque el de pruebas no pasa la validación del dígito verificador:
-   la aplicación lo toma de Fel:Credenciales:12345679:NitEmisor (appsettings)
-   y es el que va en el XML.
+   la aplicación lo toma de Fel:Credenciales:<NIT de la compañía sin guion>:NitEmisor
+   (appsettings; viene con el de la compañía de demostración, 12345679) y es
+   el que va en el XML.
 
    Las llaves no van en la base ni en el repositorio: se configuran en la
    aplicación (por ejemplo con dotnet user-secrets) como
-   Fel:Credenciales:12345679:LlaveFirma (el Token) y :LlaveApi (la Llave).
+   Fel:Credenciales:<NIT de la compañía sin guion>:LlaveFirma (el Token) y
+   :LlaveApi (la Llave).
    Sin llaves o sin conexión con INFILE la factura se graba igual y queda
    Pendiente de certificar; para volver al simulador basta con elegirlo en
    General › Factura electrónica.
@@ -42,12 +44,10 @@ UPDATE conf
 	   fco_usuario_firma = 'DESARROLLOMODERNO_DEMO', fco_usuario_api = 'DESARROLLOMODERNO_DEMO',
 	   UpdFechaHora = SYSDATETIME()
 FROM dbo.fel_configuracion conf
-INNER JOIN dbo.gen_compania comp ON comp.cia_id = conf.cia_id
-WHERE dbo.fnNitNormalizar(comp.cia_nit) = '12345679'
-  AND conf.fco_certificador = 'SIMULADOR'
+WHERE conf.fco_certificador = 'SIMULADOR'
   AND conf.fco_usuario_firma IS NULL
   AND conf.fco_usuario_api IS NULL;
 GO
 
-PRINT '75_fel_infile_pruebas.sql: compañía de demostración con INFILE (ambiente de pruebas).';
+PRINT '75_fel_infile_pruebas.sql: factura electrónica con INFILE (ambiente de pruebas).';
 GO
