@@ -57,6 +57,13 @@ public sealed class OrdenCompraEncabezado
 	public string? MotivoDevolucion { get; set; }
 	public int Ordenado { get; set; }
 	public int Recibido { get; set; }
+	// Flete (con IVA): N sin flete, I incluido en la factura del proveedor
+	// (suma al total), S facturado aparte (estimado).
+	public string FleteTipo { get; set; } = "N";
+	public decimal Flete { get; set; }
+	// Flete que ya trajeron las facturas vigentes de sus recepciones.
+	public decimal FleteRecibido { get; set; }
+	public decimal FletePendiente => FleteTipo == "I" && Flete > FleteRecibido ? Flete - FleteRecibido : 0;
 	public int CiaId { get; set; }
 	public string? NitEmisor { get; set; }
 	public string? NombreEmisor { get; set; }
@@ -110,6 +117,8 @@ public sealed class NuevaOrdenCompra
 	public int? MonId { get; set; }
 	public string? Condiciones { get; set; }
 	public string? Observaciones { get; set; }
+	public string FleteTipo { get; set; } = "N";
+	public decimal Flete { get; set; }		// con IVA
 }
 
 public sealed class NuevaLineaOrdenCompra
@@ -130,6 +139,7 @@ public sealed class RecepcionOrdenCompra
 	public DateTime? FechaPrimerPago { get; set; }	// NULL: contado
 	public int NumeroCuotas { get; set; } = 1;
 	public decimal Enganche { get; set; }
+	public decimal Flete { get; set; }		// con IVA, el que trae esta factura
 }
 
 public sealed class LineaRecepcionOrdenCompra

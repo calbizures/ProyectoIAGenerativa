@@ -50,6 +50,8 @@ public sealed class OrdenCompraRepository(IDbConnectionFactory connectionFactory
 		parametros.Add("@UsuId", usuarioAccionId);
 		parametros.Add("@Detalle", tabla.AsTableValuedParameter("dbo.orden_compra_det_type"));
 		parametros.Add("@Numero", dbType: DbType.String, size: 16, direction: ParameterDirection.Output);
+		parametros.Add("@FleteTipo", orden.FleteTipo);
+		parametros.Add("@Flete", orden.FleteTipo == "N" ? 0 : orden.Flete);
 		await connection.ExecuteAsync("dbo.paOrdenCompraGuardar", parametros, commandType: CommandType.StoredProcedure);
 		return (parametros.Get<int>("@OcpId"), parametros.Get<string>("@Numero"));
 	}
@@ -111,6 +113,7 @@ public sealed class OrdenCompraRepository(IDbConnectionFactory connectionFactory
 		parametros.Add("@UsuId", usuarioAccionId);
 		parametros.Add("@Lineas", tabla.AsTableValuedParameter("dbo.orden_compra_recepcion_type"));
 		parametros.Add("@EncId", dbType: DbType.Int32, direction: ParameterDirection.Output);
+		parametros.Add("@Flete", recepcion.Flete);
 		await connection.ExecuteAsync("dbo.paOrdenCompraRecibir", parametros, commandType: CommandType.StoredProcedure);
 		return parametros.Get<int>("@EncId");
 	}

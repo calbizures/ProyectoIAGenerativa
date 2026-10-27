@@ -86,17 +86,29 @@ else
                         <td class="num">@l.Total.ToString("N2")</td>
                     </tr>
                 }
+                @if (enc.FleteTipo == "I" && enc.Flete > 0)
+                {
+                    <tr>
+                        <td class="num"></td>
+                        <td class="num">1</td>
+                        <td>SERV</td>
+                        <td>Flete (incluido en su factura)</td>
+                        <td class="num">@enc.Flete.ToString("N2")</td>
+                        <td class="num">@enc.Flete.ToString("N2")</td>
+                    </tr>
+                }
             </tbody>
         </table>
 
         <section class="fac-pie-tabla">
             <div class="fac-notas">
                 <div class="fac-letras"><span>Total en letras</span>@NumeroALetras.Convertir(enc.Total)</div>
-                @if (!string.IsNullOrWhiteSpace(enc.Condiciones) || !string.IsNullOrWhiteSpace(enc.Observaciones))
+                @if (!string.IsNullOrWhiteSpace(enc.Condiciones) || !string.IsNullOrWhiteSpace(enc.Observaciones) || enc.FleteTipo == "S")
                 {
                     <div class="fac-mini">
                         <div class="fac-bloque-titulo">Condiciones</div>
                         @if (!string.IsNullOrWhiteSpace(enc.Condiciones)) { <p class="cot-observaciones">@enc.Condiciones</p> }
+                        @if (enc.FleteTipo == "S") { <p class="cot-observaciones">El flete se factura aparte (estimado @enc.Simbolo @enc.Flete.ToString("N2")).</p> }
                         @if (!string.IsNullOrWhiteSpace(enc.Observaciones)) { <p class="cot-observaciones">@enc.Observaciones</p> }
                     </div>
                 }

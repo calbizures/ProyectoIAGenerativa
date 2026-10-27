@@ -66,6 +66,8 @@ public sealed class CompraRepository(IDbConnectionFactory connectionFactory) : I
 			if (detalle[i].AfcId is int afcId)
 				tablaActivos.Rows.Add(i + 1, afcId, (object?)detalle[i].IdDepartamento ?? DBNull.Value);
 		parametros.Add("@Activos", tablaActivos.AsTableValuedParameter("dbo.compra_activo_type"));
+		parametros.Add("@EncFlete", encabezado.Flete);
+		parametros.Add("@EncIdCompraFlete", encabezado.EncIdCompraFlete);
 
 		await connection.ExecuteAsync("dbo.paCompraDocumentoCrear", parametros, commandType: CommandType.StoredProcedure);
 		return parametros.Get<int>("@EncId");
@@ -123,6 +125,24 @@ public sealed class CompraRepository(IDbConnectionFactory connectionFactory) : I
 		var encabezado = await multi.ReadFirstOrDefaultAsync<CompraEncabezadoDetalle>();
 		var detalle = (await multi.ReadAsync<CompraDetalleLinea>()).ToList();
 		return (encabezado, detalle);
+	}
+
+	public async Task<IReadOnlyList<CompraParaFlete>> ConsultarComprasParaFleteAsync(int dias)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var filas = await connection.QueryAsync<CompraParaFlete>("dbo.paCompraFleteCandidatasConsultar", new { Dias = dias },
+			commandType: CommandType.StoredProcedure);
+		return filas.ToList();
+	}
+
+	public async Task<(IReadOnlyList<CompraFleteDocumento> Documentos, IReadOnlyList<CompraFleteLinea> Lineas)> ConsultarFleteAsync(int encId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		using var multi = await connection.QueryMultipleAsync("dbo.paCompraFleteConsultar", new { EncId = encId },
+			commandType: CommandType.StoredProcedure);
+		var documentos = (await multi.ReadAsync<CompraFleteDocumento>()).ToList();
+		var lineas = (await multi.ReadAsync<CompraFleteLinea>()).ToList();
+		return (documentos, lineas);
 	}
 
 	// El orden de las columnas debe coincidir exactamente con CREATE TYPE

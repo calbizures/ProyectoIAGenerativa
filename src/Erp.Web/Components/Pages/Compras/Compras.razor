@@ -143,6 +143,34 @@
             </div>
 
             <div class="doc-seccion">
+                <label class="casilla">
+                    <input type="checkbox" @bind="nuevaCompra.EsFleteDeOtraCompra" @bind:after="AlternarFleteDeOtraCompraAsync" />
+                    @L("Esta factura es el flete de otra compra (del transportista o una factura aparte del proveedor)")
+                </label>
+                @if (nuevaCompra.EsFleteDeOtraCompra)
+                {
+                    <div class="doc-grid">
+                        <div class="campo">
+                            <label for="compras-flete-compra">@L("Compra de la mercadería")</label>
+                            <select id="compras-flete-compra" @bind="nuevaCompra.EncIdCompraFlete">
+                                <option value="0">@L("Seleccione la compra...")</option>
+                                @foreach (var c in comprasParaFlete)
+                                {
+                                    <option value="@c.EncId">@c.Fecha.ToString("dd/MM/yyyy") · @c.Documento · @c.Proveedor · Q@(c.Total.ToString("N2"))@(c.FleteSinIva > 0 ? L(" (ya tiene flete Q{0} sin IVA)", c.FleteSinIva.ToString("N2")) : "")</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="campo"><label for="compras-flete-descripcion">@L("Descripción")</label><input id="compras-flete-descripcion" maxlength="200" @bind="nuevaCompra.DescripcionFlete" /></div>
+                        <div class="campo"><label for="compras-flete-monto">@L("Monto del flete (IVA incl.)")</label><input id="compras-flete-monto" type="number" step="0.01" min="0" @bind="nuevaCompra.FleteConIva" /></div>
+                    </div>
+                    <div class="doc-nota">
+                        <Icono Nombre="info" Tamano="15" />
+                        <span>@L("El flete sin IVA se reparte entre los productos de esa compra según su valor y se suma a su costo (costo de adquisición); el IVA es crédito fiscal. La parte de productos que ya no tienen existencia va al costo de ventas.")</span>
+                    </div>
+                }
+            </div>
+
+            <div class="doc-seccion">
                 <p class="doc-seccion-titulo"><Icono Nombre="user" Tamano="15" /> @L("Proveedor")</p>
 
                 @if (nuevaCompra.PrvId is null)
@@ -199,135 +227,150 @@
                 }
             </div>
 
-            <div class="doc-seccion">
-                <p class="doc-seccion-titulo"><Icono Nombre="package" Tamano="15" /> @L("Detalle de productos")</p>
+            @if (!nuevaCompra.EsFleteDeOtraCompra)
+            {
+                <div class="doc-seccion">
+                    <p class="doc-seccion-titulo"><Icono Nombre="package" Tamano="15" /> @L("Detalle de productos")</p>
 
-                <div class="doc-buscador">
-                    <div class="doc-buscador-fila">
-                        <input placeholder="@(soloDelProveedor ? L("Buscar entre los productos del proveedor (vacío = todos)") : L("Buscar producto por código o descripción"))" aria-label="@L("Buscar producto por código o descripción")" @bind="textoBusquedaProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
-                        <BotonIcono Icono="search" Tooltip="@L("Buscar producto")" OnClick="BuscarProductosAsync" />
-                    </div>
-                    @if (nuevaCompra.PrvId is not null)
-                    {
-                        <label class="casilla">
-                            <input type="checkbox" @bind="soloDelProveedor" @bind:after="BuscarProductosAsync" />
-                            @L("Solo productos de este proveedor ({0})", productosProveedor.Count)
-                        </label>
-                    }
-                    @if (productosEncontrados.Count > 0)
-                    {
-                        <div class="doc-buscador-resultados">
-                            @foreach (var p in productosEncontrados)
-                            {
-                                var relacion = RelacionDe(p.ProId);
-                                <div class="doc-resultado-fila" @onclick="() => AgregarLinea(p)">
-                                    <span class="doc-avatar doc-avatar-icono"><Icono Nombre="package" Tamano="15" /></span>
-                                    <span class="doc-resultado-texto">
-                                        <strong>@p.ProDescripcion</strong>
-                                        <span>
-                                            @p.ProCodigo@(relacion?.CodigoProveedor is { } codigoProveedor ? L(" · código del proveedor {0}", codigoProveedor) : "")
-                                            @if (nuevaCompra.PrvId is not null && relacion is null)
-                                            {
-                                                <span class="etiqueta-aviso"> @L("· no es producto de este proveedor")</span>
-                                            }
+                    <div class="doc-buscador">
+                        <div class="doc-buscador-fila">
+                            <input placeholder="@(soloDelProveedor ? L("Buscar entre los productos del proveedor (vacío = todos)") : L("Buscar producto por código o descripción"))" aria-label="@L("Buscar producto por código o descripción")" @bind="textoBusquedaProducto" @bind:event="oninput" @onkeyup="@(async e => { if (e.Key == "Enter") await BuscarProductosAsync(); })" />
+                            <BotonIcono Icono="search" Tooltip="@L("Buscar producto")" OnClick="BuscarProductosAsync" />
+                        </div>
+                        @if (nuevaCompra.PrvId is not null)
+                        {
+                            <label class="casilla">
+                                <input type="checkbox" @bind="soloDelProveedor" @bind:after="BuscarProductosAsync" />
+                                @L("Solo productos de este proveedor ({0})", productosProveedor.Count)
+                            </label>
+                        }
+                        @if (productosEncontrados.Count > 0)
+                        {
+                            <div class="doc-buscador-resultados">
+                                @foreach (var p in productosEncontrados)
+                                {
+                                    var relacion = RelacionDe(p.ProId);
+                                    <div class="doc-resultado-fila" @onclick="() => AgregarLinea(p)">
+                                        <span class="doc-avatar doc-avatar-icono"><Icono Nombre="package" Tamano="15" /></span>
+                                        <span class="doc-resultado-texto">
+                                            <strong>@p.ProDescripcion</strong>
+                                            <span>
+                                                @p.ProCodigo@(relacion?.CodigoProveedor is { } codigoProveedor ? L(" · código del proveedor {0}", codigoProveedor) : "")
+                                                @if (nuevaCompra.PrvId is not null && relacion is null)
+                                                {
+                                                    <span class="etiqueta-aviso"> @L("· no es producto de este proveedor")</span>
+                                                }
+                                            </span>
                                         </span>
-                                    </span>
-                                    <span class="doc-resultado-precio">@MonedaSimbolo @CostoPropuesto(p).ToString("N2")</span>
-                                </div>
-                            }
+                                        <span class="doc-resultado-precio">@MonedaSimbolo @CostoPropuesto(p).ToString("N2")</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else if (busquedaSinResultados)
+                        {
+                            <p class="texto-ayuda">@(soloDelProveedor ? L("Ningún producto del proveedor coincide; quite la marca para buscar en todo el catálogo.") : L("Ningún producto coincide con la búsqueda."))</p>
+                        }
+                    </div>
+
+                    @if (categoriasActivo.Count > 0)
+                    {
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="plus" Tooltip="@L("Agregar un bien de activo fijo (mobiliario, equipo, vehículo...): va a la cuenta de activo, no al inventario")" Etiqueta="@L("Agregar activo fijo")" OnClick="AgregarActivoFijo" />
                         </div>
                     }
-                    else if (busquedaSinResultados)
-                    {
-                        <p class="texto-ayuda">@(soloDelProveedor ? L("Ningún producto del proveedor coincide; quite la marca para buscar en todo el catálogo.") : L("Ningún producto coincide con la búsqueda."))</p>
-                    }
-                </div>
 
-                @if (categoriasActivo.Count > 0)
-                {
-                    <div class="acciones-fila">
-                        <BotonIcono Icono="plus" Tooltip="@L("Agregar un bien de activo fijo (mobiliario, equipo, vehículo...): va a la cuenta de activo, no al inventario")" Etiqueta="@L("Agregar activo fijo")" OnClick="AgregarActivoFijo" />
+                    <div class="doc-nota">
+                        <Icono Nombre="check-circle" Tamano="15" />
+                        <span>@L("El costo unitario ya incluye IVA ({0}%), como lo factura el proveedor — no se suma aparte.", PorcentajeIvaTexto)</span>
                     </div>
-                }
 
-                <div class="doc-nota">
-                    <Icono Nombre="check-circle" Tamano="15" />
-                    <span>@L("El costo unitario ya incluye IVA ({0}%), como lo factura el proveedor — no se suma aparte.", PorcentajeIvaTexto)</span>
-                </div>
-
-                <table class="doc-tabla">
-                    <thead>
-                        <tr>
-                            <th>@L("Producto")</th>
-                            <th class="num">@L("Cantidad")</th>
-                            <th class="num">@L("Costo unit. (IVA incl.)")</th>
-                            <th class="num">@L("Descuento")</th>
-                            <th class="num">@L("Subtotal")</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (lineas.Count == 0)
-                        {
+                    <table class="doc-tabla">
+                        <thead>
                             <tr>
-                                <td colspan="6">
-                                    <div class="doc-tabla-vacia">
-                                        <Icono Nombre="package" Tamano="26" />
-                                        @L("Usa el buscador de arriba para agregar productos a la compra.")
-                                    </div>
-                                </td>
+                                <th>@L("Producto")</th>
+                                <th class="num">@L("Cantidad")</th>
+                                <th class="num">@L("Costo unit. (IVA incl.)")</th>
+                                <th class="num">@L("Descuento")</th>
+                                <th class="num">@L("Subtotal")</th>
+                                <th></th>
                             </tr>
-                        }
-                        @foreach (var linea in lineas)
-                        {
-                            <tr>
-                                <td>
-                                    @if (linea.AfcId is not null)
-                                    {
-                                        <div class="compra-activo">
-                                            <span class="etiqueta-aviso"><Icono Nombre="building" Tamano="13" /> @L("Activo fijo")</span>
-                                            <input aria-label="@L("Descripción del activo fijo")" maxlength="200" placeholder="@L("Descripción del bien")" @bind="linea.Descripcion" />
-                                            <select aria-label="@L("Categoría del activo fijo")" @bind="linea.AfcId">
-                                                @foreach (var c in categoriasActivo)
-                                                {
-                                                    <option value="@c.AfcId">@c.Nombre (@c.Porcentaje.ToString("0.##") %)</option>
-                                                }
-                                            </select>
-                                            <select aria-label="@L("Centro de costo del activo fijo")" @bind="linea.IdDepartamento">
-                                                <option value="">@L("Sin centro de costo")</option>
-                                                @foreach (var d in departamentos)
-                                                {
-                                                    <option value="@d.IdDepartamento">@d.Descripcion</option>
-                                                }
-                                            </select>
+                        </thead>
+                        <tbody>
+                            @if (lineas.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="6">
+                                        <div class="doc-tabla-vacia">
+                                            <Icono Nombre="package" Tamano="26" />
+                                            @L("Usa el buscador de arriba para agregar productos a la compra.")
                                         </div>
-                                    }
-                                    else
-                                    {
-                                        @linea.Descripcion
-                                    }
-                                    @if (nuevaCompra.PrvId is not null && !linea.Relacionado)
-                                    {
-                                        <br />
-                                        <span class="etiqueta-aviso"><Icono Nombre="info" Tamano="13" /> @L("No es producto de este proveedor")</span>
-                                        <button type="button" class="boton-mini" @onclick="() => RelacionarLineaAsync(linea)">@L("Relacionar ahora")</button>
-                                    }
-                                </td>
-                                <td class="num"><input type="number" min="1" @bind="linea.Cantidad" /></td>
-                                <td class="num"><input type="number" step="0.01" @bind="linea.PrecioUnitario" /></td>
-                                <td class="num"><input type="number" step="0.01" @bind="linea.ValorDescuento" /></td>
-                                <td class="num">@MonedaSimbolo @linea.SubTotal.ToString("N2")</td>
-                                <td><BotonIcono Icono="trash-2" Tooltip="@L("Quitar línea")" Variante="peligro" OnClick="() => lineas.Remove(linea)" /></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+                                    </td>
+                                </tr>
+                            }
+                            @foreach (var linea in lineas)
+                            {
+                                <tr>
+                                    <td>
+                                        @if (linea.AfcId is not null)
+                                        {
+                                            <div class="compra-activo">
+                                                <span class="etiqueta-aviso"><Icono Nombre="building" Tamano="13" /> @L("Activo fijo")</span>
+                                                <input aria-label="@L("Descripción del activo fijo")" maxlength="200" placeholder="@L("Descripción del bien")" @bind="linea.Descripcion" />
+                                                <select aria-label="@L("Categoría del activo fijo")" @bind="linea.AfcId">
+                                                    @foreach (var c in categoriasActivo)
+                                                    {
+                                                        <option value="@c.AfcId">@c.Nombre (@c.Porcentaje.ToString("0.##") %)</option>
+                                                    }
+                                                </select>
+                                                <select aria-label="@L("Centro de costo del activo fijo")" @bind="linea.IdDepartamento">
+                                                    <option value="">@L("Sin centro de costo")</option>
+                                                    @foreach (var d in departamentos)
+                                                    {
+                                                        <option value="@d.IdDepartamento">@d.Descripcion</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            @linea.Descripcion
+                                        }
+                                        @if (nuevaCompra.PrvId is not null && !linea.Relacionado)
+                                        {
+                                            <br />
+                                            <span class="etiqueta-aviso"><Icono Nombre="info" Tamano="13" /> @L("No es producto de este proveedor")</span>
+                                            <button type="button" class="boton-mini" @onclick="() => RelacionarLineaAsync(linea)">@L("Relacionar ahora")</button>
+                                        }
+                                    </td>
+                                    <td class="num"><input type="number" min="1" @bind="linea.Cantidad" /></td>
+                                    <td class="num"><input type="number" step="0.01" @bind="linea.PrecioUnitario" /></td>
+                                    <td class="num"><input type="number" step="0.01" @bind="linea.ValorDescuento" /></td>
+                                    <td class="num">@MonedaSimbolo @linea.SubTotal.ToString("N2")</td>
+                                    <td><BotonIcono Icono="trash-2" Tooltip="@L("Quitar línea")" Variante="peligro" OnClick="() => lineas.Remove(linea)" /></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    <div class="doc-grid">
+                        <div class="campo"><label for="compras-compra-flete">@L("Flete incluido en esta factura (IVA incl.)")</label><input id="compras-compra-flete" type="number" step="0.01" min="0" @bind="nuevaCompra.FleteConIva" /></div>
+                    </div>
+                    <div class="doc-nota">
+                        <Icono Nombre="truck" Tamano="15" />
+                        <span>@L("El flete se agrega como servicio y se reparte al costo de los productos según su valor. Si viene en otra factura (transportista), grábela aparte marcando «Esta factura es el flete de otra compra».")</span>
+                    </div>
+                </div>
+            }
 
             <div class="doc-seccion doc-totales-envoltorio">
                 <div class="doc-totales">
                     <div class="doc-totales-fila"><span>@L("Subtotal")</span><span>@MonedaSimbolo @Subtotal.ToString("N2")</span></div>
                     <div class="doc-totales-fila"><span>@L("Descuento")</span><span>@MonedaSimbolo @TotalDescuento.ToString("N2")</span></div>
+                    @if (nuevaCompra.FleteConIva > 0)
+                    {
+                        <div class="doc-totales-fila"><span>@L("Flete")</span><span>@MonedaSimbolo @nuevaCompra.FleteConIva.ToString("N2")</span></div>
+                    }
                     @if (AjusteRedondeo != 0)
                     {
                         <div class="doc-totales-fila"><span>@L("Redondeo del IVA")</span><span>@MonedaSimbolo @AjusteRedondeo.ToString("N2")</span></div>
@@ -472,6 +515,10 @@
                         <th class="num">@L("Costo unit. (IVA incl.)")</th>
                         <th class="num">@L("Descuento")</th>
                         <th class="num">@L("Subtotal")</th>
+                        @if (ConFlete)
+                        {
+                            <th class="num">@L("Costo c/u con flete (sin IVA)")</th>
+                        }
                     </tr>
                 </thead>
                 <tbody>
@@ -481,15 +528,49 @@
                         var descuentoConIva = d.DetValorDescuento * (1 + (d.DetPorcIva ?? 0) / 100m);
                         var subtotalConIva = d.DetSubTotal * (1 + (d.DetPorcIva ?? 0) / 100m);
                         <tr>
-                            <td>@d.DetDescripcion</td>
+                            <td>
+                                @d.DetDescripcion
+                                @if (d.DetEsFlete && d.DetDescripcion != "Flete")
+                                {
+                                    <span class="etiqueta-aviso"><Icono Nombre="truck" Tamano="13" /> @L("Flete")</span>
+                                }
+                            </td>
                             <td class="num">@d.DetCantidad.ToString("#,##0.##")</td>
                             <td class="num">@precioConIva.ToString("N2")</td>
                             <td class="num">@descuentoConIva.ToString("N2")</td>
                             <td class="num">@subtotalConIva.ToString("N2")</td>
+                            @if (ConFlete)
+                            {
+                                <td class="num">@(fleteLineas.TryGetValue(d.DetId, out var fl) && d.DetCantidad > 0 ? (fl.CostoConFlete / d.DetCantidad).ToString("N2") : "")</td>
+                            }
                         </tr>
                     }
                 </tbody>
             </table>
+            @if (fleteDocumentos.Count > 0)
+            {
+                <div class="doc-nota">
+                    <Icono Nombre="truck" Tamano="15" />
+                    <span>
+                        @if (encabezadoSeleccionado.EncIdCompraFlete is not null)
+                        {
+                            @L("Esta factura es el flete de la compra:")
+                        }
+                        else
+                        {
+                            @L("Flete facturado aparte, sumado al costo de estos productos:")
+                        }
+                        @foreach (var f in fleteDocumentos)
+                        {
+                            <br />@($"{f.Fecha:dd/MM/yyyy} · {f.Documento} · {f.Proveedor} · Q{f.Total:N2}")
+                            @if (f.Estado != "G")
+                            {
+                                <span class="estado-badge estado-badge-anulada">@L("Anulada")</span>
+                            }
+                        }
+                    </span>
+                </div>
+            }
         </div>
     </div>
 }
@@ -523,6 +604,11 @@
 
     private CompraEncabezadoDetalle? encabezadoSeleccionado;
     private IReadOnlyList<CompraDetalleLinea> detalleSeleccionado = Array.Empty<CompraDetalleLinea>();
+    private IReadOnlyList<CompraFleteDocumento> fleteDocumentos = Array.Empty<CompraFleteDocumento>();
+    private Dictionary<int, CompraFleteLinea> fleteLineas = new();
+    private IReadOnlyList<CompraParaFlete> comprasParaFlete = Array.Empty<CompraParaFlete>();
+    // La compra tiene flete (en su factura o en otra): se muestra el costo con flete.
+    private bool ConFlete => fleteLineas.Values.Any(l => l.FleteMismaFactura != 0 || l.FleteOtrasFacturas != 0);
 
     private DateTime? filtroFechaDesde;
     private DateTime? filtroFechaHasta;
@@ -551,13 +637,15 @@
     private decimal PorcentajeIva = 12m;
     private string PorcentajeIvaTexto => PorcentajeIva.ToString("0.##");
 
-    private decimal Subtotal => lineas.Sum(l => l.SubTotal);
-    private decimal TotalDescuento => lineas.Sum(l => l.ValorDescuento);
+    // Una factura de flete de otra compra no lleva productos: solo el flete.
+    private IEnumerable<LineaCaptura> LineasActivas => nuevaCompra.EsFleteDeOtraCompra ? Enumerable.Empty<LineaCaptura>() : lineas;
+    private decimal Subtotal => LineasActivas.Sum(l => l.SubTotal);
+    private decimal TotalDescuento => LineasActivas.Sum(l => l.ValorDescuento);
     // Total que grabará paCompraDocumentoCrear: el costo se guarda sin IVA a
     // centavos y el total vuelve a sumarle el IVA por unidad, así que puede
     // diferir un centavo de la suma de los costos con IVA.
-    private decimal Total => lineas.Sum(TotalLineaDocumento);
-    private decimal AjusteRedondeo => Total - (Subtotal - TotalDescuento);
+    private decimal Total => LineasActivas.Sum(TotalLineaDocumento) + ConIva(SinIva(nuevaCompra.FleteConIva));
+    private decimal AjusteRedondeo => Total - (Subtotal - TotalDescuento + nuevaCompra.FleteConIva);
     private decimal SinIva(decimal conIva) => Math.Round(conIva / (1 + PorcentajeIva / 100m), 2, MidpointRounding.AwayFromZero);
     private decimal ConIva(decimal sinIva) => Math.Round(sinIva * (1 + PorcentajeIva / 100m), 2, MidpointRounding.AwayFromZero);
     private decimal TotalLineaDocumento(LineaCaptura l) =>
@@ -669,6 +757,10 @@
         nuevaCompra.MontoEnganche = 0;
         nuevaCompra.NumeroCuotas = 1;
         nuevaCompra.FechaPrimerPago = null;
+        nuevaCompra.FleteConIva = 0;
+        nuevaCompra.EsFleteDeOtraCompra = false;
+        nuevaCompra.EncIdCompraFlete = 0;
+        nuevaCompra.DescripcionFlete = "Flete";
         condicionPagoCompra = "contado";
         if (BodegasSucursal.All(b => b.BodId != nuevaCompra.BodId))
             nuevaCompra.BodId = BodegasSucursal.FirstOrDefault()?.BodId ?? 0;
@@ -682,6 +774,13 @@
         mostrarNuevoProveedor = false;
         mostrarNuevaCompra = true;
         return Task.CompletedTask;
+    }
+
+    private async Task AlternarFleteDeOtraCompraAsync()
+    {
+        if (!nuevaCompra.EsFleteDeOtraCompra) return;
+        try { comprasParaFlete = await CompraRepository.ConsultarComprasParaFleteAsync(dias: 120); }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); esMensajeError = true; }
     }
 
     private async Task BuscarProveedoresAsync()
@@ -865,14 +964,23 @@
             return;
         }
 
-        if (lineas.Count == 0)
+        if (nuevaCompra.EsFleteDeOtraCompra)
+        {
+            if (nuevaCompra.EncIdCompraFlete <= 0 || nuevaCompra.FleteConIva <= 0)
+            {
+                mensaje = L("Elija la compra de la mercadería y escriba el monto del flete.");
+                esMensajeError = true;
+                return;
+            }
+        }
+        else if (lineas.Count == 0)
         {
             mensaje = L("Debe agregar al menos un producto.");
             esMensajeError = true;
             return;
         }
 
-        if (lineas.Any(l => l.AfcId is not null && (string.IsNullOrWhiteSpace(l.Descripcion) || l.PrecioUnitario <= 0)))
+        if (LineasActivas.Any(l => l.AfcId is not null && (string.IsNullOrWhiteSpace(l.Descripcion) || l.PrecioUnitario <= 0)))
         {
             mensaje = L("Escriba la descripción y el costo de cada activo fijo.");
             esMensajeError = true;
@@ -897,7 +1005,7 @@
         {
             var usuId = await ObtenerUsuIdActualAsync();
 
-            var detalle = lineas.Select(l =>
+            var detalle = LineasActivas.Select(l =>
             {
                 var precioUnitarioNeto = SinIva(l.PrecioUnitario);
                 var valorDescuentoNeto = SinIva(l.ValorDescuento);
@@ -916,6 +1024,22 @@
                     BodId = nuevaCompra.BodId
                 };
             }).ToList();
+            var fleteNeto = SinIva(nuevaCompra.FleteConIva);
+            if (nuevaCompra.EsFleteDeOtraCompra)
+            {
+                // Todo el detalle es el servicio de flete, en la bodega de la compra.
+                var compra = comprasParaFlete.FirstOrDefault(c => c.EncId == nuevaCompra.EncIdCompraFlete);
+                detalle.Add(new NuevaLineaCompra
+                {
+                    BienOServicio = "S",
+                    Cantidad = 1,
+                    Descripcion = string.IsNullOrWhiteSpace(nuevaCompra.DescripcionFlete) ? "Flete" : nuevaCompra.DescripcionFlete.Trim(),
+                    PrecioUnitario = fleteNeto,
+                    SubTotal = fleteNeto,
+                    PorcentajeIva = PorcentajeIva,
+                    BodId = compra?.BodId ?? nuevaCompra.BodId
+                });
+            }
 
             var encabezado = new NuevaCompraEncabezado
             {
@@ -930,7 +1054,9 @@
                 FechaPrimerPago = condicionPagoCompra == "credito" ? nuevaCompra.FechaPrimerPago : null,
                 MontoEnganche = condicionPagoCompra == "credito" ? nuevaCompra.MontoEnganche : 0,
                 NumeroCuotas = condicionPagoCompra == "credito" ? nuevaCompra.NumeroCuotas : 1,
-                ValorDescuento = detalle.Sum(d => d.ValorDescuento)
+                ValorDescuento = detalle.Sum(d => d.ValorDescuento),
+                Flete = nuevaCompra.EsFleteDeOtraCompra ? 0 : fleteNeto,
+                EncIdCompraFlete = nuevaCompra.EsFleteDeOtraCompra ? nuevaCompra.EncIdCompraFlete : null
             };
 
             var encId = await CompraRepository.CrearAsync(encabezado, detalle, usuId);
@@ -964,6 +1090,9 @@
         var (encabezado, detalle) = await CompraRepository.ConsultarPorIdAsync(compra.EncId);
         encabezadoSeleccionado = encabezado;
         detalleSeleccionado = detalle;
+        var (documentos, lineasFlete) = await CompraRepository.ConsultarFleteAsync(compra.EncId);
+        fleteDocumentos = documentos;
+        fleteLineas = lineasFlete.ToDictionary(l => l.DetId);
     }
 
     private async Task AnularAsync(CompraEncabezado compra)
@@ -1033,6 +1162,14 @@
         nuevaCompra.FechaPrimerPago = e.FechaPrimerPago;
         nuevaCompra.MontoEnganche = e.MontoEnganche;
         nuevaCompra.NumeroCuotas = e.NumeroCuotas;
+        nuevaCompra.FleteConIva = e.FleteConIva;
+        nuevaCompra.DescripcionFlete = e.DescripcionFlete;
+        nuevaCompra.EsFleteDeOtraCompra = e.EsFleteDeOtraCompra;
+        if (e.EsFleteDeOtraCompra)
+        {
+            await AlternarFleteDeOtraCompraAsync();
+            nuevaCompra.EncIdCompraFlete = e.EncIdCompraFlete;
+        }
         condicionPagoCompra = b.Condicion;
         relacionarAlGrabar = b.RelacionarAlGrabar;
         lineas.AddRange(b.Lineas);
@@ -1056,6 +1193,13 @@
         public DateTime? FechaPrimerPago { get; set; }
         public decimal MontoEnganche { get; set; }
         public int NumeroCuotas { get; set; } = 1;
+        // Flete (IVA incl.): el de esta factura o, si es la factura del flete
+        // de otra compra, su monto.
+        public decimal FleteConIva { get => _fleteConIva; set => _fleteConIva = Montos.DosDecimales(Math.Max(0, value)); }
+        private decimal _fleteConIva;
+        public bool EsFleteDeOtraCompra { get; set; }
+        public int EncIdCompraFlete { get; set; }
+        public string DescripcionFlete { get; set; } = "Flete";
     }
 
     private sealed class ProveedorRapidoModelo

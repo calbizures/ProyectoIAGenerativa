@@ -56,6 +56,8 @@ public sealed class CompraEncabezadoDetalle
 	public decimal EncValorDescuento { get; set; }
 	public int? MonId { get; set; }
 	public string EncEstado { get; set; } = "";
+	// Si esta factura es el flete de otra compra: esa compra.
+	public int? EncIdCompraFlete { get; set; }
 }
 
 public sealed class CompraDetalleLinea
@@ -71,6 +73,7 @@ public sealed class CompraDetalleLinea
 	public decimal? DetPorcIva { get; set; }
 	public int BodId { get; set; }
 	public int? ProId { get; set; }
+	public bool DetEsFlete { get; set; }
 }
 
 public sealed class NuevaCompraEncabezado
@@ -88,6 +91,44 @@ public sealed class NuevaCompraEncabezado
 	public int NumeroCuotas { get; set; } = 1;
 	public decimal ValorDescuento { get; set; }
 	public int? MonId { get; set; }
+	// Flete sin IVA incluido en esta factura: se reparte al costo de los productos.
+	public decimal Flete { get; set; }
+	// Esta factura es el flete de otra compra (transportista o factura aparte).
+	public int? EncIdCompraFlete { get; set; }
+}
+
+// Compra de mercadería a la que se le puede cargar una factura de flete.
+public sealed class CompraParaFlete
+{
+	public int EncId { get; set; }
+	public DateTime Fecha { get; set; }
+	public string Documento { get; set; } = "";
+	public string? Proveedor { get; set; }
+	public decimal Total { get; set; }
+	public int? BodId { get; set; }
+	public decimal FleteSinIva { get; set; }
+}
+
+// Factura de flete vinculada a una compra (o la compra de un flete).
+public sealed class CompraFleteDocumento
+{
+	public int EncId { get; set; }
+	public DateTime Fecha { get; set; }
+	public string Documento { get; set; } = "";
+	public string? Proveedor { get; set; }
+	public decimal Total { get; set; }
+	public string Estado { get; set; } = "";
+	public bool EsFleteDeEsta { get; set; }
+}
+
+// Costo de una línea de la compra con su parte del flete (sin IVA).
+public sealed class CompraFleteLinea
+{
+	public int DetId { get; set; }
+	public decimal NetoSinFlete { get; set; }
+	public decimal FleteMismaFactura { get; set; }
+	public decimal FleteOtrasFacturas { get; set; }
+	public decimal CostoConFlete => NetoSinFlete + FleteMismaFactura + FleteOtrasFacturas;
 }
 
 public sealed class NuevaLineaCompra

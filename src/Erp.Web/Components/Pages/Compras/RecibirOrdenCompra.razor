@@ -51,9 +51,20 @@
             </tbody>
         </table>
     </div>
+    <div class="fel-formulario">
+        <div class="campo"><label for="rec-flete-@Orden.OcpId">@L("Flete en esta factura (IVA incl.)")</label><input id="rec-flete-@Orden.OcpId" type="number" min="0" step="0.01" @bind="recepcion.Flete" @bind:event="oninput" /></div>
+    </div>
+    @if (Orden.FleteTipo == "S")
+    {
+        <p class="texto-ayuda">@L("Según la orden, el flete se factura aparte (estimado Q{0}): grabe esa factura en Compras marcando «Esta factura es el flete de otra compra».", Orden.Flete.ToString("N2"))</p>
+    }
+    else
+    {
+        <p class="texto-ayuda">@L("Si la factura del proveedor trae el flete, escríbalo: se reparte al costo de los productos recibidos según su valor.")</p>
+    }
     <div class="resumen-totales">
         <span>@L("Unidades:") <strong>@lineas.Sum(r => r.Cantidad)</strong></span>
-        <span>@L("Total de la factura:") <strong>Q @lineas.Sum(r => Math.Round(r.Cantidad * r.CostoUnitario, 2)).ToString("N2")</strong></span>
+        <span>@L("Total de la factura:") <strong>Q @((lineas.Sum(r => Math.Round(r.Cantidad * r.CostoUnitario, 2)) + recepcion.Flete).ToString("N2"))</strong></span>
     </div>
     <div class="acciones-fila">
         <BotonIcono Icono="save" Tooltip="@L("Grabar la compra y el ingreso a bodega")" Etiqueta="@EtiquetaGrabar" Variante="primario" Deshabilitado="grabando" OnClick="RecibirAsync" />
@@ -95,7 +106,8 @@
     {
         if (ocpCargada == Orden.OcpId) return;
         ocpCargada = Orden.OcpId;
-        recepcion = new RecepcionOrdenCompra { Fecha = DateTime.Today };
+        // El flete incluido en la factura que aún no ha llegado en otra recepción.
+        recepcion = new RecepcionOrdenCompra { Fecha = DateTime.Today, Flete = Orden.FletePendiente };
         condicion = "contado";
         fechaPrimerPago = DateTime.Today.AddMonths(1);
         error = null;
@@ -119,6 +131,7 @@
         var excedida = lineas.FirstOrDefault(r => r.Cantidad < 0 || r.Cantidad > r.Pendiente);
         if (excedida is not null) { error = L("De {0} se pueden recibir de 0 a {1} unidades.", excedida.Descripcion, excedida.Pendiente); return; }
         if (lineas.Any(r => r.CostoUnitario < 0)) { error = L("El costo no puede ser negativo."); return; }
+        if (recepcion.Flete < 0) { error = L("El flete no puede ser negativo."); return; }
         recepcion.FechaPrimerPago = condicion == "credito" ? fechaPrimerPago : null;
         if (recepcion.FechaPrimerPago is null && condicion == "credito") { error = L("Indique la fecha del primer pago."); return; }
         grabando = true;

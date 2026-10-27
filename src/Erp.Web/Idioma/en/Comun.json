@@ -302,5 +302,12 @@
   "No se pudo conectar con el servidor de correo ({0}). Revise el servidor, el puerto y STARTTLS.": "Could not connect to the mail server ({0}). Check the server, the port and STARTTLS.",
   "El servidor de correo respondió: {0}": "The mail server responded: {0}",
   "No se pudo enviar el correo: {0}": "The email could not be sent: {0}",
-  "el cliente no tiene correo registrado": "the customer has no email on file"
+  "el cliente no tiene correo registrado": "the customer has no email on file",
+  "Su usuario no tiene opciones asignadas. Solicite acceso al administrador del sistema.": "Your user has no options assigned. Ask the system administrator for access.",
+  "Indicadores de ventas, cartera e inventario": "Sales, receivables and inventory indicators",
+  "Productos, existencias, inventario físico y traslados": "Products, stock, physical counts and transfers",
+  "Cotizaciones, facturación y clientes": "Quotes, invoicing and customers",
+  "Órdenes de compra, compras y proveedores": "Purchase orders, purchases and suppliers",
+  "Caja, cheques, caja chica y conciliación": "Cash register, checks, petty cash and reconciliation",
+  "Pólizas, libros, estados financieros y cierre": "Journal entries, ledgers, financial statements and closing"
 }

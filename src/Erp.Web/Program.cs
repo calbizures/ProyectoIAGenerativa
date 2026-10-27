@@ -33,6 +33,7 @@ builder.Services.AddScoped<FelService>();
 builder.Services.AddScoped<Erp.Web.Correo.CorreoServicio>();
 builder.Services.AddScoped<Erp.Web.Correo.EstadoCuentaCorreo>();
 builder.Services.AddScoped<Erp.Web.Correo.DocumentosCorreo>();
+builder.Services.AddScoped<Erp.Web.Correo.ContrasenaCorreo>();
 builder.Services.AddScoped<Erp.Web.Components.Shared.AvisosServicio>();
 builder.Services.AddScoped<Erp.Web.Components.Shared.EdicionServicio>();
 builder.Services.AddScoped<FelConsultaNitServicio>();

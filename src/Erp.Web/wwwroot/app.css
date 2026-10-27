@@ -758,6 +758,22 @@ input[type=checkbox], input[type=radio] {
     margin: 0;
 }
 
+.sidebar-usuario-enlace {
+    font-size: 0.8rem;
+    color: #b9cbe8;
+    text-decoration: none;
+}
+
+.sidebar-usuario-enlace:hover,
+.sidebar-usuario-enlace:focus-visible {
+    color: #eaf6ff;
+    text-decoration: underline;
+}
+
+.inicio-sin-modulos {
+    color: var(--c-texto-5b6478);
+}
+
 .sidebar-boton-salir {
     width: 100%;
     padding: 0.45rem 0.6rem;
@@ -1251,10 +1267,6 @@ input[type=checkbox], input[type=radio] {
 a.modulo-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 22px var(--c-sombra-132776014);
-}
-
-.modulo-card-proximamente {
-    opacity: 0.6;
 }
 
 .modulo-icono {

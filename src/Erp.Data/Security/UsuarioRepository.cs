@@ -5,7 +5,7 @@ namespace Erp.Data.Security;
 
 public sealed class UsuarioRepository(IDbConnectionFactory connectionFactory) : IUsuarioRepository
 {
-	public async Task<int> InsertarAsync(string codigo, string usuario, string password, string? email, int? usuarioAccionId)
+	public async Task<int> InsertarAsync(string codigo, string usuario, string password, string? email, int? usuarioAccionId, bool cambiarPassword = false)
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new DynamicParameters();
@@ -14,6 +14,7 @@ public sealed class UsuarioRepository(IDbConnectionFactory connectionFactory) : 
 		parametros.Add("@UsuPassword", password);
 		parametros.Add("@UsuEmail", email);
 		parametros.Add("@UsuIdAccion", usuarioAccionId);
+		parametros.Add("@UsuCambiarPassword", cambiarPassword);
 		parametros.Add("@UsuId", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
 		await connection.ExecuteAsync("dbo.paUsuarioInsertar", parametros, commandType: CommandType.StoredProcedure);
@@ -59,6 +60,22 @@ public sealed class UsuarioRepository(IDbConnectionFactory connectionFactory) : 
 		await connection.ExecuteAsync("dbo.paUsuarioPasswordCambiar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
+	// El administrador pone una contraseña temporal (sin conocer la anterior):
+	// el usuario debe cambiarla al iniciar sesión. También quita el bloqueo.
+	public async Task RestablecerPasswordAsync(int usuId, string passwordNuevo, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new { UsuId = usuId, PasswordNuevo = passwordNuevo, UsuIdAccion = usuarioAccionId };
+		await connection.ExecuteAsync("dbo.paUsuarioPasswordRestablecer", parametros, commandType: CommandType.StoredProcedure);
+	}
+
+	public async Task DesbloquearAsync(int usuId, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new { UsuId = usuId, UsuIdAccion = usuarioAccionId };
+		await connection.ExecuteAsync("dbo.paUsuarioDesbloquear", parametros, commandType: CommandType.StoredProcedure);
+	}
+
 	public async Task<IReadOnlyList<Usuario>> ConsultarAsync(string? usuario, string? estado, int pagina, int tamanioPagina)
 	{
 		using var connection = connectionFactory.CreateConnection();
@@ -93,10 +110,10 @@ public sealed class UsuarioRepository(IDbConnectionFactory connectionFactory) : 
 		await connection.ExecuteAsync("dbo.paUsuarioRolAsignar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
-	public async Task RevocarRolAsync(int usuId, int rolId)
+	public async Task RevocarRolAsync(int usuId, int rolId, int? usuarioAccionId)
 	{
 		using var connection = connectionFactory.CreateConnection();
-		var parametros = new { UsuId = usuId, RolId = rolId };
+		var parametros = new { UsuId = usuId, RolId = rolId, UsuIdAccion = usuarioAccionId };
 		await connection.ExecuteAsync("dbo.paUsuarioRolRevocar", parametros, commandType: CommandType.StoredProcedure);
 	}
 

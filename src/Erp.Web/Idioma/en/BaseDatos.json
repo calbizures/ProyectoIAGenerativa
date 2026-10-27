@@ -581,5 +581,17 @@
   "Un municipio no se puede mover a otro departamento.": "A municipality cannot be moved to another department.",
   "El departamento ya tiene un municipio con ese código o ese nombre.": "The department already has a municipality with that code or name.",
   "El municipio indicado no existe o está inactivo.": "The specified municipality does not exist or is inactive.",
-  "La sucursal es un establecimiento de factura electrónica: indique su municipio.": "The branch is an electronic invoicing establishment: enter its municipality."
+  "La sucursal es un establecimiento de factura electrónica: indique su municipio.": "The branch is an electronic invoicing establishment: enter its municipality.",
+  "La contraseña debe tener al menos 8 caracteres, con letras y números.": "The password must have at least 8 characters, with letters and numbers.",
+  "La contraseña nueva debe ser distinta de la actual.": "The new password must be different from the current one.",
+  "No puede desactivar su propio usuario.": "You cannot deactivate your own user.",
+  "Es el último usuario que puede administrar usuarios: asigne ese acceso a otro usuario antes de quitárselo.": "This is the last user who can manage users: give that access to another user before removing it.",
+  "Es el último rol que permite administrar usuarios: no se puede inactivar.": "This is the last role that allows managing users: it cannot be deactivated.",
+  "Sin este permiso nadie podría administrar usuarios: asígnelo a otro rol activo antes de quitarlo.": "Without this permission nobody could manage users: assign it to another active role before removing it.",
+  "Elija una compra de mercadería vigente para cargarle el flete.": "Choose a current merchandise purchase to charge the freight to.",
+  "La factura del flete solo lleva el servicio de flete, sin productos ni activos fijos.": "The freight invoice only carries the freight service, without products or fixed assets.",
+  "La compra elegida no tiene productos de inventario a los que cargar el flete.": "The chosen purchase has no inventory products to charge the freight to.",
+  "Una factura de flete de otra compra no lleva además flete propio.": "A freight invoice for another purchase cannot carry its own freight as well.",
+  "La compra tiene su flete registrado en otra factura; anule primero esa factura de flete.": "The purchase has its freight recorded in another invoice; void that freight invoice first.",
+  "Indique si el flete va incluido en la factura del proveedor o se factura aparte, y su monto (no negativo).": "Indicate whether freight is included in the supplier invoice or invoiced separately, and its amount (not negative)."
 }

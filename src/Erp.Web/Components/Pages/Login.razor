@@ -39,7 +39,27 @@
             <EditForm Model="modelo" FormName="login" OnValidSubmit="IniciarSesionAsync" method="post">
                 <DataAnnotationsValidator />
 
-                @if (!modelo.UsuId.HasValue)
+                @if (!modelo.UsuId.HasValue && modelo.CambioPendiente)
+                {
+                    <p class="login-subtitulo">@L("Hola, {0}. Su contraseña es temporal: escríbala de nuevo y elija una nueva que solo usted conozca.", modelo.Usuario)</p>
+                    <InputText @bind-Value="modelo.Usuario" style="display:none" />
+                    <InputCheckbox @bind-Value="modelo.CambioPendiente" style="display:none" />
+
+                    <div class="login-campo">
+                        <label for="password">@L("Contraseña temporal")</label>
+                        <InputText id="password" type="password" @bind-Value="modelo.Password" autofocus autocomplete="current-password" />
+                    </div>
+                    <div class="login-campo">
+                        <label for="nueva">@L("Contraseña nueva")</label>
+                        <InputText id="nueva" type="password" @bind-Value="modelo.Nueva" autocomplete="new-password" />
+                    </div>
+                    <div class="login-campo">
+                        <label for="confirmar">@L("Confirme la contraseña nueva")</label>
+                        <InputText id="confirmar" type="password" @bind-Value="modelo.Confirmar" autocomplete="new-password" />
+                    </div>
+                    <p class="login-subtitulo">@L("Al menos 8 caracteres, con letras y números.")</p>
+                }
+                else if (!modelo.UsuId.HasValue)
                 {
                     <div class="login-campo">
                         <label for="usuario">@L("Usuario")</label>
@@ -71,7 +91,7 @@
                     </div>
                 }
 
-                <button type="submit" class="login-boton">@(modelo.UsuId.HasValue ? L("Continuar") : L("Ingresar"))</button>
+                <button type="submit" class="login-boton">@(modelo.UsuId.HasValue ? L("Continuar") : modelo.CambioPendiente ? L("Cambiar contraseña") : L("Ingresar"))</button>
             </EditForm>
         </div>
     </div>
@@ -112,7 +132,17 @@
             if (!resultado.EsExitoso || resultado.UsuId is null)
             {
                 mensajeError = resultado.Mensaje;
+                modelo.Password = "";
                 return;
+            }
+
+            // Contraseña temporal (usuario nuevo o restablecida por el
+            // administrador): antes de entrar debe elegir una propia. La
+            // temporal no se guarda en la página: se le pide de nuevo junto
+            // con la nueva y se vuelve a validar.
+            if (resultado.CambiarPassword)
+            {
+                if (!await CambiarPasswordTemporalAsync(resultado.UsuId.Value)) return;
             }
 
             var sucursales = await UsuarioRepository.ConsultarSucursalesAsignadasAsync(resultado.UsuId.Value);
@@ -161,6 +191,31 @@
         await FinalizarSesionAsync(modelo.UsuId.Value, modelo.SucId);
     }
 
+    private async Task<bool> CambiarPasswordTemporalAsync(int usuId)
+    {
+        if (!modelo.CambioPendiente)
+        {
+            modelo.CambioPendiente = true;
+            modelo.Password = "";
+            mensajeError = null;
+            return false;
+        }
+
+        string? error = null;
+        if (string.IsNullOrEmpty(modelo.Nueva)) error = L("Escriba la contraseña nueva.");
+        else if (modelo.Nueva != modelo.Confirmar) error = L("La confirmación no coincide con la contraseña nueva.");
+        else
+        {
+            try { await UsuarioRepository.CambiarPasswordAsync(usuId, modelo.Password, modelo.Nueva); }
+            catch (Exception ex) { error = MensajesError.Traducir(ex); }
+        }
+        modelo.Password = modelo.Nueva = modelo.Confirmar = "";
+        mensajeError = error;
+        if (error is not null) return false;
+        modelo.CambioPendiente = false;
+        return true;
+    }
+
     private async Task FinalizarSesionAsync(int usuId, int? sucId)
     {
         var claims = await AuthRepository.ObtenerClaimsAsync(usuId);
@@ -198,5 +253,10 @@
         public int? UsuId { get; set; }
 
         public int SucId { get; set; }
+
+        // Paso de cambio de la contraseña temporal.
+        public bool CambioPendiente { get; set; }
+        public string Nueva { get; set; } = "";
+        public string Confirmar { get; set; } = "";
     }
 }

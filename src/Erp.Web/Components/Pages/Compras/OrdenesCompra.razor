@@ -125,9 +125,24 @@ else if (pestanaActiva == "orden")
                 <input id="oc-entrega" type="date" @bind="orden.FechaEntrega" />
             </div>
             <div class="campo campo-ancho">
-                <label for="oc-condiciones">@L("Condiciones (forma de pago, plazo, flete)")</label>
+                <label for="oc-condiciones">@L("Condiciones (forma de pago, plazo)")</label>
                 <input id="oc-condiciones" maxlength="256" @bind="orden.Condiciones" />
             </div>
+            <div class="campo">
+                <label for="oc-flete-tipo">@L("Flete")</label>
+                <select id="oc-flete-tipo" @bind="orden.FleteTipo">
+                    <option value="N">@L("Sin flete (precio puesto en bodega)")</option>
+                    <option value="I">@L("Incluido en la factura del proveedor")</option>
+                    <option value="S">@L("Facturado aparte (transportista u otra factura)")</option>
+                </select>
+            </div>
+            @if (orden.FleteTipo != "N")
+            {
+                <div class="campo">
+                    <label for="oc-flete">@(orden.FleteTipo == "I" ? L("Monto del flete (IVA incl.)") : L("Flete estimado (IVA incl.)"))</label>
+                    <input id="oc-flete" type="number" min="0" step="0.01" @bind="orden.Flete" />
+                </div>
+            }
             <div class="campo campo-ancho">
                 <label for="oc-obs">@L("Observaciones")</label>
                 <input id="oc-obs" maxlength="500" @bind="orden.Observaciones" />
@@ -196,6 +211,10 @@ else if (pestanaActiva == "orden")
         </div>
         <div class="resumen-totales">
             <span>@L("Unidades:") <strong>@lineas.Sum(l => l.Cantidad)</strong></span>
+            @if (orden.FleteTipo == "I" && orden.Flete > 0)
+            {
+                <span>@L("Flete:") <strong>Q @orden.Flete.ToString("N2")</strong></span>
+            }
             <span>@L("IVA incluido:") <strong>Q @Math.Round(TotalOrden * porcentajeIva / (100 + porcentajeIva), 2).ToString("N2")</strong></span>
             <span>@L("Total:") <strong>Q @TotalOrden.ToString("N2")</strong></span>
         </div>
@@ -266,9 +285,21 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         </div>
         <div class="resumen-totales">
             <span>@L("Avance:") <strong>@L("{0} de {1} unidades", o.Recibido, o.Ordenado)</strong></span>
+            @if (o.FleteTipo == "I")
+            {
+                <span>@L("Flete:") <strong>@o.Simbolo @o.Flete.ToString("N2")</strong></span>
+            }
             <span>@L("IVA incluido:") <strong>@o.Simbolo @o.IvaIncluido.ToString("N2")</strong></span>
             <span>@L("Total:") <strong>@o.Simbolo @o.Total.ToString("N2")</strong></span>
         </div>
+        @if (o.FleteTipo == "S")
+        {
+            <p class="texto-ayuda">@L("Flete facturado aparte (transportista u otra factura), estimado {0} {1}: se carga al costo al grabar esa factura en Compras.", o.Simbolo, o.Flete.ToString("N2"))</p>
+        }
+        else if (o.FleteTipo == "I" && o.FleteRecibido > 0)
+        {
+            <p class="texto-ayuda">@L("Flete ya facturado en las recepciones: {0} {1}.", o.Simbolo, o.FleteRecibido.ToString("N2"))</p>
+        }
         @if (!string.IsNullOrWhiteSpace(o.Condiciones)) { <p class="texto-ayuda">@L("Condiciones: {0}", o.Condiciones)</p> }
         @if (!string.IsNullOrWhiteSpace(o.Observaciones)) { <p class="texto-ayuda">@L("Observaciones: {0}", o.Observaciones)</p> }
 
@@ -413,7 +444,8 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
     private string? mensaje;
     private bool esMensajeError;
 
-    private decimal TotalOrden => lineas.Sum(l => l.Total);
+    // El flete incluido en la factura del proveedor suma al total de la orden.
+    private decimal TotalOrden => lineas.Sum(l => l.Total) + (orden.FleteTipo == "I" ? orden.Flete : 0);
     private decimal ConIva(decimal sinIva) => Math.Round(sinIva * (1 + porcentajeIva / 100m), 2);
 
     private IReadOnlyList<PestanaItem> Pestanas
@@ -532,7 +564,9 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
             BodId = o.BodId,
             MonId = o.MonId,
             Condiciones = o.Condiciones,
-            Observaciones = o.Observaciones
+            Observaciones = o.Observaciones,
+            FleteTipo = o.FleteTipo,
+            Flete = o.Flete
         };
         numeroEditando = o.Numero;
         lineas.Clear();

@@ -8,6 +8,8 @@
 @inject IUsuarioRepository UsuarioRepository
 @inject IRolRepository RolRepository
 @inject Erp.Data.Caja.ICajaRepository CajaRepository
+@inject Erp.Web.Correo.ContrasenaCorreo ContrasenaCorreo
+@inject NavigationManager NavigationManager
 
 <PageTitle>@L("Usuarios")</PageTitle>
 
@@ -44,7 +46,15 @@
             <div class="campo"><label for="usuarios-usuario-codigo">@L("Código")</label><InputText id="usuarios-usuario-codigo" @bind-Value="nuevoUsuario.Codigo" /></div>
             <div class="campo"><label for="usuarios-usuario-usuario">@L("Usuario")</label><InputText id="usuarios-usuario-usuario" @bind-Value="nuevoUsuario.Usuario" /></div>
             <div class="campo"><label for="usuarios-usuario-email">@L("Email")</label><InputText id="usuarios-usuario-email" @bind-Value="nuevoUsuario.Email" /></div>
-            <div class="campo"><label for="usuarios-usuario-password">@L("Contraseña")</label><InputText id="usuarios-usuario-password" type="password" @bind-Value="nuevoUsuario.Password" /></div>
+            <div class="campo">
+                <label for="usuarios-usuario-password">@L("Contraseña temporal")</label>
+                <div class="acciones-fila">
+                    <InputText id="usuarios-usuario-password" autocomplete="off" @bind-Value="nuevoUsuario.Password" />
+                    <BotonIcono Icono="refresh-cw" Tooltip="@L("Generar contraseña")" Etiqueta="@L("Generar")" OnClick="() => nuevoUsuario.Password = Erp.Web.Correo.ContrasenaCorreo.Generar()" />
+                </div>
+            </div>
+            <label class="campo-checkbox"><InputCheckbox @bind-Value="nuevoUsuario.EnviarCorreo" /> @L("Enviar el usuario y la contraseña por correo")</label>
+            <p class="doc-nota"><Icono Nombre="info" Tamano="15" /> <span>@L("Al menos 8 caracteres, con letras y números. El usuario deberá cambiarla la primera vez que ingrese.")</span></p>
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="@L("Guardar")" Etiqueta="@L("Guardar")" Variante="primario" TipoBoton="submit" />
                 <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => mostrarNuevo = false" />
@@ -83,6 +93,10 @@
                     <td class="col-acciones">
                         <div class="acciones-fila">
                             <BotonIcono Icono="eye" Tooltip="@L("Ver detalle")" OnClick="() => SeleccionarAsync(u)" />
+                            @if (u.UsuBloqueado)
+                            {
+                                <BotonIcono Icono="lock" Tooltip="@L("Desbloquear usuario")" Variante="primario" OnClick="() => DesbloquearAsync(u)" />
+                            }
                             @if (u.UsuEstado == "A")
                             {
                                 <BotonIcono Icono="trash-2" Tooltip="@L("Desactivar usuario")" Confirmacion="@L("¿Desactivar el usuario?")" Variante="peligro" OnClick="() => DesactivarAsync(u)" />
@@ -105,17 +119,42 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
 
         <div class="campo"><label>@L("Usuario")</label><span class="valor-detalle">@seleccionado.UsuUsuario</span></div>
         <div class="campo"><label>@L("Email")</label><span class="valor-detalle">@seleccionado.UsuEmail</span></div>
+        <div class="campo"><label>@L("Bloqueado")</label><span class="valor-detalle">@(seleccionado.UsuBloqueado ? L("Sí, por intentos fallidos") : L("No"))</span></div>
+        @if (seleccionado.UsuCambiarPassword)
+        {
+            <div class="campo"><label>@L("Contraseña")</label><span class="valor-detalle">@L("Temporal: la cambiará al iniciar sesión")</span></div>
+        }
         <div class="acciones-fila">
             <BotonIcono Icono="pencil" Tooltip="@L("Editar")" Etiqueta="@L("Editar")" OnClick="IniciarEdicion" />
+            @if (seleccionado.UsuBloqueado)
+            {
+                <BotonIcono Icono="lock" Tooltip="@L("Desbloquear usuario")" Etiqueta="@L("Desbloquear")" Variante="primario" OnClick="() => DesbloquearAsync(seleccionado)" />
+            }
         </div>
 
-        <h3>@L("Cambiar contraseña")</h3>
-        <EditForm Model="cambioPassword" OnValidSubmit="CambiarPasswordAsync">
+        <h3>@L("Restablecer contraseña")</h3>
+        <p class="doc-nota"><Icono Nombre="info" Tamano="15" /> <span>@L("Ponga una contraseña temporal (no necesita la anterior). El usuario deberá cambiarla al iniciar sesión; si estaba bloqueado, queda desbloqueado.")</span></p>
+        <EditForm Model="restablecer" OnValidSubmit="RestablecerPasswordAsync">
             <DataAnnotationsValidator />
             <ResumenValidacion />
-            <div class="campo"><label for="usuarios-cambiopassword-actual">@L("Contraseña actual")</label><InputText id="usuarios-cambiopassword-actual" type="password" @bind-Value="cambioPassword.Actual" /></div>
-            <div class="campo"><label for="usuarios-cambiopassword-nueva">@L("Contraseña nueva")</label><InputText id="usuarios-cambiopassword-nueva" type="password" @bind-Value="cambioPassword.Nueva" /></div>
-            <BotonIcono Icono="save" Tooltip="@L("Cambiar contraseña")" Etiqueta="@L("Cambiar contraseña")" Variante="primario" TipoBoton="submit" />
+            <div class="campo">
+                <label for="usuarios-restablecer-nueva">@L("Contraseña temporal")</label>
+                <div class="acciones-fila">
+                    <InputText id="usuarios-restablecer-nueva" autocomplete="off" @bind-Value="restablecer.Nueva" />
+                    <BotonIcono Icono="refresh-cw" Tooltip="@L("Generar contraseña")" Etiqueta="@L("Generar")" OnClick="() => restablecer.Nueva = Erp.Web.Correo.ContrasenaCorreo.Generar()" />
+                </div>
+            </div>
+            @if (string.IsNullOrWhiteSpace(seleccionado.UsuEmail))
+            {
+                <p class="doc-nota"><Icono Nombre="info" Tamano="15" /> <span>@L("El usuario no tiene email: anote la contraseña y entréguesela personalmente.")</span></p>
+            }
+            else
+            {
+                <label class="campo-checkbox"><InputCheckbox @bind-Value="restablecer.EnviarCorreo" /> @L("Enviar la contraseña por correo a {0}", seleccionado.UsuEmail)</label>
+            }
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="@L("Restablecer contraseña")" Etiqueta="@L("Restablecer contraseña")" Variante="primario" TipoBoton="submit" />
+            </div>
         </EditForm>
 
         <h3>@L("Roles y sucursales")</h3>
@@ -229,7 +268,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
 
     private readonly NuevoUsuarioModelo nuevoUsuario = new();
     private readonly EdicionUsuarioModelo edicionUsuario = new();
-    private readonly CambioPasswordModelo cambioPassword = new();
+    private readonly RestablecerModelo restablecer = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -265,10 +304,14 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         try
         {
             var usuId = await ObtenerUsuIdActualAsync();
-            await UsuarioRepository.InsertarAsync(nuevoUsuario.Codigo, nuevoUsuario.Usuario, nuevoUsuario.Password, nuevoUsuario.Email, usuId);
+            var nuevoId = await UsuarioRepository.InsertarAsync(nuevoUsuario.Codigo, nuevoUsuario.Usuario, nuevoUsuario.Password, nuevoUsuario.Email, usuId,
+                cambiarPassword: true);
             mostrarNuevo = false;
             mensaje = L("Usuario creado correctamente.");
             esMensajeError = false;
+            if (nuevoUsuario.EnviarCorreo)
+                await EnviarCorreoAsync(nuevoId, nuevoUsuario.Usuario, nuevoUsuario.Email, nuevoUsuario.Password, esNuevo: true, usuId);
+            nuevoUsuario.Password = "";
             await BuscarAsync();
         }
         catch (Exception ex)
@@ -284,11 +327,12 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         pestanaActiva = "detalle";
         edicionUsuario.Usuario = usuario.UsuUsuario;
         edicionUsuario.Email = usuario.UsuEmail;
-        cambioPassword.Actual = "";
-        cambioPassword.Nueva = "";
+        restablecer.Nueva = "";
+        restablecer.EnviarCorreo = !string.IsNullOrWhiteSpace(usuario.UsuEmail);
         mensaje = null;
 
-        var (_, roles) = await UsuarioRepository.ConsultarPorIdAsync(usuario.UsuId);
+        var (detalle, roles) = await UsuarioRepository.ConsultarPorIdAsync(usuario.UsuId);
+        if (detalle is not null) usuario.UsuCambiarPassword = detalle.UsuCambiarPassword;
         rolesAsignados = roles;
         sucursalesAsignadas = await UsuarioRepository.ConsultarSucursalesAsignadasAsync(usuario.UsuId);
     }
@@ -327,16 +371,54 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         }
     }
 
-    private async Task CambiarPasswordAsync()
+    private async Task RestablecerPasswordAsync()
     {
         if (seleccionado is null) return;
         try
         {
-            await UsuarioRepository.CambiarPasswordAsync(seleccionado.UsuId, cambioPassword.Actual, cambioPassword.Nueva);
-            cambioPassword.Actual = "";
-            cambioPassword.Nueva = "";
-            mensaje = L("Contraseña actualizada.");
+            var usuId = await ObtenerUsuIdActualAsync();
+            await UsuarioRepository.RestablecerPasswordAsync(seleccionado.UsuId, restablecer.Nueva, usuId);
+            seleccionado.UsuBloqueado = false;
+            seleccionado.UsuCambiarPassword = true;
+            mensaje = L("Contraseña restablecida. El usuario deberá cambiarla al iniciar sesión.");
             esMensajeError = false;
+            if (restablecer.EnviarCorreo)
+                await EnviarCorreoAsync(seleccionado.UsuId, seleccionado.UsuUsuario, seleccionado.UsuEmail, restablecer.Nueva, esNuevo: false, usuId);
+            restablecer.Nueva = "";
+            await BuscarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    // El usuario y la contraseña ya quedaron grabados: si el correo falla, se
+    // avisa para que el administrador entregue la contraseña de otra forma.
+    private async Task EnviarCorreoAsync(int usuId, string usuario, string? email, string password, bool esNuevo, int? usuIdAccion)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            mensaje = $"{mensaje} {L("No se envió correo: el usuario no tiene email.")}";
+            return;
+        }
+        var sucId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerSucId();
+        var resultado = await ContrasenaCorreo.EnviarAsync(usuId, usuario, email, password, esNuevo, NavigationManager.BaseUri, sucId, usuIdAccion);
+        mensaje = $"{mensaje} {resultado.Mensaje}";
+        esMensajeError = !resultado.Enviado;
+    }
+
+    private async Task DesbloquearAsync(Usuario usuario)
+    {
+        try
+        {
+            var usuId = await ObtenerUsuIdActualAsync();
+            await UsuarioRepository.DesbloquearAsync(usuario.UsuId, usuId);
+            usuario.UsuBloqueado = false;
+            mensaje = L("Usuario desbloqueado.");
+            esMensajeError = false;
+            await BuscarAsync();
         }
         catch (Exception ex)
         {
@@ -419,7 +501,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
             foreach (var rolId in rolesDraft.Except(rolesAsignados.Select(r => r.RolId)))
                 await UsuarioRepository.AsignarRolAsync(seleccionado.UsuId, rolId, usuId);
             foreach (var rolId in rolesAsignados.Select(r => r.RolId).Except(rolesDraft))
-                await UsuarioRepository.RevocarRolAsync(seleccionado.UsuId, rolId);
+                await UsuarioRepository.RevocarRolAsync(seleccionado.UsuId, rolId, usuId);
 
             foreach (var sucId in sucursalesDraft.Except(sucursalesAsignadas.Select(s => s.SucId)))
                 await UsuarioRepository.AsignarSucursalAsync(seleccionado.UsuId, sucId, usuId);
@@ -447,6 +529,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         [Required] public string Usuario { get; set; } = "";
         [Required] public string Password { get; set; } = "";
         public string? Email { get; set; }
+        public bool EnviarCorreo { get; set; }
     }
 
     private sealed class EdicionUsuarioModelo
@@ -455,9 +538,9 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         public string? Email { get; set; }
     }
 
-    private sealed class CambioPasswordModelo
+    private sealed class RestablecerModelo
     {
-        [Required] public string Actual { get; set; } = "";
         [Required] public string Nueva { get; set; } = "";
+        public bool EnviarCorreo { get; set; }
     }
 }

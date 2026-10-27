@@ -86,23 +86,35 @@
                             <NavLink href="ventas/cotizaciones" class="sidebar-hijo-link">@L("Cotizaciones")</NavLink>
                         </Authorized>
                     </AuthorizeView>
-                    <NavLink href="facturas" class="sidebar-hijo-link">@L("Facturas")</NavLink>
+                    <AuthorizeView Policy="Permiso:VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR" Context="facturaContexto">
+                        <Authorized>
+                            <NavLink href="facturas" class="sidebar-hijo-link">@L("Facturas")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
                     <AuthorizeView Policy="Permiso:FEL_ADMIN" Context="felContexto">
                         <Authorized>
                             <NavLink href="fel/documentos" class="sidebar-hijo-link">@L("Documentos electrónicos")</NavLink>
                         </Authorized>
                     </AuthorizeView>
-                    <NavLink href="clientes" class="sidebar-hijo-link">@L("Clientes")</NavLink>
+                    <AuthorizeView Policy="Permiso:VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR" Context="clienteContexto">
+                        <Authorized>
+                            <NavLink href="clientes" class="sidebar-hijo-link">@L("Clientes")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
                     <AuthorizeView Policy="Permiso:VENTAS_VENDEDOR_ADMIN" Context="vendedorContexto">
                         <Authorized>
                             <NavLink href="vendedores" class="sidebar-hijo-link">@L("Vendedores")</NavLink>
                         </Authorized>
                     </AuthorizeView>
-                    <NavLink href="ventas/antiguedad" class="sidebar-hijo-link">@L("Antigüedad de saldos")</NavLink>
+                    <AuthorizeView Policy="Permiso:VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR" Context="antiguedadContexto">
+                        <Authorized>
+                            <NavLink href="ventas/antiguedad" class="sidebar-hijo-link">@L("Antigüedad de saldos")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <AuthorizeView Policy="Permiso:COMPRAS_DOCUMENTO_CREAR,COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR">
+        <AuthorizeView Policy="Permiso:COMPRAS_DOCUMENTO_CREAR,COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR_BODEGA,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR">
             <Authorized>
                 <SidebarNodo Titulo="@L("Compras")" IconoNombre="shopping-cart" Rutas="@(new[] { "compras", "proveedores" })">
                     <AuthorizeView Policy="Permiso:COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR_BODEGA,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR" Context="ordenContexto">
@@ -287,9 +299,6 @@
                     </AuthorizeView>
                 </SidebarNodo>
             </Authorized>
-            <NotAuthorized>
-                <SidebarNodo Titulo="@L("Contabilidad")" IconoNombre="bar-chart-2" Disponible="false" />
-            </NotAuthorized>
         </AuthorizeView>
     </nav>
 
@@ -298,6 +307,7 @@
             <div class="sidebar-usuario">
                 <span class="sidebar-usuario-nombre">@context.User.Identity?.Name</span>
                 <Preferencias />
+                <a href="cuenta/contrasena" class="sidebar-usuario-enlace">@L("Cambiar mi contraseña")</a>
                 <form method="post" action="logout">
                     <button type="submit" class="sidebar-boton-salir">@L("Cerrar sesión")</button>
                 </form>

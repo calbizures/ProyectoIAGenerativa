@@ -9,4 +9,6 @@ public interface ICompraRepository
 	Task AnularAsync(int encId, int? usuarioAccionId);
 	Task<IReadOnlyList<CompraEncabezado>> ConsultarAsync(IReadOnlyList<int> tiposDocumento, int? prvId, DateTime? fechaDesde, DateTime? fechaHasta, string? estado, int pagina, int tamanioPagina);
 	Task<(CompraEncabezadoDetalle? Encabezado, IReadOnlyList<CompraDetalleLinea> Detalle)> ConsultarPorIdAsync(int encId);
+	Task<IReadOnlyList<CompraParaFlete>> ConsultarComprasParaFleteAsync(int dias);
+	Task<(IReadOnlyList<CompraFleteDocumento> Documentos, IReadOnlyList<CompraFleteLinea> Lineas)> ConsultarFleteAsync(int encId);
 }

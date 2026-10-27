@@ -10,6 +10,8 @@ public sealed class Usuario
 	public bool UsuBloqueado { get; set; }
 	public DateTime? UsuUltimoLogin { get; set; }
 	public string UsuEstado { get; set; } = "A";
+	// Contraseña temporal: debe cambiarla al iniciar sesión.
+	public bool UsuCambiarPassword { get; set; }
 	// Del empleado vinculado (nombre completo) y de su vendedor (código).
 	public int? IdEmpleado { get; set; }
 	public string? Empleado { get; set; }
@@ -88,6 +90,7 @@ public sealed class LoginResultado
 	public string Estado { get; set; } = "";
 	public string Mensaje { get; set; } = "";
 	public int? UsuId { get; set; }
+	public bool CambiarPassword { get; set; }
 
 	public bool EsExitoso => Estado == "success";
 }
