@@ -1,0 +1,12 @@
+{
+  "name": "erp-prueba-carga",
+  "private": true,
+  "description": "Prueba de carga de la aplicación web con varios usuarios simultáneos",
+  "scripts": {
+    "web": "node web.js 10 3 simultaneo",
+    "http": "node http.js 10 5 simultaneo"
+  },
+  "dependencies": {
+    "playwright": "1.56.1"
+  }
+}
