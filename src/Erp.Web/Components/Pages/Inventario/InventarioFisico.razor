@@ -44,7 +44,7 @@
         </select>
         <select @bind="filtroEstado" @bind:after="BuscarAsync" aria-label="@L("Estado")">
             <option value="">@L("Todos los estados")</option>
-            <option value="B">@L("En conteo")</option>
+            <option value="B">@L("En conteo o por aplicar")</option>
             <option value="A">@L("Aplicadas")</option>
             <option value="N">@L("Anuladas")</option>
         </select>
@@ -68,6 +68,10 @@
             <div class="campo"><label for="toma-fecha">@L("Fecha del conteo")</label><input id="toma-fecha" type="date" @bind="nuevaFecha" /></div>
             <div class="campo"><label for="toma-obs">@L("Observaciones")</label><input id="toma-obs" maxlength="250" @bind="nuevaObservaciones" /></div>
             <label class="casilla"><input type="checkbox" @bind="nuevaSoloConExistencia" /> @L("Solo productos con existencia en la bodega")</label>
+            <div class="doc-nota">
+                <Icono Nombre="lock" Tamano="15" />
+                <span>@L("Al abrir la toma se toma la foto de las existencias y la bodega queda bloqueada: no admite ventas, compras, traslados ni devoluciones hasta que se termine el conteo. Abra la toma cuando vaya a empezar a contar.")</span>
+            </div>
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="@L("Abrir la toma")" Etiqueta="@L("Abrir toma")" Variante="primario" OnClick="CrearAsync" />
                 <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => mostrarNueva = false" />
@@ -93,10 +97,10 @@
                         <td class="num col-estado">@t.Contados / @t.Productos</td>
                         <td class="num col-monto">@(t.Estado == "A" ? t.ValorSobrante.ToString("N2") : "—")</td>
                         <td class="num col-monto">@(t.Estado == "A" ? t.ValorFaltante.ToString("N2") : "—")</td>
-                        <td class="col-estado"><span class="estado-badge @ClaseEstado(t.Estado)">@NombreEstado(t.Estado)</span></td>
+                        <td class="col-estado"><span class="estado-badge @ClaseEstado(t)">@NombreEstado(t)</span></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
-                                <BotonIcono Icono="@(t.Estado == "B" ? "clipboard-list" : "eye")" Tooltip="@(t.Estado == "B" ? L("Registrar conteo") : L("Ver detalle"))" OnClick="() => AbrirAsync(t)" />
+                                <BotonIcono Icono="@(t.Estado == "B" ? "clipboard-list" : "eye")" Tooltip="@(t.BodegaBloqueada ? L("Registrar conteo") : t.Estado == "B" ? L("Revisar y aplicar") : L("Ver detalle"))" OnClick="() => AbrirAsync(t)" />
                             </div>
                         </td>
                     </tr>
@@ -110,7 +114,7 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
     <section class="tarjeta">
         <div class="maestro-detalle-encabezado">
             <h2>@L("Toma #{0} · {1}", seleccionada.TfiId, seleccionada.Bodega)</h2>
-            <span class="estado-badge @ClaseEstado(seleccionada.Estado)">@NombreEstado(seleccionada.Estado)</span>
+            <span class="estado-badge @ClaseEstado(seleccionada)">@NombreEstado(seleccionada)</span>
         </div>
         <div class="resumen-totales">
             <span>@L("Fecha:") <strong>@seleccionada.Fecha.ToString("dd/MM/yyyy")</strong></span>
@@ -122,9 +126,20 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
                 <span>@L("Anulada:") <strong>@seleccionada.MotivoAnulacion</strong></span>
             }
         </div>
-        @if (EnConteo)
+        @if (seleccionada.BodegaBloqueada)
         {
-            <p class="texto-ayuda">@L("La existencia es la del sistema en este momento (no se modifica). Anote el conteo; los productos sin conteo no se ajustan. Al aplicar, la diferencia se calcula contra la existencia de ese momento y se valora al costo promedio.")</p>
+            <div class="doc-nota">
+                <Icono Nombre="lock" Tamano="15" />
+                <span>@L("La bodega está bloqueada desde el {0}: no admite ventas, compras, traslados ni devoluciones. La existencia es la foto de ese momento. Anote el conteo (los productos sin conteo no se ajustan) y, al terminar, presione Terminar conteo para que la bodega vuelva a operar.", seleccionada.ConteoInicio.ToString("dd/MM/yyyy HH:mm"))</span>
+            </div>
+        }
+        else if (PorAplicar && seleccionada.UsaFoto)
+        {
+            <p class="texto-ayuda">@L("El conteo terminó el {0} ({1}) y la bodega ya opera. Revise las diferencias: al aplicar, la diferencia (conteo − foto) se suma o resta a la existencia actual y se valora al costo promedio de ese momento; lo que se movió después del conteo no la afecta.", seleccionada.ConteoFin?.ToString("dd/MM/yyyy HH:mm") ?? "", seleccionada.ConteoTerminadoPor ?? "")</p>
+        }
+        else if (PorAplicar)
+        {
+            <p class="texto-ayuda">@L("Toma abierta antes del bloqueo de bodegas: la existencia es la del sistema en este momento y al aplicar la diferencia se calcula contra la existencia de ese momento.")</p>
         }
 
         <div class="barra-herramientas">
@@ -178,12 +193,23 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
             </tbody>
         </table>
 
-        @if (EnConteo)
+        @if (EnConteo || PorAplicar)
         {
             <div class="acciones-fila">
-                <BotonIcono Icono="save" Tooltip="@L("Guardar el conteo")" Etiqueta="@L("Guardar conteo")" Variante="primario" Deshabilitado="guardando" OnClick="GuardarConteoAsync" />
-                <BotonIcono Icono="check-check" Tooltip="@L("Aplicar la toma y generar los ajustes")" Etiqueta="@L("Aplicar ajustes")"
-                            Confirmacion="@(L("¿Aplicar la toma? Sobrante Q {0:N2}, faltante Q {1:N2}.", ValorSobrante, ValorFaltante))" Deshabilitado="guardando" OnClick="AplicarAsync" />
+                @if (EnConteo)
+                {
+                    <BotonIcono Icono="save" Tooltip="@L("Guardar el conteo")" Etiqueta="@L("Guardar conteo")" Variante="primario" Deshabilitado="guardando" OnClick="GuardarConteoAsync" />
+                }
+                @if (seleccionada.BodegaBloqueada)
+                {
+                    <BotonIcono Icono="unlock" Tooltip="@L("Terminar el conteo y desbloquear la bodega")" Etiqueta="@L("Terminar conteo")"
+                                Confirmacion="@L("¿Terminar el conteo? La bodega vuelve a operar y el conteo ya no se puede cambiar. Los ajustes se aplican después.")" Deshabilitado="guardando" OnClick="TerminarConteoAsync" />
+                }
+                @if (PorAplicar)
+                {
+                    <BotonIcono Icono="check-check" Tooltip="@L("Aplicar la toma y generar los ajustes")" Etiqueta="@L("Aplicar ajustes")"
+                                Confirmacion="@(L("¿Aplicar la toma? Sobrante Q {0:N2}, faltante Q {1:N2}.", ValorSobrante, ValorFaltante))" Deshabilitado="guardando" OnClick="AplicarAsync" />
+                }
             </div>
         }
         @if (seleccionada.Estado != "N")
@@ -225,7 +251,11 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
     private string? mensaje;
     private bool esMensajeError;
 
-    private bool EnConteo => seleccionada?.Estado == "B";
+    // En conteo: la bodega está bloqueada y el conteo se puede escribir. Por
+    // aplicar: el conteo terminó, la bodega opera y faltan los ajustes.
+    // Las tomas anteriores al bloqueo (sin foto) siguen escribiéndose hasta aplicarlas.
+    private bool EnConteo => seleccionada is { Estado: "B" } t && (t.BodegaBloqueada || !t.UsaFoto);
+    private bool PorAplicar => seleccionada is { Estado: "B" } t && !t.BodegaBloqueada;
 
     private IReadOnlyList<PestanaItem> Pestanas => seleccionada is null
         ? new[] { new PestanaItem("lista", L("Tomas")) }
@@ -244,8 +274,13 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
 
     private decimal? ConteoDe(TomaFisicaLinea l) => conteos.TryGetValue(l.ProId, out var c) ? c : l.Conteo;
 
-    private static string NombreEstado(string estado) => estado switch { "B" => L("En conteo"), "A" => L("Aplicada"), _ => L("Anulada") };
-    private static string ClaseEstado(string estado) => estado switch { "B" => "estado-badge-pendiente", "A" => "estado-badge-activo", _ => "estado-badge-inactivo" };
+    private static string NombreEstado(TomaFisica t) => t.Estado switch
+    {
+        "B" => t.BodegaBloqueada ? L("En conteo · bodega bloqueada") : L("Por aplicar"),
+        "A" => L("Aplicada"),
+        _ => L("Anulada")
+    };
+    private static string ClaseEstado(TomaFisica t) => t.Estado switch { "B" => "estado-badge-pendiente", "A" => "estado-badge-activo", _ => "estado-badge-inactivo" };
 
     protected override async Task OnInitializedAsync()
     {
@@ -315,7 +350,7 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
             await BuscarAsync();
             var toma = tomas.FirstOrDefault(t => t.TfiId == id);
             if (toma is not null) await AbrirAsync(toma);
-            MostrarOk(L("Toma #{0} abierta. Registre el conteo de cada producto.", id));
+            MostrarOk(L("Toma #{0} abierta: la bodega queda bloqueada hasta que termine el conteo. Registre el conteo de cada producto.", id));
         }
         catch (Exception ex) { MostrarError(ex); }
     }
@@ -326,7 +361,7 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
         conteos.Clear();
         motivoAnulacion = "";
         filtroProducto = "";
-        soloDiferencias = toma.Estado != "B";
+        soloDiferencias = toma.Estado != "B" || !toma.BodegaBloqueada && toma.UsaFoto;
         pestanaActiva = "toma";
         try { lineas = await TomaRepository.ConsultarLineasAsync(toma.TfiId); }
         catch (Exception ex) { MostrarError(ex); }
@@ -424,6 +459,23 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
             MostrarOk(L("Se {0} sin guardar de la toma #{1}. Presione Guardar conteo para grabarlos.", (conteos.Count == 1 ? L("recuperó 1 conteo") : L("recuperaron {0} conteos", conteos.Count)), b.TfiId));
         }
         catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task TerminarConteoAsync()
+    {
+        if (seleccionada is null) return;
+        guardando = true;
+        try
+        {
+            await GuardarPendientesAsync();
+            await TomaRepository.TerminarConteoAsync(seleccionada.TfiId, await ObtenerUsuIdActualAsync());
+            await BuscarAsync();
+            var toma = tomas.FirstOrDefault(t => t.TfiId == seleccionada.TfiId);
+            if (toma is not null) await AbrirAsync(toma);
+            MostrarOk(L("Conteo terminado: la bodega vuelve a operar. Revise las diferencias y aplique los ajustes."));
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
     }
 
     private async Task AplicarAsync()

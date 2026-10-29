@@ -18,6 +18,13 @@ public sealed class TomaFisica
 	public decimal ValorSobrante { get; set; }
 	public decimal ValorFaltante { get; set; }
 	public string? Usuario { get; set; }
+	// Conteo: al abrir la toma se toma la foto de existencias y la bodega queda
+	// bloqueada hasta terminar el conteo (ConteoFin).
+	public DateTime ConteoInicio { get; set; }
+	public DateTime? ConteoFin { get; set; }
+	public string? ConteoTerminadoPor { get; set; }
+	public bool UsaFoto { get; set; } = true;
+	public bool BodegaBloqueada { get; set; }
 }
 
 public sealed class TomaFisicaLinea
@@ -31,6 +38,7 @@ public sealed class TomaFisicaLinea
 	public decimal Existencia { get; set; }
 	public decimal? Conteo { get; set; }
 	public decimal? CostoUnitario { get; set; }
+	public decimal ExistenciaActual { get; set; }
 	public decimal? Diferencia => Conteo is null ? null : Conteo - Existencia;
 	public decimal ValorDiferencia => Math.Round((Diferencia ?? 0) * (CostoUnitario ?? 0), 2);
 }

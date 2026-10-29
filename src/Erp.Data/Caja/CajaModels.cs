@@ -11,6 +11,8 @@ public sealed class CajaReceptora
 	public string SucCodigo { get; set; } = "";
 	public string SucDescripcion { get; set; } = "";
 	public string PcrEstado { get; set; } = "A";
+	// Al cobrar en efectivo, el cajero escribe lo recibido y se le muestra el vuelto.
+	public bool PcrCalculaVuelto { get; set; }
 }
 
 public sealed class CajaApertura
@@ -39,6 +41,15 @@ public sealed class CajaAperturaActiva
 	public int PcrId { get; set; }
 	public string PcrDescripcion { get; set; } = "";
 	public string? UsuarioApertura { get; set; }
+	public bool PcrCalculaVuelto { get; set; }
+}
+
+// Efectivo que entregó el cliente y su vuelto (informativo: a la caja entra lo cobrado).
+public sealed class EfectivoRecibido
+{
+	public int PpeId { get; set; }
+	public decimal Recibido { get; set; }
+	public decimal Vuelto { get; set; }
 }
 
 public sealed class FormaPagoTipo

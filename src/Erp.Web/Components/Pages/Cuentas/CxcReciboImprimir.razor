@@ -3,6 +3,7 @@
 @attribute [Authorize(Policy = "Permiso:CXC_ADMIN")]
 @using Erp.Data.Cuentas
 @inject ICuentasRepository CuentasRepository
+@inject Erp.Data.Caja.ICajaRepository CajaRepository
 
 <PageTitle>Recibo de caja @Id</PageTitle>
 
@@ -68,6 +69,13 @@ else
                 <tr><td>@f.Forma</td><td>@(f.Entidad ?? "—")</td><td>@(f.Referencia ?? "—")</td><td class="num">@f.Monto.ToString("N2")</td></tr>
             }
         </tbody>
+        @if (efectivo is not null)
+        {
+            <tfoot>
+                <tr><td colspan="3">Efectivo recibido</td><td class="num">Q@(efectivo.Recibido.ToString("N2"))</td></tr>
+                <tr><td colspan="3">Su vuelto</td><td class="num">Q@(efectivo.Vuelto.ToString("N2"))</td></tr>
+            </tfoot>
+        }
     </table>
 
     <div class="recibo-firmas">
@@ -82,11 +90,16 @@ else
     [SupplyParameterFromQuery] public int Id { get; set; }
 
     private ReciboDetalle? recibo;
+    private Erp.Data.Caja.EfectivoRecibido? efectivo;
     private string? error;
 
     protected override async Task OnInitializedAsync()
     {
-        try { recibo = await CuentasRepository.ConsultarReciboAsync(Id); }
+        try
+        {
+            recibo = await CuentasRepository.ConsultarReciboAsync(Id);
+            efectivo = await CajaRepository.ConsultarEfectivoRecibidoAsync(Id, null);
+        }
         catch (Exception ex) { error = MensajesError.Traducir(ex); }
     }
 }

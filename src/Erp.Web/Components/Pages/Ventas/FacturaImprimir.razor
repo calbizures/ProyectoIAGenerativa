@@ -105,6 +105,11 @@ else
             {
                 <div class="fac-ticket-datos">
                     @foreach (var p in datos.Pagos) { <div><span>@p.Forma:</span> @Enc.Simbolo@p.Monto.ToString("N2") @p.ReferenciaTexto</div> }
+                    @if (datos.EfectivoRecibido is decimal recibido)
+                    {
+                        <div><span>Efectivo recibido:</span> @Enc.Simbolo@recibido.ToString("N2")</div>
+                        <div><span>Su vuelto:</span> @Enc.Simbolo@(datos.Vuelto?.ToString("N2"))</div>
+                    }
                 </div>
             }
             @if (datos.Cuotas.Count > 0)
@@ -214,6 +219,11 @@ else
                         <div class="fac-mini">
                             <div class="fac-bloque-titulo">Pago recibido</div>
                             @foreach (var p in datos.Pagos) { <div class="fac-fila"><span>@p.Forma</span>@Enc.Simbolo @p.Monto.ToString("N2") @p.ReferenciaTexto</div> }
+                            @if (datos.EfectivoRecibido is decimal recibidoCarta)
+                            {
+                                <div class="fac-fila"><span>Efectivo recibido</span>@Enc.Simbolo @recibidoCarta.ToString("N2")</div>
+                                <div class="fac-fila"><span>Su vuelto</span>@Enc.Simbolo @(datos.Vuelto?.ToString("N2"))</div>
+                            }
                         </div>
                     }
                     @if (datos.Cuotas.Count > 0)

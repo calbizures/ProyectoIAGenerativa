@@ -75,6 +75,22 @@ public sealed class ConciliacionRepository(IDbConnectionFactory connectionFactor
 	public Task EmparejarAsync(int bcnId, int bexId, int asdId) =>
 		EjecutarAsync("dbo.paConciliacionEmparejar", new { BcnId = bcnId, BexId = bexId, AsdId = asdId, Forma = "M" });
 
+	public Task EmparejarGrupoAsync(int bcnId, IReadOnlyCollection<int> bexIds, IReadOnlyCollection<int> asdIds) =>
+		EjecutarAsync("dbo.paConciliacionEmparejarGrupo", new { BcnId = bcnId, Extracto = string.Join(",", bexIds), Libros = string.Join(",", asdIds) });
+
+	public async Task<ConciliacionParametros> ConsultarParametrosAsync()
+	{
+		using var connection = connectionFactory.CreateConnection();
+		return await connection.QueryFirstOrDefaultAsync<ConciliacionParametros>("dbo.paConciliacionParametroConsultar",
+			commandType: CommandType.StoredProcedure) ?? new ConciliacionParametros();
+	}
+
+	public Task GuardarParametrosAsync(ConciliacionParametros parametros, int? usuarioAccionId) =>
+		EjecutarAsync("dbo.paConciliacionParametroGuardar", new
+		{
+			parametros.ToleranciaDias, parametros.DiasDeposito, parametros.DiasCheque, UsuId = usuarioAccionId
+		});
+
 	public Task DesemparejarAsync(int bcnId, int? bexId, int? asdId) =>
 		EjecutarAsync("dbo.paConciliacionDesemparejar", new { BcnId = bcnId, BexId = bexId, AsdId = asdId });
 

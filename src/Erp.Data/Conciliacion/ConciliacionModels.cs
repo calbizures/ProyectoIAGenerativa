@@ -36,6 +36,10 @@ public sealed class ConciliacionResumen
 	public decimal SaldoLibros { get; set; }
 	public decimal CreditosNoRegistrados { get; set; }
 	public decimal DebitosNoRegistrados { get; set; }
+	// Días al corte desde los que un depósito en tránsito o un cheque en
+	// circulación se marca para revisar (parámetros de la conciliación).
+	public int DiasDeposito { get; set; }
+	public int DiasCheque { get; set; }
 
 	public decimal BancoAjustado => SaldoBanco + DepositosTransito - ChequesCirculacion;
 	public decimal LibrosAjustado => SaldoLibros + CreditosNoRegistrados - DebitosNoRegistrados;
@@ -44,7 +48,7 @@ public sealed class ConciliacionResumen
 	public decimal DiferenciaExtracto => SaldoInicialBanco + CreditosExtracto - DebitosExtracto - SaldoBanco;
 }
 
-// Forma: A automática, M manual, J ajuste.
+// Forma: A automática, M manual, J ajuste, G en grupo.
 public sealed class LineaExtracto
 {
 	public int BexId { get; set; }
@@ -56,6 +60,10 @@ public sealed class LineaExtracto
 	public int? AsdId { get; set; }
 	public string? Forma { get; set; }
 	public int? AsiId { get; set; }
+	// Emparejada en grupo (varios con uno): el id de la primera línea del grupo.
+	public int? Grupo { get; set; }
+	// COMISION, INTERES o SIN_CLASIFICAR (por la descripción).
+	public string Clase { get; set; } = "SIN_CLASIFICAR";
 }
 
 public sealed class LineaLibro
@@ -69,6 +77,17 @@ public sealed class LineaLibro
 	public decimal Haber { get; set; }
 	public int? BexId { get; set; }
 	public bool Conciliado { get; set; }
+	public int? Grupo { get; set; }
+	// Días al corte y marca de revisión de lo que sigue en tránsito.
+	public int Dias { get; set; }
+	public bool Revisar { get; set; }
+}
+
+public sealed class ConciliacionParametros
+{
+	public int ToleranciaDias { get; set; } = 5;
+	public int DiasDeposito { get; set; } = 3;
+	public int DiasCheque { get; set; } = 30;
 }
 
 public sealed class ConciliacionDetalle

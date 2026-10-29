@@ -10,6 +10,7 @@
 @inject ICajaRepository CajaRepository
 @inject Erp.Data.Bancos.IBancosRepository BancosRepository
 @inject Erp.Web.Correo.DocumentosCorreo DocumentosCorreo
+@inject ILogger<CxcCobros> Log
 
 <PageTitle>@L("Cobros a clientes")</PageTitle>
 
@@ -42,6 +43,10 @@
             <div>
                 <h2>@L("Recibo {0} registrado", reciboRegistrado.Value.Id)</h2>
                 <p>@L("Q{0} de {1}.", reciboRegistrado.Value.Monto.ToString("N2"), reciboRegistrado.Value.Cliente)</p>
+                @if (vueltoRegistrado is not null)
+                {
+                    <p class="calculo-vuelto-resultado"><span>@L("Efectivo recibido Q{0}: vuelto", vueltoRegistrado.Value.Recibido.ToString("N2"))</span><strong>Q @vueltoRegistrado.Value.Vuelto.ToString("N2")</strong></p>
+                }
             </div>
         </div>
         <div class="acciones-fila">
@@ -282,6 +287,7 @@
                     <span> @L("· si no agrega otra, todo se registra en {0}", NombreForma(formaNueva.PftId))</span>
                 }
             </div>
+            <CalculoVuelto Activo="CajaCalculaVuelto" Efectivo="EfectivoACobrar" Id="cob-efectivo-recibido" @bind-Recibido="efectivoRecibido" />
 
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="@L("Registrar el cobro")" Etiqueta="@(L("Registrar cobro Q{0:N2}", TotalCobro))" Variante="primario"
@@ -474,6 +480,12 @@
     private IReadOnlyList<ReciboResumen> recibos = Array.Empty<ReciboResumen>();
 
     private (int Id, decimal Monto, string Cliente)? reciboRegistrado;
+    // Vuelto: si la caja lo calcula, lo que entrega el cliente en efectivo.
+    private decimal? efectivoRecibido;
+    private (decimal Recibido, decimal Vuelto)? vueltoRegistrado;
+    private bool CajaCalculaVuelto => cajasAbiertas.FirstOrDefault(c => c.PcaId == pcaId)?.PcrCalculaVuelto == true;
+    private decimal EfectivoACobrar => formas.Where(f => EsForma(f.PftId, "Efectivo")).Sum(f => f.Monto)
+        + (formas.Count == 0 && EsForma(formaNueva.PftId, "Efectivo") ? TotalCobro : 0);
 
     // Cómo pagó el cliente: en caja (efectivo, cheque, tarjeta, transferencia) o con boleta.
     private string modoPago = "caja";
@@ -596,6 +608,7 @@
         aplicar.Clear();
         formas.Clear();
         montoRecibido = 0;
+        efectivoRecibido = null;
         comprobanteNuevo = null;
         boletaReferencia = "";
         boletaObservaciones = null;
@@ -752,6 +765,13 @@
             MostrarAviso(L("Las formas de pago suman Q{0:N2} y el cobro es de Q{1:N2}.", formasCobro.Sum(f => f.Monto), TotalCobro));
             return;
         }
+        var efectivo = formasCobro.Where(f => EsForma(f.PftId, "Efectivo")).Sum(f => f.Monto);
+        var recibido = CajaCalculaVuelto && efectivo > 0 ? efectivoRecibido : null;
+        if (recibido < efectivo)
+        {
+            MostrarAviso(L("El efectivo recibido (Q{0:N2}) no alcanza para el cobro en efectivo (Q{1:N2}).", recibido, efectivo));
+            return;
+        }
         guardando = true;
         try
         {
@@ -759,6 +779,14 @@
             var cobro = cuotas.Where(c => aplicar.ContainsKey(c.CppId)).Select(c => new CuotaCobro(c.CppId, aplicar[c.CppId])).ToList();
             var recibo = await CuentasRepository.RegistrarCobroCuotasAsync(cliente.Id, pcaId, cobro, formasCobro, await ObtenerUsuIdActualAsync());
             reciboRegistrado = (recibo, total, cliente.Nombre);
+            vueltoRegistrado = null;
+            if (recibido is decimal r)
+            {
+                // Informativo (a la caja entra lo cobrado): si no se graba, el recibo sigue bien.
+                try { await CajaRepository.RegistrarEfectivoRecibidoAsync(recibo, null, r, await ObtenerUsuIdActualAsync()); }
+                catch (Exception ex) { Log.LogWarning(ex, "No se guardó el efectivo recibido del recibo {PpeId}", recibo); }
+                vueltoRegistrado = (r, r - efectivo);
+            }
             mensaje = null;
             Limpiar();
             await CargarCuotasAsync();

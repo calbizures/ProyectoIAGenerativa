@@ -593,5 +593,17 @@
   "La compra elegida no tiene productos de inventario a los que cargar el flete.": "The chosen purchase has no inventory products to charge the freight to.",
   "Una factura de flete de otra compra no lleva además flete propio.": "A freight invoice for another purchase cannot carry its own freight as well.",
   "La compra tiene su flete registrado en otra factura; anule primero esa factura de flete.": "The purchase has its freight recorded in another invoice; void that freight invoice first.",
-  "Indique si el flete va incluido en la factura del proveedor o se factura aparte, y su monto (no negativo).": "Indicate whether freight is included in the supplier invoice or invoiced separately, and its amount (not negative)."
+  "Indique si el flete va incluido en la factura del proveedor o se factura aparte, y su monto (no negativo).": "Indicate whether freight is included in the supplier invoice or invoiced separately, and its amount (not negative).",
+  "La bodega {0} está en inventario físico (toma #{1}): no admite movimientos hasta que se termine el conteo.": "The warehouse {0} is in a physical count (count #{1}): it accepts no movements until the count is finished.",
+  "El conteo ya se terminó y la bodega volvió a operar: el conteo ya no se puede cambiar. Si hay que volver a contar, anule la toma y abra otra.": "The count is finished and the warehouse is operating again: the count can no longer be changed. To recount, void the count and open a new one.",
+  "La toma no está en conteo: no existe, ya se terminó el conteo, se aplicó o se anuló.": "The count is not in progress: it does not exist, was already finished, applied or voided.",
+  "Termine el conteo antes de aplicar los ajustes (la bodega sigue bloqueada).": "Finish the count before applying the adjustments (the warehouse is still locked).",
+  "El pago no tiene una parte en efectivo.": "The payment has no cash portion.",
+  "El efectivo recibido no alcanza: el cobro en efectivo es de Q{0}.": "The cash received is not enough: the cash amount due is Q{0}.",
+  "No se reconoce qué es esta línea del banco: elija la cuenta contable del ajuste (por ejemplo, un cheque rechazado o una nota de débito no es una comisión).": "This bank line is not recognized: choose the adjustment account (for example, a returned check or a debit note is not a fee).",
+  "Elija al menos una línea del banco y un movimiento de libros, y más de uno en alguno de los dos lados.": "Choose at least one bank line and one book entry, and more than one on either side.",
+  "Una de las líneas del banco elegidas no existe o ya está conciliada.": "One of the chosen bank lines does not exist or is already reconciled.",
+  "Uno de los movimientos de libros elegidos no existe o ya está conciliado.": "One of the chosen book entries does not exist or is already reconciled.",
+  "No suman lo mismo: el banco da Q{0} y libros Q{1}.": "They do not add up to the same: the bank gives Q{0} and the books Q{1}.",
+  "La tolerancia va de 0 a 31 días y los días para revisar, de 1 a 365.": "The tolerance goes from 0 to 31 days and the review days from 1 to 365."
 }

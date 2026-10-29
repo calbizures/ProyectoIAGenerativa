@@ -399,5 +399,18 @@
   "Unidad actualizada.": "Unit updated.",
   "Unidad eliminada.": "Unit deleted.",
   "planilla": "payroll",
-  "proveedores": "suppliers"
+  "proveedores": "suppliers",
+  "En conteo o por aplicar": "Counting or to apply",
+  "Al abrir la toma se toma la foto de las existencias y la bodega queda bloqueada: no admite ventas, compras, traslados ni devoluciones hasta que se termine el conteo. Abra la toma cuando vaya a empezar a contar.": "Opening the count takes a snapshot of the stock and locks the warehouse: no sales, purchases, transfers or returns until the count is finished. Open the count when you are about to start counting.",
+  "Revisar y aplicar": "Review and apply",
+  "La bodega está bloqueada desde el {0}: no admite ventas, compras, traslados ni devoluciones. La existencia es la foto de ese momento. Anote el conteo (los productos sin conteo no se ajustan) y, al terminar, presione Terminar conteo para que la bodega vuelva a operar.": "The warehouse is locked since {0}: no sales, purchases, transfers or returns. Stock is the snapshot from that moment. Enter the count (products without a count are not adjusted) and, when done, press Finish count so the warehouse operates again.",
+  "El conteo terminó el {0} ({1}) y la bodega ya opera. Revise las diferencias: al aplicar, la diferencia (conteo − foto) se suma o resta a la existencia actual y se valora al costo promedio de ese momento; lo que se movió después del conteo no la afecta.": "The count finished on {0} ({1}) and the warehouse is operating. Review the differences: when applied, the difference (count − snapshot) is added to or subtracted from the current stock and valued at the average cost at that time; movements after the count do not affect it.",
+  "Toma abierta antes del bloqueo de bodegas: la existencia es la del sistema en este momento y al aplicar la diferencia se calcula contra la existencia de ese momento.": "Count opened before warehouse locking: stock is the current system stock and, when applied, the difference is calculated against the stock at that time.",
+  "Terminar el conteo y desbloquear la bodega": "Finish the count and unlock the warehouse",
+  "Terminar conteo": "Finish count",
+  "¿Terminar el conteo? La bodega vuelve a operar y el conteo ya no se puede cambiar. Los ajustes se aplican después.": "Finish the count? The warehouse operates again and the count can no longer be changed. Adjustments are applied afterwards.",
+  "En conteo · bodega bloqueada": "Counting · warehouse locked",
+  "Por aplicar": "To apply",
+  "Toma #{0} abierta: la bodega queda bloqueada hasta que termine el conteo. Registre el conteo de cada producto.": "Count #{0} opened: the warehouse is locked until the count is finished. Enter the count of each product.",
+  "Conteo terminado: la bodega vuelve a operar. Revise las diferencias y aplique los ajustes.": "Count finished: the warehouse operates again. Review the differences and apply the adjustments."
 }

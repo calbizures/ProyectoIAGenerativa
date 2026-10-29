@@ -11,6 +11,9 @@ public interface IConciliacionRepository
 	Task EliminarLineaExtractoAsync(int bexId);
 	Task<int> ConciliarAutomaticoAsync(int bcnId);
 	Task EmparejarAsync(int bcnId, int bexId, int asdId);
+	Task EmparejarGrupoAsync(int bcnId, IReadOnlyCollection<int> bexIds, IReadOnlyCollection<int> asdIds);
+	Task<ConciliacionParametros> ConsultarParametrosAsync();
+	Task GuardarParametrosAsync(ConciliacionParametros parametros, int? usuarioAccionId);
 	Task DesemparejarAsync(int bcnId, int? bexId, int? asdId);
 	Task MarcarLibroAsync(int bcnId, int asdId, bool marcar);
 	Task<int> GrabarAjusteAsync(int bcnId, int bexId, int? ctaId, string? descripcion, int? usuarioAccionId);

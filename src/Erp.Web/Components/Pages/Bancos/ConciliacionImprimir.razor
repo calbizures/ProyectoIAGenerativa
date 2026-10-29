@@ -19,12 +19,12 @@
                 <tr><td class="sangria-2">@L("(+) Depósitos en tránsito")</td><td class="num">@r.DepositosTransito.ToString("N2")</td></tr>
                 @foreach (var l in transito)
                 {
-                    <tr><td class="sangria-4">@l.Fecha.ToString("dd/MM/yyyy") · #@l.AsiId @l.Descripcion</td><td class="num texto-tenue">@l.Debe.ToString("N2")</td></tr>
+                    <tr><td class="sangria-4">@l.Fecha.ToString("dd/MM/yyyy") · #@l.AsiId @l.Descripcion · @L("{0} días", l.Dias)@(l.Revisar ? L(" · revisar") : "")</td><td class="num texto-tenue">@l.Debe.ToString("N2")</td></tr>
                 }
                 <tr><td class="sangria-2">@L("(−) Cheques y pagos en circulación")</td><td class="num">@r.ChequesCirculacion.ToString("N2")</td></tr>
                 @foreach (var l in circulacion)
                 {
-                    <tr><td class="sangria-4">@l.Fecha.ToString("dd/MM/yyyy") · #@l.AsiId @l.Descripcion</td><td class="num texto-tenue">@l.Haber.ToString("N2")</td></tr>
+                    <tr><td class="sangria-4">@l.Fecha.ToString("dd/MM/yyyy") · #@l.AsiId @l.Descripcion · @L("{0} días", l.Dias)@(l.Revisar ? L(" · revisar") : "")</td><td class="num texto-tenue">@l.Haber.ToString("N2")</td></tr>
                 }
                 <tr class="fila-total"><td>@L("Saldo según banco ajustado")</td><td class="num">@r.BancoAjustado.ToString("N2")</td></tr>
                 <tr class="fila-subtotal"><td>@L("Saldo según libros")</td><td class="num">@r.SaldoLibros.ToString("N2")</td></tr>
@@ -32,7 +32,7 @@
                 <tr><td class="sangria-2">@L("(−) Débitos del banco sin registrar")</td><td class="num">@r.DebitosNoRegistrados.ToString("N2")</td></tr>
                 @foreach (var l in noRegistrados)
                 {
-                    <tr><td class="sangria-4">@l.Fecha.ToString("dd/MM/yyyy") · @l.Descripcion</td><td class="num texto-tenue">@((l.Debito > 0 ? -l.Debito : l.Credito).ToString("N2"))</td></tr>
+                    <tr><td class="sangria-4">@l.Fecha.ToString("dd/MM/yyyy") · @l.Descripcion@(l.Clase == "SIN_CLASIFICAR" ? L(" · sin clasificar") : "")</td><td class="num texto-tenue">@((l.Debito > 0 ? -l.Debito : l.Credito).ToString("N2"))</td></tr>
                 }
                 <tr class="fila-total"><td>@L("Saldo según libros ajustado")</td><td class="num">@r.LibrosAjustado.ToString("N2")</td></tr>
                 <tr class="fila-subtotal"><td>@L("Diferencia")</td><td class="num">@r.Diferencia.ToString("N2")</td></tr>

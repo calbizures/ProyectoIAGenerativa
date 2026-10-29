@@ -10,8 +10,10 @@ public interface ICajaRepository
 	Task<IReadOnlyList<EntidadFinanciera>> ConsultarEntidadesFinancierasAsync();
 
 	// Cajas receptoras
-	Task<int> InsertarCajaReceptoraAsync(string descripcion, int sucId, int? usuarioAccionId);
-	Task ActualizarCajaReceptoraAsync(int pcrId, string descripcion, int sucId, int? usuarioAccionId);
+	Task<int> InsertarCajaReceptoraAsync(string descripcion, int sucId, int? usuarioAccionId, bool calculaVuelto = false);
+	Task ActualizarCajaReceptoraAsync(int pcrId, string descripcion, int sucId, int? usuarioAccionId, bool? calculaVuelto = null);
+	Task RegistrarEfectivoRecibidoAsync(int? ppeId, int? encId, decimal recibido, int? usuarioAccionId);
+	Task<EfectivoRecibido?> ConsultarEfectivoRecibidoAsync(int? ppeId, int? encId);
 	Task EliminarCajaReceptoraAsync(int pcrId, int? usuarioAccionId);
 	Task<IReadOnlyList<CajaReceptora>> ConsultarCajasReceptorasAsync(int? sucId, string? estado);
 

@@ -1879,6 +1879,46 @@ a.modulo-card:hover {
     text-align: right;
 }
 
+/* Vuelto en efectivo (cajas que lo calculan) */
+.calculo-vuelto {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--exito-borde);
+    border-radius: 8px;
+    background: var(--exito-fondo);
+}
+
+.calculo-vuelto .campo {
+    margin-bottom: 0;
+}
+
+.calculo-vuelto-billetes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.calculo-vuelto-resultado {
+    margin-left: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    color: var(--exito-texto);
+}
+
+.calculo-vuelto-resultado strong {
+    font-size: 1.6rem;
+    line-height: 1.1;
+}
+
+.calculo-vuelto-falta {
+    color: var(--error-texto);
+}
+
 .doc-card-footer {
     display: flex;
     justify-content: flex-end;

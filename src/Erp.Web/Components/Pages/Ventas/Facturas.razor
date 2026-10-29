@@ -494,6 +494,7 @@
                                 <span> @L("· si no agrega otra, todo se registra en {0}", NombreFormaPago(formaPagoNueva.PftId))</span>
                             }
                         </div>
+                        <CalculoVuelto Activo="CajaCalculaVuelto" Efectivo="EfectivoACobrar" Simbolo="@MonedaSimbolo" Id="facturas-efectivo-recibido" @bind-Recibido="efectivoRecibido" />
                     }
                 }
             </div>
@@ -897,6 +898,11 @@
     private readonly List<FormaPagoCaptura> formasPagoCapturadas = new();
     private readonly FormaPagoCaptura formaPagoNueva = new();
     private int pcaIdFactura;
+    // Vuelto: si la caja lo calcula, lo que entrega el cliente en efectivo.
+    private decimal? efectivoRecibido;
+    private bool CajaCalculaVuelto => cajasAbiertasSucursal.FirstOrDefault(c => c.PcaId == pcaIdFactura)?.PcrCalculaVuelto == true;
+    private decimal EfectivoACobrar => formasPagoCapturadas.Where(f => EsEfectivo(f.PftId)).Sum(f => f.Monto)
+        + (formasPagoCapturadas.Count == 0 && EsEfectivo(formaPagoNueva.PftId) ? MontoAPagar : 0);
     private int? sucIdSesion;
     private int? pveIdUsuario;
 
@@ -1027,6 +1033,7 @@
     }
 
     private string NombreFormaPago(int pftId) => formasPagoTipo.FirstOrDefault(t => t.PftId == pftId)?.PftDescripcion ?? "—";
+    private bool EsEfectivo(int pftId) => NombreFormaPago(pftId).Equals("Efectivo", StringComparison.OrdinalIgnoreCase);
     private bool EsCheque(int pftId) => NombreFormaPago(pftId).Equals("Cheque", StringComparison.OrdinalIgnoreCase);
     private bool EsTarjeta(int pftId) => NombreFormaPago(pftId).Equals("Tarjeta", StringComparison.OrdinalIgnoreCase);
     private bool EsTransferencia(int pftId) => NombreFormaPago(pftId).Equals("Transferencia", StringComparison.OrdinalIgnoreCase);
@@ -1166,6 +1173,7 @@
         comprobanteNuevo = null;
         formaPagoNueva.PftId = formasPagoTipo.FirstOrDefault(t => t.PftDescripcion == "Efectivo")?.PftId ?? 0;
         pcaIdFactura = cajasAbiertasSucursal.FirstOrDefault()?.PcaId ?? 0;
+        efectivoRecibido = null;
         lineas.Clear();
         existencias.Clear();
         clientesEncontrados = Array.Empty<Cliente>();
@@ -1685,6 +1693,15 @@
             return;
         }
 
+        var vueltoAplica = CajaCalculaVuelto && EfectivoACobrar > 0 && efectivoRecibido > 0;
+        if (vueltoAplica && efectivoRecibido < EfectivoACobrar)
+        {
+            mensaje = L("El efectivo recibido ({0} {1:N2}) no alcanza para el cobro en efectivo ({0} {2:N2}).", MonedaSimbolo, efectivoRecibido, EfectivoACobrar);
+            esMensajeError = true;
+            return;
+        }
+        var vuelto = vueltoAplica ? efectivoRecibido!.Value - EfectivoACobrar : 0;
+
         try
         {
             var usuId = await ObtenerUsuIdActualAsync();
@@ -1759,6 +1776,13 @@
                 ? L("Factura {0} grabada y certificada (autorización {1}).", numeroGrabada, fel.Uuid)
                 : L("Factura {0} grabada correctamente.", numeroGrabada);
             mensaje += notaCotizacion;
+            if (vueltoAplica)
+            {
+                // Informativo (a la caja entra lo cobrado): si no se graba, la factura sigue bien.
+                try { await CajaRepository.RegistrarEfectivoRecibidoAsync(null, encIdGrabada, efectivoRecibido!.Value, await ObtenerUsuIdActualAsync()); }
+                catch (Exception ex) { Log.LogWarning(ex, "No se guardó el efectivo recibido de la factura {EncId}", encIdGrabada); }
+                mensaje += L(" Efectivo recibido {0} {1:N2}: vuelto {0} {2:N2}.", MonedaSimbolo, efectivoRecibido, vuelto);
+            }
             avisoFel = fel.Aplica && !fel.Exito ? fel.Mensaje : null;
             esMensajeError = false;
 

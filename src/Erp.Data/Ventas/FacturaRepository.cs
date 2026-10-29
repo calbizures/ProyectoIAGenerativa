@@ -185,6 +185,10 @@ public sealed class FacturaRepository(IDbConnectionFactory connectionFactory) : 
 		var frases = (await lector.ReadAsync<FacturaImpresionFrase>()).ToList();
 		var cuotas = (await lector.ReadAsync<FacturaImpresionCuota>()).ToList();
 		var pagos = (await lector.ReadAsync<FacturaImpresionPago>()).ToList();
-		return encabezado is null ? null : new FacturaImpresion(encabezado, lineas, frases, cuotas, pagos);
+		if (encabezado is null) return null;
+		var efectivo = await connection.QueryFirstOrDefaultAsync<(decimal Recibido, decimal Vuelto)?>(
+			"SELECT pago.ppe_efectivo_recibido, pago.ppe_vuelto FROM dbo.pos_pago_enc pago WHERE pago.ppe_efectivo_recibido IS NOT NULL"
+			+ " AND EXISTS (SELECT 1 FROM dbo.pos_pago_det deta WHERE deta.ppe_id = pago.ppe_id AND deta.enc_id = @EncId)", new { EncId = encId });
+		return new FacturaImpresion(encabezado, lineas, frases, cuotas, pagos) { EfectivoRecibido = efectivo?.Recibido, Vuelto = efectivo?.Vuelto };
 	}
 }

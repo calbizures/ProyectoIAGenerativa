@@ -107,4 +107,9 @@ public sealed class FacturaImpresionPago
 }
 
 public sealed record FacturaImpresion(FacturaImpresionEncabezado Encabezado, IReadOnlyList<FacturaImpresionLinea> Lineas,
-	IReadOnlyList<FacturaImpresionFrase> Frases, IReadOnlyList<FacturaImpresionCuota> Cuotas, IReadOnlyList<FacturaImpresionPago> Pagos);
+	IReadOnlyList<FacturaImpresionFrase> Frases, IReadOnlyList<FacturaImpresionCuota> Cuotas, IReadOnlyList<FacturaImpresionPago> Pagos)
+{
+	// Efectivo que entregó el cliente y su vuelto (cajas que calculan el vuelto).
+	public decimal? EfectivoRecibido { get; init; }
+	public decimal? Vuelto { get; init; }
+}

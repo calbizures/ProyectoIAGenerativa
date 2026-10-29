@@ -91,30 +91,33 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 74_ubicacion_clientes_sucursales.sql          -- la misma ubicación en cascada en clientes y sucursales
 75_seguridad_contrasenas.sql                  -- contraseña temporal, desbloqueo, política mínima y último administrador
 76_flete_compras.sql                          -- flete en compras y órdenes de compra, prorrateado al costo
+77_inventario_fisico_bloqueo.sql              -- inventario físico con foto de existencias y bodega bloqueada al contar
+78_vuelto_efectivo.sql                        -- efectivo recibido y vuelto por caja
+79_conciliacion_mejoras.sql                   -- conciliación: clasificar, antigüedad, emparejar en grupo, parámetros
 ```
 
 **Instalación de una sola vez:** después de crear la base con
-`00_crear_base_datos.sql`, el archivo `instalar_01_al_76.sql` corre en orden
-del `01` al `76` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
+`00_crear_base_datos.sql`, el archivo `instalar_01_al_79.sql` corre en orden
+del `01` al `79` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
 active *Consulta › Modo SQLCMD*, cambie la ruta de la línea `:setvar RUTA` por la
 carpeta de los scripts y ejecútelo; desde la línea de comandos:
-`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_76.sql -o instalacion.log`.
+`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_79.sql -o instalacion.log`.
 Se detiene en el primer error y muestra en qué script ocurrió. Incluye los
 datos de prueba, así que es para una base nueva, no para una con datos reales.
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `76` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `79` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `76` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `79` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `paCajaCerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `76`. Si vuelves a
-correr `12`, corre después `22` a `76` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `79`. Si vuelves a
+correr `12`, corre después `22` a `79` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -138,7 +141,10 @@ pago con boleta). Si vuelves a correr `25`, `26`, `36` o `40`, corre después el
 vuelves a correr `10`, `11` o `66`, corre después el `75` (contraseñas y
 último administrador). Si vuelves a correr `11`, `35`, `53`, `57`, `58`, `62`,
 `66` o `69`, corre después el `76` (compra, anulación, póliza, kárdex y orden
-de compra con el flete).
+de compra con el flete). Si vuelves a correr `38` o `66`, corre después el `77`
+(inventario físico con foto y bloqueo). Si vuelves a correr `23`, corre
+después el `78` (cajas con vuelto). Si vuelves a correr `64` o `66`, corre
+después el `79` (conciliación con clases, antigüedad y grupos).
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -2149,6 +2155,60 @@ crédito fiscal.
 - **Órdenes de compra**: `ocp_flete_tipo` N (sin flete), I (incluido en la
   factura del proveedor: `ocp_flete` con IVA suma al total y se propone al
   recibir) o S (facturado aparte, estimado).
+
+
+### Inventario físico con bodega bloqueada (`77`)
+
+Antes la diferencia se calculaba contra la existencia del momento de aplicar
+la toma, así que lo vendido o trasladado entre el conteo y la aplicación
+descuadraba los ajustes. Ahora:
+
+1. **Abrir la toma** toma la foto de las existencias de la bodega y la deja
+   **bloqueada**: ningún movimiento de inventario entra ni sale (ventas,
+   compras, recepciones de órdenes, traslados, devoluciones de notas,
+   inventario inicial, anulaciones). Lo impide el trigger
+   `trgInvExistenciaBodegaBloqueo` sobre `inv_producto_existencia_bodega`
+   (error 55940), así ningún camino se lo salta.
+2. Se registra el conteo.
+3. **Terminar el conteo** (`paInvTomaConteoTerminar`) desbloquea la bodega;
+   también sirve para levantar el bloqueo en una emergencia (queda quién y
+   cuándo).
+4. **Aplicar** después: la diferencia es conteo − foto y se aplica sobre la
+   existencia actual, al costo promedio de ese momento. Lo movido después del
+   conteo no la afecta. Anular una toma en conteo también desbloquea.
+
+Las tomas abiertas antes de este script quedan sin foto (`tfi_usa_foto = 0`):
+se aplican como antes y no bloquean la bodega.
+
+### Vuelto en efectivo (`78`)
+
+`pos_caja_receptora.pcr_calcula_vuelto` (Caja y bancos › Caja › Cajas
+receptoras). En una caja que lo calcula, al cobrar en efectivo (factura de
+contado, enganche o cobro de cuotas) el cajero escribe lo que entrega el
+cliente o toca un billete, y el sistema muestra el vuelto. Se guarda en
+`pos_pago_enc.ppe_efectivo_recibido` y `ppe_vuelto` y sale en la factura, el
+ticket y el recibo. Es informativo: a la caja entra lo cobrado en efectivo,
+así que el cuadre y las pólizas no cambian.
+
+### Conciliación bancaria: mejoras (`79`)
+
+Revisión del módulo con la metodología de conciliación (cruce por monto y
+fecha, clasificación de diferencias, confirmar lo no reconocido):
+
+- **Clasificación** de las líneas del banco sin registrar
+  (`fnConciliacionClase`): comisión o cargo, intereses o sin clasificar. Una
+  línea sin clasificar ya no va sola a comisiones bancarias: la póliza de
+  ajuste exige elegir la cuenta (55422).
+- **Antigüedad**: días al corte de cada depósito en tránsito y cheque en
+  circulación, con la marca *revisar* cuando pasa los días del parámetro.
+- **Emparejar varios con uno** (`paConciliacionEmparejarGrupo`): un depósito
+  del banco con varios cobros de libros (o al revés) cuando suman lo mismo;
+  se deshacen juntos.
+- **Parámetros** (`bco_conciliacion_parametro`): tolerancia de días de la
+  conciliación automática (antes fija en 5) y días para revisar depósitos (3)
+  y cheques (30).
+- **Excel** de la conciliación: Resumen con fórmulas sobre las diferencias,
+  Partidas conciliadas y Diferencias.
 
 
 ## NIT del emisor en el ambiente de pruebas

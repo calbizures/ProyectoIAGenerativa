@@ -461,5 +461,14 @@
   "Anulada también ante SAT.": "Also voided with SAT.",
   "La anulación ante SAT quedó pendiente: {0}": "The void with SAT is pending: {0}",
   " Certificada: {0}.": " Certified: {0}.",
-  " Factura electrónica {0}": " Electronic invoice {0}"
+  " Factura electrónica {0}": " Electronic invoice {0}",
+  "Efectivo recibido Q{0}: vuelto": "Cash received Q{0}: change",
+  "El efectivo recibido (Q{0:N2}) no alcanza para el cobro en efectivo (Q{1:N2}).": "The cash received (Q{0:N2}) does not cover the cash amount due (Q{1:N2}).",
+  "El efectivo recibido ({0} {1:N2}) no alcanza para el cobro en efectivo ({0} {2:N2}).": "The cash received ({0} {1:N2}) does not cover the cash amount due ({0} {2:N2}).",
+  " Efectivo recibido {0} {1:N2}: vuelto {0} {2:N2}.": " Cash received {0} {1:N2}: change {0} {2:N2}.",
+  "Efectivo recibido": "Cash received",
+  "Billetes": "Bills",
+  "Exacto": "Exact",
+  "Efectivo a cobrar": "Cash due",
+  "Vuelto": "Change"
 }

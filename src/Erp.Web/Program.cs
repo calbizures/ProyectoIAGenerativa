@@ -403,6 +403,19 @@ app.MapGet("/reportes/bancos/flujo-caja.xlsx", async (string? tipo, DateTime? de
 		TipoExcel, $"flujo-caja-{inicio:yyyyMMdd}-{fin:yyyyMMdd}.xlsx");
 }).RequireAuthorization();
 
+// Conciliación bancaria: resumen, partidas conciliadas y diferencias.
+app.MapGet("/reportes/bancos/conciliacion/{bcnId:int}.xlsx", async (int bcnId, HttpContext contexto, IGeneralRepository general,
+	Erp.Data.Conciliacion.IConciliacionRepository conciliaciones, IAuthorizationService autorizacion) =>
+{
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:CONCILIACION_BANCARIA")).Succeeded) return Results.Forbid();
+	var detalle = await conciliaciones.ConsultarDetalleAsync(bcnId);
+	if (detalle is null) return Results.NotFound();
+	var nombreMes = System.Globalization.CultureInfo.GetCultureInfo("es-GT").DateTimeFormat.GetMonthName(detalle.Resumen.Mes);
+	var mes = $"{L(char.ToUpperInvariant(nombreMes[0]) + nombreMes[1..])} {detalle.Resumen.Anio}";
+	var archivo = ReportesExcel.Conciliacion(detalle, mes, await CompaniaReporteAsync(contexto, general));
+	return Results.File(archivo, TipoExcel, $"conciliacion-{detalle.Resumen.Anio}-{detalle.Resumen.Mes:00}.xlsx");
+}).RequireAuthorization();
+
 app.MapGet("/reportes/bancos/plantilla-estado-cuenta.xlsx", async (HttpContext contexto, IGeneralRepository general, IAuthorizationService autorizacion) =>
 {
 	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:CONCILIACION_BANCARIA")).Succeeded) return Results.Forbid();

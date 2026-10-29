@@ -309,6 +309,7 @@ else if (pestanaActiva == "cajasreceptoras")
                     }
                 </InputSelect>
             </div>
+            <label class="campo-checkbox"><InputCheckbox @bind-Value="modeloCajaReceptora.CalculaVuelto" /> @L("Calcular el vuelto: al cobrar en efectivo se escribe lo que entrega el cliente")</label>
             <div class="acciones-fila">
                 <BotonIcono Icono="save" Tooltip="@L("Guardar")" Etiqueta="@L("Guardar")" Variante="primario" TipoBoton="submit" />
                 <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => mostrarNuevaCaja = false" />
@@ -317,7 +318,7 @@ else if (pestanaActiva == "cajasreceptoras")
     }
 
     <table class="tabla-datos">
-        <thead><tr><th>@L("Descripción")</th><th>@L("Sucursal")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr></thead>
+        <thead><tr><th>@L("Descripción")</th><th>@L("Sucursal")</th><th class="col-estado">@L("Calcula vuelto")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr></thead>
         <tbody>
             @foreach (var c in todasLasCajasReceptoras)
             {
@@ -333,6 +334,7 @@ else if (pestanaActiva == "cajasreceptoras")
                                 }
                             </select>
                         </td>
+                        <td class="col-estado"><input type="checkbox" @bind="modeloCajaReceptora.CalculaVuelto" aria-label="@L("Calcula vuelto")" /></td>
                         <td class="col-estado"><span class="estado-badge @(c.PcrEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.PcrEstado == "A" ? L("Activa") : L("Inactiva"))</span></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
@@ -347,6 +349,7 @@ else if (pestanaActiva == "cajasreceptoras")
                     <tr>
                         <td>@c.PcrDescripcion</td>
                         <td>@c.SucDescripcion</td>
+                        <td class="col-estado">@(c.PcrCalculaVuelto ? L("Sí") : L("No"))</td>
                         <td class="col-estado"><span class="estado-badge @(c.PcrEstado == "A" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.PcrEstado == "A" ? L("Activa") : L("Inactiva"))</span></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
@@ -611,6 +614,7 @@ else if (pestanaActiva == "cajasreceptoras")
         edicionCajaReceptoraId = null;
         modeloCajaReceptora.Descripcion = "";
         modeloCajaReceptora.SucId = sucIdSeleccionada;
+        modeloCajaReceptora.CalculaVuelto = false;
         mostrarNuevaCaja = true;
     }
 
@@ -619,7 +623,7 @@ else if (pestanaActiva == "cajasreceptoras")
         try
         {
             var usuId = await ObtenerUsuIdActualAsync();
-            await CajaRepository.InsertarCajaReceptoraAsync(modeloCajaReceptora.Descripcion, modeloCajaReceptora.SucId, usuId);
+            await CajaRepository.InsertarCajaReceptoraAsync(modeloCajaReceptora.Descripcion, modeloCajaReceptora.SucId, usuId, modeloCajaReceptora.CalculaVuelto);
             mostrarNuevaCaja = false;
             mensaje = L("Caja receptora creada.");
             esMensajeError = false;
@@ -640,6 +644,7 @@ else if (pestanaActiva == "cajasreceptoras")
         edicionCajaReceptoraId = caja.PcrId;
         modeloCajaReceptora.Descripcion = caja.PcrDescripcion;
         modeloCajaReceptora.SucId = caja.SucId;
+        modeloCajaReceptora.CalculaVuelto = caja.PcrCalculaVuelto;
     }
 
     private async Task GuardarEdicionCajaReceptoraAsync()
@@ -648,7 +653,7 @@ else if (pestanaActiva == "cajasreceptoras")
         try
         {
             var usuId = await ObtenerUsuIdActualAsync();
-            await CajaRepository.ActualizarCajaReceptoraAsync(edicionCajaReceptoraId.Value, modeloCajaReceptora.Descripcion, modeloCajaReceptora.SucId, usuId);
+            await CajaRepository.ActualizarCajaReceptoraAsync(edicionCajaReceptoraId.Value, modeloCajaReceptora.Descripcion, modeloCajaReceptora.SucId, usuId, modeloCajaReceptora.CalculaVuelto);
             edicionCajaReceptoraId = null;
             mensaje = L("Cambios guardados.");
             esMensajeError = false;
@@ -701,5 +706,6 @@ else if (pestanaActiva == "cajasreceptoras")
     {
         [Required] public string Descripcion { get; set; } = "";
         public int SucId { get; set; }
+        public bool CalculaVuelto { get; set; }
     }
 }

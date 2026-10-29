@@ -35,8 +35,35 @@
     <a class="boton-icono boton-icono-con-etiqueta" href="reportes/bancos/plantilla-estado-cuenta.xlsx" download title="@L("Plantilla de Excel para el estado de cuenta")">
         <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">@L("Plantilla")</span>
     </a>
+    <BotonIcono Icono="settings" Tooltip="@L("Tolerancia de días y antigüedad para revisar")" Etiqueta="@L("Parámetros")" OnClick="AlternarParametrosAsync" />
     <BotonIcono Icono="plus" Tooltip="@L("Empezar la conciliación de un mes")" Etiqueta="@L("Nueva conciliación")" Variante="primario" OnClick="NuevaConciliacion" />
 </div>
+
+@if (parametros is not null)
+{
+    <section class="tarjeta" aria-labelledby="titulo-parametros">
+        <h2 id="titulo-parametros">@L("Parámetros de la conciliación")</h2>
+        <div class="panel-formulario panel-ancho cch-gasto">
+            <div class="campo">
+                <label for="bcp-tolerancia">@L("Tolerancia de la conciliación automática (días)")</label>
+                <input id="bcp-tolerancia" type="number" min="0" max="31" @bind="parametros.ToleranciaDias" />
+                <small class="texto-ayuda">@L("Empareja el mismo monto si las fechas del banco y de libros difieren hasta estos días.")</small>
+            </div>
+            <div class="campo">
+                <label for="bcp-deposito">@L("Revisar depósitos en tránsito con más de (días)")</label>
+                <input id="bcp-deposito" type="number" min="1" max="365" @bind="parametros.DiasDeposito" />
+            </div>
+            <div class="campo">
+                <label for="bcp-cheque">@L("Revisar cheques y pagos en circulación con más de (días)")</label>
+                <input id="bcp-cheque" type="number" min="1" max="365" @bind="parametros.DiasCheque" />
+            </div>
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="@L("Guardar los parámetros")" Etiqueta="@L("Guardar")" Variante="primario" Deshabilitado="guardando" OnClick="GuardarParametrosAsync" />
+                <BotonIcono Icono="x" Tooltip="@L("Cerrar")" Etiqueta="@L("Cerrar")" OnClick="() => parametros = null" />
+            </div>
+        </div>
+    </section>
+}
 
 @if (nueva is not null)
 {
@@ -101,6 +128,9 @@
                 <a class="boton-icono boton-icono-con-etiqueta" href="bancos/conciliacion/@r.BcnId/imprimir" target="_blank" title="@L("Imprimir la conciliación")">
                     <Icono Nombre="printer" Tamano="16" /><span class="boton-icono-etiqueta">@L("Imprimir")</span>
                 </a>
+                <a class="boton-icono boton-icono-con-etiqueta" href="reportes/bancos/conciliacion/@(r.BcnId).xlsx" download title="@L("Resumen, partidas conciliadas y diferencias en Excel")">
+                    <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">@L("Excel")</span>
+                </a>
                 @if (enProceso)
                 {
                     <BotonIcono Icono="check-check" Tooltip="@(r.Diferencia != 0 ? L("Para cerrar, la diferencia debe ser cero") : detalle.Extracto.Any(l => l.AsdId is null) ? L("Para cerrar, concilie o registre con ajuste todas las líneas del banco") : L("Cerrar la conciliación"))" Etiqueta="@L("Cerrar conciliación")" Variante="primario" Deshabilitado="guardando || r.Diferencia != 0 || detalle.Extracto.Any(l => l.AsdId is null)"
@@ -138,6 +168,14 @@
                 }
             </div>
         </div>
+        @{ var porRevisar = detalle.Libros.Count(l => l.Revisar); var sinClasificar = detalle.Extracto.Count(l => l.AsdId is null && l.Clase == "SIN_CLASIFICAR"); }
+        @if (porRevisar > 0 || sinClasificar > 0)
+        {
+            <p class="etiqueta-aviso"><Icono Nombre="alert-triangle" Tamano="14" />
+                @if (porRevisar > 0) { <span>@L("{0} movimiento(s) en tránsito con más días de lo normal (depósitos más de {1}, cheques y pagos más de {2}): revíselos.", porRevisar, r.DiasDeposito, r.DiasCheque)</span> }
+                @if (sinClasificar > 0) { <span> @L("{0} línea(s) del banco sin clasificar: confirme qué son antes de registrarlas.", sinClasificar)</span> }
+            </p>
+        }
         @if (r.DiferenciaExtracto != 0 && detalle.Extracto.Count > 0)
         {
             <p class="etiqueta-aviso"><Icono Nombre="alert-triangle" Tamano="14" /> @L("El estado de cuenta no cuadra con sus saldos: inicial Q {0} + créditos Q {1} − débitos Q {2} difiere del final por Q {3}. Revise los saldos o si falta alguna línea.", r.SaldoInicialBanco.ToString("N2"), r.CreditosExtracto.ToString("N2"), r.DebitosExtracto.ToString("N2"), r.DiferenciaExtracto.ToString("N2"))</p>
@@ -170,12 +208,28 @@
 
         <div class="barra-herramientas">
             <label class="casilla"><input type="checkbox" @bind="soloPendientes" /> @L("Solo lo que falta conciliar")</label>
+            @if (enProceso)
+            {
+                <label class="casilla"><input type="checkbox" checked="@modoGrupo" @onchange="AlternarModoGrupo" /> @L("Emparejar varios con uno")</label>
+            }
             @if (bancoElegido is not null)
             {
                 <span class="etiqueta-aviso">@L("Línea del banco elegida: {0} · Q {1}. Ahora elija el movimiento de libros con el mismo monto.", bancoElegido.Fecha.ToString("dd/MM"), Math.Max(bancoElegido.Debito, bancoElegido.Credito).ToString("N2"))</span>
                 <BotonIcono Icono="x" Tooltip="@L("Cancelar la selección")" OnClick="() => bancoElegido = null" />
             }
         </div>
+
+        @if (modoGrupo)
+        {
+            var sumaBanco = detalle.Extracto.Where(l => grupoBanco.Contains(l.BexId)).Sum(l => l.Credito - l.Debito);
+            var sumaLibros = detalle.Libros.Where(l => grupoLibros.Contains(l.AsdId)).Sum(l => l.Debe - l.Haber);
+            <div class="doc-nota">
+                <Icono Nombre="link" Tamano="15" />
+                <span>@L("Marque las líneas del banco y los movimientos de libros que van juntos (por ejemplo, un depósito que agrupa varios cobros). Banco: Q {0} · Libros: Q {1}.", sumaBanco.ToString("N2"), sumaLibros.ToString("N2"))</span>
+                <BotonIcono Icono="link" Tooltip="@L("Emparejar las partidas marcadas")" Etiqueta="@L("Emparejar marcados")" Variante="primario"
+                            Deshabilitado="guardando || sumaBanco == 0 || sumaBanco != sumaLibros || grupoBanco.Count == 0 || grupoLibros.Count == 0 || grupoBanco.Count + grupoLibros.Count < 3" OnClick="EmparejarGrupoAsync" />
+            </div>
+        }
 
         <div class="conciliacion-columnas">
             <section aria-labelledby="titulo-extracto">
@@ -194,14 +248,18 @@
                                 {
                                     <tr class="@(l.AsdId is not null ? "fila-conciliada" : bancoElegido?.BexId == l.BexId ? "fila-seleccionada" : "")">
                                         <td class="col-fecha">@l.Fecha.ToString("dd/MM/yyyy")</td>
-                                        <td>@l.Descripcion@if (l.Referencia is not null) {<br /><span class="texto-tenue">@L("Ref. {0}", l.Referencia)</span>}@if (l.AsiId is not null) {<br /><span class="texto-tenue">@NombreForma(l.Forma) · <a href="contabilidad/polizas?id=@l.AsiId">@L("póliza #{0}", l.AsiId)</a></span>}</td>
+                                        <td>@l.Descripcion@if (l.Referencia is not null) {<br /><span class="texto-tenue">@L("Ref. {0}", l.Referencia)</span>}@if (l.AsiId is not null) {<br /><span class="texto-tenue">@NombreForma(l.Forma)@(l.Grupo is not null ? $" {l.Grupo}" : "") · <a href="contabilidad/polizas?id=@l.AsiId">@L("póliza #{0}", l.AsiId)</a></span>}@if (l.AsdId is null) {<br /><span class="@(l.Clase == "SIN_CLASIFICAR" ? "etiqueta-aviso" : "texto-tenue")">@NombreClase(l.Clase)</span>}</td>
                                         <td class="num">@(l.Debito == 0 ? "" : l.Debito.ToString("N2"))</td>
                                         <td class="num">@(l.Credito == 0 ? "" : l.Credito.ToString("N2"))</td>
                                         <td class="col-acciones">
                                             @if (enProceso)
                                             {
                                                 <div class="acciones-fila">
-                                                    @if (l.AsdId is null)
+                                                    @if (l.AsdId is null && modoGrupo)
+                                                    {
+                                                        <input type="checkbox" checked="@grupoBanco.Contains(l.BexId)" @onchange="e => Alternar(grupoBanco, l.BexId, e)" aria-label="@L("Incluir en el grupo")" />
+                                                    }
+                                                    else if (l.AsdId is null)
                                                     {
                                                         <BotonIcono Icono="link" Tooltip="@L("Emparejar con un movimiento de libros")" OnClick="() => ElegirBanco(l)" />
                                                         <BotonIcono Icono="book-open" Tooltip="@L("Registrar con una póliza de ajuste (comisión, interés, nota del banco)")" OnClick="() => IniciarAjuste(l)" />
@@ -222,7 +280,14 @@
                                                 <div class="fila-edicion">
                                                     <label for="ajuste-cuenta">@L("Cuenta contable")</label>
                                                     <select id="ajuste-cuenta" @bind="ajuste.CtaId">
-                                                        <option value="">@L("Por omisión ({0})", l.Debito > 0 ? L("comisiones bancarias") : L("otros ingresos"))</option>
+                                                        @if (l.Clase == "SIN_CLASIFICAR")
+                                                        {
+                                                            <option value="">@L("Elija la cuenta...")</option>
+                                                        }
+                                                        else
+                                                        {
+                                                            <option value="">@L("Por omisión ({0})", l.Debito > 0 ? L("comisiones bancarias") : L("otros ingresos"))</option>
+                                                        }
                                                         @foreach (var c in cuentasDetalle)
                                                         {
                                                             <option value="@c.CtaId">@c.CtaCodigo — @c.CtaNombre</option>
@@ -255,14 +320,18 @@
                                                && ((bancoElegido.Debito > 0 && l.Haber == bancoElegido.Debito) || (bancoElegido.Credito > 0 && l.Debe == bancoElegido.Credito));
                                 <tr class="@(l.Conciliado ? "fila-conciliada" : coincide ? "fila-candidata" : "")">
                                     <td class="col-fecha">@l.Fecha.ToString("dd/MM/yyyy")</td>
-                                    <td><a href="contabilidad/polizas?id=@l.AsiId">#@l.AsiId</a> @l.Descripcion<br /><span class="texto-tenue">@OrigenesPoliza.Nombre(l.Origen)@(l.Conciliado ? l.BexId is null ? L(" · marcado a mano") : L(" · conciliado") : "")</span></td>
+                                    <td><a href="contabilidad/polizas?id=@l.AsiId">#@l.AsiId</a> @l.Descripcion<br /><span class="texto-tenue">@OrigenesPoliza.Nombre(l.Origen)@(l.Conciliado ? l.BexId is null ? L(" · marcado a mano") : l.Grupo is not null ? L(" · en grupo {0}", l.Grupo) : L(" · conciliado") : L(" · {0} días", l.Dias))</span>@if (l.Revisar) {<span class="etiqueta-aviso"> @L("revisar")</span>}</td>
                                     <td class="num">@(l.Debe == 0 ? "" : l.Debe.ToString("N2"))</td>
                                     <td class="num">@(l.Haber == 0 ? "" : l.Haber.ToString("N2"))</td>
                                     <td class="col-acciones">
                                         @if (enProceso)
                                         {
                                             <div class="acciones-fila">
-                                                @if (coincide)
+                                                @if (!l.Conciliado && modoGrupo)
+                                                {
+                                                    <input type="checkbox" checked="@grupoLibros.Contains(l.AsdId)" @onchange="e => Alternar(grupoLibros, l.AsdId, e)" aria-label="@L("Incluir en el grupo")" />
+                                                }
+                                                else if (coincide)
                                                 {
                                                     <BotonIcono Icono="link" Tooltip="@L("Emparejar con la línea del banco elegida")" Variante="primario" OnClick="() => EmparejarAsync(l)" />
                                                 }
@@ -273,6 +342,10 @@
                                                 else if (l.BexId is null)
                                                 {
                                                     <BotonIcono Icono="x" Tooltip="@L("Quitar la marca")" OnClick="() => MarcarAsync(l, false)" />
+                                                }
+                                                else if (l.Grupo is not null)
+                                                {
+                                                    <BotonIcono Icono="x" Tooltip="@L("Deshacer el grupo")" OnClick="() => DesemparejarAsync(null, l.AsdId)" />
                                                 }
                                             </div>
                                         }
@@ -326,7 +399,73 @@
     }
 
     private static string NombreMes(int mes) => L(Meses[mes - 1]);
-    private static string NombreForma(string? forma) => forma switch { "A" => L("Automática"), "M" => L("Manual"), "J" => L("Ajuste"), _ => "" };
+    private static string NombreForma(string? forma) => forma switch { "A" => L("Automática"), "M" => L("Manual"), "J" => L("Ajuste"), "G" => L("En grupo"), _ => "" };
+    private static string NombreClase(string clase) => clase switch
+    {
+        "COMISION" => L("Comisión o cargo del banco"),
+        "INTERES" => L("Intereses del banco"),
+        _ => L("Sin clasificar: confirme qué es")
+    };
+
+    // Emparejar varios con uno: lo marcado de cada lado.
+    private bool modoGrupo;
+    private readonly HashSet<int> grupoBanco = new();
+    private readonly HashSet<int> grupoLibros = new();
+    private ConciliacionParametros? parametros;
+
+    private void AlternarModoGrupo(ChangeEventArgs e)
+    {
+        modoGrupo = e.Value is true;
+        grupoBanco.Clear();
+        grupoLibros.Clear();
+        bancoElegido = null;
+        ajuste = null;
+        if (modoGrupo) soloPendientes = true;
+    }
+
+    private static void Alternar(HashSet<int> conjunto, int id, ChangeEventArgs e)
+    {
+        if (e.Value is true) conjunto.Add(id);
+        else conjunto.Remove(id);
+    }
+
+    private async Task EmparejarGrupoAsync()
+    {
+        if (detalle is null) return;
+        guardando = true;
+        try
+        {
+            await ConciliacionRepository.EmparejarGrupoAsync(detalle.Resumen.BcnId, grupoBanco.ToList(), grupoLibros.ToList());
+            MostrarOk(L("Se emparejaron {0} línea(s) del banco con {1} movimiento(s) de libros.", grupoBanco.Count, grupoLibros.Count));
+            grupoBanco.Clear();
+            grupoLibros.Clear();
+            await RecargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task AlternarParametrosAsync()
+    {
+        if (parametros is not null) { parametros = null; return; }
+        try { parametros = await ConciliacionRepository.ConsultarParametrosAsync(); }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task GuardarParametrosAsync()
+    {
+        if (parametros is null) return;
+        guardando = true;
+        try
+        {
+            await ConciliacionRepository.GuardarParametrosAsync(parametros, await ObtenerUsuIdActualAsync());
+            MostrarOk(L("Parámetros guardados."));
+            parametros = null;
+            await RecargarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -536,6 +675,12 @@
     private async Task GrabarAjusteAsync()
     {
         if (detalle is null || ajuste is null) return;
+        if (ajuste.CtaId is null && ajuste.Linea.Clase == "SIN_CLASIFICAR")
+        {
+            mensaje = L("Elija la cuenta contable: no se reconoce qué es esta línea del banco.");
+            esMensajeError = true;
+            return;
+        }
         guardando = true;
         try
         {

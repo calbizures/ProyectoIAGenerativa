@@ -1,0 +1,66 @@
+@* Vuelto en efectivo, como en la caja de un supermercado: si la caja lo
+   calcula (pos_caja_receptora.pcr_calcula_vuelto), el cajero escribe lo que
+   entrega el cliente (o toca un billete) y se le muestra el vuelto. Es
+   informativo: a la caja entra lo cobrado en efectivo. *@
+
+@if (Activo && Efectivo > 0)
+{
+    <div class="calculo-vuelto">
+        <div class="campo">
+            <label for="@Id">@L("Efectivo recibido")</label>
+            <input id="@Id" class="entrada-monto" type="number" step="0.01" min="0" inputmode="decimal"
+                   value="@Recibido?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" @oninput="CambiarAsync" />
+        </div>
+        <div class="calculo-vuelto-billetes" role="group" aria-label="@L("Billetes")">
+            <button type="button" class="boton-mini" @onclick="() => FijarAsync(Efectivo)">@L("Exacto")</button>
+            @foreach (var billete in Billetes.Where(b => b > Efectivo).Take(3))
+            {
+                <button type="button" class="boton-mini" @onclick="() => FijarAsync(billete)">@Simbolo@billete.ToString("N0")</button>
+            }
+        </div>
+        <div class="calculo-vuelto-resultado @(Falta > 0 ? "calculo-vuelto-falta" : "")" role="status" aria-live="polite">
+            @if (Recibido is null)
+            {
+                <span>@L("Efectivo a cobrar")</span><strong>@Simbolo @Efectivo.ToString("N2")</strong>
+            }
+            else if (Falta > 0)
+            {
+                <span>@L("Falta")</span><strong>@Simbolo @Falta.ToString("N2")</strong>
+            }
+            else
+            {
+                <span>@L("Vuelto")</span><strong>@Simbolo @Vuelto.ToString("N2")</strong>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Activo { get; set; }
+    // Lo que se cobra en efectivo (no el total, si hay otras formas de pago).
+    [Parameter] public decimal Efectivo { get; set; }
+    [Parameter] public string Simbolo { get; set; } = "Q";
+    [Parameter] public string Id { get; set; } = "efectivo-recibido";
+    [Parameter] public decimal? Recibido { get; set; }
+    [Parameter] public EventCallback<decimal?> RecibidoChanged { get; set; }
+
+    // Billetes de quetzales para cobrar con un toque.
+    private static readonly decimal[] Billetes = { 5, 10, 20, 50, 100, 200 };
+
+    private decimal Vuelto => Recibido is decimal r && r >= Efectivo ? r - Efectivo : 0;
+    private decimal Falta => Recibido is decimal r && r < Efectivo ? Efectivo - r : 0;
+
+    private Task CambiarAsync(ChangeEventArgs e)
+    {
+        var texto = e.Value?.ToString();
+        decimal? valor = decimal.TryParse(texto, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var v) && v > 0
+            ? Math.Round(v, 2) : null;
+        return FijarAsync(valor);
+    }
+
+    private async Task FijarAsync(decimal? valor)
+    {
+        Recibido = valor;
+        await RecibidoChanged.InvokeAsync(valor);
+    }
+}

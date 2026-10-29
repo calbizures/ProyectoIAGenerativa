@@ -30,7 +30,7 @@ public sealed class CajaRepository(IDbConnectionFactory connectionFactory) : ICa
 		return filas.ToList();
 	}
 
-	public async Task<int> InsertarCajaReceptoraAsync(string descripcion, int sucId, int? usuarioAccionId)
+	public async Task<int> InsertarCajaReceptoraAsync(string descripcion, int sucId, int? usuarioAccionId, bool calculaVuelto = false)
 	{
 		using var connection = connectionFactory.CreateConnection();
 		var parametros = new DynamicParameters();
@@ -38,16 +38,32 @@ public sealed class CajaRepository(IDbConnectionFactory connectionFactory) : ICa
 		parametros.Add("@suc_id", sucId);
 		parametros.Add("@usu_id", usuarioAccionId);
 		parametros.Add("@pcr_id", dbType: DbType.Int32, direction: ParameterDirection.Output);
+		parametros.Add("@pcr_calcula_vuelto", calculaVuelto);
 
 		await connection.ExecuteAsync("dbo.paCajaReceptoraInsertar", parametros, commandType: CommandType.StoredProcedure);
 		return parametros.Get<int>("@pcr_id");
 	}
 
-	public async Task ActualizarCajaReceptoraAsync(int pcrId, string descripcion, int sucId, int? usuarioAccionId)
+	public async Task ActualizarCajaReceptoraAsync(int pcrId, string descripcion, int sucId, int? usuarioAccionId, bool? calculaVuelto = null)
 	{
 		using var connection = connectionFactory.CreateConnection();
-		var parametros = new { pcr_id = pcrId, pcr_descripcion = descripcion, suc_id = sucId, usu_id = usuarioAccionId };
+		var parametros = new { pcr_id = pcrId, pcr_descripcion = descripcion, suc_id = sucId, usu_id = usuarioAccionId, pcr_calcula_vuelto = calculaVuelto };
 		await connection.ExecuteAsync("dbo.paCajaReceptoraActualizar", parametros, commandType: CommandType.StoredProcedure);
+	}
+
+	// Efectivo que entregó el cliente en un pago (por recibo o por la factura pagada al grabarla).
+	public async Task RegistrarEfectivoRecibidoAsync(int? ppeId, int? encId, decimal recibido, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		await connection.ExecuteAsync("dbo.paPagoEfectivoRecibidoRegistrar",
+			new { PpeId = ppeId, EncId = encId, EfectivoRecibido = recibido, UsuId = usuarioAccionId }, commandType: CommandType.StoredProcedure);
+	}
+
+	public async Task<EfectivoRecibido?> ConsultarEfectivoRecibidoAsync(int? ppeId, int? encId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		return await connection.QueryFirstOrDefaultAsync<EfectivoRecibido>("dbo.paPagoEfectivoRecibidoConsultar",
+			new { PpeId = ppeId, EncId = encId }, commandType: CommandType.StoredProcedure);
 	}
 
 	public async Task EliminarCajaReceptoraAsync(int pcrId, int? usuarioAccionId)

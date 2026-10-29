@@ -47,6 +47,13 @@ public sealed class InventarioFisicoRepository(IDbConnectionFactory connectionFa
 			commandType: CommandType.StoredProcedure);
 	}
 
+	// Termina el conteo y desbloquea la bodega.
+	public async Task TerminarConteoAsync(int tfiId, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		await connection.ExecuteAsync("dbo.paInvTomaConteoTerminar", new { TfiId = tfiId, UsuId = usuarioAccionId }, commandType: CommandType.StoredProcedure);
+	}
+
 	public async Task AplicarAsync(int tfiId, int? usuarioAccionId)
 	{
 		using var connection = connectionFactory.CreateConnection();
