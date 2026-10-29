@@ -201,13 +201,17 @@ public static partial class ReportesExcel
 	}
 
 	// Hoja para contar: se imprime o se llena la columna Conteo y se sube a la toma.
-	public static byte[] HojaConteo(TomaFisica toma, IReadOnlyList<TomaFisicaLinea> lineas, CompaniaReporte compania)
+	// Sin el permiso de supervisar (conCantidades = false) va a ciegas, sin la existencia.
+	public static byte[] HojaConteo(TomaFisica toma, IReadOnlyList<TomaFisicaLinea> lineas, CompaniaReporte compania, bool conCantidades = true)
 	{
 		using var libro = new XLWorkbook();
 		var hoja = libro.Worksheets.Add("Conteo");
 		var fila = Encabezado(hoja, compania, $"Inventario físico #{toma.TfiId} · {toma.Bodega}",
 			$"{toma.Sucursal} · {toma.Fecha:dd/MM/yyyy}. Anote en Conteo las unidades contadas; deje vacío lo que no se contó.");
-		fila = Titulos(hoja, fila, new[] { "Código", "Descripción", "Tipo", "Unidad", "Existencia", "Conteo" });
+		fila = Titulos(hoja, fila, conCantidades
+			? new[] { "Código", "Descripción", "Tipo", "Unidad", "Existencia", "Conteo" }
+			: new[] { "Código", "Descripción", "Tipo", "Unidad", "Conteo" });
+		var conteo = conCantidades ? 6 : 5;
 		var inicio = fila;
 		foreach (var l in lineas)
 		{
@@ -215,15 +219,15 @@ public static partial class ReportesExcel
 			hoja.Cell(fila, 2).Value = l.Descripcion;
 			hoja.Cell(fila, 3).Value = l.TipoProducto;
 			hoja.Cell(fila, 4).Value = l.Unidad;
-			hoja.Cell(fila, 5).Value = l.Existencia;
-			if (l.Conteo is not null) hoja.Cell(fila, 6).Value = l.Conteo.Value;
+			if (conCantidades) hoja.Cell(fila, 5).Value = l.Existencia;
+			if (l.Conteo is not null) hoja.Cell(fila, conteo).Value = l.Conteo.Value;
 			fila++;
 		}
-		hoja.Range(inicio, 5, fila, 6).Style.NumberFormat.Format = "#,##0.####";
-		hoja.Range(inicio, 6, Math.Max(inicio, fila - 1), 6).Style.Fill.BackgroundColor = Captura;
+		hoja.Range(inicio, 5, fila, conteo).Style.NumberFormat.Format = "#,##0.####";
+		hoja.Range(inicio, conteo, Math.Max(inicio, fila - 1), conteo).Style.Fill.BackgroundColor = Captura;
 		hoja.Column(1).Width = 16;
 		hoja.Column(2).Width = 50;
-		hoja.Columns(3, 6).Width = 14;
+		hoja.Columns(3, conteo).Width = 14;
 		return Guardar(libro);
 	}
 

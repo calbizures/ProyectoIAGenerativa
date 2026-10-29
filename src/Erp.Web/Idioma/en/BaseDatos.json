@@ -605,5 +605,8 @@
   "Una de las líneas del banco elegidas no existe o ya está conciliada.": "One of the chosen bank lines does not exist or is already reconciled.",
   "Uno de los movimientos de libros elegidos no existe o ya está conciliado.": "One of the chosen book entries does not exist or is already reconciled.",
   "No suman lo mismo: el banco da Q{0} y libros Q{1}.": "They do not add up to the same: the bank gives Q{0} and the books Q{1}.",
-  "La tolerancia va de 0 a 31 días y los días para revisar, de 1 a 365.": "The tolerance goes from 0 to 31 days and the review days from 1 to 365."
+  "La tolerancia va de 0 a 31 días y los días para revisar, de 1 a 365.": "The tolerance goes from 0 to 31 days and the review days from 1 to 365.",
+  "Aplicar los ajustes del inventario físico requiere el permiso de supervisar (INVENTARIO_FISICO_SUPERVISAR).": "Applying the physical count adjustments requires the supervise permission (INVENTARIO_FISICO_SUPERVISAR).",
+  "Anular una toma ya aplicada (revierte ajustes y pólizas) requiere el permiso de supervisar (INVENTARIO_FISICO_SUPERVISAR).": "Voiding an applied count (reverses adjustments and journal entries) requires the supervise permission (INVENTARIO_FISICO_SUPERVISAR).",
+  "Inventario físico: ver existencia, diferencias y costos, aplicar los ajustes y anular tomas aplicadas": "Physical count: see stock, differences and costs, apply adjustments and void applied counts"
 }

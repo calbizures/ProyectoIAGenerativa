@@ -7,6 +7,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IInventarioFisicoRepository TomaRepository
 @inject IBodegaRepository BodegaRepository
+@inject Microsoft.AspNetCore.Authorization.IAuthorizationService Autorizacion
 
 <PageTitle>@L("Inventario físico")</PageTitle>
 
@@ -86,7 +87,7 @@
     else
     {
         <table class="tabla-datos">
-            <thead><tr><th class="col-codigo">@L("Toma")</th><th class="col-fecha">@L("Fecha")</th><th>@L("Bodega")</th><th class="num col-estado">@L("Contados")</th><th class="num col-monto">@L("Sobrante")</th><th class="num col-monto">@L("Faltante")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr></thead>
+            <thead><tr><th class="col-codigo">@L("Toma")</th><th class="col-fecha">@L("Fecha")</th><th>@L("Bodega")</th><th class="num col-estado">@L("Contados")</th>@if (supervisar) {<th class="num col-monto">@L("Sobrante")</th><th class="num col-monto">@L("Faltante")</th>}<th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr></thead>
             <tbody>
                 @foreach (var t in tomas)
                 {
@@ -95,8 +96,11 @@
                         <td class="col-fecha">@t.Fecha.ToString("dd/MM/yyyy")</td>
                         <td>@t.Bodega<br /><span class="texto-tenue">@t.Sucursal@(string.IsNullOrEmpty(t.Observaciones) ? "" : $" · {t.Observaciones}")</span></td>
                         <td class="num col-estado">@t.Contados / @t.Productos</td>
-                        <td class="num col-monto">@(t.Estado == "A" ? t.ValorSobrante.ToString("N2") : "—")</td>
-                        <td class="num col-monto">@(t.Estado == "A" ? t.ValorFaltante.ToString("N2") : "—")</td>
+                        @if (supervisar)
+                        {
+                            <td class="num col-monto">@(t.Estado == "A" ? t.ValorSobrante.ToString("N2") : "—")</td>
+                            <td class="num col-monto">@(t.Estado == "A" ? t.ValorFaltante.ToString("N2") : "—")</td>
+                        }
                         <td class="col-estado"><span class="estado-badge @ClaseEstado(t)">@NombreEstado(t)</span></td>
                         <td class="col-acciones">
                             <div class="acciones-fila">
@@ -119,8 +123,11 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
         <div class="resumen-totales">
             <span>@L("Fecha:") <strong>@seleccionada.Fecha.ToString("dd/MM/yyyy")</strong></span>
             <span>@L("Contados:") <strong>@L("{0} de {1}", lineas.Count(l => ConteoDe(l) is not null), lineas.Count)</strong></span>
-            <span>@L("Sobrante:") <strong>Q @ValorSobrante.ToString("N2")</strong></span>
-            <span>@L("Faltante:") <strong>Q @ValorFaltante.ToString("N2")</strong></span>
+            @if (supervisar)
+            {
+                <span>@L("Sobrante:") <strong>Q @ValorSobrante.ToString("N2")</strong></span>
+                <span>@L("Faltante:") <strong>Q @ValorFaltante.ToString("N2")</strong></span>
+            }
             @if (seleccionada.Estado == "N" && seleccionada.MotivoAnulacion is not null)
             {
                 <span>@L("Anulada:") <strong>@seleccionada.MotivoAnulacion</strong></span>
@@ -130,8 +137,14 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
         {
             <div class="doc-nota">
                 <Icono Nombre="lock" Tamano="15" />
-                <span>@L("La bodega está bloqueada desde el {0}: no admite ventas, compras, traslados ni devoluciones. La existencia es la foto de ese momento. Anote el conteo (los productos sin conteo no se ajustan) y, al terminar, presione Terminar conteo para que la bodega vuelva a operar.", seleccionada.ConteoInicio.ToString("dd/MM/yyyy HH:mm"))</span>
+                <span>@(supervisar
+                    ? L("La bodega está bloqueada desde el {0}: no admite ventas, compras, traslados ni devoluciones. La existencia es la foto de ese momento. Anote el conteo (los productos sin conteo no se ajustan) y, al terminar, presione Terminar conteo para que la bodega vuelva a operar.", seleccionada.ConteoInicio.ToString("dd/MM/yyyy HH:mm"))
+                    : L("La bodega está bloqueada desde el {0}: no admite ventas, compras, traslados ni devoluciones. Cuente cada producto y anote lo que encuentre (deje vacío lo que no contó). Al terminar, presione Terminar conteo para que la bodega vuelva a operar.", seleccionada.ConteoInicio.ToString("dd/MM/yyyy HH:mm")))</span>
             </div>
+        }
+        else if (PorAplicar && !supervisar)
+        {
+            <p class="texto-ayuda">@L("El conteo terminó el {0} y la bodega ya opera. Un supervisor revisa las diferencias y aplica los ajustes.", seleccionada.ConteoFin?.ToString("dd/MM/yyyy HH:mm") ?? "")</p>
         }
         else if (PorAplicar && seleccionada.UsaFoto)
         {
@@ -144,7 +157,10 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
 
         <div class="barra-herramientas">
             <input placeholder="@L("Buscar por código o descripción")" aria-label="@L("Buscar producto")" @bind="filtroProducto" @bind:event="oninput" />
-            <label class="casilla"><input type="checkbox" @bind="soloDiferencias" /> @L("Solo con diferencia")</label>
+            @if (supervisar)
+            {
+                <label class="casilla"><input type="checkbox" @bind="soloDiferencias" /> @L("Solo con diferencia")</label>
+            }
             <span class="barra-herramientas-separador"></span>
             <a class="boton-icono boton-icono-con-etiqueta" href="reportes/inventario/toma/@(seleccionada.TfiId).xlsx" download title="@L("Hoja de conteo en Excel")">
                 <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">@L("Hoja de conteo")</span>
@@ -159,21 +175,25 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
         </div>
 
         <table class="tabla-datos">
-            <thead><tr><th class="col-codigo">@L("Código")</th><th>@L("Producto")</th><th class="col-estado">@L("Unidad")</th><th class="num col-monto">@L("Existencia")</th><th class="num col-monto">@L("Conteo")</th><th class="num col-monto">@L("Diferencia")</th><th class="num col-monto">@L("Costo")</th><th class="num col-monto">@L("Valor")</th></tr></thead>
+            @* Sin el permiso de supervisar se cuenta a ciegas: sin existencia, diferencia ni costos. *@
+            <thead><tr><th class="col-codigo">@L("Código")</th><th>@L("Producto")</th><th class="col-estado">@L("Unidad")</th>@if (supervisar) {<th class="num col-monto">@L("Existencia")</th>}<th class="num col-monto">@L("Conteo")</th>@if (supervisar) {<th class="num col-monto">@L("Diferencia")</th><th class="num col-monto">@L("Costo")</th><th class="num col-monto">@L("Valor")</th>}</tr></thead>
             <tbody>
                 @if (!LineasVisibles.Any())
                 {
-                    <tr><td colspan="8" class="doc-tabla-vacia">@L("Ningún producto coincide con el filtro.")</td></tr>
+                    <tr><td colspan="@(supervisar ? 8 : 4)" class="doc-tabla-vacia">@L("Ningún producto coincide con el filtro.")</td></tr>
                 }
                 @foreach (var l in LineasVisibles)
                 {
                     var conteo = ConteoDe(l);
                     var diferencia = conteo is null ? (decimal?)null : conteo.Value - l.Existencia;
-                    <tr class="@(diferencia is > 0 ? "fila-sobrante" : diferencia is < 0 ? "fila-faltante" : "")">
+                    <tr class="@(!supervisar ? "" : diferencia is > 0 ? "fila-sobrante" : diferencia is < 0 ? "fila-faltante" : "")">
                         <td class="col-codigo">@l.Codigo</td>
                         <td>@l.Descripcion<br /><span class="texto-tenue">@l.TipoProducto</span></td>
                         <td class="col-estado">@l.Unidad</td>
-                        <td class="num col-monto">@l.Existencia.ToString("#,##0.##")</td>
+                        @if (supervisar)
+                        {
+                            <td class="num col-monto">@l.Existencia.ToString("#,##0.##")</td>
+                        }
                         <td class="num col-monto">
                             @if (EnConteo)
                             {
@@ -185,15 +205,18 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
                                 @(conteo?.ToString("#,##0.##") ?? "—")
                             }
                         </td>
-                        <td class="num col-monto">@(diferencia?.ToString("+#,##0.##;-#,##0.##;0") ?? "")</td>
-                        <td class="num col-monto">@(l.CostoUnitario?.ToString("N2") ?? "")</td>
-                        <td class="num col-monto">@(diferencia is null or 0 ? "" : Math.Round(diferencia.Value * (l.CostoUnitario ?? 0), 2).ToString("N2"))</td>
+                        @if (supervisar)
+                        {
+                            <td class="num col-monto">@(diferencia?.ToString("+#,##0.##;-#,##0.##;0") ?? "")</td>
+                            <td class="num col-monto">@(l.CostoUnitario?.ToString("N2") ?? "")</td>
+                            <td class="num col-monto">@(diferencia is null or 0 ? "" : Math.Round(diferencia.Value * (l.CostoUnitario ?? 0), 2).ToString("N2"))</td>
+                        }
                     </tr>
                 }
             </tbody>
         </table>
 
-        @if (EnConteo || PorAplicar)
+        @if (EnConteo || PorAplicar && supervisar)
         {
             <div class="acciones-fila">
                 @if (EnConteo)
@@ -207,12 +230,17 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
                 }
                 @if (PorAplicar)
                 {
-                    <BotonIcono Icono="check-check" Tooltip="@L("Aplicar la toma y generar los ajustes")" Etiqueta="@L("Aplicar ajustes")"
-                                Confirmacion="@(L("¿Aplicar la toma? Sobrante Q {0:N2}, faltante Q {1:N2}.", ValorSobrante, ValorFaltante))" Deshabilitado="guardando" OnClick="AplicarAsync" />
+                    <AuthorizeView Policy="Permiso:INVENTARIO_FISICO_SUPERVISAR" Context="supervisarContexto">
+                        <Authorized>
+                            <BotonIcono Icono="check-check" Tooltip="@L("Aplicar la toma y generar los ajustes")" Etiqueta="@L("Aplicar ajustes")"
+                                        Confirmacion="@(L("¿Aplicar la toma? Sobrante Q {0:N2}, faltante Q {1:N2}.", ValorSobrante, ValorFaltante))" Deshabilitado="guardando" OnClick="AplicarAsync" />
+                        </Authorized>
+                    </AuthorizeView>
                 }
             </div>
         }
-        @if (seleccionada.Estado != "N")
+        @* Anular una toma aplicada (revierte ajustes y pólizas) es del supervisor. *@
+        @if (seleccionada.Estado == "B" || seleccionada.Estado == "A" && supervisar)
         {
             <div class="fila-edicion">
                 <label for="motivo-toma">@L("Anular la toma{0}", seleccionada.Estado == "A" ? L(" (revierte los ajustes y sus pólizas)") : "")</label>
@@ -254,6 +282,10 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
     // En conteo: la bodega está bloqueada y el conteo se puede escribir. Por
     // aplicar: el conteo terminó, la bodega opera y faltan los ajustes.
     // Las tomas anteriores al bloqueo (sin foto) siguen escribiéndose hasta aplicarlas.
+    // Con INVENTARIO_FISICO_SUPERVISAR: existencia, diferencias, costos y aplicar.
+    // Sin él se cuenta a ciegas.
+    private bool supervisar;
+
     private bool EnConteo => seleccionada is { Estado: "B" } t && (t.BodegaBloqueada || !t.UsaFoto);
     private bool PorAplicar => seleccionada is { Estado: "B" } t && !t.BodegaBloqueada;
 
@@ -289,6 +321,7 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
             bodegas = await BodegaRepository.ConsultarDetalleAsync(null, soloActivas: false);
             var usuario = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User;
             filtroSucId = usuario?.ObtenerSucId();
+            supervisar = usuario is not null && (await Autorizacion.AuthorizeAsync(usuario, "Permiso:INVENTARIO_FISICO_SUPERVISAR")).Succeeded;
             if (filtroSucId is not null && bodegas.All(b => b.SucId != filtroSucId)) filtroSucId = null;
             await BuscarAsync();
         }
@@ -361,7 +394,7 @@ else if (pestanaActiva == "toma" && seleccionada is not null)
         conteos.Clear();
         motivoAnulacion = "";
         filtroProducto = "";
-        soloDiferencias = toma.Estado != "B" || !toma.BodegaBloqueada && toma.UsaFoto;
+        soloDiferencias = supervisar && (toma.Estado != "B" || !toma.BodegaBloqueada && toma.UsaFoto);
         pestanaActiva = "toma";
         try { lineas = await TomaRepository.ConsultarLineasAsync(toma.TfiId); }
         catch (Exception ex) { MostrarError(ex); }

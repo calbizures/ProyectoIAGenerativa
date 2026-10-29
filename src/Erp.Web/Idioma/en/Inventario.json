@@ -412,5 +412,7 @@
   "En conteo · bodega bloqueada": "Counting · warehouse locked",
   "Por aplicar": "To apply",
   "Toma #{0} abierta: la bodega queda bloqueada hasta que termine el conteo. Registre el conteo de cada producto.": "Count #{0} opened: the warehouse is locked until the count is finished. Enter the count of each product.",
-  "Conteo terminado: la bodega vuelve a operar. Revise las diferencias y aplique los ajustes.": "Count finished: the warehouse operates again. Review the differences and apply the adjustments."
+  "Conteo terminado: la bodega vuelve a operar. Revise las diferencias y aplique los ajustes.": "Count finished: the warehouse operates again. Review the differences and apply the adjustments.",
+  "La bodega está bloqueada desde el {0}: no admite ventas, compras, traslados ni devoluciones. Cuente cada producto y anote lo que encuentre (deje vacío lo que no contó). Al terminar, presione Terminar conteo para que la bodega vuelva a operar.": "The warehouse is locked since {0}: no sales, purchases, transfers or returns. Count each product and enter what you find (leave blank what you did not count). When done, press Finish count so the warehouse operates again.",
+  "El conteo terminó el {0} y la bodega ya opera. Un supervisor revisa las diferencias y aplica los ajustes.": "The count finished on {0} and the warehouse is operating. A supervisor reviews the differences and applies the adjustments."
 }

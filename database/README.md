@@ -94,30 +94,31 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 77_inventario_fisico_bloqueo.sql              -- inventario físico con foto de existencias y bodega bloqueada al contar
 78_vuelto_efectivo.sql                        -- efectivo recibido y vuelto por caja
 79_conciliacion_mejoras.sql                   -- conciliación: clasificar, antigüedad, emparejar en grupo, parámetros
+80_inventario_fisico_supervisar.sql           -- inventario físico: conteo a ciegas y permiso de supervisar
 ```
 
 **Instalación de una sola vez:** después de crear la base con
-`00_crear_base_datos.sql`, el archivo `instalar_01_al_79.sql` corre en orden
-del `01` al `79` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
+`00_crear_base_datos.sql`, el archivo `instalar_01_al_80.sql` corre en orden
+del `01` al `80` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
 active *Consulta › Modo SQLCMD*, cambie la ruta de la línea `:setvar RUTA` por la
 carpeta de los scripts y ejecútelo; desde la línea de comandos:
-`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_79.sql -o instalacion.log`.
+`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_80.sql -o instalacion.log`.
 Se detiene en el primer error y muestra en qué script ocurrió. Incluye los
 datos de prueba, así que es para una base nueva, no para una con datos reales.
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `79` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `80` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `79` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `80` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `paCajaCerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `79`. Si vuelves a
-correr `12`, corre después `22` a `79` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `80`. Si vuelves a
+correr `12`, corre después `22` a `80` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -144,7 +145,8 @@ vuelves a correr `10`, `11` o `66`, corre después el `75` (contraseñas y
 de compra con el flete). Si vuelves a correr `38` o `66`, corre después el `77`
 (inventario físico con foto y bloqueo). Si vuelves a correr `23`, corre
 después el `78` (cajas con vuelto). Si vuelves a correr `64` o `66`, corre
-después el `79` (conciliación con clases, antigüedad y grupos).
+después el `79` (conciliación con clases, antigüedad y grupos). Si vuelves a correr `66` o `77`, corre después el `80`
+(aplicar y anular tomas con el permiso de supervisar).
 
 Todos los scripts fijan `SET QUOTED_IDENTIFIER ON` y `SET ANSI_NULLS ON` al
 inicio, porque los índices filtrados (`enc_numero_unico`, `IdEmpleado`) los
@@ -2179,6 +2181,17 @@ descuadraba los ajustes. Ahora:
 
 Las tomas abiertas antes de este script quedan sin foto (`tfi_usa_foto = 0`):
 se aplican como antes y no bloquean la bodega.
+
+### Conteo a ciegas y permiso de supervisar (`80`)
+
+Permiso `INVENTARIO_FISICO_SUPERVISAR` (Administrador, Contador y Contador
+general; se puede dar a otros roles en Seguridad › Roles). Quien **no** lo
+tiene cuenta a ciegas: ve código, producto, unidad y conteo, sin la
+existencia del sistema, la diferencia, el costo ni los valores, tampoco en la
+hoja de conteo de Excel. Quien lo tiene ve todo. Terminar el conteo lo puede
+hacer cualquiera con `INVENTARIO_FISICO`; aplicar los ajustes y anular una
+toma aplicada requieren el permiso de supervisar, también en la base
+(`fnSeguridadUsuarioTienePermiso`, errores 55944 y 55945).
 
 ### Vuelto en efectivo (`78`)
 

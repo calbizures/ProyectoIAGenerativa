@@ -438,7 +438,9 @@ app.MapGet("/reportes/inventario/toma/{tfiId:int}.xlsx", async (int tfiId, HttpC
 	if (!(await autorizacion.AuthorizeAsync(contexto.User, "Permiso:INVENTARIO_FISICO")).Succeeded) return Results.Forbid();
 	var toma = (await tomas.ConsultarAsync(null, null, null)).FirstOrDefault(t => t.TfiId == tfiId);
 	if (toma is null) return Results.NotFound();
-	var archivo = ReportesExcel.HojaConteo(toma, await tomas.ConsultarLineasAsync(tfiId), await CompaniaReporteAsync(contexto, general));
+	// Quien no supervisa cuenta a ciegas: la hoja no lleva la existencia.
+	var conCantidades = (await autorizacion.AuthorizeAsync(contexto.User, "Permiso:INVENTARIO_FISICO_SUPERVISAR")).Succeeded;
+	var archivo = ReportesExcel.HojaConteo(toma, await tomas.ConsultarLineasAsync(tfiId), await CompaniaReporteAsync(contexto, general), conCantidades);
 	return Results.File(archivo, TipoExcel, $"inventario-fisico-{tfiId}.xlsx");
 }).RequireAuthorization();
 
