@@ -1,0 +1,149 @@
+@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Erp.Web.Security
+
+<PageTitle>@L("Inicio")</PageTitle>
+
+<section class="inicio-hero">
+    <div class="inicio-hero-texto">
+        <p class="inicio-hero-etiqueta">@L("SISTEMA ERP")</p>
+        <h1>@L("Bienvenido, {0}", nombreUsuario)</h1>
+        <p class="inicio-hero-descripcion">
+            @L("Plataforma integral para inventario, ventas, compras, bancos y contabilidad de Servicios Informáticos Integrados.")
+        </p>
+    </div>
+    <img src="images/hero-erp.svg" alt="" class="inicio-hero-ilustracion" />
+</section>
+
+<section class="inicio-modulos">
+    <h2>@L("Módulos")</h2>
+    @if (modulos.Count == 0)
+    {
+        <p class="inicio-sin-modulos">@L("Su usuario no tiene opciones asignadas. Solicite acceso al administrador del sistema.")</p>
+    }
+    else
+    {
+        <div class="modulos-grid">
+            @foreach (var modulo in modulos)
+            {
+                <a href="@modulo.Ruta" class="modulo-card">
+                    <span class="modulo-icono"><Icono Nombre="@modulo.Icono" Tamano="26" /></span>
+                    <span class="modulo-titulo">@L(modulo.Titulo)</span>
+                    <span class="modulo-desc">@L(modulo.Descripcion)</span>
+                </a>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private string nombreUsuario = "";
+    private List<(string Titulo, string Icono, string Descripcion, string Ruta)> modulos = new();
+
+    private sealed record Opcion(string Ruta, string Permisos);
+    private sealed record Modulo(string Titulo, string Icono, string Descripcion, string PermisosNodo, Opcion[] Opciones);
+
+    // Los mismos módulos y opciones del menú lateral (NavMenu.razor), en el mismo
+    // orden y con los mismos permisos: los del nodo y los de cada pantalla. La
+    // tarjeta sale solo si el menú muestra el módulo y alguna de sus opciones, y
+    // lleva a la primera de ellas. Al cambiar el menú, cambie también esta lista.
+    private static readonly Modulo[] Catalogo =
+    {
+        new("Tableros", "trending-up", "Indicadores de ventas, cartera e inventario",
+            "TABLERO_GERENCIAL", new Opcion[]
+        {
+            new("tableros", "TABLERO_GERENCIAL"),
+        }),
+        new("Seguridad", "lock", "Usuarios, roles y permisos",
+            "SEGURIDAD_USUARIO_ADMIN", new Opcion[]
+        {
+            new("usuarios", "SEGURIDAD_USUARIO_ADMIN"),
+        }),
+        new("Inventario", "package", "Productos, existencias, inventario físico y traslados",
+            "INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR,INVENTARIO_FISICO,INVENTARIO_CARGA_INICIAL,INVENTARIO_TRASLADO_ENVIAR,INVENTARIO_TRASLADO_RECIBIR,INVENTARIO_REORDEN", new Opcion[]
+        {
+            new("productos", "INVENTARIO_PRODUCTO_CREAR,INVENTARIO_PRODUCTO_EDITAR"),
+            new("inventario/fisico", "INVENTARIO_FISICO"),
+            new("inventario/traslados", "INVENTARIO_TRASLADO_ENVIAR,INVENTARIO_TRASLADO_RECIBIR"),
+            new("inventario/carga-inicial", "INVENTARIO_CARGA_INICIAL"),
+            new("inventario/rotacion", "INVENTARIO_REORDEN"),
+        }),
+        new("Ventas / POS", "receipt", "Cotizaciones, facturación y clientes",
+            "VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR,VENTAS_COTIZACION", new Opcion[]
+        {
+            new("ventas/cotizaciones", "VENTAS_COTIZACION,VENTAS_FACTURA_CREAR"),
+            new("facturas", "VENTAS_FACTURA_CREAR,VENTAS_FACTURA_ANULAR"),
+            new("fel/documentos", "FEL_ADMIN"),
+            new("vendedores", "VENTAS_VENDEDOR_ADMIN"),
+        }),
+        new("Compras", "shopping-cart", "Órdenes de compra, compras y proveedores",
+            "COMPRAS_DOCUMENTO_CREAR,COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR_BODEGA,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR", new Opcion[]
+        {
+            new("compras/ordenes", "COMPRAS_ORDEN,COMPRAS_ORDEN_APROBAR_BODEGA,COMPRAS_ORDEN_APROBAR,COMPRAS_ORDEN_RECIBIR"),
+            new("compras", "COMPRAS_DOCUMENTO_CREAR"),
+        }),
+        new("Cuentas por cobrar", "wallet", "Estado de cuenta, cobros, notas y antigüedad",
+            "CXC_ADMIN", new Opcion[]
+        {
+            new("cxc/estado-cuenta", "CXC_ADMIN"),
+        }),
+        new("Cuentas por pagar", "banknote", "Estado de cuenta, pagos, notas y antigüedad",
+            "CXP_ADMIN,CXP_CONTRASENA,CXP_PAGO_PROGRAMADO", new Opcion[]
+        {
+            new("cxp/estado-cuenta", "CXP_ADMIN"),
+            new("cxp/contrasenas", "CXP_CONTRASENA"),
+            new("cxp/pagos-programados", "CXP_PAGO_PROGRAMADO"),
+        }),
+        new("Caja y bancos", "landmark", "Caja, cheques, caja chica y conciliación",
+            "BANCOS_CAJA_ADMIN,BANCOS_ADMIN,BANCOS_CHEQUE_EMITIR,BANCOS_FORMATO_ARCHIVO,CAJA_CHICA_GASTOS,CAJA_CHICA_ADMIN,FLUJO_CAJA,CONCILIACION_BANCARIA", new Opcion[]
+        {
+            new("caja", "BANCOS_CAJA_ADMIN"),
+            new("bancos/cheques", "BANCOS_ADMIN,BANCOS_CHEQUE_EMITIR"),
+            new("bancos/caja-chica", "CAJA_CHICA_GASTOS,CAJA_CHICA_ADMIN"),
+            new("bancos/conciliacion", "CONCILIACION_BANCARIA"),
+            new("bancos/flujo-caja", "FLUJO_CAJA"),
+            new("bancos/formatos", "BANCOS_FORMATO_ARCHIVO"),
+        }),
+        new("RRHH", "briefcase", "Empleados y nómina",
+            "RRHH_ADMIN", new Opcion[]
+        {
+            new("rrhh/empleados", "RRHH_ADMIN"),
+        }),
+        new("General", "settings", "Compañías, parámetros y entidades financieras",
+            "GENERAL_CONFIG_ADMIN,GENERAL_NIT_REVISION", new Opcion[]
+        {
+            new("general/companias", "GENERAL_CONFIG_ADMIN"),
+            new("general/revision-nit", "GENERAL_NIT_REVISION"),
+            new("fel/configuracion", "FEL_ADMIN"),
+        }),
+        new("Contabilidad", "bar-chart-2", "Pólizas, libros, estados financieros y cierre",
+            "CONTABILIDAD_NOMENCLATURA_ADMIN,CONTABILIDAD_CENTRO_COSTO,CONTABILIDAD_SALDOS_INICIALES,CONTABILIDAD_POLIZAS,CONTABILIDAD_ASIENTO_MANUAL,CONTABILIDAD_ESTADOS,CONTABILIDAD_CIERRE,ACTIVOS_FIJOS", new Opcion[]
+        {
+            new("contabilidad/polizas", "CONTABILIDAD_POLIZAS,CONTABILIDAD_ASIENTO_MANUAL"),
+            new("contabilidad/libros", "CONTABILIDAD_ESTADOS"),
+            new("contabilidad/activos-fijos", "ACTIVOS_FIJOS"),
+            new("contabilidad/periodos", "CONTABILIDAD_CIERRE"),
+            new("contabilidad/nomenclatura", "CONTABILIDAD_NOMENCLATURA_ADMIN"),
+            new("contabilidad/saldos-iniciales", "CONTABILIDAD_SALDOS_INICIALES"),
+            new("contabilidad/centros-costo", "CONTABILIDAD_CENTRO_COSTO"),
+        }),
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationStateTask is null) return;
+        var usuario = (await AuthenticationStateTask).User;
+        nombreUsuario = usuario.Identity?.Name ?? "";
+
+        bool Tiene(string permisos) => permisos.Split(',').Any(codigo => usuario.HasClaim(ClaimsPermiso.TipoClaim, codigo));
+        modulos = Catalogo
+            .Where(m => Tiene(m.PermisosNodo))
+            .Select(m => (m, Primera: m.Opciones.FirstOrDefault(o => Tiene(o.Permisos))))
+            .Where(x => x.Primera is not null)
+            .Select(x => (x.m.Titulo, x.m.Icono, x.m.Descripcion, x.Primera!.Ruta))
+            .ToList();
+    }
+}

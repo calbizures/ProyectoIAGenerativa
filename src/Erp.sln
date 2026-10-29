@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Erp.Data", "Erp.Data\Erp.Data.csproj", "{33D8A6C1-03B4-47D5-A090-7CB4E375EEA7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Erp.Web", "Erp.Web\Erp.Web.csproj", "{684B4B52-53A9-4C3B-BE2C-84B072EFE6E4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{33D8A6C1-03B4-47D5-A090-7CB4E375EEA7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33D8A6C1-03B4-47D5-A090-7CB4E375EEA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33D8A6C1-03B4-47D5-A090-7CB4E375EEA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33D8A6C1-03B4-47D5-A090-7CB4E375EEA7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{684B4B52-53A9-4C3B-BE2C-84B072EFE6E4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{684B4B52-53A9-4C3B-BE2C-84B072EFE6E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{684B4B52-53A9-4C3B-BE2C-84B072EFE6E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{684B4B52-53A9-4C3B-BE2C-84B072EFE6E4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

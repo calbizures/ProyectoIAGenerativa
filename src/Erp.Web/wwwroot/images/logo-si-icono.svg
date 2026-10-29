@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 15 232 185" width="232" height="185">
+  <defs>
+    <linearGradient id="siGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1b4c"/>
+      <stop offset="0.55" stop-color="#124a9c"/>
+      <stop offset="1" stop-color="#1e88e5"/>
+    </linearGradient>
+    <linearGradient id="siSwooshGrad" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#1565c0"/>
+      <stop offset="1" stop-color="#7ee0fb"/>
+    </linearGradient>
+  </defs>
+
+  <text x="72" y="172" text-anchor="middle" font-family="'Arial Black', Arial, Helvetica, sans-serif" font-weight="900" font-size="150" fill="url(#siGrad)">S</text>
+  <rect x="152" y="52" width="30" height="140" rx="6" fill="url(#siGrad)"/>
+
+  <rect x="196" y="30" width="16" height="16" fill="#7ee0fb"/>
+  <rect x="176" y="50" width="13" height="13" fill="#4fc3f7"/>
+  <rect x="210" y="52" width="11" height="11" fill="#29b6f6"/>
+
+  <path d="M6,182 C64,214 140,206 176,158 C196,131 206,100 222,66 L222,58 C204,96 182,132 152,158 C112,196 50,202 6,172 Z"
+        fill="url(#siSwooshGrad)"/>
+</svg>

@@ -1,0 +1,29 @@
+@* Tema (Sistema, Claro u Oscuro) e idioma (español o inglés) de la pantalla.
+   Funciona igual en páginas estáticas (inicio de sesión) y en el menú: el
+   tema se cambia en el navegador (js/tema.js) y el idioma con /idioma/{código},
+   que recarga la pantalla actual. La opción vigente se marca por CSS según
+   data-theme y lang de <html>. *@
+
+<div class="preferencias @Clase">
+    <div class="preferencias-grupo" role="group" aria-label="@L("Tema")">
+        <button type="button" class="preferencias-opcion tema-sistema" onclick="erpTema.aplicar('sistema')" title="@L("Tema del sistema")">
+            <Icono Nombre="monitor" Tamano="15" /><span class="sr-only">@L("Tema del sistema")</span>
+        </button>
+        <button type="button" class="preferencias-opcion tema-claro" onclick="erpTema.aplicar('claro')" title="@L("Tema claro")">
+            <Icono Nombre="sun" Tamano="15" /><span class="sr-only">@L("Tema claro")</span>
+        </button>
+        <button type="button" class="preferencias-opcion tema-oscuro" onclick="erpTema.aplicar('oscuro')" title="@L("Tema oscuro")">
+            <Icono Nombre="moon" Tamano="15" /><span class="sr-only">@L("Tema oscuro")</span>
+        </button>
+    </div>
+    <div class="preferencias-grupo" role="group" aria-label="@L("Idioma")">
+        <a class="preferencias-opcion idioma-es" href="idioma/es" data-enhance-nav="false" lang="es" title="@L("Español")"
+           aria-current="@(EsIngles ? null : "true")" onclick="erpTema.idioma(this)">@L("ES")</a>
+        <a class="preferencias-opcion idioma-en" href="idioma/en" data-enhance-nav="false" lang="en" title="@L("English")"
+           aria-current="@(EsIngles ? "true" : null)" onclick="erpTema.idioma(this)">@L("EN")</a>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Clase { get; set; }
+}

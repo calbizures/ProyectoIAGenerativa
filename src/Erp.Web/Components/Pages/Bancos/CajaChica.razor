@@ -1,0 +1,881 @@
+@page "/bancos/caja-chica"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CAJA_CHICA_GASTOS,CAJA_CHICA_ADMIN")]
+@using Erp.Data.Bancos
+@using Erp.Data.CajaChica
+@using Erp.Data.Compras
+@using Erp.Data.General
+@using Erp.Data.Rrhh
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ICajaChicaRepository CajaChicaRepository
+@inject IBancosRepository BancosRepository
+@inject IGeneralRepository GeneralRepository
+@inject IRrhhRepository RrhhRepository
+@inject IProveedorRepository ProveedorRepository
+@inject IAuthorizationService Autorizacion
+
+<PageTitle>@L("Caja chica")</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>@L("Caja chica")</h1>
+    <p>@L("Fondo fijo para gastos menores. Se registran las facturas, recibos y vales; al liquidar se graba la póliza de los gastos (con su IVA crédito fiscal) y con un cheque se repone el fondo a su monto completo.")</p>
+</div>
+
+<BorradorDocumento TDatos="BorradorGasto" Clave="caja-chica-gasto" Nombre="@L("un gasto de caja chica")"
+                   Capturar="CapturarBorrador" Describir="DescribirBorrador" Restaurar="RestaurarBorradorAsync" />
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
+}
+
+<div class="barra-herramientas">
+    <select value="@fondo?.CchId" @onchange="ElegirFondoAsync" aria-label="@L("Fondo de caja chica")" class="selector-cuenta">
+        @if (fondos.Count == 0)
+        {
+            <option value="">@L("No hay fondos")</option>
+        }
+        @foreach (var f in fondos)
+        {
+            <option value="@f.CchId">@f.Codigo · @f.Nombre (@f.Sucursal)@(f.Estado == "I" ? L(" · inactivo") : "")</option>
+        }
+    </select>
+    <span class="barra-herramientas-separador"></span>
+    @if (esAdmin)
+    {
+        <BotonIcono Icono="plus" Tooltip="@L("Crear un fondo de caja chica")" Etiqueta="@L("Nuevo fondo")" OnClick="NuevoFondo" />
+        @if (fondo is not null)
+        {
+            <BotonIcono Icono="pencil" Tooltip="@L("Editar el fondo")" Etiqueta="@L("Editar fondo")" OnClick="EditarFondo" />
+        }
+    }
+</div>
+
+@if (edicionFondo is not null)
+{
+    <section class="tarjeta" aria-labelledby="titulo-fondo">
+        <h2 id="titulo-fondo">@(edicionFondo.CchId == 0 ? L("Nuevo fondo") : L("Fondo {0}", edicionFondo.Codigo))</h2>
+        <div class="panel-formulario panel-ancho">
+            <div class="campo"><label for="cch-nombre">@L("Nombre")</label><input id="cch-nombre" maxlength="100" placeholder="@L("Ej.: Caja chica administración")" @bind="edicionFondo.Nombre" /></div>
+            <div class="campo">
+                <label for="cch-sucursal">@L("Sucursal")</label>
+                <select id="cch-sucursal" @bind="edicionFondo.SucId">
+                    @foreach (var s in sucursales)
+                    {
+                        <option value="@s.SucId">@s.SucDescripcion</option>
+                    }
+                </select>
+            </div>
+            <div class="campo"><label for="cch-responsable">@L("Responsable (a su nombre salen los cheques)")</label><input id="cch-responsable" maxlength="150" @bind="edicionFondo.Responsable" /></div>
+            <div class="campo">
+                <label for="cch-monto">@L("Monto del fondo (Q)")</label>
+                <input id="cch-monto" type="number" step="0.01" min="0" @bind="edicionFondo.MontoAutorizado" disabled="@edicionFondo.EstaConstituido" />
+                @if (edicionFondo.EstaConstituido)
+                {
+                    <small class="texto-ayuda">@L("Ya constituido: súbalo con Aumentar fondo.")</small>
+                }
+            </div>
+            <div class="campo">
+                <label for="cch-cuenta">@L("Cuenta contable del fondo")</label>
+                <select id="cch-cuenta" @bind="edicionFondo.CtaId" disabled="@edicionFondo.EstaConstituido">
+                    <option value="0">@L("Por omisión (CAJA CHICA)")</option>
+                    @foreach (var c in cuentasActivo)
+                    {
+                        <option value="@c.CtaId">@c.CtaCodigo — @c.CtaNombre</option>
+                    }
+                </select>
+            </div>
+            @if (edicionFondo.CchId != 0)
+            {
+                <div class="campo">
+                    <label for="cch-estado">@L("Estado")</label>
+                    <select id="cch-estado" @bind="edicionFondo.Estado"><option value="A">@L("Activo")</option><option value="I">@L("Inactivo")</option></select>
+                </div>
+            }
+            <div class="acciones-fila">
+                <BotonIcono Icono="save" Tooltip="@L("Guardar el fondo")" Etiqueta="@L("Guardar")" Variante="primario" Deshabilitado="guardando" OnClick="GuardarFondoAsync" />
+                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => edicionFondo = null" />
+            </div>
+        </div>
+    </section>
+}
+
+@if (fondo is not null)
+{
+    <section class="tarjeta" aria-labelledby="titulo-saldo">
+        <div class="maestro-detalle-encabezado">
+            <h2 id="titulo-saldo">@fondo.Codigo · @fondo.Nombre</h2>
+            <span class="texto-tenue">@L("Responsable: {0} · Cuenta {1} {2}", fondo.Responsable, fondo.CuentaCodigo, fondo.CuentaNombre)</span>
+        </div>
+        @if (!fondo.EstaConstituido)
+        {
+            <p class="etiqueta-aviso"><Icono Nombre="alert-triangle" Tamano="14" /> @L("El fondo todavía no está constituido: emita el cheque de constitución por Q {0} para empezar a registrar gastos.", fondo.MontoAutorizado.ToString("N2"))</p>
+        }
+        <div class="cch-saldo">
+            <div><span>@L("Fondo")</span><strong>Q @fondo.Constituido.ToString("N2")</strong></div>
+            <div><span>@L("Gastos sin liquidar ({0})", fondo.GastosPendientes)</span><strong>Q @fondo.Pendiente.ToString("N2")</strong></div>
+            <div><span>@L("Liquidado por reponer")</span><strong>Q @fondo.PorReponer.ToString("N2")</strong></div>
+            <div class="cch-disponible"><span>@L("Efectivo disponible")</span><strong>Q @fondo.Disponible.ToString("N2")</strong></div>
+        </div>
+        @if (fondo.Constituido > 0)
+        {
+            var usado = Math.Clamp((double)((fondo.Pendiente + fondo.PorReponer) / fondo.Constituido), 0, 1);
+            <div class="cch-barra" role="img" aria-label="@(L("Usado {0:P0} del fondo", usado))"><div style="width: @((usado * 100).ToString("0", System.Globalization.CultureInfo.InvariantCulture))%" class="@(usado >= 0.75 ? "cch-barra-alta" : "")"></div></div>
+            @if (usado >= 0.75)
+            {
+                <p class="texto-ayuda">@L("Ya se usó el {0} del fondo: conviene liquidar y reponer.", usado.ToString("P0"))</p>
+            }
+        }
+        @if (esAdmin && fondo.Estado == "A")
+        {
+            <div class="acciones-fila">
+                @if (!fondo.EstaConstituido)
+                {
+                    <BotonIcono Icono="banknote" Tooltip="@L("Emitir el cheque de constitución del fondo")" Etiqueta="@L("Constituir fondo")" Variante="primario" OnClick="() => IniciarCheque(TipoConstitucion, null)" />
+                }
+                else
+                {
+                    <BotonIcono Icono="plus" Tooltip="@L("Subir el monto del fondo con un cheque")" Etiqueta="@L("Aumentar fondo")" OnClick="() => IniciarCheque(TipoAumento, null)" />
+                }
+            </div>
+        }
+        @if (cheque is not null)
+        {
+            <div class="panel-formulario panel-ancho cch-cheque">
+                <h3>@cheque.Titulo</h3>
+                <div class="campo">
+                    <label for="cch-chequera">@L("Chequera")</label>
+                    <select id="cch-chequera" value="@cheque.CbcId" @onchange="CambiarChequera">
+                        @foreach (var q in chequeras)
+                        {
+                            <option value="@q.CbcId">@L("{0} ({1} disp.)", q.Nombre, q.Disponibles)</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo"><label for="cch-numero">@L("Número de cheque")</label><input id="cch-numero" maxlength="16" inputmode="numeric" @bind="cheque.Numero" /></div>
+                <div class="campo"><label for="cch-fecha-cheque">@L("Fecha")</label><input id="cch-fecha-cheque" type="date" @bind="cheque.Fecha" /></div>
+                <div class="campo">
+                    <label for="cch-monto-cheque">@L("Valor (Q)")</label>
+                    <input id="cch-monto-cheque" type="number" step="0.01" min="0" @bind="cheque.Monto" disabled="@(cheque.Tipo != TipoAumento)" />
+                </div>
+                <p class="texto-ayuda">@L("A nombre de {0}. Póliza: Debe {1} / Haber la cuenta del banco.", fondo.Responsable, fondo.CuentaNombre)</p>
+                <div class="acciones-fila">
+                    <BotonIcono Icono="save" Tooltip="@L("Emitir el cheque")" Etiqueta="@L("Emitir cheque")" Variante="primario" Deshabilitado="guardando || chequeras.Count == 0" OnClick="EmitirChequeAsync" />
+                    <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => cheque = null" />
+                </div>
+                @if (chequeras.Count == 0)
+                {
+                    <p class="mensaje-error" role="alert">@L("No hay chequeras activas con cheques disponibles. Regístrelas en Bancos > Cuentas bancarias.")</p>
+                }
+            </div>
+        }
+    </section>
+
+    <BarraPestanas Pestanas="Pestanas" @bind-PestanaActiva="pestana" />
+
+    @switch (pestana)
+    {
+        case "gastos":
+            <section class="tarjeta" aria-labelledby="titulo-gastos">
+                <div class="maestro-detalle-encabezado">
+                    <h2 id="titulo-gastos">@L("Gastos sin liquidar")</h2>
+                    <div class="acciones-fila">
+                        @if (fondo.Estado == "A" && fondo.EstaConstituido && gasto is null)
+                        {
+                            <BotonIcono Icono="plus" Tooltip="@L("Registrar una factura, recibo o vale")" Etiqueta="@L("Registrar gasto")" Variante="primario" OnClick="NuevoGasto" />
+                        }
+                        @if (esAdmin && pendientes.Count > 0)
+                        {
+                            <BotonIcono Icono="check-check" Tooltip="@L("Graba la póliza de los gastos marcados")" Etiqueta="@(L("Liquidar {0} gasto(s) · Q {1:N2}", Seleccion.Count, Seleccion.Sum(g => g.Total)))"
+                                        Variante="primario" Deshabilitado="guardando || Seleccion.Count == 0"
+                                        Confirmacion="@(L("¿Liquidar {0} gasto(s) por Q {1:N2}? Se graba su póliza.", Seleccion.Count, Seleccion.Sum(g => g.Total)))" OnClick="LiquidarAsync" />
+                        }
+                    </div>
+                </div>
+
+                @if (gasto is not null)
+                {
+                    <div class="panel-formulario panel-ancho cch-gasto">
+                        <h3>@(gasto.CcgId is null ? L("Nuevo gasto") : L("Corregir gasto"))</h3>
+                        <div class="campo"><label for="ccg-fecha">@L("Fecha")</label><input id="ccg-fecha" type="date" @bind="gasto.Fecha" /></div>
+                        <div class="campo">
+                            <label for="ccg-tipo">@L("Comprobante")</label>
+                            <select id="ccg-tipo" @bind="gasto.Tipo">
+                                <option value="F">@L("Factura (con IVA crédito fiscal)")</option>
+                                <option value="P">@L("Factura de pequeño contribuyente (sin crédito)")</option>
+                                <option value="R">@L("Recibo")</option>
+                                <option value="V">@L("Vale")</option>
+                            </select>
+                        </div>
+                        <div class="campo">
+                            <label for="ccg-proveedor">@(gasto.Tipo switch { "V" => L("Entregado a (opcional)"), "R" => L("Emitido por (opcional)"), _ => L("Proveedor") })</label>
+                            <input id="ccg-proveedor" list="cch-proveedores" maxlength="150" value="@gasto.Proveedor" @onchange="ElegirProveedor" />
+                            <datalist id="cch-proveedores">
+                                @foreach (var p in proveedores)
+                                {
+                                    <option value="@p.PrvNombreComercial">@p.PrvNit</option>
+                                }
+                            </datalist>
+                        </div>
+                        @if (gasto.Tipo is "F" or "P")
+                        {
+                            <div class="campo"><label for="ccg-nit">@L("NIT")</label><input id="ccg-nit" maxlength="20" @bind="gasto.Nit" /></div>
+                            <div class="campo"><label for="ccg-serie">@L("Serie")</label><input id="ccg-serie" maxlength="20" @bind="gasto.Serie" /></div>
+                        }
+                        @if (gasto.Tipo != "V")
+                        {
+                            <div class="campo"><label for="ccg-numero">@L("Número")</label><input id="ccg-numero" maxlength="30" @bind="gasto.Numero" /></div>
+                        }
+                        <div class="campo campo-ancho"><label for="ccg-concepto">@L("Concepto")</label><input id="ccg-concepto" maxlength="250" @bind="gasto.Concepto" /></div>
+                        <div class="campo">
+                            <label for="ccg-cuenta">@L("Cuenta de gasto")</label>
+                            <select id="ccg-cuenta" @bind="gasto.CtaId">
+                                <option value="0">@L("Seleccione...")</option>
+                                @foreach (var c in cuentasGasto)
+                                {
+                                    <option value="@c.CtaId">@c.CtaCodigo — @c.CtaNombre</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="campo">
+                            <label for="ccg-depto">@L("Centro de costo")</label>
+                            <select id="ccg-depto" @bind="gasto.IdDepartamento">
+                                <option value="">@L("(Ninguno)")</option>
+                                @foreach (var d in departamentos)
+                                {
+                                    <option value="@d.IdDepartamento">@d.Descripcion</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="campo">
+                            <label for="ccg-total">@L("Total pagado (Q)")</label>
+                            <input id="ccg-total" type="number" step="0.01" min="0" @bind="gasto.Total" @bind:event="oninput" />
+                            @if (gasto.Tipo == "F" && gasto.Total > 0)
+                            {
+                                <small class="texto-ayuda">@L("IVA incluido (crédito fiscal): Q {0}", IvaIncluido(gasto.Total).ToString("N2"))</small>
+                            }
+                            <small class="texto-ayuda">@L("Disponible: Q {0}", (fondo.Disponible + (gasto.CcgId is null ? 0 : pendientes.FirstOrDefault(p => p.CcgId == gasto.CcgId)?.Total ?? 0)).ToString("N2"))</small>
+                        </div>
+                        <div class="acciones-fila">
+                            <BotonIcono Icono="save" Tooltip="@L("Guardar el gasto")" Etiqueta="@L("Guardar gasto")" Variante="primario" Deshabilitado="guardando" OnClick="GuardarGastoAsync" />
+                            <BotonIcono Icono="x" Tooltip="@L("Cancelar")" Etiqueta="@L("Cancelar")" OnClick="() => gasto = null" />
+                        </div>
+                    </div>
+                }
+
+                @if (pendientes.Count == 0)
+                {
+                    <p class="estado-vacio">@L("No hay gastos sin liquidar.")</p>
+                }
+                else
+                {
+                    <table class="tabla-datos">
+                        <thead>
+                            <tr>
+                                @if (esAdmin)
+                                {
+                                    <th class="col-check"><input type="checkbox" aria-label="@L("Marcar todos")" checked="@(seleccion.Count == pendientes.Count)" @onchange="MarcarTodos" /></th>
+                                }
+                                <th class="col-fecha">@L("Fecha")</th><th class="col-estado">@L("Comprobante")</th><th>@L("Proveedor / concepto")</th><th>@L("Cuenta")</th><th class="num col-monto">@L("IVA")</th><th class="num col-monto">@L("Total")</th><th class="col-acciones">@L("Acciones")</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var g in pendientes)
+                            {
+                                <tr>
+                                    @if (esAdmin)
+                                    {
+                                        <td class="col-check"><input type="checkbox" aria-label="@L("Liquidar el gasto {0}", g.Proveedor ?? g.Concepto)" checked="@seleccion.Contains(g.CcgId!.Value)" @onchange="e => Marcar(g, e)" /></td>
+                                    }
+                                    <td class="col-fecha">@g.Fecha.ToString("dd/MM/yyyy")</td>
+                                    <td class="col-estado">@GastoCajaChica.NombreTipo(g.Tipo)@if (g.Numero is not null) {<br /><span class="texto-tenue">@(g.Serie is null ? "" : g.Serie + "-")@g.Numero</span>}</td>
+                                    <td>@(g.Proveedor ?? L("Sin proveedor"))@(g.Nit is null ? "" : L(" · NIT {0}", g.Nit))<br /><span class="texto-tenue">@g.Concepto</span></td>
+                                    <td>@g.CuentaCodigo @g.CuentaNombre@if (g.Departamento is not null) {<br /><span class="texto-tenue">@g.Departamento</span>}</td>
+                                    <td class="num col-monto">@g.Iva.ToString("N2")</td>
+                                    <td class="num col-monto">@g.Total.ToString("N2")</td>
+                                    <td class="col-acciones">
+                                        <div class="acciones-fila">
+                                            <BotonIcono Icono="pencil" Tooltip="@L("Corregir el gasto")" OnClick="() => EditarGasto(g)" />
+                                            <BotonIcono Icono="ban" Tooltip="@L("Anular el gasto")" Variante="peligro" OnClick="() => IniciarAnulacionGasto(g)" />
+                                        </div>
+                                    </td>
+                                </tr>
+                                @if (anulandoGasto?.CcgId == g.CcgId)
+                                {
+                                    <tr class="fila-subdetalle">
+                                        <td colspan="@(esAdmin ? 8 : 7)">
+                                            <div class="fila-edicion">
+                                                <label for="motivo-gasto">@L("Motivo de la anulación")</label>
+                                                <input id="motivo-gasto" maxlength="250" @bind="motivo" @bind:event="oninput" />
+                                                <BotonIcono Icono="ban" Tooltip="@L("Confirmar anulación")" Etiqueta="@L("Anular gasto")" Variante="peligro" Deshabilitado="motivo.Trim().Length < 5 || guardando" OnClick="AnularGastoAsync" />
+                                                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" OnClick="() => anulandoGasto = null" />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr class="fila-total"><td colspan="@(esAdmin ? 5 : 4)">@L("Total sin liquidar")</td><td class="num">@pendientes.Sum(g => g.Iva).ToString("N2")</td><td class="num">@pendientes.Sum(g => g.Total).ToString("N2")</td><td></td></tr>
+                        </tfoot>
+                    </table>
+                }
+            </section>
+            break;
+
+        case "liquidaciones":
+            <section class="tarjeta" aria-labelledby="titulo-liquidaciones">
+                <h2 id="titulo-liquidaciones">@L("Liquidaciones")</h2>
+                @if (liquidaciones.Count == 0)
+                {
+                    <p class="estado-vacio">@L("El fondo no tiene liquidaciones.")</p>
+                }
+                else
+                {
+                    <table class="tabla-datos">
+                        <thead><tr><th class="col-estado">@L("Número")</th><th class="col-fecha">@L("Fecha")</th><th class="num col-estado">@L("Gastos")</th><th class="num col-monto">@L("IVA")</th><th class="num col-monto">@L("Total")</th><th>@L("Reposición")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr></thead>
+                        <tbody>
+                            @foreach (var l in liquidaciones)
+                            {
+                                <tr>
+                                    <td class="col-estado"><strong>@l.Numero</strong></td>
+                                    <td class="col-fecha">@l.Fecha.ToString("dd/MM/yyyy")</td>
+                                    <td class="num col-estado">@l.Gastos</td>
+                                    <td class="num col-monto">@l.Iva.ToString("N2")</td>
+                                    <td class="num col-monto">@l.Total.ToString("N2")</td>
+                                    <td>@(l.Repuesta ? L("Cheque {0} del {1:dd/MM/yyyy}", l.ChequeReposicion, l.FechaReposicion) : l.Estado == "V" ? L("Pendiente de reponer") : "")</td>
+                                    <td class="col-estado"><span class="estado-badge @(l.Estado == "A" ? "estado-badge-inactivo" : "estado-badge-activo")">@(l.Estado == "A" ? L("Anulada") : l.Repuesta ? L("Repuesta") : L("Por reponer"))</span></td>
+                                    <td class="col-acciones">
+                                        <div class="acciones-fila">
+                                            <a class="boton-icono" href="bancos/caja-chica/liquidacion/@l.LccId/imprimir" target="_blank" title="@L("Imprimir la liquidación")" aria-label="@L("Imprimir la liquidación {0}", l.Numero)"><Icono Nombre="printer" Tamano="16" /></a>
+                                            @if (l.AsiId is not null)
+                                            {
+                                                <a class="boton-icono" href="contabilidad/polizas?id=@l.AsiId" title="@L("Ver la póliza")" aria-label="@L("Ver la póliza de {0}", l.Numero)"><Icono Nombre="book-open" Tamano="16" /></a>
+                                            }
+                                            @if (esAdmin && l.Estado == "V" && !l.Repuesta)
+                                            {
+                                                <BotonIcono Icono="banknote" Tooltip="@L("Emitir el cheque de reposición")" Etiqueta="@L("Reponer")" Variante="primario" OnClick="() => IniciarCheque(TipoReposicion, l)" />
+                                                <BotonIcono Icono="ban" Tooltip="@L("Anular la liquidación (sus gastos vuelven a quedar pendientes)")" Variante="peligro" OnClick="() => IniciarAnulacionLiquidacion(l)" />
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                                @if (anulandoLiquidacion?.LccId == l.LccId)
+                                {
+                                    <tr class="fila-subdetalle">
+                                        <td colspan="8">
+                                            <div class="fila-edicion">
+                                                <label for="motivo-liquidacion">@L("Motivo de la anulación")</label>
+                                                <input id="motivo-liquidacion" maxlength="250" @bind="motivo" @bind:event="oninput" />
+                                                <BotonIcono Icono="ban" Tooltip="@L("Confirmar anulación")" Etiqueta="@L("Anular liquidación")" Variante="peligro" Deshabilitado="motivo.Trim().Length < 5 || guardando" OnClick="AnularLiquidacionAsync" />
+                                                <BotonIcono Icono="x" Tooltip="@L("Cancelar")" OnClick="() => anulandoLiquidacion = null" />
+                                            </div>
+                                            <small class="texto-ayuda">@L("Se anula su póliza y sus gastos vuelven a quedar sin liquidar.")</small>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                }
+            </section>
+            break;
+
+        case "cheques":
+            <section class="tarjeta" aria-labelledby="titulo-cheques">
+                <h2 id="titulo-cheques">@L("Cheques del fondo")</h2>
+                @if (cheques.Count == 0)
+                {
+                    <p class="estado-vacio">@L("Todavía no hay cheques del fondo.")</p>
+                }
+                else
+                {
+                    <table class="tabla-datos">
+                        <thead><tr><th class="col-fecha">@L("Fecha")</th><th class="col-estado">@L("Tipo")</th><th>@L("Cheque")</th><th>@L("Liquidación")</th><th class="num col-monto">@L("Valor")</th><th class="col-estado">@L("Estado")</th></tr></thead>
+                        <tbody>
+                            @foreach (var c in cheques)
+                            {
+                                <tr>
+                                    <td class="col-fecha">@c.Fecha.ToString("dd/MM/yyyy")</td>
+                                    <td class="col-estado">@c.NombreTipo</td>
+                                    <td><strong>@c.Numero</strong><br /><span class="texto-tenue">@c.Cuenta</span></td>
+                                    <td>@c.Liquidacion</td>
+                                    <td class="num col-monto">@c.Monto.ToString("N2")</td>
+                                    <td class="col-estado"><span class="estado-badge @(c.EstadoCheque == "A" ? "estado-badge-inactivo" : "estado-badge-activo")">@(c.EstadoCheque switch { "A" => L("Anulado"), "C" => L("Cobrado"), _ => L("Emitido") })</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <p class="texto-ayuda">@L("Los cheques se anulan en Bancos > Cheques; un cheque anulado deja de contar en el fondo.")</p>
+                }
+            </section>
+            break;
+
+        case "historial":
+            <section class="tarjeta" aria-labelledby="titulo-historial">
+                <h2 id="titulo-historial">@L("Gastos liquidados y anulados")</h2>
+                @if (historial.Count == 0)
+                {
+                    <p class="estado-vacio">@L("No hay gastos liquidados ni anulados.")</p>
+                }
+                else
+                {
+                    <table class="tabla-datos">
+                        <thead><tr><th class="col-fecha">@L("Fecha")</th><th class="col-estado">@L("Comprobante")</th><th>@L("Proveedor / concepto")</th><th>@L("Cuenta")</th><th class="num col-monto">@L("Total")</th><th class="col-estado">@L("Estado")</th></tr></thead>
+                        <tbody>
+                            @foreach (var g in Paginador.Recortar(historial, paginaHistorial))
+                            {
+                                <tr>
+                                    <td class="col-fecha">@g.Fecha.ToString("dd/MM/yyyy")</td>
+                                    <td class="col-estado">@GastoCajaChica.NombreTipo(g.Tipo)@if (g.Numero is not null) {<br /><span class="texto-tenue">@(g.Serie is null ? "" : g.Serie + "-")@g.Numero</span>}</td>
+                                    <td>@(g.Proveedor ?? L("Sin proveedor"))<br /><span class="texto-tenue">@g.Concepto@(g.MotivoAnulacion is null ? "" : L(" · Anulado: {0}", g.MotivoAnulacion))</span></td>
+                                    <td>@g.CuentaCodigo @g.CuentaNombre</td>
+                                    <td class="num col-monto">@g.Total.ToString("N2")</td>
+                                    <td class="col-estado"><span class="estado-badge @(g.Estado == "A" ? "estado-badge-inactivo" : "estado-badge-activo")">@(g.Estado == "A" ? L("Anulado") : g.Liquidacion)</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <Paginador Total="historial.Count" @bind-Pagina="paginaHistorial" />
+                }
+            </section>
+            break;
+
+        case "arqueos":
+            <section class="tarjeta" aria-labelledby="titulo-arqueos">
+                <h2 id="titulo-arqueos">@L("Arqueos")</h2>
+                @if (fondo.EstaConstituido)
+                {
+                    <div class="fila-edicion">
+                        <label for="cch-efectivo">@L("Efectivo contado (Q)")</label>
+                        <input id="cch-efectivo" type="number" step="0.01" min="0" @bind="efectivoArqueo" @bind:event="oninput" />
+                        <label for="cch-obs-arqueo">@L("Observaciones")</label>
+                        <input id="cch-obs-arqueo" maxlength="250" @bind="observacionesArqueo" />
+                        <BotonIcono Icono="calculator" Tooltip="@L("Grabar el arqueo")" Etiqueta="@L("Grabar arqueo")" Variante="primario" Deshabilitado="guardando || efectivoArqueo is null" OnClick="GrabarArqueoAsync" />
+                    </div>
+                    <p class="texto-ayuda">@L("Se compara con el efectivo disponible (Q {0}): fondo menos gastos sin liquidar y liquidaciones por reponer.", fondo.Disponible.ToString("N2"))</p>
+                }
+                @if (arqueos.Count == 0)
+                {
+                    <p class="estado-vacio">@L("No hay arqueos.")</p>
+                }
+                else
+                {
+                    <table class="tabla-datos">
+                        <thead><tr><th>@L("Fecha")</th><th class="num col-monto">@L("Disponible")</th><th class="num col-monto">@L("Contado")</th><th class="num col-monto">@L("Diferencia")</th><th>@L("Observaciones")</th><th>@L("Usuario")</th></tr></thead>
+                        <tbody>
+                            @foreach (var a in arqueos)
+                            {
+                                <tr>
+                                    <td>@a.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td class="num col-monto">@a.Disponible.ToString("N2")</td>
+                                    <td class="num col-monto">@a.Efectivo.ToString("N2")</td>
+                                    <td class="num col-monto @(a.Diferencia < 0 ? "texto-error" : "")">@a.Diferencia.ToString("N2")</td>
+                                    <td>@a.Observaciones</td>
+                                    <td>@a.Usuario</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </section>
+            break;
+    }
+}
+else if (fondos.Count == 0)
+{
+    <p class="estado-vacio">@L("No hay fondos de caja chica. {0}", esAdmin ? L("Cree uno con Nuevo fondo.") : L("Pida al contador que cree uno."))</p>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private const string TipoConstitucion = "C";
+    private const string TipoAumento = "A";
+    private const string TipoReposicion = "R";
+
+    private static readonly IReadOnlyList<PestanaItem> Pestanas = new[]
+    {
+        new PestanaItem("gastos", "Gastos sin liquidar"), new PestanaItem("liquidaciones", "Liquidaciones"),
+        new PestanaItem("historial", "Historial de gastos"), new PestanaItem("cheques", "Cheques"), new PestanaItem("arqueos", "Arqueos")
+    };
+
+    private IReadOnlyList<FondoCajaChica> fondos = Array.Empty<FondoCajaChica>();
+    private FondoCajaChica? fondo;
+    private FondoCajaChica? edicionFondo;
+    private IReadOnlyList<SucursalDetalle> sucursales = Array.Empty<SucursalDetalle>();
+    private IReadOnlyList<CuentaContable> cuentasGasto = Array.Empty<CuentaContable>();
+    private IReadOnlyList<CuentaContable> cuentasActivo = Array.Empty<CuentaContable>();
+    private IReadOnlyList<Departamento> departamentos = Array.Empty<Departamento>();
+    private IReadOnlyList<Proveedor> proveedores = Array.Empty<Proveedor>();
+    private IReadOnlyList<Chequera> chequeras = Array.Empty<Chequera>();
+    private IReadOnlyList<GastoCajaChica> pendientes = Array.Empty<GastoCajaChica>();
+    private IReadOnlyList<GastoCajaChica> historial = Array.Empty<GastoCajaChica>();
+    private IReadOnlyList<LiquidacionCajaChica> liquidaciones = Array.Empty<LiquidacionCajaChica>();
+    private IReadOnlyList<ChequeCajaChica> cheques = Array.Empty<ChequeCajaChica>();
+    private IReadOnlyList<ArqueoCajaChica> arqueos = Array.Empty<ArqueoCajaChica>();
+    private readonly HashSet<int> seleccion = new();
+    private string pestana = "gastos";
+    private int paginaHistorial = 1;
+    private GastoCajaChica? gasto;
+    private GastoCajaChica? anulandoGasto;
+    private LiquidacionCajaChica? anulandoLiquidacion;
+    private ChequeCaptura? cheque;
+    private string motivo = "";
+    private decimal? efectivoArqueo;
+    private string? observacionesArqueo;
+    private decimal tasaIva = 12m;
+    private bool esAdmin;
+    private bool guardando;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private sealed class ChequeCaptura
+    {
+        public string Tipo { get; set; } = TipoConstitucion;
+        public string Titulo { get; set; } = "";
+        public int CbcId { get; set; }
+        public string? Numero { get; set; }
+        public DateTime Fecha { get; set; } = DateTime.Today;
+        public decimal Monto { get; set; }
+        public int? LccId { get; set; }
+    }
+
+    private List<GastoCajaChica> Seleccion => pendientes.Where(g => seleccion.Contains(g.CcgId!.Value)).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (AuthenticationStateTask is not null)
+            {
+                var usuario = (await AuthenticationStateTask).User;
+                esAdmin = (await Autorizacion.AuthorizeAsync(usuario, "Permiso:CAJA_CHICA_ADMIN")).Succeeded;
+                tasaIva = (await GeneralRepository.ConsultarParametrosAsync(usuario.ObtenerSucId())).CiaPorcIva;
+            }
+            var cuentas = await GeneralRepository.ConsultarCuentasContablesAsync();
+            cuentasGasto = cuentas.Where(c => c.CtaAceptaMovimiento && c.CtaEstado == "A" && c.CtaTipo is "G" or "A").OrderBy(c => c.CtaTipo == "G" ? 0 : 1).ThenBy(c => c.CtaCodigo).ToList();
+            cuentasActivo = cuentas.Where(c => c.CtaAceptaMovimiento && c.CtaEstado == "A" && c.CtaTipo == "A" && c.CtaCodigo.StartsWith("11")).OrderBy(c => c.CtaCodigo).ToList();
+            sucursales = await GeneralRepository.ConsultarSucursalesAsync(null, soloActivas: true);
+            departamentos = await RrhhRepository.ConsultarDepartamentosAsync(soloActivos: true);
+            proveedores = await ProveedorRepository.ConsultarAsync(null, "A");
+            await CargarFondosAsync(null);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private void MostrarOk(string texto)
+    {
+        mensaje = texto;
+        esMensajeError = false;
+    }
+
+    private decimal IvaIncluido(decimal total) => Math.Round(total * tasaIva / (100 + tasaIva), 2, MidpointRounding.AwayFromZero);
+
+    private async Task CargarFondosAsync(int? cchId)
+    {
+        fondos = await CajaChicaRepository.ConsultarFondosAsync(null, soloActivos: false);
+        fondo = fondos.FirstOrDefault(f => f.CchId == (cchId ?? fondo?.CchId)) ?? fondos.FirstOrDefault(f => f.Estado == "A") ?? fondos.FirstOrDefault();
+        await CargarDetalleAsync();
+    }
+
+    private async Task CargarDetalleAsync()
+    {
+        seleccion.Clear();
+        if (fondo is null) return;
+        var gastos = await CajaChicaRepository.ConsultarGastosAsync(fondo.CchId, null, null);
+        pendientes = gastos.Where(g => g.Estado == "P").ToList();
+        historial = gastos.Where(g => g.Estado != "P").ToList();
+        foreach (var g in pendientes) seleccion.Add(g.CcgId!.Value);
+        liquidaciones = await CajaChicaRepository.ConsultarLiquidacionesAsync(fondo.CchId, null);
+        cheques = await CajaChicaRepository.ConsultarChequesAsync(fondo.CchId);
+        arqueos = await CajaChicaRepository.ConsultarArqueosAsync(fondo.CchId);
+    }
+
+    private async Task ElegirFondoAsync(ChangeEventArgs e)
+    {
+        mensaje = null;
+        gasto = null;
+        cheque = null;
+        edicionFondo = null;
+        try
+        {
+            fondo = fondos.FirstOrDefault(f => f.CchId.ToString() == e.Value?.ToString());
+            await CargarDetalleAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void NuevoFondo()
+    {
+        mensaje = null;
+        edicionFondo = new FondoCajaChica { SucId = sucursales.FirstOrDefault()?.SucId ?? 0, MontoAutorizado = 2000 };
+    }
+
+    private void EditarFondo()
+    {
+        if (fondo is null) return;
+        mensaje = null;
+        edicionFondo = new FondoCajaChica
+        {
+            CchId = fondo.CchId, Codigo = fondo.Codigo, Nombre = fondo.Nombre, SucId = fondo.SucId, Responsable = fondo.Responsable,
+            MontoAutorizado = fondo.MontoAutorizado, CtaId = fondo.CtaId, Estado = fondo.Estado, Constituido = fondo.Constituido
+        };
+    }
+
+    private async Task GuardarFondoAsync()
+    {
+        if (edicionFondo is null) return;
+        guardando = true;
+        try
+        {
+            var id = await CajaChicaRepository.GuardarFondoAsync(edicionFondo, await ObtenerUsuIdActualAsync());
+            MostrarOk(edicionFondo.CchId == 0 ? L("Fondo creado. Emita el cheque de constitución para empezar a usarlo.") : L("Fondo guardado."));
+            edicionFondo = null;
+            await CargarFondosAsync(id);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task IniciarCheque(string tipo, LiquidacionCajaChica? liquidacion)
+    {
+        if (fondo is null) return;
+        mensaje = null;
+        try
+        {
+            chequeras = (await BancosRepository.ConsultarChequerasAsync(null, soloActivas: true)).Where(q => q.Disponibles > 0).ToList();
+            var chequera = chequeras.FirstOrDefault();
+            cheque = new ChequeCaptura
+            {
+                Tipo = tipo,
+                Titulo = tipo switch
+                {
+                    TipoConstitucion => L("Cheque de constitución del fondo"),
+                    TipoAumento => L("Cheque de aumento del fondo"),
+                    _ => L("Cheque de reposición de la liquidación {0}", liquidacion?.Numero)
+                },
+                CbcId = chequera?.CbcId ?? 0,
+                Numero = chequera?.Siguiente?.ToString(),
+                Monto = tipo switch { TipoConstitucion => fondo.MontoAutorizado, TipoReposicion => liquidacion?.Total ?? 0, _ => 0 },
+                LccId = liquidacion?.LccId
+            };
+            if (tipo == TipoReposicion) pestana = "liquidaciones";
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void CambiarChequera(ChangeEventArgs e)
+    {
+        if (cheque is null) return;
+        cheque.CbcId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        cheque.Numero = chequeras.FirstOrDefault(q => q.CbcId == cheque.CbcId)?.Siguiente?.ToString();
+    }
+
+    private async Task EmitirChequeAsync()
+    {
+        if (fondo is null || cheque is null) return;
+        guardando = true;
+        try
+        {
+            await CajaChicaRepository.EmitirChequeAsync(fondo.CchId, cheque.Tipo, cheque.CbcId, cheque.Numero, cheque.Fecha,
+                cheque.Tipo == TipoAumento ? cheque.Monto : null, cheque.LccId, await ObtenerUsuIdActualAsync());
+            MostrarOk(L("Cheque {0} emitido a {1} con su póliza.", cheque.Numero, fondo.Responsable));
+            cheque = null;
+            await CargarFondosAsync(fondo.CchId);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private void NuevoGasto()
+    {
+        if (fondo is null) return;
+        mensaje = null;
+        gasto = new GastoCajaChica { CchId = fondo.CchId };
+    }
+
+    private void EditarGasto(GastoCajaChica g)
+    {
+        mensaje = null;
+        gasto = new GastoCajaChica
+        {
+            CcgId = g.CcgId, CchId = g.CchId, Fecha = g.Fecha, Tipo = g.Tipo, PrvId = g.PrvId, Nit = g.Nit, Proveedor = g.Proveedor, Serie = g.Serie,
+            Numero = g.Numero, Concepto = g.Concepto, CtaId = g.CtaId, IdDepartamento = g.IdDepartamento, Total = g.Total
+        };
+        gastoOriginal = System.Text.Json.JsonSerializer.Serialize(gasto);
+    }
+
+    private void ElegirProveedor(ChangeEventArgs e)
+    {
+        if (gasto is null) return;
+        gasto.Proveedor = e.Value?.ToString() ?? "";
+        var proveedor = proveedores.FirstOrDefault(p => string.Equals(p.PrvNombreComercial, (gasto.Proveedor ?? "").Trim(), StringComparison.OrdinalIgnoreCase));
+        gasto.PrvId = proveedor?.PrvId;
+        if (proveedor?.PrvNit is not null && string.IsNullOrWhiteSpace(gasto.Nit)) gasto.Nit = proveedor.PrvNit;
+    }
+
+    // ---- Borrador: el vale, recibo o factura en captura se conserva al salir ----
+    private sealed record BorradorGasto(GastoCajaChica Gasto, string Fondo);
+
+    // Al corregir un gasto, lo que tenía al abrirlo: sin cambios no hay borrador.
+    private string? gastoOriginal;
+
+    private BorradorGasto? CapturarBorrador()
+    {
+        if (gasto is null || fondo is null) return null;
+        if (gasto.CcgId is null && string.IsNullOrWhiteSpace(gasto.Concepto) && gasto.Total == 0
+            && string.IsNullOrWhiteSpace(gasto.Proveedor) && string.IsNullOrWhiteSpace(gasto.Numero)) return null;
+        if (gasto.CcgId is not null && System.Text.Json.JsonSerializer.Serialize(gasto) == gastoOriginal) return null;
+        return new BorradorGasto(gasto, fondo.Nombre);
+    }
+
+    private static string DescribirBorrador(BorradorGasto b) =>
+        L("{0} del fondo {1}", GastoCajaChica.NombreTipo(b.Gasto.Tipo).ToLowerInvariant(), b.Fondo)
+        + (string.IsNullOrWhiteSpace(b.Gasto.Concepto) ? "" : $", {b.Gasto.Concepto.Trim()}") + $", Q {b.Gasto.Total:N2}";
+
+    private async Task RestaurarBorradorAsync(BorradorGasto b)
+    {
+        var deFondo = fondos.FirstOrDefault(f => f.CchId == b.Gasto.CchId && f.Estado == "A");
+        if (deFondo is null)
+        {
+            mensaje = L("El fondo {0} ya no está activo: el gasto sin terminar no se puede recuperar.", b.Fondo);
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            if (fondo?.CchId != deFondo.CchId) { fondo = deFondo; await CargarDetalleAsync(); }
+        }
+        catch (Exception ex) { MostrarError(ex); return; }
+        cheque = null;
+        edicionFondo = null;
+        pestana = "gastos";
+        gasto = b.Gasto;
+        if (cuentasGasto.All(c => c.CtaId != gasto.CtaId)) gasto.CtaId = 0;
+        gastoOriginal = null;
+        MostrarOk(L("Se recuperó el gasto sin terminar. Revíselo antes de guardar."));
+    }
+
+    private async Task GuardarGastoAsync()
+    {
+        if (gasto is null || fondo is null) return;
+        var sinProveedor = gasto.Tipo is "F" or "P" && string.IsNullOrWhiteSpace(gasto.Proveedor);
+        if (gasto.CtaId == 0 || gasto.Total <= 0 || sinProveedor || string.IsNullOrWhiteSpace(gasto.Concepto))
+        {
+            mensaje = sinProveedor ? L("Para una factura indique el proveedor, además del concepto, la cuenta de gasto y el total.")
+                                   : L("Complete el concepto, la cuenta de gasto y el total.");
+            esMensajeError = true;
+            return;
+        }
+        guardando = true;
+        try
+        {
+            if (gasto.Tipo == "V") { gasto.Nit = null; gasto.Serie = null; gasto.Numero = null; }
+            if (gasto.Tipo == "R") { gasto.Serie = null; }
+            if (gasto.Tipo is "R" or "V" && string.IsNullOrWhiteSpace(gasto.Proveedor)) { gasto.Proveedor = null; gasto.PrvId = null; }
+            await CajaChicaRepository.GuardarGastoAsync(gasto, await ObtenerUsuIdActualAsync());
+            MostrarOk(L("Gasto de Q {0:N2} registrado.", gasto.Total));
+            gasto = null;
+            await CargarFondosAsync(fondo.CchId);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private void Marcar(GastoCajaChica g, ChangeEventArgs e)
+    {
+        if (e.Value is true) seleccion.Add(g.CcgId!.Value); else seleccion.Remove(g.CcgId!.Value);
+    }
+
+    private void MarcarTodos(ChangeEventArgs e)
+    {
+        seleccion.Clear();
+        if (e.Value is true) foreach (var g in pendientes) seleccion.Add(g.CcgId!.Value);
+    }
+
+    private void IniciarAnulacionGasto(GastoCajaChica g)
+    {
+        anulandoGasto = g;
+        motivo = "";
+    }
+
+    private async Task AnularGastoAsync()
+    {
+        if (anulandoGasto is null || fondo is null) return;
+        guardando = true;
+        try
+        {
+            await CajaChicaRepository.AnularGastoAsync(anulandoGasto.CcgId!.Value, motivo.Trim(), await ObtenerUsuIdActualAsync());
+            MostrarOk(L("Gasto anulado; su monto vuelve al disponible."));
+            anulandoGasto = null;
+            await CargarFondosAsync(fondo.CchId);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task LiquidarAsync()
+    {
+        if (fondo is null || seleccion.Count == 0) return;
+        guardando = true;
+        try
+        {
+            var fecha = Seleccion.Max(g => g.Fecha) > DateTime.Today ? Seleccion.Max(g => g.Fecha) : DateTime.Today;
+            var (_, numero) = await CajaChicaRepository.LiquidarAsync(fondo.CchId, fecha, seleccion.ToList(), await ObtenerUsuIdActualAsync());
+            MostrarOk(L("Liquidación {0} grabada con su póliza. Emita el cheque de reposición en la pestaña Liquidaciones.", numero));
+            await CargarFondosAsync(fondo.CchId);
+            pestana = "liquidaciones";
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private void IniciarAnulacionLiquidacion(LiquidacionCajaChica l)
+    {
+        anulandoLiquidacion = l;
+        motivo = "";
+    }
+
+    private async Task AnularLiquidacionAsync()
+    {
+        if (anulandoLiquidacion is null || fondo is null) return;
+        guardando = true;
+        try
+        {
+            await CajaChicaRepository.AnularLiquidacionAsync(anulandoLiquidacion.LccId, motivo.Trim(), await ObtenerUsuIdActualAsync());
+            MostrarOk(L("Liquidación {0} anulada; sus gastos vuelven a quedar sin liquidar.", anulandoLiquidacion.Numero));
+            anulandoLiquidacion = null;
+            await CargarFondosAsync(fondo.CchId);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private async Task GrabarArqueoAsync()
+    {
+        if (fondo is null || efectivoArqueo is null) return;
+        guardando = true;
+        try
+        {
+            var diferencia = await CajaChicaRepository.GrabarArqueoAsync(fondo.CchId, efectivoArqueo.Value, observacionesArqueo, await ObtenerUsuIdActualAsync());
+            MostrarOk(diferencia == 0 ? L("Arqueo grabado: el efectivo cuadra.") : L("Arqueo grabado con {0} de Q {1:N2}.", (diferencia < 0 ? L("faltante") : L("sobrante")), Math.Abs(diferencia)));
+            efectivoArqueo = null;
+            observacionesArqueo = null;
+            await CargarFondosAsync(fondo.CchId);
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+}
