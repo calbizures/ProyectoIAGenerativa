@@ -898,6 +898,8 @@
     private readonly List<FormaPagoCaptura> formasPagoCapturadas = new();
     private readonly FormaPagoCaptura formaPagoNueva = new();
     private int pcaIdFactura;
+    // Monto desde el que una factura no se emite a consumidor final (parámetro FEL de la compañía).
+    private decimal? montoMaximoCf;
     // Vuelto: si la caja lo calcula, lo que entrega el cliente en efectivo.
     private decimal? efectivoRecibido;
     private bool CajaCalculaVuelto => cajasAbiertasSucursal.FirstOrDefault(c => c.PcaId == pcaIdFactura)?.PcrCalculaVuelto == true;
@@ -923,6 +925,8 @@
         PorcentajeIva = parametrosCompania.CiaPorcIva;
         ciaIdSesion = parametrosCompania.CiaId;
         sucIdSesion = sucIdParametros;
+        try { montoMaximoCf = await FelRepository.ConsultarLimiteCfAsync(parametrosCompania.CiaId); }
+        catch (Exception ex) { Log.LogWarning(ex, "No se leyó el monto máximo para consumidor final"); }
         monedas = await FacturaRepository.ConsultarMonedasAsync();
         bodegas = await BodegaRepository.ConsultarAsync(sucId: null, estado: "A");
         unidadesMedida = await BodegaRepository.ConsultarUnidadesAsync(soloActivas: false);
@@ -1605,6 +1609,15 @@
         {
             mensaje = L("Debe agregar al menos una línea (producto o servicio).");
             esMensajeError = true;
+            return;
+        }
+
+        // Regla de SAT: desde este monto el comprador se identifica con NIT o CUI.
+        if (montoMaximoCf is decimal maximoCf && Total >= maximoCf && Erp.Web.Fel.FelXmlBuilder.EsConsumidorFinal(nuevaFactura.Nit))
+        {
+            mensaje = L("Una factura de Q{0:N2} o más no se emite a consumidor final: ingrese el NIT o el CUI del comprador.", maximoCf);
+            esMensajeError = true;
+            enfocarNit = true;
             return;
         }
 

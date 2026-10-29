@@ -470,5 +470,8 @@
   "Billetes": "Bills",
   "Exacto": "Exact",
   "Efectivo a cobrar": "Cash due",
-  "Vuelto": "Change"
+  "Vuelto": "Change",
+  "Una factura de Q{0:N2} o más no se emite a consumidor final: ingrese el NIT o el CUI del comprador.": "An invoice of Q{0:N2} or more cannot be issued to a final consumer (CF): enter the buyer NIT or CUI.",
+  "Monto desde el que se exige NIT o CUI (Q)": "Amount from which NIT or CUI is required (Q)",
+  "Una factura por este monto o más no se emite a CF (regla de SAT). Vacío: sin límite.": "An invoice of this amount or more cannot be issued to CF (SAT rule). Empty: no limit."
 }

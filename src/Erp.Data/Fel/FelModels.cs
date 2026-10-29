@@ -91,7 +91,21 @@ public sealed class FelAbono
 }
 
 public sealed record FelDocumentoDatos(FelEncabezado Encabezado, IReadOnlyList<FelItem> Items,
-	IReadOnlyList<FelFraseDocumento> Frases, IReadOnlyList<FelAbono> Abonos);
+	IReadOnlyList<FelFraseDocumento> Frases, IReadOnlyList<FelAbono> Abonos)
+{
+	// Datos internos que van en la Adenda del DTE (no afectan su validez).
+	public FelAdenda? Adenda { get; init; }
+	// Monto desde el que una factura a Consumidor final no se acepta (NULL: sin límite).
+	public decimal? MontoMaximoCf { get; init; }
+}
+
+public sealed class FelAdenda
+{
+	public string? NumeroInterno { get; set; }
+	public string? Sucursal { get; set; }
+	public string? Vendedor { get; set; }
+	public string? Usuario { get; set; }
+}
 
 // Resultado de una certificación o anulación que se guarda en fel_documento.
 public sealed class FelResultado

@@ -35,8 +35,19 @@ public sealed class FelRepository(IDbConnectionFactory connectionFactory) : IFel
 		var items = (await lector.ReadAsync<FelItem>()).ToList();
 		var frases = (await lector.ReadAsync<FelFraseDocumento>()).ToList();
 		var abonos = (await lector.ReadAsync<FelAbono>()).ToList();
-		return new FelDocumentoDatos(encabezado, items, frases, abonos);
+		var adenda = await connection.QueryFirstOrDefaultAsync<FelAdenda>("dbo.paFelAdendaConsultar", new { EncId = encId }, commandType: CommandType.StoredProcedure);
+		var limite = await connection.QueryFirstOrDefaultAsync<decimal?>("dbo.paFelLimiteCfConsultar", new { encabezado.CiaId }, commandType: CommandType.StoredProcedure);
+		return new FelDocumentoDatos(encabezado, items, frases, abonos) { Adenda = adenda, MontoMaximoCf = limite };
 	}
+
+	public async Task<decimal?> ConsultarLimiteCfAsync(int ciaId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		return await connection.QueryFirstOrDefaultAsync<decimal?>("dbo.paFelLimiteCfConsultar", new { CiaId = ciaId }, commandType: CommandType.StoredProcedure);
+	}
+
+	public Task GuardarLimiteCfAsync(int ciaId, decimal? montoMaximo, int? usuarioAccionId) =>
+		EjecutarAsync("dbo.paFelLimiteCfGuardar", new { CiaId = ciaId, MontoMaximoCf = montoMaximo, UsuId = usuarioAccionId });
 
 	public Task RegistrarResultadoAsync(FelResultado r, int? usuarioAccionId) =>
 		EjecutarAsync("dbo.paFelResultadoRegistrar", new

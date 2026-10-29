@@ -27,6 +27,21 @@ public static class FelXmlBuilder
 		!string.IsNullOrEmpty(e.TipoEspecial) ? e.TipoEspecial
 		: Erp.Data.General.NitValidador.EsCui(e.IdReceptor) && Erp.Data.General.NitValidador.EsCuiValido(e.IdReceptor) ? "CUI" : null;
 
+	// "CF" (o "C/F"): consumidor final, sin NIT.
+	public static bool EsConsumidorFinal(string? idReceptor) =>
+		string.IsNullOrWhiteSpace(idReceptor) || idReceptor.Trim().ToUpperInvariant() is "CF" or "C/F";
+
+	// Largos máximos del esquema de SAT: un texto más largo hace rechazar el DTE.
+	private const int LargoDescripcion = 500;
+	private const int LargoNombre = 255;
+	private const int LargoDireccion = 255;
+	private const int LargoLugar = 100;
+	private static string Texto(string? valor, int largo)
+	{
+		var texto = (valor ?? "").Trim();
+		return texto.Length <= largo ? texto : texto[..largo].TrimEnd();
+	}
+
 	public static string FechaHora(DateTime valor) => valor.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture) + ZonaHoraria;
 	private static string Fecha(DateTime valor) => valor.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
@@ -60,26 +75,28 @@ public static class FelXmlBuilder
 			new XAttribute("CodigoEstablecimiento", e.CodigoEstablecimiento ?? 1),
 			string.IsNullOrWhiteSpace(e.CorreoEmisor) ? null : new XAttribute("CorreoEmisor", e.CorreoEmisor),
 			new XAttribute("NITEmisor", e.NitEmisor),
-			new XAttribute("NombreComercial", e.NombreComercial),
-			new XAttribute("NombreEmisor", e.NombreEmisor),
+			new XAttribute("NombreComercial", Texto(e.NombreComercial, LargoNombre)),
+			new XAttribute("NombreEmisor", Texto(e.NombreEmisor, LargoNombre)),
 			Direccion(dte, "DireccionEmisor", e.DireccionEmisor ?? "Ciudad", e.CodigoPostalEmisor, e.MunicipioEmisor ?? "Guatemala",
 				e.DepartamentoEmisor ?? "Guatemala", e.PaisEmisor));
 
 		var receptor = new XElement(dte + "Receptor",
 			string.IsNullOrWhiteSpace(e.CorreoReceptor) ? null : new XAttribute("CorreoReceptor", e.CorreoReceptor),
 			new XAttribute("IDReceptor", e.IdReceptor),
-			new XAttribute("NombreReceptor", string.IsNullOrWhiteSpace(e.NombreReceptor) ? "Consumidor final" : e.NombreReceptor),
+			new XAttribute("NombreReceptor", string.IsNullOrWhiteSpace(e.NombreReceptor) ? "Consumidor final" : Texto(e.NombreReceptor, LargoNombre)),
 			TipoEspecial(e) is { } tipoEspecial ? new XAttribute("TipoEspecial", tipoEspecial) : null,
 			Direccion(dte, "DireccionReceptor", e.DireccionReceptor, e.CodigoPostalReceptor, e.MunicipioReceptor, e.DepartamentoReceptor, e.PaisReceptor));
 
-		var frases = datos.Frases.Where(f => !esNota || f.AplicaNotas).ToList();
+		// Las frases de exención (tipo 4) solo van si hay líneas exentas.
+		var hayExentas = lineas.Any(l => l.Exenta);
+		var frases = datos.Frases.Where(f => (!esNota || f.AplicaNotas) && (f.TipoFrase != TipoFraseExencion || hayExentas)).ToList();
 
 		var items = new XElement(dte + "Items", lineas.Select(l => new XElement(dte + "Item",
 			new XAttribute("BienOServicio", l.Item.BienOServicio),
 			new XAttribute("NumeroLinea", l.Item.NumeroLinea),
 			new XElement(dte + "Cantidad", Cantidad(l.Item.Cantidad)),
 			new XElement(dte + "UnidadMedida", l.Item.UnidadMedida),
-			new XElement(dte + "Descripcion", l.Item.Descripcion),
+			new XElement(dte + "Descripcion", Texto(l.Item.Descripcion, LargoDescripcion)),
 			new XElement(dte + "PrecioUnitario", Precio(l.PrecioUnitario)),
 			new XElement(dte + "Precio", Monto(l.Precio)),
 			new XElement(dte + "Descuento", Monto(l.Descuento)),
@@ -148,7 +165,8 @@ public static class FelXmlBuilder
 								new XAttribute("TipoFrase", f.TipoFrase)))),
 							items,
 							totales,
-							complementos)))));
+							complementos)),
+					Adenda(dte, datos.Adenda))));
 
 		return Serializar(documento);
 	}
@@ -175,12 +193,27 @@ public static class FelXmlBuilder
 		return Serializar(documento);
 	}
 
+	public const int TipoFraseExencion = 4;
+
+	// Datos internos del documento (no los valida SAT; el certificador los conserva).
+	private static XElement? Adenda(XNamespace dte, FelAdenda? adenda)
+	{
+		if (adenda is null) return null;
+		var datos = new[]
+		{
+			("NumeroInterno", adenda.NumeroInterno), ("Sucursal", adenda.Sucursal),
+			("Vendedor", adenda.Vendedor), ("Usuario", adenda.Usuario)
+		}.Where(d => !string.IsNullOrWhiteSpace(d.Item2)).ToList();
+		return datos.Count == 0 ? null
+			: new XElement(dte + "Adenda", datos.Select(d => new XElement(d.Item1, Texto(d.Item2, LargoNombre))));
+	}
+
 	private static XElement Direccion(XNamespace dte, string nombre, string direccion, string codigoPostal, string municipio, string departamento, string pais) =>
 		new(dte + nombre,
-			new XElement(dte + "Direccion", direccion),
+			new XElement(dte + "Direccion", Texto(direccion, LargoDireccion)),
 			new XElement(dte + "CodigoPostal", codigoPostal),
-			new XElement(dte + "Municipio", municipio),
-			new XElement(dte + "Departamento", departamento),
+			new XElement(dte + "Municipio", Texto(municipio, LargoLugar)),
+			new XElement(dte + "Departamento", Texto(departamento, LargoLugar)),
 			new XElement(dte + "Pais", pais));
 
 	private static string Serializar(XDocument documento)

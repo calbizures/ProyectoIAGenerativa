@@ -608,5 +608,8 @@
   "La tolerancia va de 0 a 31 días y los días para revisar, de 1 a 365.": "The tolerance goes from 0 to 31 days and the review days from 1 to 365.",
   "Aplicar los ajustes del inventario físico requiere el permiso de supervisar (INVENTARIO_FISICO_SUPERVISAR).": "Applying the physical count adjustments requires the supervise permission (INVENTARIO_FISICO_SUPERVISAR).",
   "Anular una toma ya aplicada (revierte ajustes y pólizas) requiere el permiso de supervisar (INVENTARIO_FISICO_SUPERVISAR).": "Voiding an applied count (reverses adjustments and journal entries) requires the supervise permission (INVENTARIO_FISICO_SUPERVISAR).",
-  "Inventario físico: ver existencia, diferencias y costos, aplicar los ajustes y anular tomas aplicadas": "Physical count: see stock, differences and costs, apply adjustments and void applied counts"
+  "Inventario físico: ver existencia, diferencias y costos, aplicar los ajustes y anular tomas aplicadas": "Physical count: see stock, differences and costs, apply adjustments and void applied counts",
+  "Una factura de Q{0} o más no se emite a consumidor final: identifique al comprador con su NIT o CUI.": "An invoice of Q{0} or more cannot be issued to a final consumer: identify the buyer with their NIT or CUI.",
+  "La factura tiene líneas exentas de IVA: configure la frase de exención (tipo 4) en Factura electrónica › Frases.": "The invoice has VAT-exempt lines: set up the exemption phrase (type 4) in Electronic invoicing › Phrases.",
+  "El monto máximo para consumidor final debe ser mayor a cero (o vacío, sin límite).": "The maximum amount for a final consumer must be greater than zero (or empty, no limit)."
 }

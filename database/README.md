@@ -95,30 +95,31 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 78_vuelto_efectivo.sql                        -- efectivo recibido y vuelto por caja
 79_conciliacion_mejoras.sql                   -- conciliación: clasificar, antigüedad, emparejar en grupo, parámetros
 80_inventario_fisico_supervisar.sql           -- inventario físico: conteo a ciegas y permiso de supervisar
+81_fel_validaciones_adenda.sql                -- FEL: consumidor final hasta un monto, exención, largos y Adenda
 ```
 
 **Instalación de una sola vez:** después de crear la base con
-`00_crear_base_datos.sql`, el archivo `instalar_01_al_80.sql` corre en orden
-del `01` al `80` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
+`00_crear_base_datos.sql`, el archivo `instalar_01_al_81.sql` corre en orden
+del `01` al `81` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
 active *Consulta › Modo SQLCMD*, cambie la ruta de la línea `:setvar RUTA` por la
 carpeta de los scripts y ejecútelo; desde la línea de comandos:
-`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_80.sql -o instalacion.log`.
+`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_81.sql -o instalacion.log`.
 Se detiene en el primer error y muestra en qué script ocurrió. Incluye los
 datos de prueba, así que es para una base nueva, no para una con datos reales.
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `80` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `81` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `80` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `81` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `paCajaCerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `80`. Si vuelves a
-correr `12`, corre después `22` a `80` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `81`. Si vuelves a
+correr `12`, corre después `22` a `81` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -2181,6 +2182,20 @@ descuadraba los ajustes. Ahora:
 
 Las tomas abiertas antes de este script quedan sin foto (`tfi_usa_foto = 0`):
 se aplican como antes y no bloquean la bodega.
+
+### Factura electrónica: validaciones y Adenda (`81`)
+
+- **Consumidor final hasta un monto**: `gen_compania.cia_fel_cf_monto_maximo`
+  (por omisión Q2,500.00; vacío = sin límite; se cambia en Factura
+  electrónica › Configuración). Una factura a CF por ese monto o más no se
+  graba ni se envía al certificador: se pide el NIT o el CUI del comprador.
+- **Frase de exención**: las frases tipo 4 solo van en el DTE cuando tiene
+  líneas exentas, y una factura con líneas exentas exige tener configurada
+  una frase tipo 4.
+- **Largos de SAT**: descripción (500), nombres y dirección (255), municipio y
+  departamento (100) se recortan al armar el XML.
+- **Adenda**: número interno, sucursal, vendedor y usuario del documento en
+  `<dte:Adenda>` (`paFelAdendaConsultar`); no afecta la validez del DTE.
 
 ### Conteo a ciegas y permiso de supervisar (`80`)
 

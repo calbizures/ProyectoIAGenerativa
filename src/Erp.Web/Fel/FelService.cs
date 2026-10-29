@@ -85,6 +85,11 @@ public sealed class FelService(IFelRepository repositorio, IEnumerable<IFelCerti
 		else if (datos.Items.Count == 0) problema = "El documento no tiene líneas.";
 		else if (tipoDte is "NCRE" or "NDEB" && string.IsNullOrEmpty(e.OrigenUuid))
 			problema = "La factura de origen de esta nota no está certificada; certifíquela primero.";
+		else if (tipoDte is not ("NCRE" or "NDEB") && FelXmlBuilder.EsConsumidorFinal(e.IdReceptor)
+				&& datos.MontoMaximoCf is decimal maximo && e.MontoTotal >= maximo)
+			problema = $"Una factura de Q{maximo:N2} o más no se emite a consumidor final: identifique al comprador con su NIT o CUI.";
+		else if (datos.Items.Any(i => i.PorcIva <= 0) && !datos.Frases.Any(f => f.TipoFrase == FelXmlBuilder.TipoFraseExencion))
+			problema = "La factura tiene líneas exentas de IVA: configure la frase de exención (tipo 4) en Factura electrónica › Frases.";
 
 		string? xml = null;
 		if (problema is null)

@@ -13,6 +13,8 @@ public interface IFelRepository
 	Task<FelConsultaNitConfiguracion?> ConsultarConsultaNitAsync(int ciaId);
 	Task GuardarConsultaNitAsync(int ciaId, bool activa, string? urlPropia, int? usuarioAccionId);
 	Task GuardarConfiguracionAsync(FelConfiguracion configuracion, int? usuarioAccionId);
+	Task<decimal?> ConsultarLimiteCfAsync(int ciaId);
+	Task GuardarLimiteCfAsync(int ciaId, decimal? montoMaximo, int? usuarioAccionId);
 	Task<IReadOnlyList<FelFrase>> ConsultarFrasesAsync(int ciaId);
 	Task GuardarFraseAsync(FelFrase frase, int? usuarioAccionId);
 	Task EliminarFraseAsync(int ffrId);

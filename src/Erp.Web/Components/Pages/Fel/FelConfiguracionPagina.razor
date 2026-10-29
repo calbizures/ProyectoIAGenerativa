@@ -83,6 +83,14 @@
             </div>
             <div class="campo"><label for="e-cor">@L("Correo del emisor")</label><input id="e-cor" type="email" @bind="config.CorreoEmisor" maxlength="128" /></div>
         </div>
+        <h3>@L("Consumidor final")</h3>
+        <div class="panel-formulario panel-ancho fel-formulario">
+            <div class="campo">
+                <label for="cf-maximo">@L("Monto desde el que se exige NIT o CUI (Q)")</label>
+                <input id="cf-maximo" type="number" min="0" step="0.01" @bind="montoMaximoCf" />
+                <small class="texto-ayuda">@L("Una factura por este monto o más no se emite a CF (regla de SAT). Vacío: sin límite.")</small>
+            </div>
+        </div>
         <h3>@L("Receptor por defecto")</h3>
         <p class="texto-ayuda">@L("Se usa cuando el cliente no tiene dirección, código postal, municipio o departamento.")</p>
         <div class="panel-formulario panel-ancho fel-formulario">
@@ -338,6 +346,7 @@ else if (pestana == "unidades")
     private IReadOnlyList<Compania> companias = Array.Empty<Compania>();
     private int ciaId;
     private FelConfiguracion? config;
+    private decimal? montoMaximoCf;
     private IReadOnlyList<FelFrase> frases = Array.Empty<FelFrase>();
     private FelFrase? frase;
     private IReadOnlyList<FelEstablecimiento> establecimientos = Array.Empty<FelEstablecimiento>();
@@ -378,6 +387,7 @@ else if (pestana == "unidades")
     private async Task CargarAsync()
     {
         config = await FelRepository.ConsultarConfiguracionAsync(ciaId);
+        montoMaximoCf = await FelRepository.ConsultarLimiteCfAsync(ciaId);
         frases = await FelRepository.ConsultarFrasesAsync(ciaId);
         establecimientos = await FelRepository.ConsultarEstablecimientosAsync(ciaId);
         tipos = await FelRepository.ConsultarTiposDocumentoAsync();
@@ -416,7 +426,13 @@ else if (pestana == "unidades")
     private async Task GuardarConfiguracionAsync()
     {
         if (config is null) return;
-        try { await FelRepository.GuardarConfiguracionAsync(config, await UsuIdAsync()); Ok(L("Configuración guardada.")); await CargarAsync(); }
+        try
+        {
+            await FelRepository.GuardarConfiguracionAsync(config, await UsuIdAsync());
+            await FelRepository.GuardarLimiteCfAsync(ciaId, montoMaximoCf is > 0 ? montoMaximoCf : null, await UsuIdAsync());
+            Ok(L("Configuración guardada."));
+            await CargarAsync();
+        }
         catch (Exception ex) { Error(ex); }
     }
 
