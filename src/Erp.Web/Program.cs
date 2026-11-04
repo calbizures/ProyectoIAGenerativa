@@ -11,6 +11,7 @@ using Erp.Web.Security;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +24,14 @@ builder.Services.AddCascadingAuthenticationState();
 var connectionString = builder.Configuration.GetConnectionString("ErpDb")
 	?? throw new InvalidOperationException("Falta la cadena de conexión 'ErpDb' en la configuración (appsettings.json).");
 builder.Services.AddErpData(connectionString);
+
+// Llaves de Data Protection en la base (script 84): la sesión, los borradores
+// y la contraseña del correo sobreviven a reinicios y se comparten entre
+// servidores. El nombre fijo hace que todas las instalaciones de la misma
+// base usen las mismas llaves, sin importar la carpeta donde corren.
+builder.Services.AddDataProtection().SetApplicationName("Erp");
+builder.Services.AddOptions<Microsoft.AspNetCore.DataProtection.KeyManagement.KeyManagementOptions>()
+	.Configure<IDbConnectionFactory>((opciones, conexiones) => opciones.XmlRepository = new LlavesProteccionBaseDatos(conexiones));
 
 // Factura electrónica: certificadores disponibles (la compañía elige uno en su
 // configuración FEL), servicio de envío y reintento automático.
