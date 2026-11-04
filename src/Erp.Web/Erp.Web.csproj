@@ -8,6 +8,8 @@
     <PackageReference Include="ClosedXML" Version="0.104.2" />
     <PackageReference Include="PDFsharp-MigraDoc" Version="6.2.4" />
     <PackageReference Include="QRCoder" Version="1.8.0" />
+    <!-- Versión corregida de una dependencia de PDFsharp y SqlClient (GHSA-846f-f764-76mx). -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.2" />
   </ItemGroup>
 
   <!-- Las pantallas y el menú, incrustados para saber dónde se usa cada
