@@ -3861,3 +3861,95 @@ fieldset.sin-borde { border: 0; padding: 0; margin: 0; min-width: 0; }
 .casilla-linea { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--texto); }
 .formulario-boleta { margin-bottom: 0.6rem; }
 .enviar-correo { border-left: 4px solid var(--si-blue-600); }
+
+/* ===================================================================
+   Revisión de integridad: cuadre de clientes y proveedores (script 85)
+   =================================================================== */
+.integridad-estado { font-size: 0.85rem; padding: 0.3rem 0.75rem; }
+.seccion-titulo { margin: 1.5rem 0 0.75rem; font-size: 1rem; color: var(--texto-titulo); }
+
+.cuadre-grilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 1rem; }
+.cuadre-tarjeta { margin-bottom: 0; display: flex; flex-direction: column; gap: 0.9rem; }
+.cuadre-tarjeta.cuadre-ok { box-shadow: inset 4px 0 0 var(--exito-texto), var(--sombra-tarjeta); }
+.cuadre-tarjeta.cuadre-descuadre { border-color: var(--error-borde); box-shadow: inset 4px 0 0 var(--error-texto), var(--sombra-tarjeta); }
+.cuadre-encabezado { display: flex; align-items: center; gap: 0.6rem; }
+.cuadre-encabezado h3 { margin: 0; font-size: 1rem; color: var(--texto-titulo); flex: 1; }
+.cuadre-icono {
+    display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem;
+    border-radius: 999px; background: var(--superficie-suave); color: var(--texto-titulo-2);
+}
+.cuadre-cifras { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; margin: 0; }
+.cuadre-cifras div { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.cuadre-cifras dt { font-size: 0.78rem; color: var(--texto-tenue); white-space: nowrap; }
+.cuadre-cifras dd { margin: 0; font-size: 1.15rem; font-weight: 650; font-variant-numeric: tabular-nums; color: var(--texto-titulo); overflow-wrap: anywhere; }
+.cuadre-cifras dd a { color: inherit; text-decoration: none; border-bottom: 1px dashed var(--borde); }
+.cuadre-cifras dd a:hover { color: var(--enlace); border-bottom-color: var(--enlace); }
+.cuadre-ok .cuadre-diferencia dd { color: var(--exito-texto); }
+.cuadre-descuadre .cuadre-diferencia dd { color: var(--error-texto); }
+.cuadre-nota { margin: 0; font-size: 0.85rem; color: var(--texto-tenue); }
+.cuadre-tarjeta .boton-icono { align-self: flex-start; }
+
+.conciliacion-panel { margin-top: 1.25rem; }
+.conciliacion-panel h2:focus { outline: none; }
+.conciliacion-panel h2:focus-visible { outline: 2px solid var(--enlace); outline-offset: 3px; border-radius: 4px; }
+.tabla-conciliacion { width: 100%; max-width: 640px; border-collapse: collapse; margin-bottom: 1rem; font-variant-numeric: tabular-nums; }
+.tabla-conciliacion th, .tabla-conciliacion td { padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--borde-suave); text-align: left; font-weight: 400; }
+.tabla-conciliacion td.num { text-align: right; white-space: nowrap; }
+.tabla-conciliacion .fila-total th, .tabla-conciliacion .fila-total td { font-weight: 650; border-top: 1px solid var(--borde); }
+.tabla-conciliacion .conciliacion-subtitulo th { padding-top: 0.9rem; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--texto-tenue); }
+.tabla-conciliacion .conciliacion-grupo th { padding-left: 1.4rem; }
+.tabla-conciliacion .conciliacion-grupo .boton-enlace[aria-pressed="true"] { color: var(--enlace); text-decoration: underline; }
+.tabla-conciliacion .conciliacion-sin-explicar td, .tabla-conciliacion .conciliacion-sin-explicar th { color: var(--error-texto); }
+
+.conciliacion-filtros { gap: 0.4rem; }
+.chip {
+    border: 1px solid var(--borde); background: var(--superficie); color: var(--texto);
+    border-radius: 999px; padding: 0.3rem 0.8rem; font: inherit; font-size: 0.82rem; cursor: pointer;
+}
+.chip:hover { border-color: var(--enlace); }
+.chip:focus-visible { outline: 2px solid var(--enlace); outline-offset: 2px; }
+.chip-activo { background: var(--enlace); border-color: var(--enlace); color: var(--superficie); }
+.conciliacion-panel .fila-partida td { border-bottom: 0; }
+.conciliacion-panel .fila-diagnostico td { padding-top: 0; font-size: 0.85rem; color: var(--texto-tenue); line-height: 1.4; }
+.conciliacion-panel .fila-diagnostico .icono { vertical-align: -2px; margin-right: 0.15rem; }
+.conciliacion-panel .fila-diagnostico strong { color: var(--texto); font-weight: 600; }
+.conciliacion-panel .tabla-datos tbody tr.fila-diagnostico:hover, .conciliacion-panel .tabla-datos tbody tr.fila-partida:hover { background: inherit; }
+.conciliacion-referencia { min-width: 11rem; }
+.conciliacion-referencia div { font-size: 0.85rem; }
+.estado-badge-nowrap { white-space: nowrap; }
+
+.tabla-integridad .fila-grupo th {
+    background: var(--superficie-suave); text-align: left; font-size: 0.85rem; color: var(--texto-titulo-2);
+    border-top: 1px solid var(--borde);
+}
+.tabla-integridad .fila-revisar td:first-child { box-shadow: inset 3px 0 0 var(--error-texto); }
+.tabla-integridad .fila-revisar td:nth-child(2), .tabla-integridad .fila-revisar td:nth-child(3) { font-weight: 600; color: var(--texto-titulo); }
+
+@media (max-width: 640px) {
+    .cuadre-cifras { grid-template-columns: 1fr; }
+    .cuadre-cifras div { flex-direction: row; justify-content: space-between; align-items: baseline; }
+}
+
+/* Tabla que en el celular se apila: cada fila es una tarjeta y cada celda
+   muestra su encabezado (data-etiqueta). .apilada-ancha ocupa todo el ancho
+   sin etiqueta y .apilada-oculta no se muestra en el celular. */
+.apilada-numero { display: none; }
+@media (max-width: 640px) {
+    .tabla-apilada thead { display: none; }
+    .tabla-apilada, .tabla-apilada tbody, .tabla-apilada tr { display: block; width: 100%; }
+    .tabla-datos.tabla-apilada td, .tabla-datos.tabla-apilada th { display: block; width: auto; white-space: normal; box-sizing: border-box; }
+    .tabla-apilada tr { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--borde-suave); box-sizing: border-box; }
+    .tabla-datos.tabla-apilada td, .tabla-datos.tabla-apilada th { border: 0; padding: 0.15rem 0; text-align: left; }
+    .tabla-datos.tabla-apilada td[data-etiqueta] { display: flex; justify-content: space-between; gap: 1rem; text-align: right; }
+    .tabla-apilada td[data-etiqueta]::before { content: attr(data-etiqueta); color: var(--texto-tenue); font-size: 0.8rem; text-align: left; }
+    .tabla-apilada .apilada-oculta { display: none; }
+    .tabla-apilada .apilada-cabeza { padding-bottom: 0.3rem; }
+    .tabla-apilada .apilada-numero { display: inline; color: var(--texto-tenue); }
+    .tabla-datos.tabla-apilada td.col-acciones { display: flex; justify-content: flex-end; padding-top: 0.35rem; }
+    .tabla-datos.tabla-apilada td.apilada-oculta { display: none; }
+    .tabla-apilada tr.fila-grupo { padding-top: 0.8rem; }
+    .conciliacion-panel .tabla-apilada tr.fila-partida { border-bottom: 0; padding-bottom: 0; }
+    .tabla-integridad .fila-revisar td:first-child { box-shadow: none; }
+    .tabla-integridad tr.fila-revisar { box-shadow: inset 3px 0 0 var(--error-texto); }
+    .tabla-desplazable:has(> .tabla-apilada) { overflow-x: visible; }
+}

@@ -1,7 +1,7 @@
 /*
 ================================================================================
- instalar_01_al_84.sql
- Corre en orden todos los scripts del 01 al 84 sobre la base erp_db, que debe
+ instalar_01_al_85.sql
+ Corre en orden todos los scripts del 01 al 85 sobre la base erp_db, que debe
  existir ya (créela antes con 00_crear_base_datos.sql).
 
  Es un script en MODO SQLCMD: incluye cada archivo con :r.
@@ -15,7 +15,7 @@
 
  Uso desde la línea de comandos (desde la carpeta database, con la ruta ya
  cambiada o con la carpeta actual):
-   sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_84.sql -o instalacion.log
+   sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_85.sql -o instalacion.log
    (-E = autenticación de Windows; con usuario SQL use -U sa -P <clave>.
     -f 65001 lee los archivos como UTF-8 para que los acentos queden bien.)
 
@@ -456,6 +456,11 @@ GO
 :r $(RUTA)84_llaves_proteccion_datos.sql
 GO
 
+PRINT '--- 85_cuadre_cxc_cxp.sql';
+GO
+:r $(RUTA)85_cuadre_cxc_cxp.sql
+GO
+
 PRINT '';
-PRINT 'Instalación 01 a 84 terminada. Usuario de prueba: admin / Demo#2024.';
+PRINT 'Instalación 01 a 85 terminada. Usuario de prueba: admin / Demo#2024.';
 GO

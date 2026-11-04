@@ -99,30 +99,31 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 82_compras_contado_indices.sql                -- compras al contado y enganche con su cuota por pagar; índices
 83_contrasenas_pbkdf2.sql                     -- contraseñas con PBKDF2 calculado en la aplicación
 84_llaves_proteccion_datos.sql                -- llaves de Data Protection en la base (sesión, borradores, correo)
+85_cuadre_cxc_cxp.sql                         -- cuadre de CxC y CxP con contabilidad, explicado; controles 20 a 24
 ```
 
 **Instalación de una sola vez:** después de crear la base con
-`00_crear_base_datos.sql`, el archivo `instalar_01_al_84.sql` corre en orden
-del `01` al `84` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
+`00_crear_base_datos.sql`, el archivo `instalar_01_al_85.sql` corre en orden
+del `01` al `85` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
 active *Consulta › Modo SQLCMD*, cambie la ruta de la línea `:setvar RUTA` por la
 carpeta de los scripts y ejecútelo; desde la línea de comandos:
-`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_84.sql -o instalacion.log`.
+`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_85.sql -o instalacion.log`.
 Se detiene en el primer error y muestra en qué script ocurrió. Incluye los
 datos de prueba, así que es para una base nueva, no para una con datos reales.
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `84` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `85` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `84` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `85` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `paCajaCerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `84`. Si vuelves a
-correr `12`, corre después `22` a `84` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `85`. Si vuelves a
+correr `12`, corre después `22` a `85` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -2185,6 +2186,34 @@ descuadraba los ajustes. Ahora:
 
 Las tomas abiertas antes de este script quedan sin foto (`tfi_usa_foto = 0`):
 se aplican como antes y no bloquean la bodega.
+
+### Cuadre de Cuentas por cobrar y por pagar con contabilidad (`85`)
+
+El saldo de las cuotas (el de la antigüedad de saldos) se compara con la
+cuenta de clientes (`VENTA_CLIENTES`) y la de proveedores
+(`COMPRA_PROVEEDORES`). Si no cuadran, `paAuditoriaCuadreSubmayorConsultar`
+explica la diferencia partida por partida, en tres grupos que la suman:
+
+- **Documentos**: el valor de las cuotas de una factura o compra (con sus
+  notas) no coincide con lo que su póliza llevó a la cuenta; p. ej., una
+  compra sin plan de pagos o una factura anulada con póliza vigente.
+- **Cobros y pagos**: lo aplicado a cuotas de documentos vigentes no
+  coincide con la póliza del recibo, cheque o lote; p. ej., un cobro de una
+  factura que después se anuló.
+- **Pólizas directas**: movimientos en la cuenta que no vienen de clientes o
+  proveedores (pólizas manuales, partida de apertura, otro módulo).
+
+Lo que quede "sin explicar" son cuotas cuyo saldo no coincide con sus cobros
+o pagos (controles 5 y 6). La revisión de integridad
+(`paAuditoriaIntegridadConsultar`) suma cinco controles: 20 y 21 (CxC y CxP
+contra su cuenta), 22 (cobros vigentes de facturas anuladas), 23 (cheques o
+transferencias vigentes de compras anuladas) y 24 (compras vigentes sin plan
+de pagos), y devuelve el área y el detalle de cada control para la pantalla
+Contabilidad › Revisión de integridad. Error nuevo: `55980`.
+
+**Ojo con la carga de saldos iniciales:** la partida de apertura lleva el
+saldo de clientes y proveedores a la cuenta, pero no crea las facturas ni
+compras pendientes de cada uno; ese saldo sale aquí como póliza directa.
 
 ### Datos de prueba que se pueden volver a instalar (`12`, `30`, `39`)
 

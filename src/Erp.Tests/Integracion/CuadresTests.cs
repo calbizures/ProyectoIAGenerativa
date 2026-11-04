@@ -11,10 +11,11 @@ public class CuadresTests
 	public async Task Los_controles_de_integridad_no_encuentran_casos()
 	{
 		using var conexion = BaseDatos.Abrir();
-		var controles = (await conexion.QueryAsync<(int Orden, string Control, int Casos, string? Ejemplo)>(
+		var controles = (await conexion.QueryAsync<Erp.Data.Contabilidad.ControlIntegridad>(
 			"dbo.paAuditoriaIntegridadConsultar", commandType: CommandType.StoredProcedure)).ToList();
 
-		Assert.NotEmpty(controles);
+		Assert.Equal(Enumerable.Range(1, 24), controles.Select(c => c.Orden));
+		Assert.All(controles, c => Assert.False(string.IsNullOrEmpty(c.Area), $"El control {c.Orden} no tiene área."));
 		var conCasos = controles.Where(c => c.Casos > 0).Select(c => $"{c.Orden}. {c.Control}: {c.Casos} (p. ej. {c.Ejemplo})").ToList();
 		Assert.True(conCasos.Count == 0, string.Join(Environment.NewLine, conCasos));
 	}
