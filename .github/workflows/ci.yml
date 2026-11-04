@@ -1,12 +1,13 @@
-# Integración continua: en cada push y pull request compila la solución,
+# Integración continua: en cada pull request y en cada push a main compila la solución,
 # revisa que ningún paquete tenga vulnerabilidades conocidas, instala la base
 # desde cero en un SQL Server 2022 desechable (dos veces: los scripts deben
 # poder volver a correrse) y corre todas las pruebas.
 name: CI
 
 on:
+  # Las ramas de trabajo se prueban por su pull request (sin correr dos veces).
   push:
-    branches: [main, "claude/**"]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
