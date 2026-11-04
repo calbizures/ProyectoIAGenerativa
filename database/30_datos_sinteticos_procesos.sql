@@ -58,7 +58,12 @@ BEGIN
 	DECLARE @cpp_id INT, @saldo NUMERIC(12, 2), @ppe_id INT;
 	DECLARE @formas dbo.pago_forma_type;
 	DECLARE cobros_cur CURSOR LOCAL FAST_FORWARD FOR
-		SELECT TOP 3 cpp_id, cpp_saldo_cuota FROM dbo.pos_cliente_plan_pagos WHERE cpp_estado = 'P' ORDER BY cpp_fecha_maxima_pago, cpp_id;
+		-- Solo cuotas de facturas vigentes: el 12 anula dos facturas y la versión
+		-- del cobro de este punto de la instalación aún no lo valida (53205).
+		SELECT TOP 3 cuot.cpp_id, cuot.cpp_saldo_cuota
+		FROM dbo.pos_cliente_plan_pagos cuot
+		INNER JOIN dbo.inv_documento_enc docu ON docu.enc_id = cuot.enc_id AND docu.enc_estado = 'G'
+		WHERE cuot.cpp_estado = 'P' ORDER BY cuot.cpp_fecha_maxima_pago, cuot.cpp_id;
 	OPEN cobros_cur;
 	FETCH NEXT FROM cobros_cur INTO @cpp_id, @saldo;
 	WHILE @@FETCH_STATUS = 0

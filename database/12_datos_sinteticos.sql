@@ -687,10 +687,22 @@ GO
 ------------------------------------------------------------
 DECLARE @enc_a INT, @enc_b INT;
 DECLARE @usu_admin_id INT = (SELECT usu_id FROM dbo.gen_usuario WHERE usu_usuario='admin');
-SELECT TOP 1 @enc_a = enc_id FROM dbo.inv_documento_enc WHERE enc_estado = 'G' AND tdo_id = (SELECT tdo_id FROM dbo.inv_documento_tipo WHERE tdo_codigo='FCAM') ORDER BY enc_id DESC;
+SELECT TOP 1 @enc_a = enc_id FROM dbo.inv_documento_enc WHERE enc_estado = 'G' AND tdo_id = (SELECT tdo_id FROM dbo.inv_documento_tipo WHERE tdo_codigo='FCAM')
+  -- Sin cobros de cuotas: la versión de paDocumentoAnular de este punto de la
+  -- instalación (script 11) no lo valida y dejaría el cobro vigente.
+  AND NOT EXISTS (SELECT 1 FROM dbo.pos_pago_det deta
+				  INNER JOIN dbo.pos_cliente_plan_pagos cuot ON cuot.cpp_id = deta.cpp_id
+				  WHERE cuot.enc_id = dbo.inv_documento_enc.enc_id)
+ORDER BY enc_id DESC;
 IF @enc_a IS NOT NULL EXEC dbo.paDocumentoAnular @EncId = @enc_a, @UsuId = @usu_admin_id;
 
-SELECT TOP 1 @enc_b = enc_id FROM dbo.inv_documento_enc WHERE enc_estado = 'G' AND tdo_id = (SELECT tdo_id FROM dbo.inv_documento_tipo WHERE tdo_codigo='FCAM') ORDER BY enc_id ASC;
+SELECT TOP 1 @enc_b = enc_id FROM dbo.inv_documento_enc WHERE enc_estado = 'G' AND tdo_id = (SELECT tdo_id FROM dbo.inv_documento_tipo WHERE tdo_codigo='FCAM')
+  -- Sin cobros de cuotas: la versión de paDocumentoAnular de este punto de la
+  -- instalación (script 11) no lo valida y dejaría el cobro vigente.
+  AND NOT EXISTS (SELECT 1 FROM dbo.pos_pago_det deta
+				  INNER JOIN dbo.pos_cliente_plan_pagos cuot ON cuot.cpp_id = deta.cpp_id
+				  WHERE cuot.enc_id = dbo.inv_documento_enc.enc_id)
+ORDER BY enc_id ASC;
 IF @enc_b IS NOT NULL AND @enc_b <> @enc_a EXEC dbo.paDocumentoAnular @EncId = @enc_b, @UsuId = @usu_admin_id;
 GO
 

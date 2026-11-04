@@ -1,0 +1,56 @@
+# Integración continua: en cada push y pull request compila la solución,
+# revisa que ningún paquete tenga vulnerabilidades conocidas, instala la base
+# desde cero en un SQL Server 2022 desechable (dos veces: los scripts deben
+# poder volver a correrse) y corre todas las pruebas.
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruebas:
+    name: Compilar y probar
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restaurar paquetes
+        run: dotnet restore src/Erp.sln
+
+      - name: Compilar
+        run: dotnet build src/Erp.sln --no-restore -c Debug -warnaserror
+
+      - name: Paquetes con vulnerabilidades conocidas
+        working-directory: src
+        run: |
+          dotnet list "$PWD/Erp.sln" package --vulnerable --include-transitive | tee vulnerables.txt
+          if grep -q "has the following vulnerable packages" vulnerables.txt; then
+            echo "::error::Hay paquetes con vulnerabilidades conocidas."
+            exit 1
+          fi
+
+      - name: Instalar la base dos veces y correr las pruebas
+        run: bash pruebas/ci/pruebas_completas.sh erp-pruebas 1433
+
+      - name: Bitácoras de instalación
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instalacion
+          path: instalacion*.log
+          if-no-files-found: ignore

@@ -2186,6 +2186,17 @@ descuadraba los ajustes. Ahora:
 Las tomas abiertas antes de este script quedan sin foto (`tfi_usa_foto = 0`):
 se aplican como antes y no bloquean la bodega.
 
+### Datos de prueba que se pueden volver a instalar (`12`, `30`, `39`)
+
+La integración continua instala la base dos veces seguidas y comprueba que
+Cuentas por cobrar cuadre con contabilidad. Eso encontró tres casos en los
+datos de prueba: el `12` anulaba facturas que ya tenían cobros y el `30`
+cobraba cuotas de facturas anuladas (en ese punto de la instalación las
+versiones de `paDocumentoAnular` y `paCxcCobroRegistrar` todavía no lo
+validan; las actuales sí), y el `39` aplicaba la toma de inventario sin
+terminar el conteo, que desde el `77` se exige. Los tres se corrigieron; las
+pruebas de integración están en `src/Erp.Tests`.
+
 ### Llaves de Data Protection en la base (`84`)
 
 `gen_proteccion_llave` guarda las llaves con que ASP.NET Core cifra la

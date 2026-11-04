@@ -66,6 +66,10 @@ BEGIN
 									  ELSE 0 END
 	FROM dbo.inv_toma_fisica_det deta WHERE deta.tfi_id = @toma;
 	EXEC dbo.paInvTomaConteoGuardar @TfiId = @toma, @Conteos = @conteos, @UsuId = @usu;
+	-- Desde el 77 la bodega queda bloqueada hasta terminar el conteo (al volver
+	-- a correr la instalación, el procedimiento ya existe).
+	IF OBJECT_ID('dbo.paInvTomaConteoTerminar', 'P') IS NOT NULL
+		EXEC dbo.paInvTomaConteoTerminar @TfiId = @toma, @UsuId = @usu;
 	EXEC dbo.paInvTomaAplicar @TfiId = @toma, @UsuId = @usu;
 	PRINT 'Inventario físico: toma de la bodega principal aplicada (un sobrante y un faltante).';
 END
