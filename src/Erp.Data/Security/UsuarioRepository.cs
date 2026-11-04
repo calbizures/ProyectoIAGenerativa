@@ -11,7 +11,11 @@ public sealed class UsuarioRepository(IDbConnectionFactory connectionFactory) : 
 		var parametros = new DynamicParameters();
 		parametros.Add("@UsuCodigo", codigo);
 		parametros.Add("@UsuUsuario", usuario);
-		parametros.Add("@UsuPassword", password);
+		ContrasenaHash.ValidarPolitica(password);
+		var hash = ContrasenaHash.Calcular(password);
+		parametros.Add("@UsuPasswordHash", hash.Hash);
+		parametros.Add("@UsuPasswordSalt", hash.Salt);
+		parametros.Add("@UsuPasswordIteraciones", hash.Iteraciones);
 		parametros.Add("@UsuEmail", email);
 		parametros.Add("@UsuIdAccion", usuarioAccionId);
 		parametros.Add("@UsuCambiarPassword", cambiarPassword);
@@ -48,25 +52,36 @@ public sealed class UsuarioRepository(IDbConnectionFactory connectionFactory) : 
 		await connection.ExecuteAsync("dbo.paUsuarioActivar", parametros, commandType: CommandType.StoredProcedure);
 	}
 
+	// Cambio hecho por el propio usuario: verifica la contraseña actual con
+	// las mismas reglas del inicio de sesión (PBKDF2 o hash anterior).
 	public async Task CambiarPasswordAsync(int usuId, string passwordActual, string passwordNuevo)
 	{
 		using var connection = connectionFactory.CreateConnection();
-		var parametros = new
-		{
-			UsuId = usuId,
-			PasswordActual = passwordActual,
-			PasswordNuevo = passwordNuevo
-		};
-		await connection.ExecuteAsync("dbo.paUsuarioPasswordCambiar", parametros, commandType: CommandType.StoredProcedure);
+		var datos = await connection.QueryFirstOrDefaultAsync<AuthRepository.DatosLogin>(
+			"dbo.paSeguridadLoginDatos", new { UsuId = usuId }, commandType: CommandType.StoredProcedure)
+			?? throw new InvalidOperationException("No existe el usuario indicado.");
+
+		var valida = datos.Iteraciones is int iteraciones
+			? ContrasenaHash.Verificar(passwordActual, datos.Hash, datos.Salt, iteraciones)
+			: await connection.ExecuteScalarAsync<bool>("dbo.paSeguridadPasswordLegadoVerificar",
+				new { UsuId = usuId, Password = passwordActual }, commandType: CommandType.StoredProcedure);
+		if (!valida)
+			throw new InvalidOperationException("La contraseña actual no es correcta.");
+
+		ContrasenaHash.ValidarPolitica(passwordNuevo);
+		if (passwordNuevo == passwordActual)
+			throw new InvalidOperationException("La contraseña nueva debe ser distinta de la actual.");
+
+		await AuthRepository.GuardarHashAsync(connection, usuId, passwordNuevo, cambiarPassword: false, desbloquear: false, usuIdAccion: usuId);
 	}
 
 	// El administrador pone una contraseña temporal (sin conocer la anterior):
 	// el usuario debe cambiarla al iniciar sesión. También quita el bloqueo.
 	public async Task RestablecerPasswordAsync(int usuId, string passwordNuevo, int? usuarioAccionId)
 	{
+		ContrasenaHash.ValidarPolitica(passwordNuevo);
 		using var connection = connectionFactory.CreateConnection();
-		var parametros = new { UsuId = usuId, PasswordNuevo = passwordNuevo, UsuIdAccion = usuarioAccionId };
-		await connection.ExecuteAsync("dbo.paUsuarioPasswordRestablecer", parametros, commandType: CommandType.StoredProcedure);
+		await AuthRepository.GuardarHashAsync(connection, usuId, passwordNuevo, cambiarPassword: true, desbloquear: true, usuIdAccion: usuarioAccionId);
 	}
 
 	public async Task DesbloquearAsync(int usuId, int? usuarioAccionId)

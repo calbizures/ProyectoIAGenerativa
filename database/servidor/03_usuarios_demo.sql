@@ -10,9 +10,11 @@
  Qué hace:
    1. Desactiva los usuarios de prueba de carga (prueba01 a prueba10), que
       tienen el rol ADMIN.
-   2. A todo usuario activo que siga con la contraseña de demostración
-      (Demo#2024) lo obliga a cambiarla al entrar (usu_cambiar_password = 1,
-      el mismo paso del script 75). Incluye a "admin".
+   2. Obliga a todos los demás usuarios activos a cambiar su contraseña al
+      entrar (usu_cambiar_password = 1, el mismo paso del script 75),
+      incluido "admin": así nadie sigue con una clave de la etapa de pruebas
+      como la de demostración (Demo#2024). Desde el script 83 las claves se
+      guardan con PBKDF2 y la base ya no puede saber cuál es cuál.
    3. Nunca deja el sistema sin administrador activo: si eso pasara, revierte
       todo.
 
@@ -37,9 +39,7 @@ INSERT INTO @cambios (usu_id, usu_usuario, accion)
 SELECT usu_id, usu_usuario,
 	   CASE WHEN usu_usuario LIKE 'prueba[0-9][0-9]' THEN 'Desactivar' ELSE 'Debe cambiar su contraseña' END
 FROM dbo.gen_usuario
-WHERE usu_estado = 'A'
-  AND (usu_usuario LIKE 'prueba[0-9][0-9]'
-	   OR usu_password_hash = HASHBYTES('SHA2_256', CAST(usu_password_salt AS VARCHAR(36)) + 'Demo#2024'));
+WHERE usu_estado = 'A';
 
 SELECT usu_usuario AS Usuario, accion AS Accion,
 	   IIF(dbo.fnSeguridadUsuarioTienePermiso(usu_id, 'SEGURIDAD_USUARIO_ADMIN') = 1, 'Sí', 'No') AS Administrador

@@ -611,5 +611,7 @@
   "Inventario físico: ver existencia, diferencias y costos, aplicar los ajustes y anular tomas aplicadas": "Physical count: see stock, differences and costs, apply adjustments and void applied counts",
   "Una factura de Q{0} o más no se emite a consumidor final: identifique al comprador con su NIT o CUI.": "An invoice of Q{0} or more cannot be issued to a final consumer: identify the buyer with their NIT or CUI.",
   "La factura tiene líneas exentas de IVA: configure la frase de exención (tipo 4) en Factura electrónica › Frases.": "The invoice has VAT-exempt lines: set up the exemption phrase (type 4) in Electronic invoicing › Phrases.",
-  "El monto máximo para consumidor final debe ser mayor a cero (o vacío, sin límite).": "The maximum amount for a final consumer must be greater than zero (or empty, no limit)."
+  "El monto máximo para consumidor final debe ser mayor a cero (o vacío, sin límite).": "The maximum amount for a final consumer must be greater than zero (or empty, no limit).",
+  "No existe el usuario indicado.": "The specified user does not exist.",
+  "El hash de la contraseña no es válido.": "The password hash is not valid."
 }

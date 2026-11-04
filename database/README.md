@@ -97,30 +97,31 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 80_inventario_fisico_supervisar.sql           -- inventario físico: conteo a ciegas y permiso de supervisar
 81_fel_validaciones_adenda.sql                -- FEL: consumidor final hasta un monto, exención, largos y Adenda
 82_compras_contado_indices.sql                -- compras al contado y enganche con su cuota por pagar; índices
+83_contrasenas_pbkdf2.sql                     -- contraseñas con PBKDF2 calculado en la aplicación
 ```
 
 **Instalación de una sola vez:** después de crear la base con
-`00_crear_base_datos.sql`, el archivo `instalar_01_al_82.sql` corre en orden
-del `01` al `82` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
+`00_crear_base_datos.sql`, el archivo `instalar_01_al_83.sql` corre en orden
+del `01` al `83` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
 active *Consulta › Modo SQLCMD*, cambie la ruta de la línea `:setvar RUTA` por la
 carpeta de los scripts y ejecútelo; desde la línea de comandos:
-`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_82.sql -o instalacion.log`.
+`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_83.sql -o instalacion.log`.
 Se detiene en el primer error y muestra en qué script ocurrió. Incluye los
 datos de prueba, así que es para una base nueva, no para una con datos reales.
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `82` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `83` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `82` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `83` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `paCajaCerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `82`. Si vuelves a
-correr `12`, corre después `22` a `82` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `83`. Si vuelves a
+correr `12`, corre después `22` a `83` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -2184,6 +2185,19 @@ descuadraba los ajustes. Ahora:
 Las tomas abiertas antes de este script quedan sin foto (`tfi_usa_foto = 0`):
 se aplican como antes y no bloquean la bodega.
 
+### Contraseñas con PBKDF2 (`83`)
+
+La aplicación calcula PBKDF2-HMAC-SHA256 (sal aleatoria de 16 bytes, 600,000
+iteraciones; `Erp.Data/Security/ContrasenaHash.cs`) y la base solo guarda el
+resultado: la contraseña ya no llega a SQL Server. Las iteraciones de cada
+usuario quedan en `gen_usuario.usu_password_iteraciones`; `NULL` es el hash
+anterior (SHA-256), que se acepta una última vez y se reemplaza por PBKDF2
+al iniciar sesión, así que nadie tiene que cambiar su contraseña. La regla
+de contraseña (8 caracteres, letras y números) se valida en la aplicación.
+Procedimientos: `paSeguridadLoginDatos`, `paSeguridadLoginRegistrar`,
+`paSeguridadPasswordLegadoVerificar` y `paUsuarioPasswordGuardar`; error
+`55970`. Si vuelves a correr `66` o `75`, corre después el `83`.
+
 ### Compras al contado y enganche en CxP; índices (`82`)
 
 Hallazgos de la auditoría del 02/11/2026:
@@ -2214,7 +2228,7 @@ conectado como sysadmin, cuando se va a pasar a producción:
   ni administrar el servidor). La contraseña se escribe al correrlo y no se
   guarda en el repositorio.
 - `servidor/03_usuarios_demo.sql`: desactiva `prueba01`-`prueba10` y obliga
-  a cambiar la contraseña a quien siga con la de demostración. Por omisión
+  a todos los demás usuarios activos a cambiar su contraseña al entrar. Por omisión
   solo muestra los cambios (`@Aplicar = 0`).
 
 ### Factura electrónica: validaciones y Adenda (`81`)
