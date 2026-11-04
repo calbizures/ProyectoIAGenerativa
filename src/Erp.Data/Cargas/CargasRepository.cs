@@ -102,4 +102,38 @@ public sealed class CargasRepository(IDbConnectionFactory connectionFactory) : I
 		parametros.Add("@UsuId", usuarioAccionId);
 		return ProcesarAsync<ResumenEmpleados>("dbo.paRrhhEmpleadoCargaProcesar", parametros);
 	}
+
+	public Task<ResultadoCarga<ResumenDocumentosPendientes>> ProcesarDocumentosPendientesAsync(string modulo, DateTime fecha, IReadOnlyList<FilaDocumentoPendiente> filas,
+		string? archivo, bool soloValidar, int? usuarioAccionId)
+	{
+		var tabla = Tabla(("Fila", typeof(int)), ("Codigo", typeof(string)), ("Nombre", typeof(string)), ("Nit", typeof(string)), ("Sucursal", typeof(string)),
+			("Serie", typeof(string)), ("Numero", typeof(string)), ("FechaDocumento", typeof(DateTime)), ("Cuota", typeof(int)),
+			("Vencimiento", typeof(DateTime)), ("Saldo", typeof(decimal)), ("FelSerie", typeof(string)), ("FelNumero", typeof(string)), ("FelUuid", typeof(string)));
+		foreach (var f in filas)
+			tabla.Rows.Add(f.Fila, Texto(f.Codigo), Texto(f.Nombre), Texto(f.Nit), Texto(f.Sucursal), Texto(f.Serie), Texto(f.Numero),
+				Valor(f.FechaDocumento?.Date), Valor(f.Cuota), Valor(f.Vencimiento?.Date), Valor(f.Saldo), Texto(f.FelSerie), Texto(f.FelNumero), Texto(f.FelUuid));
+		var parametros = new DynamicParameters();
+		parametros.Add("@Modulo", modulo);
+		parametros.Add("@Fecha", fecha.Date);
+		parametros.Add("@Filas", tabla.AsTableValuedParameter("dbo.cxs_carga_type"));
+		parametros.Add("@Archivo", archivo);
+		parametros.Add("@SoloValidar", soloValidar);
+		parametros.Add("@UsuId", usuarioAccionId);
+		return ProcesarAsync<ResumenDocumentosPendientes>("dbo.paCxSaldoInicialProcesar", parametros);
+	}
+
+	public async Task<(IReadOnlyList<CargaDocumentosPendientes> Cargas, IReadOnlyList<DocumentoPendienteCargado> Documentos)> ConsultarDocumentosPendientesAsync(string modulo)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		using var lector = await connection.QueryMultipleAsync("dbo.paCxSaldoInicialConsultar", new { Modulo = modulo }, commandType: CommandType.StoredProcedure);
+		var cargas = (await lector.ReadAsync<CargaDocumentosPendientes>()).ToList();
+		var documentos = (await lector.ReadAsync<DocumentoPendienteCargado>()).ToList();
+		return (cargas, documentos);
+	}
+
+	public async Task AnularDocumentosPendientesAsync(int cscId, string motivo, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		await connection.ExecuteAsync("dbo.paCxSaldoInicialAnular", new { CscId = cscId, Motivo = motivo, UsuId = usuarioAccionId }, commandType: CommandType.StoredProcedure);
+	}
 }

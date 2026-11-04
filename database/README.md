@@ -100,30 +100,31 @@ script fija `COMPATIBILITY_LEVEL = 150`):
 83_contrasenas_pbkdf2.sql                     -- contraseñas con PBKDF2 calculado en la aplicación
 84_llaves_proteccion_datos.sql                -- llaves de Data Protection en la base (sesión, borradores, correo)
 85_cuadre_cxc_cxp.sql                         -- cuadre de CxC y CxP con contabilidad, explicado; controles 20 a 24
+86_saldos_iniciales_cxc_cxp.sql               -- facturas y compras pendientes al arrancar, desde Excel
 ```
 
 **Instalación de una sola vez:** después de crear la base con
-`00_crear_base_datos.sql`, el archivo `instalar_01_al_85.sql` corre en orden
-del `01` al `85` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
+`00_crear_base_datos.sql`, el archivo `instalar_01_al_86.sql` corre en orden
+del `01` al `86` en una sola ejecución. Es un script en modo SQLCMD: en SSMS
 active *Consulta › Modo SQLCMD*, cambie la ruta de la línea `:setvar RUTA` por la
 carpeta de los scripts y ejecútelo; desde la línea de comandos:
-`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_85.sql -o instalacion.log`.
+`sqlcmd -S <servidor> -E -f 65001 -i instalar_01_al_86.sql -o instalacion.log`.
 Se detiene en el primer error y muestra en qué script ocurrió. Incluye los
 datos de prueba, así que es para una base nueva, no para una con datos reales.
 
-**Todos los scripts se pueden volver a correr.** Correr del `00` al `85` en
+**Todos los scripts se pueden volver a correr.** Correr del `00` al `86` en
 orden funciona igual sobre una base nueva que sobre una existente: los
 scripts `01`-`07` solo crean los tipos, tablas, llaves e índices que falten, y
 los demás usan `CREATE OR ALTER` o verifican antes de insertar. Ojo: el `12`
 borra y regenera todos los datos de prueba; si la base tiene datos reales,
 no lo incluyas (ni el `30`, el `33`, el `37`, el `39`, el `41`, el `43` ni el `46`).
 
-`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `85` se corren siempre (también en una instalación
+`25` a `29`, `31`, `32`, `34` a `36`, `38`, `40`, `42`, `44`, `45` y `47` a `86` se corren siempre (también en una instalación
 nueva) y se pueden volver a correr. **Importante:** `11` y `23` todavía contienen la
 versión anterior de `paCajaCerrar` y `paCorteCajaTeoricoConsultar`
 (sin el cuadre obligatorio ni la partida del cierre); si vuelves a correr
-cualquiera de los dos, vuelve a correr después `26` a `85`. Si vuelves a
-correr `12`, corre después `22` a `85` (el `12` vacía todas las tablas). Lo
+cualquiera de los dos, vuelve a correr después `26` a `86`. Si vuelves a
+correr `12`, corre después `22` a `86` (el `12` vacía todas las tablas). Lo
 mismo con `25`, `26`, `27`, `29`, `31`, `32`, `34` y `35`: redefinen
 procedimientos que los scripts posteriores corrigen, así que después de
 cualquiera de ellos corre de nuevo el `34`, `35`, `36`, `38`, `40` y `42`. Si
@@ -2187,6 +2188,36 @@ descuadraba los ajustes. Ahora:
 Las tomas abiertas antes de este script quedan sin foto (`tfi_usa_foto = 0`):
 se aplican como antes y no bloquean la bodega.
 
+### Facturas y compras pendientes al arrancar (`86`)
+
+Cuentas por cobrar › Facturas pendientes al arrancar y Cuentas por pagar ›
+Compras pendientes al arrancar (permisos `CXC_SALDOS_INICIALES` y
+`CXP_SALDOS_INICIALES`; Administrador, Contador y Contador general). Se
+descarga la plantilla, se llena una fila por cada cuota pendiente y se sube:
+
+- Código, nombre y NIT del cliente o proveedor (el que no existe se crea con
+  su nombre y NIT validado), sucursal opcional (vacía = casa matriz), serie,
+  número y fecha del documento, número de cuota opcional, vencimiento y
+  saldo. Facturas: serie, número y UUID de SAT de la factura electrónica
+  (opcionales), para emitir después una nota de crédito electrónica sobre
+  ella (se guardan en `fel_documento` como certificador `EXTERNO`).
+- Se valida todo antes de grabar (NIT, fechas, cuotas repetidas, documento
+  ya existente, datos distintos entre filas del mismo documento); con un
+  error no se graba nada. Avisa si el total no coincide con la partida de
+  apertura.
+- Crea documentos internos `SIFAC` (saldo inicial de factura) y `SICOM`
+  (saldo inicial de compra) con una línea de servicio "Saldo inicial" sin
+  producto en una bodega de la sucursal, y sus cuotas. No entran a ventas,
+  compras, tableros ni a la lista de facturas o compras; sí a la antigüedad,
+  los cobros y pagos, el estado de cuenta, las notas y el flujo de caja.
+- No generan póliza: su valor está en la partida de apertura. Una carga se
+  anula (con motivo) mientras sus documentos no tengan cobros, pagos, notas
+  ni contraseñas de pago.
+
+Tablas `cxs_carga` y `cxs_carga_documento`; procedimientos
+`paCxSaldoInicialProcesar`, `paCxSaldoInicialConsultar` y
+`paCxSaldoInicialAnular`; errores `55990` a `55993`.
+
 ### Cuadre de Cuentas por cobrar y por pagar con contabilidad (`85`)
 
 El saldo de las cuotas (el de la antigüedad de saldos) se compara con la
@@ -2211,9 +2242,9 @@ transferencias vigentes de compras anuladas) y 24 (compras vigentes sin plan
 de pagos), y devuelve el área y el detalle de cada control para la pantalla
 Contabilidad › Revisión de integridad. Error nuevo: `55980`.
 
-**Ojo con la carga de saldos iniciales:** la partida de apertura lleva el
-saldo de clientes y proveedores a la cuenta, pero no crea las facturas ni
-compras pendientes de cada uno; ese saldo sale aquí como póliza directa.
+Los documentos pendientes iniciales (`86`) no tienen póliza propia: su total
+se compara con lo que la partida de apertura llevó a la cuenta, en una sola
+partida "Partida de apertura" que solo aparece si no coinciden.
 
 ### Datos de prueba que se pueden volver a instalar (`12`, `30`, `39`)
 

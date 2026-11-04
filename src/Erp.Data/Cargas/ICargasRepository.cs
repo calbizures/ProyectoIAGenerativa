@@ -11,4 +11,10 @@ public interface ICargasRepository
 	Task<(PartidaApertura? Partida, IReadOnlyList<LineaApertura> Lineas)> ConsultarAperturaAsync();
 
 	Task<ResultadoCarga<ResumenEmpleados>> ProcesarEmpleadosAsync(int ciaId, IReadOnlyList<FilaEmpleado> filas, bool soloValidar, int? usuarioAccionId);
+
+	// Documentos pendientes iniciales: modulo "CXC" o "CXP".
+	Task<ResultadoCarga<ResumenDocumentosPendientes>> ProcesarDocumentosPendientesAsync(string modulo, DateTime fecha, IReadOnlyList<FilaDocumentoPendiente> filas,
+		string? archivo, bool soloValidar, int? usuarioAccionId);
+	Task<(IReadOnlyList<CargaDocumentosPendientes> Cargas, IReadOnlyList<DocumentoPendienteCargado> Documentos)> ConsultarDocumentosPendientesAsync(string modulo);
+	Task AnularDocumentosPendientesAsync(int cscId, string motivo, int? usuarioAccionId);
 }

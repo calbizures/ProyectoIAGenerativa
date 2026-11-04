@@ -1,0 +1,375 @@
+@* Facturas (clientes) o compras (proveedores) pendientes al arrancar el
+   sistema, desde Excel (script 86). Una fila por cuota pendiente; no genera
+   póliza: su total se compara con la partida de apertura. *@
+@using Erp.Data.Cargas
+@using Erp.Web.Reportes
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ICargasRepository CargasRepository
+
+<div class="pagina-encabezado">
+    <h1>@(EsCliente ? L("Facturas pendientes al arrancar") : L("Compras pendientes al arrancar"))</h1>
+    <p>@(EsCliente
+        ? L("Cargue desde Excel las facturas que sus clientes le deben el día que empieza a usar el sistema, cuota por cuota. Así podrá cobrarlas, ver su antigüedad y emitir notas de crédito sobre ellas. No genera póliza: su total debe ser igual a lo que la partida de saldos iniciales lleva a la cuenta de clientes.")
+        : L("Cargue desde Excel las compras que le debe a sus proveedores el día que empieza a usar el sistema, cuota por cuota. Así podrá pagarlas con cheque o transferencia y ver su antigüedad. No genera póliza: su total debe ser igual a lo que la partida de saldos iniciales lleva a la cuenta de proveedores."))</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
+}
+
+@if (cuadre is not null)
+{
+    var diferencia = cuadre.Apertura - cuadre.CargadoAntes;
+    var sinSaldo = cuadre.Apertura == 0 && cuadre.CargadoAntes == 0;
+    <section class="tarjeta cuadre-tarjeta saldos-cuadre @(sinSaldo ? "" : Math.Abs(diferencia) < 0.01m && cuadre.HayApertura ? "cuadre-ok" : "cuadre-descuadre")" aria-label="@L("Cuadre con la partida de apertura")">
+        <dl class="cuadre-cifras">
+            <div>
+                <dt>@L("Partida de apertura")</dt>
+                <dd>@(cuadre.HayApertura ? cuadre.Apertura.ToString("N2") : "—")</dd>
+            </div>
+            <div>
+                <dt>@L("Documentos cargados")</dt>
+                <dd>@cuadre.CargadoAntes.ToString("N2")</dd>
+            </div>
+            <div class="cuadre-diferencia">
+                <dt>@L("Por cargar")</dt>
+                <dd>@diferencia.ToString("N2")</dd>
+            </div>
+        </dl>
+        <p class="cuadre-nota">
+            @if (!cuadre.HayApertura)
+            {
+                @L("Todavía no hay partida de apertura: cárguela en Contabilidad › Saldos iniciales.")
+            }
+            else if (sinSaldo)
+            {
+                @(EsCliente
+                    ? L("La partida de apertura no lleva saldo a la cuenta de clientes. Si al arrancar sus clientes le deben facturas, inclúyalas en Contabilidad › Saldos iniciales y cárguelas aquí.")
+                    : L("La partida de apertura no lleva saldo a la cuenta de proveedores. Si al arrancar le debe compras a sus proveedores, inclúyalas en Contabilidad › Saldos iniciales y cárguelas aquí."))
+            }
+            else if (Math.Abs(diferencia) < 0.01m)
+            {
+                @L("Los documentos cargados suman lo mismo que la partida de apertura.")
+            }
+            else if (diferencia > 0)
+            {
+                @L("Faltan documentos por cargar para llegar al saldo de la apertura.")
+            }
+            else
+            {
+                @L("Los documentos cargados suman más que el saldo de la apertura: revise la carga o la partida.")
+            }
+        </p>
+    </section>
+}
+
+<div class="pasos-carga">
+    <div class="panel-formulario">
+        <h3>@L("1. Descargue la plantilla")</h3>
+        <p class="texto-ayuda">@(EsCliente
+            ? L("Trae la hoja para llenar, las instrucciones, las sucursales y sus clientes con su código y NIT.")
+            : L("Trae la hoja para llenar, las instrucciones, las sucursales y sus proveedores con su código y NIT."))</p>
+        <a class="boton-icono boton-icono-con-etiqueta" href="reportes/@Ruta/plantilla-saldos-iniciales.xlsx" download>
+            <Icono Nombre="download" Tamano="16" /><span class="boton-icono-etiqueta">@L("Plantilla de Excel")</span>
+        </a>
+    </div>
+    <div class="panel-formulario">
+        <h3>@L("2. Suba el archivo lleno")</h3>
+        <div class="campo">
+            <label for="saldos-fecha">@L("Fecha de los saldos iniciales")</label>
+            <input id="saldos-fecha" type="date" @bind="fecha" @bind:after="RevalidarAsync" />
+        </div>
+        <div class="campo">
+            <label for="saldos-archivo">@L("Archivo (.xlsx)")</label>
+            <InputFile id="saldos-archivo" OnChange="LeerArchivoAsync" accept=".xlsx" />
+        </div>
+    </div>
+    <div class="panel-formulario">
+        <h3>@L("3. Revise y grabe")</h3>
+        @if (resultado?.Resumen is { } r && filas.Count > 0)
+        {
+            <div class="resumen-totales">
+                <span>@L("Cuotas:") <strong>@r.Filas</strong></span>
+                <span>@L("Documentos:") <strong>@r.Documentos</strong></span>
+                <span>@(EsCliente ? L("Clientes nuevos:") : L("Proveedores nuevos:")) <strong>@r.TercerosNuevos</strong></span>
+                <span>@L("Total:") <strong>Q @r.Total.ToString("N2")</strong></span>
+            </div>
+            @if (r.HayApertura)
+            {
+                <p class="texto-ayuda">@(Math.Abs(r.Diferencia) < 0.01m
+                    ? L("Con esta carga los documentos suman lo mismo que la partida de apertura.")
+                    : L("Con esta carga quedarían Q {0:N2} de diferencia con la partida de apertura.", Math.Abs(r.Diferencia)))</p>
+            }
+        }
+        else
+        {
+            <p class="texto-ayuda">@L("Al subir el archivo se valida completo; si alguna fila tiene error no se graba nada.")</p>
+        }
+        <BotonIcono Icono="save" Tooltip="@L("Grabar los documentos pendientes")" Etiqueta="@(guardando ? L("Grabando...") : L("Grabar documentos"))" Variante="primario"
+                    Deshabilitado="!PuedeGrabar || guardando" OnClick="GrabarAsync" />
+    </div>
+</div>
+
+@if (resultado is not null && filas.Count + erroresLectura.Count > 0)
+{
+    <section class="tarjeta">
+        <h2>@L("Validación de {0}", nombreArchivo)</h2>
+        <MensajesCargaVista Mensajes="resultado.Mensajes" />
+    </section>
+}
+
+<section class="tarjeta" aria-labelledby="saldos-cargas-titulo">
+    <h2 id="saldos-cargas-titulo">@L("Cargas grabadas")</h2>
+    @if (cargas.Count == 0)
+    {
+        <p class="estado-vacio">@(EsCliente ? L("Todavía no se han cargado facturas pendientes.") : L("Todavía no se han cargado compras pendientes."))</p>
+    }
+    else
+    {
+        <div class="tabla-desplazable" tabindex="0" aria-label="@L("Cargas grabadas")">
+            <table class="tabla-datos tabla-apilada">
+                <thead>
+                    <tr>
+                        <th class="col-codigo">@L("Carga")</th><th class="col-fecha">@L("Saldos al")</th><th class="saldos-archivo">@L("Archivo y usuario")</th>
+                        <th class="num col-estado">@L("Documentos")</th><th class="num col-monto">@L("Total")</th><th class="num col-monto">@L("Pendiente hoy")</th>
+                        <th class="col-estado">@L("Estado")</th><th class="col-acciones"><span class="sr-only">@L("Acciones")</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in cargas)
+                    {
+                        <tr>
+                            <td class="col-codigo apilada-ancha"><strong>#@c.CscId</strong></td>
+                            <td class="col-fecha" data-etiqueta="@L("Saldos al")">@c.Fecha.ToString("dd/MM/yyyy")</td>
+                            <td class="apilada-ancha saldos-archivo">
+                                @(c.Archivo ?? "—")
+                                <div class="texto-tenue">@c.Usuario · @c.FechaGrabado.ToString("dd/MM/yyyy HH:mm")</div>
+                                @if (c.Estado == "A")
+                                {
+                                    <div class="texto-tenue">@L("Anulada por {0} el {1}: {2}", c.UsuarioAnulacion ?? "—", c.FechaAnulacion?.ToString("dd/MM/yyyy") ?? "—", c.MotivoAnulacion ?? "")</div>
+                                }
+                            </td>
+                            <td class="num col-estado" data-etiqueta="@L("Documentos")">@c.Documentos<span class="texto-tenue"> · @L("{0} cuotas", c.Cuotas)</span></td>
+                            <td class="num col-monto" data-etiqueta="@L("Total")">@c.Total.ToString("N2")</td>
+                            <td class="num col-monto" data-etiqueta="@L("Pendiente hoy")">@(c.Estado == "V" ? c.Pendiente.ToString("N2") : "—")</td>
+                            <td class="col-estado" data-etiqueta="@L("Estado")"><span class="estado-badge @(c.Estado == "V" ? "estado-badge-activo" : "estado-badge-inactivo")">@(c.Estado == "V" ? L("Vigente") : L("Anulada"))</span></td>
+                            <td class="col-acciones">
+                                <div class="acciones-fila">
+                                    <BotonIcono Icono="eye" Tooltip="@(abierta == c.CscId ? L("Ocultar los documentos") : L("Ver los documentos"))" OnClick="() => AlternarDetalle(c.CscId)" />
+                                    @if (c.Estado == "V")
+                                    {
+                                        <BotonIcono Icono="ban" Variante="peligro" Deshabilitado="!c.PuedeAnular"
+                                                    Tooltip="@(c.PuedeAnular ? L("Anular la carga") : L("No se puede anular: tiene cobros, pagos, notas o contraseñas de pago"))"
+                                                    OnClick="() => IniciarAnulacion(c.CscId)" />
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                        @if (anulando == c.CscId)
+                        {
+                            <tr class="fila-diagnostico">
+                                <td colspan="8" class="apilada-ancha">
+                                    <div class="anulacion-en-linea" role="group" aria-label="@L("Anular la carga #{0}", c.CscId)">
+                                        <label for="saldos-motivo">@L("Motivo de la anulación")</label>
+                                        <input id="saldos-motivo" @bind="motivo" @bind:event="oninput" maxlength="256" placeholder="@L("Ej.: se cargó con la fecha equivocada")" />
+                                        <BotonIcono Icono="ban" Variante="peligro" Etiqueta="@L("Anular")" Tooltip="@L("Confirmar la anulación")"
+                                                    Deshabilitado="motivo.Trim().Length < 5" OnClick="() => AnularAsync(c)" />
+                                        <BotonIcono Icono="x" Etiqueta="@L("Cancelar")" Tooltip="@L("Cancelar")" OnClick="() => anulando = null" />
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        @if (abierta == c.CscId)
+                        {
+                            <tr class="fila-diagnostico">
+                                <td colspan="8" class="apilada-ancha">
+                                    <table class="tabla-datos tabla-anidada">
+                                        <thead><tr><th>@L("Documento")</th><th>@(EsCliente ? L("Cliente") : L("Proveedor"))</th><th class="col-fecha">@L("Fecha")</th><th class="num">@L("Cuotas")</th><th class="num col-monto">@L("Total")</th>@if (EsCliente) {<th>@L("UUID FEL")</th>}</tr></thead>
+                                        <tbody>
+                                            @foreach (var d in documentos.Where(d => d.CscId == c.CscId))
+                                            {
+                                                <tr>
+                                                    <td>@d.Documento</td>
+                                                    <td><a href="@Ruta/estado-cuenta?id=@d.TerceroId">@d.TerceroCodigo · @d.Tercero</a></td>
+                                                    <td class="col-fecha">@d.Fecha.ToString("dd/MM/yyyy")</td>
+                                                    <td class="num">@d.Cuotas</td>
+                                                    <td class="num col-monto">@d.Total.ToString("N2")</td>
+                                                    @if (EsCliente) {<td class="texto-tenue">@(d.FelUuid ?? "—")</td>}
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public bool EsCliente { get; set; }
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private static readonly string[] Obligatorias = { "Código", "Número", "Fecha documento", "Vencimiento", "Saldo" };
+
+    private string Modulo => EsCliente ? "CXC" : "CXP";
+    private string Ruta => EsCliente ? "cxc" : "cxp";
+
+    private IReadOnlyList<CargaDocumentosPendientes> cargas = Array.Empty<CargaDocumentosPendientes>();
+    private IReadOnlyList<DocumentoPendienteCargado> documentos = Array.Empty<DocumentoPendienteCargado>();
+    private ResumenDocumentosPendientes? cuadre;
+    private List<FilaDocumentoPendiente> filas = new();
+    private ResultadoCarga<ResumenDocumentosPendientes>? resultado;
+    private List<MensajeCarga> erroresLectura = new();
+    private DateTime fecha = DateTime.Today;
+    private string nombreArchivo = "";
+    private bool guardando;
+    private string? mensaje;
+    private bool esMensajeError;
+    private int? abierta;
+    private int? anulando;
+    private string motivo = "";
+
+    private bool PuedeGrabar => resultado is not null && !resultado.TieneErrores && erroresLectura.Count == 0 && filas.Count > 0;
+
+    protected override Task OnInitializedAsync() => CargarListaAsync();
+
+    private async Task<int?> UsuIdAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private async Task CargarListaAsync()
+    {
+        try
+        {
+            (cargas, documentos) = await CargasRepository.ConsultarDocumentosPendientesAsync(Modulo);
+            // Una validación sin filas devuelve la apertura y lo ya cargado.
+            cuadre = (await CargasRepository.ProcesarDocumentosPendientesAsync(Modulo, fecha, Array.Empty<FilaDocumentoPendiente>(), null, true, await UsuIdAsync())).Resumen;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private void MostrarError(Exception ex)
+    {
+        mensaje = MensajesError.Traducir(ex);
+        esMensajeError = true;
+    }
+
+    private async Task LeerArchivoAsync(InputFileChangeEventArgs e)
+    {
+        mensaje = null;
+        resultado = null;
+        filas = new();
+        erroresLectura = new();
+        nombreArchivo = e.File.Name;
+        try
+        {
+            using var memoria = new MemoryStream();
+            await e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(memoria);
+            memoria.Position = 0;
+            using var lector = LectorExcel.Leer(memoria, ReportesExcel.ColumnasDocumentosPendientes(EsCliente));
+            var faltantes = lector.ColumnasFaltantes(Obligatorias).ToList();
+            if (lector.Errores.Count == 0 && faltantes.Count > 0)
+                lector.Errores.Add(new MensajeCarga { Mensaje = L("Faltan las columnas: {0}.", string.Join(", ", faltantes)) });
+            if (lector.Errores.Count == 0)
+                foreach (var fila in lector.Filas)
+                {
+                    var cuota = lector.Numero(fila, "Cuota");
+                    filas.Add(new FilaDocumentoPendiente
+                    {
+                        Fila = fila.RowNumber(),
+                        Codigo = lector.Texto(fila, "Código"),
+                        Nombre = lector.Texto(fila, "Nombre"),
+                        Nit = lector.Texto(fila, "NIT"),
+                        Sucursal = lector.Texto(fila, "Sucursal"),
+                        Serie = lector.Texto(fila, "Serie"),
+                        Numero = lector.Texto(fila, "Número"),
+                        FechaDocumento = lector.Fecha(fila, "Fecha documento"),
+                        Cuota = cuota is null ? null : (int)cuota.Value,
+                        Vencimiento = lector.Fecha(fila, "Vencimiento"),
+                        Saldo = lector.Numero(fila, "Saldo"),
+                        FelSerie = EsCliente ? lector.Texto(fila, "Serie FEL") : null,
+                        FelNumero = EsCliente ? lector.Texto(fila, "Número FEL") : null,
+                        FelUuid = EsCliente ? lector.Texto(fila, "UUID FEL") : null
+                    });
+                }
+            erroresLectura = lector.Errores.ToList();
+            if (erroresLectura.Any(m => m.Fila == 0))
+            {
+                resultado = new ResultadoCarga<ResumenDocumentosPendientes> { Mensajes = erroresLectura };
+                return;
+            }
+            await RevalidarAsync();
+        }
+        catch (Exception ex) when (ex is not Microsoft.Data.SqlClient.SqlException)
+        {
+            mensaje = L("No se pudo leer el archivo. Verifique que sea un libro de Excel (.xlsx) válido y que no esté abierto en otro programa.");
+            esMensajeError = true;
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    // Valida en la base (también al cambiar la fecha) y junta los valores que no se pudieron leer.
+    private async Task RevalidarAsync()
+    {
+        if (filas.Count == 0) return;
+        try
+        {
+            var validacion = await CargasRepository.ProcesarDocumentosPendientesAsync(Modulo, fecha, filas, nombreArchivo, true, await UsuIdAsync());
+            resultado = new ResultadoCarga<ResumenDocumentosPendientes>
+            {
+                Mensajes = erroresLectura.Concat(validacion.Mensajes).OrderBy(m => m.Fila).ThenBy(m => m.Tipo == "E" ? 0 : 1).ToList(),
+                Resumen = validacion.Resumen
+            };
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+
+    private async Task GrabarAsync()
+    {
+        guardando = true;
+        mensaje = null;
+        try
+        {
+            resultado = await CargasRepository.ProcesarDocumentosPendientesAsync(Modulo, fecha, filas, nombreArchivo, false, await UsuIdAsync());
+            if (resultado.Resumen?.Grabado == true)
+            {
+                mensaje = L("Carga #{0} grabada: {1} documento(s), {2} cuota(s), total Q {3:N2}.", resultado.Resumen.CscId ?? 0,
+                    resultado.Resumen.Documentos, resultado.Resumen.Filas, resultado.Resumen.Total);
+                esMensajeError = false;
+                filas = new();
+                resultado = null;
+                abierta = null;
+                await CargarListaAsync();
+            }
+        }
+        catch (Exception ex) { MostrarError(ex); }
+        finally { guardando = false; }
+    }
+
+    private void AlternarDetalle(int cscId) => abierta = abierta == cscId ? null : cscId;
+
+    private void IniciarAnulacion(int cscId)
+    {
+        anulando = cscId;
+        motivo = "";
+    }
+
+    private async Task AnularAsync(CargaDocumentosPendientes carga)
+    {
+        try
+        {
+            await CargasRepository.AnularDocumentosPendientesAsync(carga.CscId, motivo.Trim(), await UsuIdAsync());
+            mensaje = L("Carga #{0} anulada: sus documentos ya no tienen saldo pendiente.", carga.CscId);
+            esMensajeError = false;
+            anulando = null;
+            await CargarListaAsync();
+            if (filas.Count > 0) await RevalidarAsync();
+        }
+        catch (Exception ex) { MostrarError(ex); }
+    }
+}

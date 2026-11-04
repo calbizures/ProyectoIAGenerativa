@@ -102,10 +102,12 @@ BEGIN
 	GROUP BY asie.asi_id, asie.asi_origen, asie.asi_origen_id, asie.enc_id, asie.asi_fecha, asie.asi_descripcion;
 
 	-- Documento "dueño" de cada documento: la nota se cuenta con su factura o compra.
-	DECLARE @docs TABLE (enc_id INT PRIMARY KEY, clave INT, vigente BIT);
+	-- inicial: documento pendiente cargado al arrancar (script 86), sin póliza propia:
+	-- su valor está en la partida de apertura y se compara con ella aparte.
+	DECLARE @docs TABLE (enc_id INT PRIMARY KEY, clave INT, vigente BIT, inicial BIT, monto NUMERIC(14, 2));
 	INSERT INTO @docs
 	SELECT docu.enc_id, CASE WHEN tipo.tdo_es_nota = 1 THEN ISNULL(docu.enc_id_referencia, docu.enc_id) ELSE docu.enc_id END,
-		   IIF(docu.enc_estado = 'G', 1, 0)
+		   IIF(docu.enc_estado = 'G', 1, 0), IIF(tipo.tdo_codigo IN ('SIFAC', 'SICOM'), 1, 0), docu.enc_monto_total
 	FROM dbo.inv_documento_enc docu
 	INNER JOIN dbo.inv_documento_tipo tipo ON tipo.tdo_id = docu.tdo_id
 	WHERE (@Modulo = 'CXC' AND docu.cli_id IS NOT NULL) OR (@Modulo = 'CXP' AND docu.prv_id IS NOT NULL);
@@ -132,6 +134,8 @@ BEGIN
 			SELECT docs.clave, 0, movi.neto
 			FROM @mov movi INNER JOIN @docs docs ON docs.enc_id = movi.enc_id
 			WHERE movi.origen IN ('VENTA', 'NOTA_CREDITO', 'NOTA_DEBITO')
+			UNION ALL
+			SELECT docs.clave, 0, docs.monto FROM @docs docs WHERE docs.inicial = 1 AND docs.vigente = 1
 		) partes
 		GROUP BY clave;
 
@@ -173,7 +177,8 @@ BEGIN
 					ELSE CONCAT(N'Póliza de otro módulo (', movi.origen, N') en la cuenta de clientes.') END
 		FROM @mov movi
 		WHERE NOT ((movi.origen IN ('VENTA', 'NOTA_CREDITO', 'NOTA_DEBITO') AND movi.enc_id IN (SELECT enc_id FROM @docs))
-				OR (movi.origen = 'PAGO_CLIENTE' AND movi.origen_id IS NOT NULL));
+				OR (movi.origen = 'PAGO_CLIENTE' AND movi.origen_id IS NOT NULL)
+				OR movi.origen = 'APERTURA');
 	END
 	ELSE
 	BEGIN
@@ -191,6 +196,8 @@ BEGIN
 			SELECT docs.clave, 0, movi.neto
 			FROM @mov movi INNER JOIN @docs docs ON docs.enc_id = movi.enc_id
 			WHERE movi.origen IN ('COMPRA', 'NOTA_CREDITO', 'NOTA_DEBITO')
+			UNION ALL
+			SELECT docs.clave, 0, docs.monto FROM @docs docs WHERE docs.inicial = 1 AND docs.vigente = 1
 		) partes
 		GROUP BY clave;
 
@@ -251,8 +258,21 @@ BEGIN
 					ELSE CONCAT(N'Póliza de otro módulo (', movi.origen, N') en la cuenta de proveedores.') END
 		FROM @mov movi
 		WHERE NOT ((movi.origen IN ('COMPRA', 'NOTA_CREDITO', 'NOTA_DEBITO') AND movi.enc_id IN (SELECT enc_id FROM @docs))
-				OR (movi.origen IN ('PAGO_PROVEEDOR', 'PAGO_TRANSFERENCIA') AND movi.origen_id IS NOT NULL));
+				OR (movi.origen IN ('PAGO_PROVEEDOR', 'PAGO_TRANSFERENCIA') AND movi.origen_id IS NOT NULL)
+				OR movi.origen = 'APERTURA');
 	END
+
+	-- O: la partida de apertura contra los documentos pendientes iniciales (86).
+	DECLARE @inicial NUMERIC(14, 2) = (SELECT ISNULL(SUM(monto), 0) FROM @docs WHERE inicial = 1 AND vigente = 1),
+			@apertura NUMERIC(14, 2) = (SELECT ISNULL(SUM(neto), 0) FROM @mov WHERE origen = 'APERTURA');
+	IF ABS(@inicial - @apertura) >= 0.005
+		INSERT INTO @partidas
+		SELECT 'O', (SELECT MAX(fecha) FROM @mov WHERE origen = 'APERTURA'), N'Partida de apertura', NULL, NULL, NULL,
+			   @inicial, @apertura, @inicial - @apertura, (SELECT MAX(asi_id) FROM @mov WHERE origen = 'APERTURA'), NULL, NULL,
+			   CASE WHEN @inicial = 0 AND @Modulo = 'CXC' THEN N'La apertura llevó saldo a la cuenta de clientes, pero no se han cargado las facturas pendientes: cárguelas en Cuentas por cobrar › Saldos iniciales.'
+					WHEN @inicial = 0 THEN N'La apertura llevó saldo a la cuenta de proveedores, pero no se han cargado las compras pendientes: cárguelas en Cuentas por pagar › Saldos iniciales.'
+					WHEN @apertura = 0 THEN N'Hay documentos pendientes cargados como saldo inicial, pero la partida de apertura no lleva saldo a la cuenta.'
+					ELSE N'Los documentos pendientes cargados como saldo inicial no suman lo que la partida de apertura llevó a la cuenta.' END;
 
 	-- D: un renglón por documento que no cuadra.
 	INSERT INTO @partidas
@@ -330,7 +350,8 @@ BEGIN
 	SELECT 3, 'Documentos vigentes sin póliza vigente', COUNT(*), MIN(CONCAT(tipo.tdo_codigo, ' ', ISNULL(docu.enc_numero_unico, docu.enc_numero_docto)))
 	FROM dbo.inv_documento_enc docu
 	INNER JOIN dbo.inv_documento_tipo tipo ON tipo.tdo_id = docu.tdo_id
-	WHERE docu.enc_estado = 'G' AND tipo.tdo_codigo <> 'INVI'
+	-- Inventario inicial y documentos pendientes iniciales (86): su valor está en la apertura.
+	WHERE docu.enc_estado = 'G' AND tipo.tdo_codigo NOT IN ('INVI', 'SIFAC', 'SICOM')
 	  AND NOT EXISTS (SELECT 1 FROM dbo.cont_asiento_enc asie WHERE asie.enc_id = docu.enc_id AND asie.asi_estado = 'A')
 	  AND NOT EXISTS (SELECT 1 FROM dbo.inv_traslado tras WHERE docu.enc_id IN (tras.enc_id_salida, tras.enc_id_ingreso, tras.enc_id_devolucion));
 

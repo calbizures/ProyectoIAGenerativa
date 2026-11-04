@@ -142,3 +142,72 @@ public sealed class ResumenEmpleados
 	public int Actualizados { get; set; }
 	public bool Grabado { get; set; }
 }
+
+// Documentos pendientes al arrancar: facturas de clientes (CXC) o compras de
+// proveedores (CXP), una fila por cuota (script 86).
+public sealed class FilaDocumentoPendiente
+{
+	public int Fila { get; set; }
+	public string? Codigo { get; set; }
+	public string? Nombre { get; set; }
+	public string? Nit { get; set; }
+	public string? Sucursal { get; set; }
+	public string? Serie { get; set; }
+	public string? Numero { get; set; }
+	public DateTime? FechaDocumento { get; set; }
+	public int? Cuota { get; set; }
+	public DateTime? Vencimiento { get; set; }
+	public decimal? Saldo { get; set; }
+	public string? FelSerie { get; set; }
+	public string? FelNumero { get; set; }
+	public string? FelUuid { get; set; }
+}
+
+public sealed class ResumenDocumentosPendientes
+{
+	public int Filas { get; set; }
+	public int Documentos { get; set; }
+	public int TercerosNuevos { get; set; }
+	public decimal Total { get; set; }
+	// Lo que la partida de apertura llevó a la cuenta, lo cargado antes y la
+	// diferencia con esta carga (Apertura - CargadoAntes - Total).
+	public decimal Apertura { get; set; }
+	public decimal CargadoAntes { get; set; }
+	public decimal Diferencia { get; set; }
+	public bool HayApertura { get; set; }
+	public bool Grabado { get; set; }
+	public int? CscId { get; set; }
+}
+
+public sealed class CargaDocumentosPendientes
+{
+	public int CscId { get; set; }
+	public DateTime Fecha { get; set; }
+	public string? Archivo { get; set; }
+	public int Documentos { get; set; }
+	public int Cuotas { get; set; }
+	public int TercerosNuevos { get; set; }
+	public decimal Total { get; set; }
+	public decimal Pendiente { get; set; }
+	public string Estado { get; set; } = "V";
+	public string? Usuario { get; set; }
+	public DateTime FechaGrabado { get; set; }
+	public string? MotivoAnulacion { get; set; }
+	public string? UsuarioAnulacion { get; set; }
+	public DateTime? FechaAnulacion { get; set; }
+	public bool PuedeAnular { get; set; }
+}
+
+public sealed class DocumentoPendienteCargado
+{
+	public int CscId { get; set; }
+	public int EncId { get; set; }
+	public DateTime Fecha { get; set; }
+	public string Documento { get; set; } = "";
+	public int TerceroId { get; set; }
+	public string? TerceroCodigo { get; set; }
+	public string? Tercero { get; set; }
+	public decimal Total { get; set; }
+	public int Cuotas { get; set; }
+	public string? FelUuid { get; set; }
+}

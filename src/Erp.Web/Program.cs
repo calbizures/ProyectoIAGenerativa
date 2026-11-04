@@ -441,6 +441,21 @@ app.MapGet("/reportes/inventario/plantilla-inventario-inicial.xlsx", async (Http
 	return Results.File(archivo, TipoExcel, "plantilla-inventario-inicial.xlsx");
 }).RequireAuthorization();
 
+// Plantilla de facturas (cxc) o compras (cxp) pendientes al arrancar (script 86).
+app.MapGet("/reportes/{modulo}/plantilla-saldos-iniciales.xlsx", async (string modulo, HttpContext contexto, IGeneralRepository general,
+	Erp.Data.Ventas.IClienteRepository clientes, Erp.Data.Compras.IProveedorRepository proveedores, IAuthorizationService autorizacion) =>
+{
+	if (modulo is not ("cxc" or "cxp")) return Results.NotFound();
+	var esCliente = modulo == "cxc";
+	if (!(await autorizacion.AuthorizeAsync(contexto.User, esCliente ? "Permiso:CXC_SALDOS_INICIALES" : "Permiso:CXP_SALDOS_INICIALES")).Succeeded) return Results.Forbid();
+	var terceros = esCliente
+		? (await clientes.ConsultarAsync(null, "A")).Select(c => (c.CliCodigo, $"{c.CliNombres} {c.CliApellidos}".Trim(), c.CliNit))
+		: (await proveedores.ConsultarAsync(null, "A")).Select(p => (p.PrvCodigo, p.PrvNombreComercial, p.PrvNit));
+	var archivo = ReportesExcel.PlantillaDocumentosPendientes(esCliente, await general.ConsultarSucursalesAsync(null, soloActivas: true),
+		terceros.ToList(), await CompaniaReporteAsync(contexto, general));
+	return Results.File(archivo, TipoExcel, esCliente ? "facturas-pendientes-iniciales.xlsx" : "compras-pendientes-iniciales.xlsx");
+}).RequireAuthorization();
+
 app.MapGet("/reportes/inventario/toma/{tfiId:int}.xlsx", async (int tfiId, HttpContext contexto, Erp.Data.Inventario.IInventarioFisicoRepository tomas,
 	IGeneralRepository general, IAuthorizationService autorizacion) =>
 {

@@ -30,7 +30,8 @@ dotnet test src/Erp.Tests
 - **De integración** (contra una base instalada): controles de integridad,
   Cuentas por cobrar y por pagar cuadradas con su cuenta contable, plan de
   pagos de compras al contado y al crédito, inicio de sesión y bloqueo por
-  intentos. Corren cuando la variable `ERP_PRUEBAS_BD` tiene la cadena de
+  intentos, conciliación de CxC y CxP con contabilidad y carga de documentos
+  pendientes al arrancar. Corren cuando la variable `ERP_PRUEBAS_BD` tiene la cadena de
   conexión; sin ella se saltan. Las que cambian datos lo hacen dentro de una
   transacción que se revierte.
 

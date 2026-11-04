@@ -3953,3 +3953,11 @@ fieldset.sin-borde { border: 0; padding: 0; margin: 0; min-width: 0; }
     .tabla-integridad tr.fila-revisar { box-shadow: inset 3px 0 0 var(--error-texto); }
     .tabla-desplazable:has(> .tabla-apilada) { overflow-x: visible; }
 }
+
+/* Documentos pendientes al arrancar (script 86) */
+.saldos-cuadre { margin-bottom: 1.25rem; }
+.tabla-datos .saldos-archivo { min-width: 15rem; }
+.anulacion-en-linea { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.4rem 0; }
+.anulacion-en-linea label { font-size: 0.85rem; color: var(--texto-tenue); }
+.anulacion-en-linea input { flex: 1 1 16rem; min-width: 12rem; }
+.tabla-datos.tabla-anidada { margin: 0.25rem 0 0.5rem; font-size: 0.85rem; box-shadow: none; }

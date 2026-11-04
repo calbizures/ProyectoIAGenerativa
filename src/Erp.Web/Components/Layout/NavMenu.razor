@@ -132,17 +132,26 @@
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <AuthorizeView Policy="Permiso:CXC_ADMIN">
+        <AuthorizeView Policy="Permiso:CXC_ADMIN,CXC_SALDOS_INICIALES">
             <Authorized>
                 <SidebarNodo Titulo="@L("Cuentas por cobrar")" IconoNombre="wallet" Rutas="@(new[] { "cxc" })">
-                    <NavLink href="cxc/estado-cuenta" class="sidebar-hijo-link">@L("Estado de cuenta")</NavLink>
-                    <NavLink href="cxc/cobros" class="sidebar-hijo-link">@L("Cobros")</NavLink>
-                    <NavLink href="cxc/notas" class="sidebar-hijo-link">@L("Notas de crédito y débito")</NavLink>
-                    <NavLink href="cxc/antiguedad" class="sidebar-hijo-link">@L("Antigüedad de saldos")</NavLink>
+                    <AuthorizeView Policy="Permiso:CXC_ADMIN" Context="cxcContexto">
+                        <Authorized>
+                            <NavLink href="cxc/estado-cuenta" class="sidebar-hijo-link">@L("Estado de cuenta")</NavLink>
+                            <NavLink href="cxc/cobros" class="sidebar-hijo-link">@L("Cobros")</NavLink>
+                            <NavLink href="cxc/notas" class="sidebar-hijo-link">@L("Notas de crédito y débito")</NavLink>
+                            <NavLink href="cxc/antiguedad" class="sidebar-hijo-link">@L("Antigüedad de saldos")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CXC_SALDOS_INICIALES" Context="cxcSaldosContexto">
+                        <Authorized>
+                            <NavLink href="cxc/saldos-iniciales" class="sidebar-hijo-link">@L("Facturas pendientes al arrancar")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
                 </SidebarNodo>
             </Authorized>
         </AuthorizeView>
-        <AuthorizeView Policy="Permiso:CXP_ADMIN,CXP_CONTRASENA,CXP_PAGO_PROGRAMADO">
+        <AuthorizeView Policy="Permiso:CXP_ADMIN,CXP_CONTRASENA,CXP_PAGO_PROGRAMADO,CXP_SALDOS_INICIALES">
             <Authorized>
                 <SidebarNodo Titulo="@L("Cuentas por pagar")" IconoNombre="banknote" Rutas="@(new[] { "cxp" })">
                     <AuthorizeView Policy="Permiso:CXP_ADMIN" Context="cxpContexto">
@@ -165,6 +174,11 @@
                         <Authorized>
                             <NavLink href="cxp/notas" class="sidebar-hijo-link">@L("Notas de crédito y débito")</NavLink>
                             <NavLink href="cxp/antiguedad" class="sidebar-hijo-link">@L("Antigüedad de saldos")</NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Policy="Permiso:CXP_SALDOS_INICIALES" Context="cxpSaldosContexto">
+                        <Authorized>
+                            <NavLink href="cxp/saldos-iniciales" class="sidebar-hijo-link">@L("Compras pendientes al arrancar")</NavLink>
                         </Authorized>
                     </AuthorizeView>
                 </SidebarNodo>

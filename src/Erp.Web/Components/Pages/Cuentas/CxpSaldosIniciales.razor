@@ -1,0 +1,7 @@
+@page "/cxp/saldos-iniciales"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CXP_SALDOS_INICIALES")]
+
+<PageTitle>@L("Compras pendientes al arrancar")</PageTitle>
+
+<SaldosInicialesVista EsCliente="false" />

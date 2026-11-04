@@ -86,16 +86,18 @@
             new("compras", "COMPRAS_DOCUMENTO_CREAR"),
         }),
         new("Cuentas por cobrar", "wallet", "Estado de cuenta, cobros, notas y antigüedad",
-            "CXC_ADMIN", new Opcion[]
+            "CXC_ADMIN,CXC_SALDOS_INICIALES", new Opcion[]
         {
             new("cxc/estado-cuenta", "CXC_ADMIN"),
+            new("cxc/saldos-iniciales", "CXC_SALDOS_INICIALES"),
         }),
         new("Cuentas por pagar", "banknote", "Estado de cuenta, pagos, notas y antigüedad",
-            "CXP_ADMIN,CXP_CONTRASENA,CXP_PAGO_PROGRAMADO", new Opcion[]
+            "CXP_ADMIN,CXP_CONTRASENA,CXP_PAGO_PROGRAMADO,CXP_SALDOS_INICIALES", new Opcion[]
         {
             new("cxp/estado-cuenta", "CXP_ADMIN"),
             new("cxp/contrasenas", "CXP_CONTRASENA"),
             new("cxp/pagos-programados", "CXP_PAGO_PROGRAMADO"),
+            new("cxp/saldos-iniciales", "CXP_SALDOS_INICIALES"),
         }),
         new("Caja y bancos", "landmark", "Caja, cheques, caja chica y conciliación",
             "BANCOS_CAJA_ADMIN,BANCOS_ADMIN,BANCOS_CHEQUE_EMITIR,BANCOS_FORMATO_ARCHIVO,CAJA_CHICA_GASTOS,CAJA_CHICA_ADMIN,FLUJO_CAJA,CONCILIACION_BANCARIA", new Opcion[]
