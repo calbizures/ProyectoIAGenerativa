@@ -106,7 +106,7 @@
             {
                 <tr><td colspan="7" class="doc-tabla-vacia">@L("Ningún producto coincide con la búsqueda.")</td></tr>
             }
-            @foreach (var p in productos)
+            @foreach (var p in Paginador.Recortar(productos, paginaLista))
             {
                 <tr class="@(seleccionado?.ProId == p.ProId ? "fila-seleccionada" : "")">
                     <td class="col-codigo">@p.ProCodigo</td>
@@ -132,6 +132,8 @@
             }
         </tbody>
     </table>
+    <Paginador Total="productos.Count" @bind-Pagina="paginaLista" />
+    <AvisoTope HayMas="hayMasProductos" Tope="TopeLista" />
 }
 else if (pestanaActiva == "editar" && seleccionado is not null)
 {
@@ -451,6 +453,9 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
 }
 
 @code {
+    private int paginaLista = 1;
+    private const int TopeLista = 2000;
+    private bool hayMasProductos;
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
@@ -521,7 +526,9 @@ else if (pestanaActiva == "proveedores" && seleccionado is not null)
             prtId: null,
             string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado,
             pagina: 1,
-            tamanioPagina: 100);
+            tamanioPagina: TopeLista + 1);
+        (productos, hayMasProductos) = AvisoTope.Recortar(productos, TopeLista);
+        paginaLista = 1;
     }
 
     private void MostrarFormularioNuevo()

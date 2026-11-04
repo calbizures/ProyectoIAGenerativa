@@ -65,7 +65,7 @@
             {
                 <tr><td colspan="7" class="doc-tabla-vacia">@L("Ningún cliente coincide con la búsqueda.")</td></tr>
             }
-            @foreach (var c in clientes)
+            @foreach (var c in Paginador.Recortar(clientes, paginaLista))
             {
                 <tr class="@(seleccionado?.CliId == c.CliId ? "fila-seleccionada" : "")">
                     <td class="col-codigo">@c.CliCodigo</td>
@@ -87,6 +87,7 @@
             }
         </tbody>
     </table>
+    <Paginador Total="clientes.Count" @bind-Pagina="paginaLista" />
 }
 else if (pestanaActiva == "detalle" && seleccionado is not null)
 {
@@ -173,6 +174,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
 }
 
 @code {
+    private int paginaLista = 1;
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
@@ -221,6 +223,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         clientes = await ClienteRepository.ConsultarAsync(
             string.IsNullOrWhiteSpace(textoBusqueda) ? null : textoBusqueda,
             string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado);
+        paginaLista = 1;
     }
 
     private async Task CargarFacturasAsync()

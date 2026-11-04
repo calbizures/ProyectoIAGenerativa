@@ -309,5 +309,6 @@
   "Cotizaciones, facturación y clientes": "Quotes, invoicing and customers",
   "Órdenes de compra, compras y proveedores": "Purchase orders, purchases and suppliers",
   "Caja, cheques, caja chica y conciliación": "Cash register, checks, petty cash and reconciliation",
-  "Pólizas, libros, estados financieros y cierre": "Journal entries, ledgers, financial statements and closing"
+  "Pólizas, libros, estados financieros y cierre": "Journal entries, ledgers, financial statements and closing",
+  "Se muestran los primeros {0} registros: hay más. Use los filtros o la búsqueda para acotar la lista.": "Showing the first {0} records: there are more. Use the filters or the search to narrow the list."
 }

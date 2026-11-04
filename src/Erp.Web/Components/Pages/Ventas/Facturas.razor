@@ -649,6 +649,7 @@
             </tbody>
         </table>
         <Paginador Total="facturasFiltradas.Count" @bind-Pagina="pagina" />
+        <AvisoTope HayMas="hayMasFacturas" Tope="TopeLista" />
     </div>
 }
 
@@ -803,6 +804,8 @@
     private string? avisoFel;
     private Erp.Data.Fel.FelDocumentoDetalle? felDetalle;
     private int pagina = 1;
+    private const int TopeLista = 2000;
+    private bool hayMasFacturas;
     private int? anulandoId;
     private IReadOnlyList<FacturaEncabezado> facturasFiltradas => string.IsNullOrWhiteSpace(textoFiltro)
         ? facturas
@@ -1152,7 +1155,8 @@
         facturas = await FacturaRepository.ConsultarAsync(
             tdoIdFactura, cliId: null, filtroFechaDesde, filtroFechaHasta,
             string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado,
-            pagina: 1, tamanioPagina: 500);
+            pagina: 1, tamanioPagina: TopeLista + 1);
+        (facturas, hayMasFacturas) = AvisoTope.Recortar(facturas, TopeLista);
         pagina = 1;
     }
 

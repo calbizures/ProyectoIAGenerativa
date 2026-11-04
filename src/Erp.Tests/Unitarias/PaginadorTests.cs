@@ -26,4 +26,16 @@ public class PaginadorTests
 	{
 		Assert.Empty(Paginador.Recortar(Array.Empty<int>(), 1));
 	}
+
+	[Fact]
+	public void El_tope_recorta_y_avisa_solo_si_habia_mas()
+	{
+		var (recortada, hayMas) = AvisoTope.Recortar(Enumerable.Range(1, 2001).ToList(), 2000);
+		Assert.Equal(2000, recortada.Count);
+		Assert.True(hayMas);
+
+		var (completa, sinMas) = AvisoTope.Recortar(Enumerable.Range(1, 2000).ToList(), 2000);
+		Assert.Equal(2000, completa.Count);
+		Assert.False(sinMas);
+	}
 }

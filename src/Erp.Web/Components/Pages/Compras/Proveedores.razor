@@ -65,7 +65,7 @@
             {
                 <tr><td colspan="6" class="doc-tabla-vacia">@L("Ningún proveedor coincide con la búsqueda.")</td></tr>
             }
-            @foreach (var p in proveedores)
+            @foreach (var p in Paginador.Recortar(proveedores, paginaLista))
             {
                 <tr class="@(seleccionado?.PrvId == p.PrvId ? "fila-seleccionada" : "")">
                     <td class="col-codigo">@p.PrvCodigo</td>
@@ -89,6 +89,7 @@
             }
         </tbody>
     </table>
+    <Paginador Total="proveedores.Count" @bind-Pagina="paginaLista" />
 }
 else if (pestanaActiva == "detalle" && seleccionado is not null)
 {
@@ -175,6 +176,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
 }
 
 @code {
+    private int paginaLista = 1;
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
@@ -214,6 +216,7 @@ else if (pestanaActiva == "editar" && seleccionado is not null)
         proveedores = await ProveedorRepository.ConsultarAsync(
             string.IsNullOrWhiteSpace(textoBusqueda) ? null : textoBusqueda,
             string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado);
+        paginaLista = 1;
     }
 
     private void MostrarFormularioNuevo()

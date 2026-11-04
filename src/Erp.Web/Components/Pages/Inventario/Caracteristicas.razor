@@ -139,7 +139,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        productos = await ProductoRepository.ConsultarAsync(null, null, prtId: null, estado: "A", pagina: 1, tamanioPagina: 500);
+        productos = await ProductoRepository.ConsultarAsync(null, null, prtId: null, estado: "A", pagina: 1, tamanioPagina: 5000);
         tiposCaracteristica = await CaracteristicaRepository.ConsultarTiposAsync("A");
         await BuscarAsync();
     }

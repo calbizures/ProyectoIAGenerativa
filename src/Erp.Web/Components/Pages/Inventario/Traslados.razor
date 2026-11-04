@@ -63,7 +63,7 @@
         <table class="tabla-datos">
             <thead><tr><th class="col-codigo">@L("Número")</th><th class="col-fecha">@L("Fecha")</th><th>@L("Origen")</th><th>@L("Destino")</th><th class="num col-estado">@L("Unidades")</th><th class="num col-monto">@L("Valor")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr></thead>
             <tbody>
-                @foreach (var t in traslados)
+                @foreach (var t in Paginador.Recortar(traslados, paginaLista))
                 {
                     var porRecibir = EsPorRecibir(t);
                     <tr class="@(porRecibir ? "fila-por-recibir" : "") @(seleccionado?.TraId == t.TraId ? "fila-seleccionada" : "")">
@@ -83,6 +83,7 @@
                 }
             </tbody>
         </table>
+        <Paginador Total="traslados.Count" @bind-Pagina="paginaLista" />
     }
 }
 else if (pestanaActiva == "nuevo")
@@ -291,6 +292,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
 }
 
 @code {
+    private int paginaLista = 1;
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
@@ -403,6 +405,7 @@ else if (pestanaActiva == "detalle" && seleccionado is not null)
         try
         {
             traslados = await TrasladoRepository.ConsultarAsync(filtroSucId, filtroEstado == "" ? null : filtroEstado, filtroDesde, filtroHasta);
+            paginaLista = 1;
             if (seleccionado is not null) seleccionado = traslados.FirstOrDefault(t => t.TraId == seleccionado.TraId) ?? seleccionado;
         }
         catch (Exception ex) { MostrarError(ex); }

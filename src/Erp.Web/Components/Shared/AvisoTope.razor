@@ -1,0 +1,19 @@
+@* Aviso de un listado recortado: la consulta trae como máximo Tope registros
+   (se pide uno más para saber si hay más). Nunca se ocultan registros sin
+   decirlo. *@
+@if (HayMas)
+{
+    <p class="aviso-pendiente" role="status">
+        <Icono Nombre="info" Tamano="16" />
+        <span>@L("Se muestran los primeros {0} registros: hay más. Use los filtros o la búsqueda para acotar la lista.", Tope.ToString("N0"))</span>
+    </p>
+}
+
+@code {
+    [Parameter] public bool HayMas { get; set; }
+    [Parameter] public int Tope { get; set; }
+
+    // Recorta la lista al tope e indica si traía más.
+    public static (IReadOnlyList<T> Lista, bool HayMas) Recortar<T>(IReadOnlyList<T> lista, int tope) =>
+        lista.Count > tope ? (lista.Take(tope).ToList(), true) : (lista, false);
+}

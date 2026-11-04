@@ -57,7 +57,7 @@
                 <tr><th class="col-codigo">@L("Código")</th><th>@L("Nombre")</th><th>@L("Puesto")</th><th>@L("Departamento")</th><th class="col-estado">@L("Nómina")</th><th>@L("Pago")</th><th class="col-fecha">@L("Ingreso")</th><th class="num col-monto">@L("Salario base")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr>
             </thead>
             <tbody>
-                @foreach (var e in empleados)
+                @foreach (var e in Paginador.Recortar(empleados, paginaLista))
                 {
                     <tr class="@(seleccionado?.IdEmpleado == e.IdEmpleado ? "fila-seleccionada" : "")">
                         <td class="col-codigo">@e.CodigoEmpleado</td>
@@ -78,6 +78,7 @@
                 }
             </tbody>
         </table>
+        <Paginador Total="empleados.Count" @bind-Pagina="paginaLista" />
     }
 }
 else if (pestanaActiva == "detalle" && seleccionado is not null)
@@ -371,6 +372,7 @@ else if (pestanaActiva == "editar")
 }
 
 @code {
+    private int paginaLista = 1;
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
@@ -462,6 +464,7 @@ else if (pestanaActiva == "editar")
             empleados = await RrhhRepository.ConsultarEmpleadosAsync(
                 string.IsNullOrWhiteSpace(filtro) ? null : filtro.Trim(),
                 string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado);
+            paginaLista = 1;
         }
         catch (Exception ex) { MostrarError(ex); }
     }

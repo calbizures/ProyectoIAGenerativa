@@ -19,7 +19,7 @@
 }
 
 <div class="barra-filtros">
-    <input type="search" placeholder="@L("Buscar por código o descripción")" aria-label="@L("Buscar producto por código o descripción")" @bind="textoBusqueda" @bind:event="oninput" />
+    <input type="search" placeholder="@L("Buscar por código o descripción")" aria-label="@L("Buscar producto por código o descripción")" @bind="textoBusqueda" @bind:event="oninput" @bind:after="() => paginaLista = 1" />
     <select @bind="filtroProId" @bind:after="CambiarFiltroAsync" aria-label="@L("Producto")">
         <option value="0">@(vista == "kardex" ? L("Seleccione el producto...") : L("Todos los productos"))</option>
         @foreach (var p in ProductosVisibles)
@@ -65,7 +65,7 @@
                 {
                     <tr><td colspan="4">@L("Sin existencias para los filtros seleccionados.")</td></tr>
                 }
-                @foreach (var e in ExistenciasVisibles)
+                @foreach (var e in Paginador.Recortar(ExistenciasVisibles.ToList(), paginaLista))
                 {
                     <tr>
                         <td>@e.ProCodigo - @e.ProDescripcion</td>
@@ -79,6 +79,7 @@
             </tbody>
         </table>
     </div>
+    <Paginador Total="ExistenciasVisibles.Count()" @bind-Pagina="paginaLista" />
 }
 else if (filtroProId == 0)
 {
@@ -180,6 +181,7 @@ else if (kardex is not null)
 }
 
 @code {
+    private int paginaLista = 1;
     private static readonly IReadOnlyList<PestanaItem> Pestanas = new[] { new PestanaItem("existencias", "Existencias"), new PestanaItem("kardex", "Kardex") };
 
     private IReadOnlyList<ProductoExistenciaBodega> existencias = Array.Empty<ProductoExistenciaBodega>();
@@ -211,7 +213,7 @@ else if (kardex is not null)
 
     protected override async Task OnInitializedAsync()
     {
-        productos = (await ProductoRepository.ConsultarAsync(null, null, prtId: null, estado: "A", pagina: 1, tamanioPagina: 500))
+        productos = (await ProductoRepository.ConsultarAsync(null, null, prtId: null, estado: "A", pagina: 1, tamanioPagina: 5000))
             .Where(p => p.ProManejaExistencia).ToList();
         bodegas = await BodegaRepository.ConsultarAsync(sucId: null, estado: "A");
         await BuscarAsync();
@@ -224,6 +226,7 @@ else if (kardex is not null)
             existencias = await ProductoRepository.ConsultarExistenciasAsync(
                 filtroProId == 0 ? null : filtroProId,
                 filtroBodId == 0 ? null : filtroBodId);
+            paginaLista = 1;
             mensaje = null;
         }
         catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }

@@ -63,7 +63,7 @@
                 {
                     <tr><td colspan="7" class="doc-tabla-vacia">@L("No hay cotizaciones con esos filtros.")</td></tr>
                 }
-                @foreach (var c in cotizaciones)
+                @foreach (var c in Paginador.Recortar(cotizaciones, paginaLista))
                 {
                     <tr class="@(seleccionada?.CotId == c.CotId ? "fila-seleccionada" : "")">
                         <td class="col-codigo">@c.Numero</td>
@@ -91,6 +91,7 @@
             </tbody>
         </table>
     </div>
+    <Paginador Total="cotizaciones.Count" @bind-Pagina="paginaLista" />
 }
 else if (pestanaActiva == "nueva")
 {
@@ -348,6 +349,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
 }
 
 @code {
+    private int paginaLista = 1;
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
@@ -466,6 +468,7 @@ else if (pestanaActiva == "detalle" && seleccionada is not null)
         {
             cotizaciones = await CotizacionRepository.ConsultarAsync(null, filtroDesde, filtroHasta, filtroEstado,
                 string.IsNullOrWhiteSpace(filtroTexto) ? null : filtroTexto.Trim());
+            paginaLista = 1;
         }
         catch (Exception ex) { MostrarError(ex); }
     }

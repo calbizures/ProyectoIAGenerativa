@@ -129,7 +129,7 @@
                 <tr><th class="col-fecha">@L("Fecha")</th><th>@L("Cheque")</th><th class="col-estado">@L("Tipo")</th><th>@L("Beneficiario")</th><th>@L("Motivo / cuenta")</th><th class="num col-monto">@L("Valor")</th><th class="col-estado">@L("Estado")</th><th class="col-acciones">@L("Acciones")</th></tr>
             </thead>
             <tbody>
-                @foreach (var c in cheques)
+                @foreach (var c in Paginador.Recortar(cheques, paginaLista))
                 {
                     <tr>
                         <td class="col-fecha">@c.Fecha.ToString("dd/MM/yyyy")</td>
@@ -179,10 +179,12 @@
                 }
             </tbody>
         </table>
+        <Paginador Total="cheques.Count" @bind-Pagina="paginaLista" />
     }
 </section>
 
 @code {
+    private int paginaLista = 1;
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
@@ -257,6 +259,7 @@
         {
             cheques = await BancosRepository.ConsultarChequesAsync(filtroBcbId, filtroTipo == "" ? null : filtroTipo,
                 filtroEstado == "" ? null : filtroEstado, filtroDesde, filtroHasta);
+            paginaLista = 1;
         }
         catch (Exception ex) { MostrarError(ex); }
     }

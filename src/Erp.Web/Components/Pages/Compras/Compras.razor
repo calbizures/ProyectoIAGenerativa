@@ -487,6 +487,7 @@
         </tbody>
     </table>
     <Paginador Total="comprasFiltradas.Count" @bind-Pagina="pagina" />
+    <AvisoTope HayMas="hayMasCompras" Tope="TopeLista" />
 </div>
 
 @if (encabezadoSeleccionado is not null)
@@ -582,6 +583,8 @@
     private IReadOnlyList<CompraEncabezado> compras = Array.Empty<CompraEncabezado>();
     private string textoFiltro = "";
     private int pagina = 1;
+    private const int TopeLista = 2000;
+    private bool hayMasCompras;
     private int? anulandoId;
     private IReadOnlyList<CompraEncabezado> comprasFiltradas => string.IsNullOrWhiteSpace(textoFiltro)
         ? compras
@@ -737,7 +740,8 @@
         compras = await CompraRepository.ConsultarAsync(
             tiposId, prvId: null, filtroFechaDesde, filtroFechaHasta,
             string.IsNullOrWhiteSpace(filtroEstado) ? null : filtroEstado,
-            pagina: 1, tamanioPagina: 500);
+            pagina: 1, tamanioPagina: TopeLista + 1);
+        (compras, hayMasCompras) = AvisoTope.Recortar(compras, TopeLista);
         pagina = 1;
         // Compras con saldo por pagar: se pueden pagar con cheque desde el historial.
         try { saldos = (await CuentasRepository.ConsultarDocumentosCxpAsync(null, soloPendientes: true)).ToDictionary(d => d.EncId, d => d.Saldo); }
