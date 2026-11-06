@@ -96,6 +96,27 @@ SA_PASSWORD='<clave de sa>' ./generar-fase4.sh
   `ERP - Novedades Fase 4 (liviano).mp4`, `guion.md` (con `python3 guion.py fase4`),
   `ERP - Novedades Fase 4.pptx` (12 diapositivas con notas del orador) y las tomas.
 
+## Video para una tienda de pinturas (WhatsApp)
+
+Video comercial de unos 3 minutos (720p, menos de 16 MB) para una empresa
+ficticia, *Pinturas del Valle, S.A.*: venta en mostrador con vuelto y FEL,
+existencias por tienda y traslado, y crédito a un contratista (cotización,
+factura en cuotas, antigüedad y cobro). Archivos en `pinturas/`.
+
+1. Instale una base **desechable** (nunca la de trabajo), por ejemplo
+   `pruebas/ci/instalar_base.sh erp-pinturas 14331`.
+2. Aplique `pinturas/datos-pinturas.sql` (tiendas, productos de pintura,
+   contratistas) y cargue el logotipo: genere un PNG de
+   `pinturas/logo-pinturas.svg` y guárdelo con `paCompaniaLogoGuardar`.
+3. Arranque la aplicación contra esa base y corra
+   `SA_PASSWORD=... SQL_CONTENEDOR=erp-pinturas ./pinturas/generar-pinturas.sh`.
+   Con `SOLO_MONTAJE=1` vuelve a montar sin grabar; `CHROMIUM_PATH` indica
+   el navegador si Playwright no encuentra el suyo.
+
+Cada corrida graba documentos reales (factura, traslado, cotización, cobro):
+para repetirla, restaure la base preparada. Resultado en
+`salida/pinturas/Pinturas del Valle - demo ERP (WhatsApp).mp4`.
+
 ## Notas
 
 - El cliente del cobro y los números del costo promedio se leen de la base al

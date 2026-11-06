@@ -25,7 +25,7 @@ class Demo {
     const capa = fs.readFileSync(path.join(__dirname, 'overlay.js'), 'utf8').replace('__LOGO__', logo);
     // El escalado forzado (no emulado) hace que el screencast entregue
     // cuadros de 1920×1080 con la interfaz al 125 %.
-    this.nav = await chromium.launch({ args: ['--force-device-scale-factor=1.25', '--window-size=1536,864', '--lang=es-GT'] });
+    this.nav = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--force-device-scale-factor=1.25', '--window-size=1536,864', '--lang=es-GT'] });
     this.ctx = await this.nav.newContext({ viewport: null, locale: 'es-GT' });
     await this.ctx.addInitScript({ content: capa });
     this.p = await this.ctx.newPage();
@@ -95,7 +95,13 @@ class Demo {
   async centro(sel) {
     const l = this.loc(sel);
     await l.scrollIntoViewIfNeeded(); await this.espera(150);
-    const b = await l.boundingBox();
+    let b = await l.boundingBox();
+    // Si quedó pegado al borde inferior, la barra de estado fija lo taparía: se centra.
+    const alto = await this.p.evaluate(() => innerHeight);
+    if (b && b.y + b.height > alto - 70) {
+      await l.evaluate(el => el.scrollIntoView({ block: 'center' })); await this.espera(250);
+      b = await l.boundingBox();
+    }
     if (!b) throw new Error('Sin caja para ' + sel);
     return [b.x + b.width / 2, b.y + b.height / 2, b];
   }
