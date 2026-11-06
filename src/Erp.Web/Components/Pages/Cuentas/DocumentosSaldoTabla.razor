@@ -1,0 +1,64 @@
+@* Documentos (facturas o compras) con su saldo. *@
+@using Erp.Data.Cuentas
+
+@if (Documentos.Count == 0)
+{
+    <p class="estado-vacio">@L("No hay documentos con saldo pendiente.")</p>
+}
+else
+{
+    <table class="tabla-datos">
+        <thead>
+            <tr>
+                <th>@(EsCliente ? L("Factura") : L("Compra"))</th><th>@L("Fecha")</th><th class="num">@L("Total")</th><th class="num">@L("Pagado")</th>
+                <th class="num">@L("N. crédito")</th><th class="num">@L("N. débito")</th><th class="num">@L("Saldo")</th><th>@L("Próximo vencimiento")</th><th class="num">@L("Cuotas pendientes")</th>
+                @if (UrlPagar is not null)
+                {
+                    <th class="col-acciones"><span class="sr-only">@L("Pagar")</span></th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var d in Documentos)
+            {
+                <tr class="@(OnSeleccionar.HasDelegate ? "fila-seleccionable" : "") @(SeleccionadoId == d.EncId ? "fila-seleccionada" : "")"
+                    @onclick="() => OnSeleccionar.InvokeAsync(d)">
+                    <td>@d.Documento</td>
+                    <td>@d.EncFechaDocto.ToString("dd/MM/yyyy")</td>
+                    <td class="num">@d.EncMontoTotal.ToString("N2")</td>
+                    <td class="num">@d.Pagado.ToString("N2")</td>
+                    <td class="num">@(d.NotasCredito == 0 ? "—" : d.NotasCredito.ToString("N2"))</td>
+                    <td class="num">@(d.NotasDebito == 0 ? "—" : d.NotasDebito.ToString("N2"))</td>
+                    <td class="num"><strong>@d.Saldo.ToString("N2")</strong></td>
+                    <td class="@(d.ProximoVencimiento < DateTime.Today ? "antiguedad-vencido" : "")">@(d.ProximoVencimiento?.ToString("dd/MM/yyyy") ?? "—")</td>
+                    <td class="num">@d.CuotasPendientes</td>
+                    @if (UrlPagar is not null)
+                    {
+                        <td class="col-acciones" @onclick:stopPropagation="true">
+                            <a class="boton-icono boton-icono-con-etiqueta" href="@UrlPagar(d)" aria-label="@(L("Pagar {0} con cheque", d.Documento))">
+                                <Icono Nombre="banknote" Tamano="16" /><span class="boton-icono-etiqueta">@L("Pagar")</span>
+                                <span class="boton-icono-tip" role="tooltip">@L("Pagar esta compra con cheque")</span>
+                            </a>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="6">@L("Saldo total")</td>
+                <td class="num">@Documentos.Sum(d => d.Saldo).ToString("N2")</td>
+                <td colspan="@(UrlPagar is null ? 2 : 3)"></td>
+            </tr>
+        </tfoot>
+    </table>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<DocumentoSaldo> Documentos { get; set; } = Array.Empty<DocumentoSaldo>();
+    [Parameter] public bool EsCliente { get; set; } = true;
+    [Parameter] public int? SeleccionadoId { get; set; }
+    [Parameter] public EventCallback<DocumentoSaldo> OnSeleccionar { get; set; }
+    // Enlace para pagar el documento (solo compras, en Cuentas por pagar).
+    [Parameter] public Func<DocumentoSaldo, string>? UrlPagar { get; set; }
+}

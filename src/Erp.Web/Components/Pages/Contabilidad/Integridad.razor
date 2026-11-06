@@ -1,0 +1,355 @@
+@page "/contabilidad/integridad"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CONTABILIDAD_SALDOS_INICIALES")]
+@using Erp.Data.Contabilidad
+@inject IIntegridadRepository IntegridadRepository
+
+<PageTitle>@L("Revisión de integridad")</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>@L("Revisión de integridad")</h1>
+    <p>@L("Controles que deben dar cero en cualquier momento: pólizas cuadradas, documentos con su póliza, clientes y proveedores cuadrados con contabilidad, existencias, nóminas y traslados. Si alguno sale con casos, revíselo antes de cerrar el mes.")</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="mensaje-error" role="alert">@Textos.Mensaje(mensaje)</p>
+}
+
+<div class="barra-herramientas">
+    @if (controles.Count > 0)
+    {
+        var porRevisar = controles.Count(c => c.Casos > 0);
+        <span class="estado-badge @(porRevisar == 0 ? "estado-badge-activo" : "estado-badge-anulada") integridad-estado" role="status">
+            <Icono Nombre="@(porRevisar == 0 ? "check-circle" : "alert-triangle")" Tamano="15" />
+            @(porRevisar == 0 ? L("Todo en orden") : L("{0} control(es) por revisar", porRevisar))
+        </span>
+        <span class="texto-tenue">@L("Revisado el {0}.", revisado.ToString("dd/MM/yyyy HH:mm"))</span>
+    }
+    <span class="barra-herramientas-separador"></span>
+    <label class="casilla">
+        <input type="checkbox" @bind="soloPorRevisar" />
+        <span>@L("Solo los que requieren revisión")</span>
+    </label>
+    <BotonIcono Icono="refresh-cw" Tooltip="@L("Volver a revisar")" Etiqueta="@(cargando ? L("Revisando...") : L("Volver a revisar"))"
+                Variante="primario" Deshabilitado="cargando" OnClick="RevisarAsync" />
+</div>
+
+@* Cuadre de los submódulos con contabilidad: lo primero que revisa un auditor. *@
+<section aria-labelledby="integridad-cuadre-titulo">
+    <h2 id="integridad-cuadre-titulo" class="seccion-titulo">@L("Clientes y proveedores contra contabilidad")</h2>
+    <div class="cuadre-grilla">
+        @foreach (var (modulo, cuadre) in new[] { ("CXC", cuadreCxc), ("CXP", cuadreCxp) })
+        {
+            <article class="tarjeta cuadre-tarjeta @(cuadre is null ? "" : cuadre.Cuadra ? "cuadre-ok" : "cuadre-descuadre")">
+                <header class="cuadre-encabezado">
+                    <span class="cuadre-icono"><Icono Nombre="@(modulo == "CXC" ? "users" : "truck")" Tamano="18" /></span>
+                    <h3>@TituloModulo(modulo)</h3>
+                    @if (cuadre is not null)
+                    {
+                        <span class="estado-badge @(cuadre.Cuadra ? "estado-badge-activo" : "estado-badge-anulada")">
+                            @(cuadre.Cuadra ? L("Cuadra") : L("No cuadra"))
+                        </span>
+                    }
+                </header>
+                @if (cuadre is null)
+                {
+                    <p class="texto-tenue">@(cargando ? L("Consultando...") : L("Falta configurar la cuenta contable de este módulo en Contabilidad › Cuentas de los procesos."))</p>
+                }
+                else
+                {
+                    <dl class="cuadre-cifras">
+                        <div>
+                            <dt>@L("Según las cuotas")</dt>
+                            <dd><a href="@(modulo == "CXC" ? "cxc/antiguedad" : "cxp/antiguedad")" title="@L("Ver la antigüedad de saldos")">@cuadre.SaldoCuotas.ToString("N2")</a></dd>
+                        </div>
+                        <div>
+                            <dt>@L("Según contabilidad")</dt>
+                            <dd><a href="contabilidad/libros?vista=mayor&cta=@cuadre.CtaId" title="@L("Ver el libro mayor de {0}", cuadre.CuentaNombre)">@cuadre.SaldoContable.ToString("N2")</a></dd>
+                        </div>
+                        <div class="cuadre-diferencia">
+                            <dt>@L("Diferencia")</dt>
+                            <dd>@cuadre.Diferencia.ToString("N2")</dd>
+                        </div>
+                    </dl>
+                    <p class="cuadre-nota">@L("Cuenta {0} · {1}", cuadre.CuentaCodigo, cuadre.CuentaNombre)@(cuadre.Cuadra ? " · " + L("las cuotas pendientes y la cuenta tienen el mismo saldo.") : "")</p>
+                    @if (!cuadre.Cuadra)
+                    {
+                        <BotonIcono Icono="search" Tooltip="@L("Ver qué explica la diferencia")" Etiqueta="@L("Ver conciliación")" Variante="primario"
+                                    OnClick="() => AbrirConciliacionAsync(modulo)" />
+                    }
+                }
+            </article>
+        }
+    </div>
+</section>
+
+@if (abierto is not null && conciliacion is not null)
+{
+    var c = conciliacion;
+    var conteo = partidas.GroupBy(p => p.Grupo).ToDictionary(g => g.Key, g => g.Count());
+    var visibles = partidas.Where(p => filtroGrupo is null || p.Grupo == filtroGrupo).ToList();
+    <section class="tarjeta conciliacion-panel" aria-labelledby="integridad-conciliacion-titulo">
+        <div class="maestro-detalle-encabezado">
+            <h2 id="integridad-conciliacion-titulo" tabindex="-1" @ref="tituloConciliacion">@L("Conciliación de {0}", TituloModulo(abierto))</h2>
+            <BotonIcono Icono="x" Tooltip="@L("Cerrar la conciliación")" OnClick="CerrarConciliacion" />
+        </div>
+
+        <table class="tabla-conciliacion" aria-label="@L("Resumen de la conciliación")">
+            <tbody>
+                <tr><th scope="row">@L("Saldo según las cuotas pendientes")</th><td class="num">@c.SaldoCuotas.ToString("N2")</td></tr>
+                <tr><th scope="row">@L("Saldo según la cuenta {0} {1}", c.CuentaCodigo, c.CuentaNombre)</th><td class="num">@c.SaldoContable.ToString("N2")</td></tr>
+                <tr class="fila-total"><th scope="row">@L("Diferencia por explicar")</th><td class="num">@c.Diferencia.ToString("N2")</td></tr>
+                <tr class="conciliacion-subtitulo"><th scope="row" colspan="2">@L("Se explica por")</th></tr>
+                @foreach (var grupo in new[] { "O", "D", "P" })
+                {
+                    <tr class="conciliacion-grupo">
+                        <th scope="row">
+                            <button type="button" class="boton-enlace" aria-pressed="@(filtroGrupo == grupo ? "true" : "false")" @onclick="() => FiltrarGrupo(grupo)">
+                                @NombreGrupo(grupo, abierto)
+                            </button>
+                            <span class="texto-tenue">(@conteo.GetValueOrDefault(grupo))</span>
+                        </th>
+                        <td class="num">@MontoGrupo(c, grupo).ToString("N2")</td>
+                    </tr>
+                }
+                <tr class="fila-total @(Math.Abs(c.SinExplicar) >= 0.01m ? "conciliacion-sin-explicar" : "")">
+                    <th scope="row">@L("Sin explicar")</th>
+                    <td class="num">@c.SinExplicar.ToString("N2")</td>
+                </tr>
+            </tbody>
+        </table>
+        @if (Math.Abs(c.SinExplicar) >= 0.01m)
+        {
+            <p class="aviso-pendiente" role="note">@(abierto == "CXC"
+                ? L("La parte sin explicar viene de cuotas cuyo saldo no coincide con sus cobros y notas: revise el control 5 más abajo.")
+                : L("La parte sin explicar viene de cuotas cuyo pagado no coincide con sus cheques y transferencias: revise el control 6 más abajo."))</p>
+        }
+
+        @if (partidas.Count > 0)
+        {
+            <div class="barra-herramientas conciliacion-filtros" role="group" aria-label="@L("Mostrar")">
+                <button type="button" class="chip @(filtroGrupo is null ? "chip-activo" : "")" aria-pressed="@(filtroGrupo is null ? "true" : "false")" @onclick="() => FiltrarGrupo(null)">@L("Todas ({0})", partidas.Count)</button>
+                @foreach (var grupo in new[] { "O", "D", "P" }.Where(g => conteo.ContainsKey(g)))
+                {
+                    <button type="button" class="chip @(filtroGrupo == grupo ? "chip-activo" : "")" aria-pressed="@(filtroGrupo == grupo ? "true" : "false")" @onclick="() => FiltrarGrupo(grupo)">@NombreGrupo(grupo, abierto) (@conteo[grupo])</button>
+                }
+            </div>
+            <div class="tabla-desplazable" tabindex="0" aria-label="@L("Partidas que explican la diferencia")">
+                <table class="tabla-datos tabla-apilada">
+                    <thead>
+                        <tr>
+                            <th>@L("Tipo")</th><th class="col-fecha">@L("Fecha")</th><th>@(abierto == "CXC" ? L("Referencia y cliente") : L("Referencia y proveedor"))</th>
+                            <th class="num col-monto">@L("Según cuotas")</th><th class="num col-monto">@L("Según contabilidad")</th>
+                            <th class="num col-monto">@L("Diferencia")</th><th class="col-acciones">@L("Ver")</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Paginador.Recortar(visibles, pagina))
+                        {
+                            <tr class="fila-partida">
+                                <td class="apilada-cabeza"><span class="estado-badge estado-badge-nowrap @ClaseGrupo(p.Grupo)">@NombreCorto(p.Grupo, abierto)</span></td>
+                                <td class="col-fecha" data-etiqueta="@L("Fecha")">@(p.Fecha?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                <td class="conciliacion-referencia apilada-ancha">
+                                    <strong>@Textos.Mensaje(p.Referencia ?? "")</strong>
+                                    @if (!string.IsNullOrEmpty(p.Tercero)) {<div>@p.Tercero</div>}
+                                    @if (!string.IsNullOrEmpty(p.Descripcion)) {<div class="texto-tenue">@p.Descripcion</div>}
+                                </td>
+                                <td class="num col-monto" data-etiqueta="@L("Según cuotas")">@p.Submodulo.ToString("N2")</td>
+                                <td class="num col-monto" data-etiqueta="@L("Según contabilidad")">@p.Contable.ToString("N2")</td>
+                                <td class="num col-monto" data-etiqueta="@L("Diferencia")"><strong>@p.Efecto.ToString("N2")</strong></td>
+                                <td class="col-acciones">
+                                    <div class="acciones-fila">
+                                        @if (p.AsiId is int asiId)
+                                        {
+                                            <a class="boton-icono" href="contabilidad/polizas?id=@asiId" title="@L("Ver la póliza #{0}", asiId)" aria-label="@L("Ver la póliza #{0}", asiId)"><Icono Nombre="book-open" Tamano="16" /></a>
+                                        }
+                                        @if (abierto == "CXC" && p.Grupo == "P" && p.PagoId is int ppeId)
+                                        {
+                                            <a class="boton-icono" href="cxc/recibos/imprimir?id=@ppeId" target="_blank" title="@L("Ver el recibo")" aria-label="@L("Ver el recibo")"><Icono Nombre="receipt" Tamano="16" /></a>
+                                        }
+                                        @if (p.TerceroId is int terceroId)
+                                        {
+                                            <a class="boton-icono" href="@(abierto == "CXC" ? "cxc" : "cxp")/estado-cuenta?id=@terceroId" title="@L("Ver el estado de cuenta")" aria-label="@L("Ver el estado de cuenta")"><Icono Nombre="file-text" Tamano="16" /></a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="fila-diagnostico">
+                                <td class="apilada-oculta"></td>
+                                <td colspan="6" class="apilada-ancha"><Icono Nombre="info" Tamano="14" /> <span><strong>@L("Qué pasó"):</strong> @Textos.Mensaje(p.Diagnostico ?? "")</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <Paginador Total="visibles.Count" @bind-Pagina="pagina" />
+        }
+    </section>
+}
+
+<section aria-labelledby="integridad-controles-titulo">
+    <h2 id="integridad-controles-titulo" class="seccion-titulo">@L("Controles")</h2>
+    @if (controles.Count > 0)
+    {
+        var filas = controles.Where(c => !soloPorRevisar || c.Casos > 0).ToList();
+        @if (filas.Count == 0)
+        {
+            <div class="tarjeta tarjeta-exito">
+                <div class="exito-contenido">
+                    <Icono Nombre="check-circle" Tamano="22" />
+                    <div><h2>@L("Todo en orden")</h2><p>@L("Ningún control encontró casos.")</p></div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="tabla-desplazable" tabindex="0" aria-label="@L("Controles de integridad")">
+                <table class="tabla-datos tabla-integridad tabla-apilada">
+                    <thead><tr><th class="num col-estado">@L("No.")</th><th>@L("Control")</th><th class="num col-estado">@L("Casos")</th><th>@L("Ejemplo")</th><th class="col-estado">@L("Resultado")</th><th class="col-acciones"><span class="sr-only">@L("Acciones")</span></th></tr></thead>
+                    <tbody>
+                        @foreach (var area in filas.GroupBy(c => c.Area ?? ""))
+                        {
+                            var malos = area.Count(c => c.Casos > 0);
+                            <tr class="fila-grupo">
+                                <th colspan="6" scope="colgroup" class="apilada-ancha">
+                                    @L(area.Key)
+                                    <span class="texto-tenue">· @(malos == 0 ? L("todo correcto") : L("{0} por revisar", malos))</span>
+                                </th>
+                            </tr>
+                            @foreach (var c in area)
+                            {
+                                <tr class="@(c.Casos > 0 ? "fila-revisar" : "")">
+                                    <td class="num col-estado apilada-oculta">@c.Orden</td>
+                                    <td class="apilada-ancha"><span class="apilada-numero">@c.Orden.</span> @L(c.Control)</td>
+                                    <td class="num col-estado @(c.Casos == 0 ? "apilada-oculta" : "")" data-etiqueta="@L("Casos")">@c.Casos</td>
+                                    <td data-etiqueta="@L("Ejemplo")" class="@(c.Ejemplo is null ? "apilada-oculta" : "")">@(c.Ejemplo is null ? "—" : Textos.Mensaje(c.Ejemplo))</td>
+                                    <td class="col-estado" data-etiqueta="@L("Resultado")"><span class="estado-badge @(c.Casos == 0 ? "estado-badge-activo" : "estado-badge-anulada")">@(c.Casos == 0 ? L("Correcto") : L("Revisar"))</span></td>
+                                    <td class="col-acciones">
+                                        @if (c.Casos > 0 && c.Detalle is { } detalle)
+                                        {
+                                            <BotonIcono Icono="search" Tooltip="@L("Ver la conciliación de {0}", TituloModulo(detalle))" OnClick="() => AbrirConciliacionAsync(detalle)" />
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+    else if (cargando)
+    {
+        <p class="estado-vacio">@L("Revisando...")</p>
+    }
+</section>
+
+@code {
+    private IReadOnlyList<ControlIntegridad> controles = Array.Empty<ControlIntegridad>();
+    private CuadreSubmayor? cuadreCxc;
+    private CuadreSubmayor? cuadreCxp;
+    private DateTime revisado;
+    private string? mensaje;
+    private bool cargando;
+    private bool soloPorRevisar;
+
+    // Conciliación abierta ("CXC" o "CXP").
+    private string? abierto;
+    private CuadreSubmayor? conciliacion;
+    private IReadOnlyList<PartidaCuadre> partidas = Array.Empty<PartidaCuadre>();
+    private string? filtroGrupo;
+    private int pagina = 1;
+    private ElementReference tituloConciliacion;
+    private bool enfocarConciliacion;
+
+    protected override Task OnInitializedAsync() => RevisarAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (enfocarConciliacion)
+        {
+            enfocarConciliacion = false;
+            try { await tituloConciliacion.FocusAsync(); } catch (InvalidOperationException) { }
+        }
+    }
+
+    private async Task RevisarAsync()
+    {
+        mensaje = null;
+        cargando = true;
+        try
+        {
+            controles = await IntegridadRepository.ConsultarAsync();
+            cuadreCxc = (await IntegridadRepository.ConsultarCuadreAsync("CXC")).Resumen;
+            cuadreCxp = (await IntegridadRepository.ConsultarCuadreAsync("CXP")).Resumen;
+            revisado = DateTime.Now;
+            if (abierto is not null) await CargarConciliacionAsync(abierto);
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+        finally { cargando = false; }
+    }
+
+    private async Task AbrirConciliacionAsync(string modulo)
+    {
+        mensaje = null;
+        try
+        {
+            await CargarConciliacionAsync(modulo);
+            enfocarConciliacion = true;
+        }
+        catch (Exception ex) { mensaje = MensajesError.Traducir(ex); }
+    }
+
+    private async Task CargarConciliacionAsync(string modulo)
+    {
+        var (resumen, filas) = await IntegridadRepository.ConsultarCuadreAsync(modulo);
+        if (abierto != modulo) { filtroGrupo = null; pagina = 1; }
+        abierto = modulo;
+        conciliacion = resumen;
+        partidas = filas;
+    }
+
+    private void CerrarConciliacion()
+    {
+        abierto = null;
+        conciliacion = null;
+        partidas = Array.Empty<PartidaCuadre>();
+    }
+
+    private void FiltrarGrupo(string? grupo)
+    {
+        filtroGrupo = filtroGrupo == grupo ? null : grupo;
+        pagina = 1;
+    }
+
+    private static string TituloModulo(string modulo) => modulo == "CXC" ? L("Cuentas por cobrar") : L("Cuentas por pagar");
+
+    private static string NombreGrupo(string grupo, string modulo) => grupo switch
+    {
+        "O" => L("Pólizas registradas directo en la cuenta"),
+        "D" => modulo == "CXC" ? L("Facturas y notas") : L("Compras y notas"),
+        _ => modulo == "CXC" ? L("Cobros") : L("Cheques y transferencias")
+    };
+
+    private static string NombreCorto(string grupo, string modulo) => grupo switch
+    {
+        "O" => L("Póliza directa"),
+        "D" => L("Documento"),
+        _ => modulo == "CXC" ? L("Cobro") : L("Pago")
+    };
+
+    private static string ClaseGrupo(string grupo) => grupo switch
+    {
+        "O" => "estado-badge-pendiente",
+        "D" => "estado-badge-anulada",
+        _ => "estado-badge-inactivo"
+    };
+
+    private static decimal MontoGrupo(CuadreSubmayor c, string grupo) => grupo switch
+    {
+        "O" => c.Directas,
+        "D" => c.Documentos,
+        _ => c.Pagos
+    };
+}

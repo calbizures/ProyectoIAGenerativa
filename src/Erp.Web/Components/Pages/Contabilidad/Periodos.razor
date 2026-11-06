@@ -1,0 +1,177 @@
+@page "/contabilidad/periodos"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Permiso:CONTABILIDAD_CIERRE")]
+@using Erp.Data.Contabilidad
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ILibrosRepository LibrosRepository
+
+<PageTitle>@L("Períodos y cierre")</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>@L("Períodos contables y cierre anual")</h1>
+    <p>@L("Al cerrar un mes ya no se graban ni se anulan pólizas con fecha de ese mes (ventas, compras, cobros, pagos, nómina, pólizas manuales). Se puede volver a abrir si hace falta corregir algo. Al terminar el año, la partida de cierre traslada el resultado a Utilidades o Pérdidas del ejercicio.")</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
+}
+
+<div class="barra-herramientas">
+    <BotonIcono Icono="chevron-left" Tooltip="@L("Año anterior")" OnClick="() => CambiarAnioAsync(anio - 1)" />
+    <strong class="anio-actual">@anio</strong>
+    <BotonIcono Icono="chevron-right" Tooltip="@L("Año siguiente")" Deshabilitado="anio >= DateTime.Today.Year" OnClick="() => CambiarAnioAsync(anio + 1)" />
+</div>
+
+<section class="tarjeta" aria-labelledby="titulo-periodos">
+    <h2 id="titulo-periodos">@L("Meses de {0}", anio)</h2>
+    <table class="tabla-datos">
+        <thead><tr><th>@L("Mes")</th><th class="col-estado">@L("Estado")</th><th class="num col-estado">@L("Pólizas")</th><th class="num col-estado">@L("Anuladas")</th><th class="num col-monto">@L("Total cargos")</th><th>@L("Cerrado")</th><th class="col-acciones">@L("Acción")</th></tr></thead>
+        <tbody>
+            @foreach (var p in periodos)
+            {
+                var futuro = new DateTime(p.Anio, p.Mes, 1) > DateTime.Today;
+                <tr>
+                    <td>@NombreMes(p.Mes)</td>
+                    <td class="col-estado"><span class="estado-badge @(p.Estado == "C" ? "estado-badge-inactivo" : "estado-badge-activo")">@(p.Estado == "C" ? L("Cerrado") : L("Abierto"))</span></td>
+                    <td class="num col-estado">@p.Polizas</td>
+                    <td class="num col-estado">@p.Anuladas</td>
+                    <td class="num col-monto">@p.Total.ToString("N2")</td>
+                    <td>@(p.FechaCierre is null ? "" : $"{p.FechaCierre:dd/MM/yyyy HH:mm} · {p.CerradoPor}")</td>
+                    <td class="col-acciones">
+                        <div class="acciones-fila">
+                            @if (p.Estado == "C")
+                            {
+                                <BotonIcono Icono="unlock" Tooltip="@L("Volver a abrir el mes")" Etiqueta="@L("Abrir")" Deshabilitado="guardando"
+                                            Confirmacion="@(L("¿Volver a abrir {0} {1}? Se podrán grabar y anular pólizas de ese mes.", NombreMes(p.Mes), p.Anio))"
+                                            OnClick="() => CambiarEstadoAsync(p, EstadoAbierto)" />
+                            }
+                            else if (!futuro)
+                            {
+                                <BotonIcono Icono="lock" Tooltip="@L("Cerrar el mes")" Etiqueta="@L("Cerrar")" Deshabilitado="guardando"
+                                            Confirmacion="@(L("¿Cerrar {0} {1}? Ya no se podrán grabar ni anular documentos con fecha de ese mes.", NombreMes(p.Mes), p.Anio))"
+                                            OnClick="() => CambiarEstadoAsync(p, EstadoCerrado)" />
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+<section class="tarjeta" aria-labelledby="titulo-cierre">
+    <h2 id="titulo-cierre">@L("Partida de cierre del ejercicio {0}", anio)</h2>
+    @if (cierre is not null)
+    {
+        <p>
+            @L("El año ya tiene su partida de cierre:") <a href="contabilidad/polizas?id=@cierre.AsiId">@L("póliza #{0}", cierre.AsiId)</a> @L("del {0} por Q {1} ({2}). Si después se registran ajustes del año, anule esa póliza en Pólizas y vuelva a generarla.", cierre.Fecha.ToString("dd/MM/yyyy"), cierre.Total.ToString("N2"), cierre.Usuario)
+        </p>
+    }
+    else if (resultado is not null)
+    {
+        var t = resultado.Totales;
+        <p>@L("Resultado del 01/01/{0} al 31/12/{1} según las pólizas vigentes:", anio, anio)</p>
+        <div class="resumen-totales">
+            <span>@L("Ingresos:") <strong>Q @t.Ingresos.ToString("N2")</strong></span>
+            <span>@L("Costo de ventas:") <strong>Q @t.Costos.ToString("N2")</strong></span>
+            <span>@L("Gastos:") <strong>Q @t.Gastos.ToString("N2")</strong></span>
+            <span>@(t.UtilidadNeta >= 0 ? L("Utilidad") : L("Pérdida")): <strong>Q @Math.Abs(t.UtilidadNeta).ToString("N2")</strong></span>
+        </div>
+        <p class="texto-ayuda">
+            @L("La partida (fecha 31/12/{0}) salda cada cuenta de ingresos, costos y gastos y lleva la diferencia a {1} (cuentas en Contabilidad > Cuentas de pólizas: CIERRE_UTILIDAD y CIERRE_PERDIDA).", anio, t.UtilidadNeta >= 0 ? L("Utilidades del ejercicio") : L("Pérdidas del ejercicio"))
+            @L("Diciembre debe estar abierto. Conviene generarla cuando ya estén registrados todos los ajustes del año (depreciaciones, provisiones, conciliaciones).")
+        </p>
+        <BotonIcono Icono="book-open" Tooltip="@L("Generar la partida de cierre")" Etiqueta="@L("Generar partida de cierre")" Variante="primario"
+                    Deshabilitado="guardando || anio >= DateTime.Today.Year && DateTime.Today.Month < 12"
+                    Confirmacion="@(L("¿Generar la partida de cierre del ejercicio {0}?", anio))" OnClick="GenerarCierreAsync" />
+        @if (anio >= DateTime.Today.Year && DateTime.Today.Month < 12)
+        {
+            <p class="texto-ayuda">@L("El ejercicio {0} todavía no termina.", anio)</p>
+        }
+    }
+</section>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private static readonly string[] Meses = { "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre" };
+
+    private const string EstadoAbierto = "A";
+    private const string EstadoCerrado = "C";
+    private int anio = DateTime.Today.Year;
+    private IReadOnlyList<PeriodoContable> periodos = Array.Empty<PeriodoContable>();
+    private CierreAnual? cierre;
+    private EstadoResultados? resultado;
+    private bool guardando;
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private static string NombreMes(int mes) => L(Meses[mes - 1]);
+
+    protected override Task OnInitializedAsync() => ConsultarAsync();
+
+    private async Task<int?> ObtenerUsuIdActualAsync() =>
+        AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+
+    private async Task CambiarAnioAsync(int nuevo)
+    {
+        anio = nuevo;
+        mensaje = null;
+        await ConsultarAsync();
+    }
+
+    private async Task ConsultarAsync()
+    {
+        try
+        {
+            (periodos, cierre) = await LibrosRepository.ConsultarPeriodosAsync(anio);
+            resultado = cierre is null
+                ? await LibrosRepository.ConsultarEstadoResultadosAsync(new DateTime(anio, 1, 1), new DateTime(anio, 12, 31), 1, null, null)
+                : null;
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+    }
+
+    private async Task CambiarEstadoAsync(PeriodoContable p, string estado)
+    {
+        guardando = true;
+        try
+        {
+            await LibrosRepository.CambiarEstadoPeriodoAsync(p.Anio, p.Mes, estado, await ObtenerUsuIdActualAsync());
+            mensaje = $"{NombreMes(p.Mes)} {p.Anio} {(estado == "C" ? "cerrado" : "abierto de nuevo")}.";
+            esMensajeError = false;
+            await ConsultarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+        finally { guardando = false; }
+    }
+
+    private async Task GenerarCierreAsync()
+    {
+        guardando = true;
+        try
+        {
+            var asiId = await LibrosRepository.GenerarCierreAnualAsync(anio, await ObtenerUsuIdActualAsync());
+            mensaje = L("Partida de cierre del ejercicio {0} grabada: póliza #{1}.", anio, asiId);
+            esMensajeError = false;
+            await ConsultarAsync();
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+        finally { guardando = false; }
+    }
+}

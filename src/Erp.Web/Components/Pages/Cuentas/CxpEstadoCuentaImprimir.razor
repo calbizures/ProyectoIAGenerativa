@@ -1,0 +1,11 @@
+@page "/cxp/estado-cuenta/imprimir"
+@layout Erp.Web.Components.Layout.ReporteLayout
+@attribute [Authorize(Policy = "Permiso:CXP_ADMIN")]
+
+<EstadoCuentaReporte EsCliente="false" TerceroId="Id" Desde="Desde" Hasta="Hasta" />
+
+@code {
+    [SupplyParameterFromQuery] public int Id { get; set; }
+    [SupplyParameterFromQuery] public DateTime? Desde { get; set; }
+    [SupplyParameterFromQuery] public DateTime? Hasta { get; set; }
+}

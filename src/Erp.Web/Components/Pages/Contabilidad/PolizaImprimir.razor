@@ -1,0 +1,40 @@
+@page "/contabilidad/polizas/{AsiId:int}/imprimir"
+@layout Erp.Web.Components.Layout.ReporteLayout
+@attribute [Authorize(Policy = "Permiso:CONTABILIDAD_POLIZAS,CONTABILIDAD_ASIENTO_MANUAL")]
+@using Erp.Data.Contabilidad
+@inject ILibrosRepository LibrosRepository
+
+<ReporteContableMarco Titulo="@(L("Póliza #{0}", AsiId))" Subtitulo="@(poliza is null ? "" : poliza.Fecha.ToString("dd/MM/yyyy"))" Error="@error">
+    @if (poliza is not null)
+    {
+        <dl class="poliza-datos">
+            <div><dt>@L("Concepto")</dt><dd>@poliza.Descripcion</dd></div>
+            <div><dt>@L("Origen")</dt><dd>@OrigenesPoliza.Nombre(poliza.Origen)@(poliza.Documento is null ? "" : $" · {poliza.Documento}")</dd></div>
+            <div><dt>@L("Estado")</dt><dd>@(poliza.Estado == "A" ? L("Vigente") : L("ANULADA: {0}", poliza.MotivoAnulacion))</dd></div>
+            <div><dt>@L("Grabada por")</dt><dd>@poliza.Usuario @poliza.Creada?.ToString("dd/MM/yyyy HH:mm")</dd></div>
+        </dl>
+        <PolizaDetalle Poliza="poliza" />
+        <div class="firmas-poliza">
+            <div><span>@L("Elaborado")</span></div>
+            <div><span>@L("Revisado")</span></div>
+            <div><span>@L("Autorizado")</span></div>
+        </div>
+    }
+</ReporteContableMarco>
+
+@code {
+    [Parameter] public int AsiId { get; set; }
+
+    private Poliza? poliza;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            poliza = await LibrosRepository.ConsultarPolizaAsync(AsiId);
+            if (poliza is null) error = L("La póliza no existe.");
+        }
+        catch (Exception ex) { error = MensajesError.Traducir(ex); }
+    }
+}

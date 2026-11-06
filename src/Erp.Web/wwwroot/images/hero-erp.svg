@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" width="640" height="340">
+  <defs>
+    <linearGradient id="barGrad1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7ee0fb"/>
+      <stop offset="1" stop-color="#29b6f6"/>
+    </linearGradient>
+    <linearGradient id="barGrad2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4fc3f7"/>
+      <stop offset="1" stop-color="#1565c0"/>
+    </linearGradient>
+    <linearGradient id="barGrad3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1e88e5"/>
+      <stop offset="1" stop-color="#0d1b4c"/>
+    </linearGradient>
+  </defs>
+
+  <!-- lineas conectoras -->
+  <g stroke="#bfe6fb" stroke-width="2" stroke-dasharray="5 6" opacity="0.55" fill="none">
+    <path d="M300,150 C360,120 400,120 440,150"/>
+    <path d="M230,230 C260,190 270,180 300,170"/>
+    <path d="M470,210 C460,190 450,180 440,165"/>
+  </g>
+
+  <!-- tarjeta dashboard -->
+  <g transform="translate(60,60) rotate(-4)">
+    <rect x="0" y="0" width="260" height="170" rx="16" fill="#f4faff"/>
+    <rect x="20" y="24" width="90" height="10" rx="5" fill="#c9dcf0"/>
+    <rect x="20" y="42" width="60" height="8" rx="4" fill="#dbe8f6"/>
+
+    <g transform="translate(20,150)">
+      <rect x="0" y="-40" width="26" height="40" rx="4" fill="url(#barGrad1)"/>
+      <rect x="36" y="-70" width="26" height="70" rx="4" fill="url(#barGrad2)"/>
+      <rect x="72" y="-95" width="26" height="95" rx="4" fill="url(#barGrad3)"/>
+      <rect x="108" y="-55" width="26" height="55" rx="4" fill="url(#barGrad1)"/>
+      <rect x="144" y="-80" width="26" height="80" rx="4" fill="url(#barGrad2)"/>
+      <rect x="180" y="-30" width="26" height="30" rx="4" fill="url(#barGrad1)"/>
+    </g>
+
+    <path d="M20,90 L60,70 L96,95 L134,45 L170,60 L206,25" fill="none" stroke="#1565c0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="206" cy="25" r="5" fill="#0d1b4c"/>
+  </g>
+
+  <!-- documento -->
+  <g transform="translate(410,20) rotate(7)">
+    <rect x="0" y="0" width="120" height="150" rx="12" fill="#ffffff"/>
+    <path d="M90,0 L120,30 L90,30 Z" fill="#dbe8f6"/>
+    <rect x="18" y="44" width="84" height="9" rx="4.5" fill="#274a8b"/>
+    <rect x="18" y="64" width="84" height="7" rx="3.5" fill="#c9dcf0"/>
+    <rect x="18" y="80" width="60" height="7" rx="3.5" fill="#c9dcf0"/>
+    <rect x="18" y="96" width="84" height="7" rx="3.5" fill="#c9dcf0"/>
+    <rect x="18" y="112" width="45" height="7" rx="3.5" fill="#c9dcf0"/>
+    <circle cx="90" cy="130" r="14" fill="none" stroke="#29b6f6" stroke-width="3"/>
+    <path d="M84,130 L89,135 L98,124" fill="none" stroke="#29b6f6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- caja inventario (isometrica) -->
+  <g transform="translate(440,205)">
+    <path d="M40,0 L80,20 L40,40 L0,20 Z" fill="#7ee0fb"/>
+    <path d="M0,20 L40,40 L40,80 L0,60 Z" fill="#1e88e5"/>
+    <path d="M80,20 L40,40 L40,80 L80,60 Z" fill="#124a9c"/>
+    <path d="M20,10 L60,30" stroke="#f4faff" stroke-width="2" opacity="0.6"/>
+  </g>
+
+  <!-- monedas -->
+  <g transform="translate(160,250)">
+    <ellipse cx="30" cy="34" rx="34" ry="12" fill="#124a9c"/>
+    <ellipse cx="30" cy="24" rx="34" ry="12" fill="#1e88e5"/>
+    <ellipse cx="30" cy="14" rx="34" ry="12" fill="#4fc3f7"/>
+    <text x="30" y="18" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="13" fill="#0d1b4c">Q</text>
+  </g>
+</svg>

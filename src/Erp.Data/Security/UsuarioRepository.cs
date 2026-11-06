@@ -1,0 +1,156 @@
+using System.Data;
+using Dapper;
+
+namespace Erp.Data.Security;
+
+public sealed class UsuarioRepository(IDbConnectionFactory connectionFactory) : IUsuarioRepository
+{
+	public async Task<int> InsertarAsync(string codigo, string usuario, string password, string? email, int? usuarioAccionId, bool cambiarPassword = false)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new DynamicParameters();
+		parametros.Add("@UsuCodigo", codigo);
+		parametros.Add("@UsuUsuario", usuario);
+		ContrasenaHash.ValidarPolitica(password);
+		var hash = ContrasenaHash.Calcular(password);
+		parametros.Add("@UsuPasswordHash", hash.Hash);
+		parametros.Add("@UsuPasswordSalt", hash.Salt);
+		parametros.Add("@UsuPasswordIteraciones", hash.Iteraciones);
+		parametros.Add("@UsuEmail", email);
+		parametros.Add("@UsuIdAccion", usuarioAccionId);
+		parametros.Add("@UsuCambiarPassword", cambiarPassword);
+		parametros.Add("@UsuId", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+		await connection.ExecuteAsync("dbo.paUsuarioInsertar", parametros, commandType: CommandType.StoredProcedure);
+		return parametros.Get<int>("@UsuId");
+	}
+
+	public async Task ActualizarAsync(int usuId, string usuario, string? email, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new
+		{
+			UsuId = usuId,
+			UsuUsuario = usuario,
+			UsuEmail = email,
+			UsuIdAccion = usuarioAccionId
+		};
+		await connection.ExecuteAsync("dbo.paUsuarioActualizar", parametros, commandType: CommandType.StoredProcedure);
+	}
+
+	public async Task EliminarAsync(int usuId, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new { UsuId = usuId, UsuIdAccion = usuarioAccionId };
+		await connection.ExecuteAsync("dbo.paUsuarioEliminar", parametros, commandType: CommandType.StoredProcedure);
+	}
+
+	public async Task ActivarAsync(int usuId, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new { usu_id = usuId, usu_id_accion = usuarioAccionId };
+		await connection.ExecuteAsync("dbo.paUsuarioActivar", parametros, commandType: CommandType.StoredProcedure);
+	}
+
+	// Cambio hecho por el propio usuario: verifica la contraseña actual con
+	// las mismas reglas del inicio de sesión (PBKDF2 o hash anterior).
+	public async Task CambiarPasswordAsync(int usuId, string passwordActual, string passwordNuevo)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var datos = await connection.QueryFirstOrDefaultAsync<AuthRepository.DatosLogin>(
+			"dbo.paSeguridadLoginDatos", new { UsuId = usuId }, commandType: CommandType.StoredProcedure)
+			?? throw new InvalidOperationException("No existe el usuario indicado.");
+
+		var valida = datos.Iteraciones is int iteraciones
+			? ContrasenaHash.Verificar(passwordActual, datos.Hash, datos.Salt, iteraciones)
+			: await connection.ExecuteScalarAsync<bool>("dbo.paSeguridadPasswordLegadoVerificar",
+				new { UsuId = usuId, Password = passwordActual }, commandType: CommandType.StoredProcedure);
+		if (!valida)
+			throw new InvalidOperationException("La contraseña actual no es correcta.");
+
+		ContrasenaHash.ValidarPolitica(passwordNuevo);
+		if (passwordNuevo == passwordActual)
+			throw new InvalidOperationException("La contraseña nueva debe ser distinta de la actual.");
+
+		await AuthRepository.GuardarHashAsync(connection, usuId, passwordNuevo, cambiarPassword: false, desbloquear: false, usuIdAccion: usuId);
+	}
+
+	// El administrador pone una contraseña temporal (sin conocer la anterior):
+	// el usuario debe cambiarla al iniciar sesión. También quita el bloqueo.
+	public async Task RestablecerPasswordAsync(int usuId, string passwordNuevo, int? usuarioAccionId)
+	{
+		ContrasenaHash.ValidarPolitica(passwordNuevo);
+		using var connection = connectionFactory.CreateConnection();
+		await AuthRepository.GuardarHashAsync(connection, usuId, passwordNuevo, cambiarPassword: true, desbloquear: true, usuIdAccion: usuarioAccionId);
+	}
+
+	public async Task DesbloquearAsync(int usuId, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new { UsuId = usuId, UsuIdAccion = usuarioAccionId };
+		await connection.ExecuteAsync("dbo.paUsuarioDesbloquear", parametros, commandType: CommandType.StoredProcedure);
+	}
+
+	public async Task<IReadOnlyList<Usuario>> ConsultarAsync(string? usuario, string? estado, int pagina, int tamanioPagina)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new
+		{
+			UsuUsuario = usuario,
+			UsuEstado = estado,
+			Pagina = pagina,
+			TamanioPagina = tamanioPagina
+		};
+		var filas = await connection.QueryAsync<Usuario>("dbo.paUsuarioConsultar", parametros, commandType: CommandType.StoredProcedure);
+		return filas.ToList();
+	}
+
+	public async Task<(Usuario? Usuario, IReadOnlyList<UsuarioRol> Roles)> ConsultarPorIdAsync(int usuId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		using var multi = await connection.QueryMultipleAsync(
+			"dbo.paUsuarioConsultarPorId",
+			new { UsuId = usuId },
+			commandType: CommandType.StoredProcedure);
+
+		var usuarioEncontrado = await multi.ReadFirstOrDefaultAsync<Usuario>();
+		var roles = (await multi.ReadAsync<UsuarioRol>()).ToList();
+		return (usuarioEncontrado, roles);
+	}
+
+	public async Task AsignarRolAsync(int usuId, int rolId, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new { UsuId = usuId, RolId = rolId, UsuIdAccion = usuarioAccionId };
+		await connection.ExecuteAsync("dbo.paUsuarioRolAsignar", parametros, commandType: CommandType.StoredProcedure);
+	}
+
+	public async Task RevocarRolAsync(int usuId, int rolId, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new { UsuId = usuId, RolId = rolId, UsuIdAccion = usuarioAccionId };
+		await connection.ExecuteAsync("dbo.paUsuarioRolRevocar", parametros, commandType: CommandType.StoredProcedure);
+	}
+
+	public async Task<IReadOnlyList<Sucursal>> ConsultarSucursalesAsignadasAsync(int usuId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var filas = await connection.QueryAsync<Sucursal>(
+			"dbo.paUsuarioSucursalConsultar", new { usu_id = usuId }, commandType: CommandType.StoredProcedure);
+		return filas.ToList();
+	}
+
+	public async Task AsignarSucursalAsync(int usuId, int sucId, int? usuarioAccionId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new { usu_id = usuId, suc_id = sucId, usu_id_accion = usuarioAccionId };
+		await connection.ExecuteAsync("dbo.paUsuarioSucursalAsignar", parametros, commandType: CommandType.StoredProcedure);
+	}
+
+	public async Task RevocarSucursalAsync(int usuId, int sucId)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		var parametros = new { usu_id = usuId, suc_id = sucId };
+		await connection.ExecuteAsync("dbo.paUsuarioSucursalRevocar", parametros, commandType: CommandType.StoredProcedure);
+	}
+}

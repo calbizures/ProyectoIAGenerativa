@@ -1,0 +1,11 @@
+@page "/cxp/antiguedad/imprimir"
+@layout Erp.Web.Components.Layout.ReporteLayout
+@attribute [Authorize(Policy = "Permiso:CXP_ADMIN")]
+
+<AntiguedadReporte EsCliente="false" FechaCorte="@(Fecha ?? DateTime.Today)" TerceroId="Id" Vista="@(Vista ?? "tercero")" />
+
+@code {
+    [SupplyParameterFromQuery] public DateTime? Fecha { get; set; }
+    [SupplyParameterFromQuery] public int? Id { get; set; }
+    [SupplyParameterFromQuery] public string? Vista { get; set; }
+}

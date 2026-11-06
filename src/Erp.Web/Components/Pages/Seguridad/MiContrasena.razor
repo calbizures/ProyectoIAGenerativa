@@ -1,0 +1,72 @@
+@page "/cuenta/contrasena"
+@rendermode InteractiveServer
+@* Cualquier usuario que haya iniciado sesión cambia aquí su propia contraseña. *@
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@using Erp.Data.Security
+@using Erp.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IUsuarioRepository UsuarioRepository
+
+<PageTitle>@L("Cambiar mi contraseña")</PageTitle>
+
+<div class="pagina-encabezado">
+    <h1>@L("Cambiar mi contraseña")</h1>
+    <p>@L("Al menos 8 caracteres, con letras y números.")</p>
+</div>
+
+@if (mensaje is not null)
+{
+    <p class="@(esMensajeError ? "mensaje-error" : "mensaje-ok")" role="@(esMensajeError ? "alert" : "status")">@Textos.Mensaje(mensaje)</p>
+}
+
+<EditForm Model="modelo" OnValidSubmit="CambiarAsync" class="panel-formulario">
+    <DataAnnotationsValidator />
+    <ResumenValidacion />
+    <div class="campo"><label for="micontrasena-actual">@L("Contraseña actual")</label><InputText id="micontrasena-actual" type="password" autocomplete="current-password" @bind-Value="modelo.Actual" /></div>
+    <div class="campo"><label for="micontrasena-nueva">@L("Contraseña nueva")</label><InputText id="micontrasena-nueva" type="password" autocomplete="new-password" @bind-Value="modelo.Nueva" /></div>
+    <div class="campo"><label for="micontrasena-confirmar">@L("Confirme la contraseña nueva")</label><InputText id="micontrasena-confirmar" type="password" autocomplete="new-password" @bind-Value="modelo.Confirmar" /></div>
+    <div class="acciones-fila">
+        <BotonIcono Icono="save" Tooltip="@L("Cambiar contraseña")" Etiqueta="@L("Cambiar contraseña")" Variante="primario" TipoBoton="submit" />
+    </div>
+</EditForm>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private readonly CambioModelo modelo = new();
+    private string? mensaje;
+    private bool esMensajeError;
+
+    private async Task CambiarAsync()
+    {
+        var usuId = AuthenticationStateTask is null ? null : (await AuthenticationStateTask).User.ObtenerUsuId();
+        if (usuId is null) return;
+        if (modelo.Nueva != modelo.Confirmar)
+        {
+            mensaje = L("La confirmación no coincide con la contraseña nueva.");
+            esMensajeError = true;
+            return;
+        }
+        try
+        {
+            await UsuarioRepository.CambiarPasswordAsync(usuId.Value, modelo.Actual, modelo.Nueva);
+            mensaje = L("Contraseña actualizada.");
+            esMensajeError = false;
+        }
+        catch (Exception ex)
+        {
+            mensaje = MensajesError.Traducir(ex);
+            esMensajeError = true;
+        }
+        modelo.Actual = modelo.Nueva = modelo.Confirmar = "";
+    }
+
+    private sealed class CambioModelo
+    {
+        [Required(ErrorMessage = "Escriba la contraseña actual.")] public string Actual { get; set; } = "";
+        [Required(ErrorMessage = "Escriba la contraseña nueva.")] public string Nueva { get; set; } = "";
+        public string Confirmar { get; set; } = "";
+    }
+}

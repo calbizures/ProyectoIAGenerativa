@@ -1,0 +1,4 @@
+node_modules/
+preparar.log
+resultado.txt
+web-*.json

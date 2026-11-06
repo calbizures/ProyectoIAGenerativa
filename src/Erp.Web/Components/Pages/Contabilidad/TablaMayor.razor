@@ -1,0 +1,90 @@
+@* Libro mayor: por cuenta, saldo inicial, movimientos con saldo corrido y saldo final.
+   Con Paginar (en pantalla) se ven CuentasPorPagina cuentas a la vez y los
+   movimientos de cada cuenta de MovimientosPorPagina en MovimientosPorPagina;
+   la vista para imprimir muestra todo. *@
+@using Erp.Data.Contabilidad
+
+@if (Cuentas.Count == 0)
+{
+    <p class="estado-vacio">@L("No hay cuentas con saldo o movimientos en ese rango.")</p>
+}
+else
+{
+    @foreach (var c in CuentasVisibles)
+    {
+        <section class="mayor-cuenta">
+            <h3><span class="col-codigo">@c.Codigo</span> @c.Cuenta <small class="texto-tenue">(@(c.Naturaleza == "D" ? L("deudora") : L("acreedora")))</small></h3>
+            <div class="tabla-desplazable" tabindex="0" aria-label="@L("Movimientos de {0}", c.Cuenta)">
+                <table class="tabla-datos tabla-contable">
+                    <thead><tr><th class="col-fecha">@L("Fecha")</th><th class="col-estado">@L("Póliza")</th><th>@L("Concepto")</th><th class="num col-monto">@L("Debe")</th><th class="num col-monto">@L("Haber")</th><th class="num col-monto">@L("Saldo")</th></tr></thead>
+                    <tbody>
+                        <tr class="fila-grupo"><td colspan="5">@L("Saldo inicial")</td><td class="num">@c.SaldoInicial.ToString("N2")</td></tr>
+                        @foreach (var m in MovimientosVisibles(c))
+                        {
+                            <tr>
+                                <td class="col-fecha">@m.Fecha.ToString("dd/MM/yyyy")</td>
+                                <td class="col-estado">
+                                    @if (AlVerPoliza.HasDelegate)
+                                    {
+                                        <button type="button" class="boton-enlace" title="@L("Ver la póliza")" @onclick="() => AlVerPoliza.InvokeAsync(m.AsiId)">#@m.AsiId</button>
+                                    }
+                                    else
+                                    {
+                                        <span>#@m.AsiId</span>
+                                    }
+                                </td>
+                                <td>@m.Descripcion <span class="texto-tenue">· @OrigenesPoliza.Nombre(m.Origen)</span></td>
+                                <td class="num col-monto">@(m.Debe == 0 ? "" : m.Debe.ToString("N2"))</td>
+                                <td class="num col-monto">@(m.Haber == 0 ? "" : m.Haber.ToString("N2"))</td>
+                                <td class="num col-monto">@m.Saldo.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="fila-total"><td colspan="3">@L("Movimiento del período y saldo final")</td><td class="num">@c.Debe.ToString("N2")</td><td class="num">@c.Haber.ToString("N2")</td><td class="num">@c.SaldoFinal.ToString("N2")</td></tr>
+                    </tfoot>
+                </table>
+            </div>
+            @if (Paginar && c.Movimientos.Count > MovimientosPorPagina)
+            {
+                <Paginador Total="c.Movimientos.Count" Pagina="PaginaDe(c)" PaginaChanged="p => paginasCuenta[c.Codigo] = p" TamanoPagina="MovimientosPorPagina" />
+            }
+        </section>
+    }
+    @if (Paginar)
+    {
+        <Paginador Total="Cuentas.Count" @bind-Pagina="pagina" TamanoPagina="CuentasPorPagina" />
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<MayorCuenta> Cuentas { get; set; } = Array.Empty<MayorCuenta>();
+    [Parameter] public EventCallback<int> AlVerPoliza { get; set; }
+    [Parameter] public bool Paginar { get; set; }
+
+    private const int CuentasPorPagina = 10;
+    private const int MovimientosPorPagina = 100;
+
+    private IReadOnlyList<MayorCuenta>? cuentasMostradas;
+    private readonly Dictionary<string, int> paginasCuenta = new();
+    private int pagina = 1;
+
+    protected override void OnParametersSet()
+    {
+        // Una consulta nueva vuelve a la primera página.
+        if (!ReferenceEquals(cuentasMostradas, Cuentas))
+        {
+            cuentasMostradas = Cuentas;
+            paginasCuenta.Clear();
+            pagina = 1;
+        }
+    }
+
+    private IEnumerable<MayorCuenta> CuentasVisibles =>
+        Paginar ? Paginador.Recortar(Cuentas, pagina, CuentasPorPagina) : Cuentas;
+
+    private int PaginaDe(MayorCuenta c) => paginasCuenta.GetValueOrDefault(c.Codigo, 1);
+
+    private IEnumerable<MayorMovimiento> MovimientosVisibles(MayorCuenta c) =>
+        Paginar ? Paginador.Recortar(c.Movimientos, PaginaDe(c), MovimientosPorPagina) : c.Movimientos;
+}
