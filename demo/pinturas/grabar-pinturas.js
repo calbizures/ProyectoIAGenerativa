@@ -13,6 +13,8 @@ const DIR = path.join(SALIDA, 'pinturas');
 const TOMAS = path.join(DIR, 'tomas');
 const d = new Demo(TOMAS);
 const T = 'Pinturas del Valle';
+// NIT de un cliente nuevo (válido, no registrado): el simulador FEL devuelve un nombre de prueba.
+const NIT_CLIENTE = '4521876-5';
 
 async function iniciarSesion() {
   await d.ir('login');
@@ -59,37 +61,55 @@ const secciones = {
       numero: 'Para tiendas de pinturas',
       titulo: 'Su tienda, en orden',
       sub: 'Ventas en mostrador con factura electrónica, crédito a contratistas e inventario por tienda. En la web, desde cualquier computadora o celular.',
-      puntos: ['Factura FEL en segundos', 'Vuelto calculado en caja', 'Crédito con límite y cuotas', 'Existencias de cada tienda'],
+      puntos: ['Factura electrónica FEL en segundos', 'NIT consultado a SAT', 'Crédito con límite y cuotas', 'Existencias de cada tienda'],
     }, 6400);
   },
 
   async mostrador() {
-    await d.carta({ numero: '01 · Venta en tienda', titulo: 'Mostrador y caja', sub: 'Un cliente lleva pintura para su casa y paga en efectivo.',
-      puntos: ['Búsqueda por nombre o código', 'Consumidor final con un clic', 'Vuelto calculado', 'FEL certificada al grabar'] }, 3400);
+    await d.carta({ numero: '01 · Factura electrónica FEL', titulo: 'Facturar en el mostrador', sub: 'Un cliente lleva pintura para su casa, da su NIT y paga en efectivo.',
+      puntos: ['NIT consultado a SAT', 'Certificada al grabar', 'Ticket para el cliente', 'PDF y XML por correo'] }, 3600);
     await d.ir('facturas');
     await d.sinCarta(900);
     await d.clic('button:has-text("Nueva factura")', 1000);
-    await d.rotulo('01 · Venta en tienda', 'Nueva factura',
+    await d.rotulo('01 · Factura electrónica FEL', 'Nueva factura',
       'Se escribe parte del nombre o se <b>escanea el código</b>; el precio de la tienda sale solo.', { pos: 'arriba-der', espera: false });
     await agregarProducto('látex', 'interior blanco mate (galón)', 2);
     await agregarProducto('brocha', 'Brocha de 3 pulgadas', 1);
     await d.sinRotulo(200);
-    await d.desplazarA('button:has-text("C/F")', 'center', 700);
-    await d.clic('button:has-text("C/F")', 900);
-    await d.rotulo('01 · Venta en tienda', 'Consumidor final',
-      'Con un clic, o con el NIT del cliente: si no está registrado, se consulta a SAT y se registra solo.', { pos: 'arriba-der', espera: 3400 });
+    // Cliente nuevo: el NIT se consulta al certificador y el cliente se registra solo.
+    await d.desplazarA('#fac-nit', 'center', 700);
+    await d.escribir('#fac-nit', NIT_CLIENTE, 300);
+    await d.p.keyboard.press('Enter'); await d.espera(1800);
+    await sinErrores('consulta del NIT');
+    await d.rotulo('01 · Factura electrónica FEL', 'NIT consultado a SAT',
+      'El nombre lo devuelve el certificador al escribir el NIT, y el cliente <b>queda registrado solo</b>. Sin NIT, consumidor final con un clic.', { pos: 'arriba-der', espera: false });
+    await d.resaltar(d.p.locator('main .doc-chip, main [class*="cliente-elegido"], main section:has(#fac-nit)').first(), 4600); await d.sinResalte(); await d.sinRotulo();
     await d.desplazarA('.calculo-vuelto', 'center', 900);
-    await llenar('#facturas-efectivo-recibido', 500, 900);
-    await d.rotulo('01 · Venta en tienda', 'Vuelto calculado',
-      'El cajero anota cuánto le dieron (o toca el billete) y el sistema le dice <b>cuánto devolver</b>.', { pos: 'arriba-der', espera: false });
-    await d.resaltar('.calculo-vuelto', 3600); await d.sinResalte(); await d.sinRotulo();
+    await llenar('#facturas-efectivo-recibido', 500, 400);
+    await d.resaltar('.calculo-vuelto', 1800); await d.sinResalte();  // el vuelto, sin rótulo
     await d.desplazarA('button:has-text("Grabar factura")', 'center', 600);
     await d.clic('button:has-text("Grabar factura")', 3200);
     await sinErrores('factura de contado');
     await d.desplazarA('.fel-resumen', 'center', 900);
-    await d.rotulo('01 · Venta en tienda', 'Factura electrónica lista',
-      'Certificada ante SAT al grabar: <b>serie, número y autorización</b>. Se imprime en ticket o se envía por correo; el inventario y la caja se actualizan solos.', { pos: 'arriba-der', espera: false });
-    await d.resaltar('.fel-resumen', 5200); await d.sinResalte(); await d.sinRotulo();
+    await d.rotulo('01 · Factura electrónica FEL', 'Certificada al grabar',
+      'En segundos llegan la <b>autorización (UUID), la serie y el número</b> de SAT. Si el certificador no responde, queda pendiente y se reintenta sola.', { pos: 'arriba-der', espera: false });
+    await d.resaltar('.fel-resumen', 5000); await d.sinResalte(); await d.sinRotulo();
+    // Correo con el PDF y el XML certificado (se muestra, no se envía).
+    const imprimir = await d.p.locator('.acciones-fila a:has-text("Imprimir")').first().getAttribute('href');
+    await d.clic('button:has-text("Enviar por correo")', 1200);
+    const para = d.p.locator('.enviar-correo input[type=email]').first();
+    await d.escribir(para, 'cliente@correo.example', 400);
+    await d.rotulo('01 · Factura electrónica FEL', 'PDF y XML por correo',
+      'Al correo del cliente van el <b>PDF de la factura y el XML certificado</b>, desde la cuenta de la tienda (Gmail u Outlook).', { pos: 'arriba-der', espera: false });
+    await d.resaltar('.enviar-correo', 4600); await d.sinResalte();
+    await d.clic('.enviar-correo button:has-text("Cerrar")', 600);
+    await d.sinRotulo(200);
+    // Ticket de la impresora térmica, con los datos de la certificación.
+    await d.ir(imprimir.replace('auto=1', 'formato=T'));
+    await d.rotulo('01 · Factura electrónica FEL', 'Ticket para el cliente',
+      'En la impresora térmica de la caja (o en carta), con la <b>autorización de SAT</b> y la serie y número del DTE.', { pos: 'abajo-der', espera: false });
+    await d.resaltar('.fac-ticket', 4400); await d.sinResalte();
+    await d.desplazar(9999, 1600); await d.espera(1200); await d.sinRotulo();
   },
 
   async inventario() {
@@ -101,7 +121,7 @@ const secciones = {
     await d.espera(800);
     await d.rotulo('02 · Inventario por tienda', 'Existencias por tienda',
       'En <b>Mixco quedan solo 3 cubetas</b> de impermeabilizante; en la bodega de reserva hay 40.', { pos: 'abajo-der', espera: false });
-    await d.resaltar(d.p.locator('main table tbody tr', { hasText: 'Bodega Tienda Mixco' }).filter({ hasText: 'cubeta' }).first(), 4200); await d.sinResalte(); await d.sinRotulo();
+    await d.resaltar(d.p.locator('main table tbody tr', { hasText: 'Bodega Tienda Mixco' }).filter({ hasText: 'cubeta' }).first(), 3400); await d.sinResalte(); await d.sinRotulo();
     await d.ir('inventario/traslados');
     await d.clic('button:has-text("Nuevo traslado")', 1000);
     await d.elegir('#tra-origen', { label: 'Tienda Central Zona 1 · Bodega de reserva Central' }, 700);
@@ -113,7 +133,7 @@ const secciones = {
     const cant = d.p.locator('input[aria-label="Cantidad de PDV-IMP-ACR-CUB"]');
     await llenar(cant, 15, 500);
     await d.rotulo('02 · Inventario por tienda', 'Traslado entre tiendas',
-      'Sale de la reserva y queda <b>en tránsito</b> hasta que Mixco confirma lo que recibió; lo que falte se devuelve o se registra como pérdida.', { pos: 'arriba-der', espera: 4600 });
+      'Sale de la reserva y queda <b>en tránsito</b> hasta que Mixco confirma lo que recibió; lo que falte se devuelve o se registra como pérdida.', { pos: 'arriba-der', espera: 3800 });
     await d.clic('button:has-text("Enviar traslado")', 2000);
     await sinErrores('traslado');
     await d.resaltar(d.p.locator('main table tbody tr').first(), 3000); await d.sinResalte(); await d.sinRotulo();
@@ -121,7 +141,7 @@ const secciones = {
 
   async contratista() {
     await d.carta({ numero: '03 · Crédito a contratistas', titulo: 'Cotice, facture y cobre', sub: 'Una constructora pide material para impermeabilizar y pintar un edificio.',
-      puntos: ['Cotización con vigencia', 'Factura al crédito con cuotas', 'Límite de crédito controlado', 'Antigüedad y cobros'] }, 3400);
+      puntos: ['Cotización con vigencia', 'Factura FEL al crédito', 'Límite de crédito controlado', 'Cuotas, atrasos y cobros'] }, 3400);
     await d.ir('ventas/cotizaciones');
     await d.sinCarta(900);
     await d.clic('button:has-text("Nueva cotización")', 1000);
@@ -149,11 +169,6 @@ const secciones = {
     await d.desplazarA('button:has-text("Grabar factura")', 'center', 600);
     await d.clic('button:has-text("Grabar factura")', 3000);
     await sinErrores('factura al crédito');
-    await d.ir('cxc/antiguedad');
-    await d.rotulo('03 · Crédito a contratistas', 'Antigüedad de saldos',
-      'La factura ya está en la cartera de la constructora, con lo que debe por días de atraso. En Excel o impreso.', { pos: 'abajo-der', espera: false });
-    await d.resaltar('.kpi-fila', 2400);
-    await d.resaltar(d.p.locator('main table tbody tr', { hasText: 'Altamira' }).first(), 3600); await d.sinResalte(); await d.sinRotulo();
     await d.ir('cxc/cobros');
     await d.escribir('input[placeholder^="Buscar cliente"]', 'Altamira');
     await d.p.keyboard.press('Enter'); await d.espera(1000);
@@ -163,7 +178,7 @@ const secciones = {
     await llenar('#cob-recibido', monto, 500);
     await d.clic('button:has-text("Aplicar a las más antiguas")', 1000);
     await d.rotulo('03 · Crédito a contratistas', 'Cobro de cuotas',
-      'El abono se aplica a las cuotas <b>más antiguas</b>; un solo recibo, en efectivo, cheque, tarjeta o transferencia.', { pos: 'arriba-der', espera: false });
+      'Cada cuota con sus <b>días de atraso</b>; el abono se aplica a las más antiguas, en un solo recibo. La antigüedad de saldos sale en Excel o impresa.', { pos: 'arriba-der', espera: false });
     await d.resaltar('table.tabla-cuotas-cobro', 3000); await d.sinResalte();
     await d.desplazarA('#titulo-formas', 'start', 800);
     await d.clic('button:has-text("Registrar cobro Q")', 2000);

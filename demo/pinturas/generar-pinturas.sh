@@ -20,7 +20,7 @@ export LANGUAGE="${LANGUAGE:-es}"
 FFMPEG="${FFMPEG:-ffmpeg}"
 PYTHON="${PYTHON:-python3}"
 DIR="$SALIDA/pinturas"
-VELOCIDAD="${VELOCIDAD:-1.1}"     # se acelera un poco para quedar en ~3 minutos
+VELOCIDAD="${VELOCIDAD:-1.15}"     # se acelera un poco para quedar en ~3 minutos
 MB_MAXIMO="${MB_MAXIMO:-15}"      # WhatsApp acepta hasta 16 MB
 mkdir -p "$DIR"
 ERP_URL="${ERP_URL:-http://localhost:5273}"

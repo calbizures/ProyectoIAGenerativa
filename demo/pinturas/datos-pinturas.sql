@@ -49,6 +49,11 @@ UPDATE dbo.inv_bodega SET bod_descripcion = 'Bodega de reserva Central' WHERE bo
 UPDATE caja SET pcr_descripcion = CONCAT('Caja ', caja.pcr_id, ' - ', REPLACE(sucu.suc_descripcion, ' Zona 1', '')), pcr_calcula_vuelto = 1
   FROM dbo.pos_caja_receptora caja JOIN dbo.gen_sucursal sucu ON sucu.suc_id = caja.suc_id;
 
+-- En mostrador se imprime en ticket (térmica de 80 mm) y el NIT de un
+-- cliente nuevo se consulta al certificador al facturar.
+UPDATE dbo.gen_compania SET cia_factura_impresora = 'T', cia_factura_ancho_termica = 80;
+UPDATE dbo.fel_configuracion SET fco_consulta_nit_activa = 1;
+
 -- Serie de las facturas con las iniciales de la tienda.
 UPDATE dbo.conf_correlativos SET serie = 'PDV-A' WHERE serie = 'SIQ-A';
 UPDATE dbo.inv_documento_enc SET enc_numero_unico = STUFF(enc_numero_unico, 1, 3, 'PDV') WHERE enc_numero_unico LIKE 'SIQ-%';
